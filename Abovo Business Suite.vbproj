@@ -587,6 +587,7 @@
     <Compile Include="Interface\Interface Services\Resizer.vb" />
     <Compile Include="Interface\Interface Services\GridFormatter.vb" />
     <Compile Include="Services\TransactionalDB\TransactionalDBSynchroniser.vb" />
+    <Compile Include="Services\WorkbookContractValidator.vb" />
     <Compile Include="Services\WorkbookManager.vb" />
     <Compile Include="Services\StructureCreation\XMLParser.vb" />
     <Compile Include="Interface\User Interface\SplashScreenStart.Designer.vb">

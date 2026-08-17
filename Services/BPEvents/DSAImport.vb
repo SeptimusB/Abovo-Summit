@@ -220,7 +220,6 @@ Namespace Abovo
 
             Dim BusPlanFile As IWorkbook
             Dim DSAFile As IWorkbook
-            Dim Commitment As String = Nothing
             Dim ResponseMessage As Integer
             Dim InitialCheckCount As Integer
             Dim wsCheck As DevExpress.Spreadsheet.Worksheet
@@ -228,13 +227,19 @@ Namespace Abovo
 
             BusPlanFile = GetWorkBook(SetModelID)
             Dim MyFileInfos As IO.FileInfo = My.Computer.FileSystem.GetFileInfo(FileToOpen)
-            Dim FileOpenResult As AbovoTransaction = FileManager.OpenModel(FileToOpen, MyFileInfos)
+            Dim FileTrans As AbovoTransaction = FileManager.OpenModel(
+                FileToOpen,
+                MyFileInfos,
+                FileManager.WorkbookOpenMode.ImportSource)
 
-            Dim FileTrans As AbovoTransaction
+            If FileTrans.BError Then
+                MsgBox(FileTrans.StrResponseMessage)
+                Return False
+            End If
 
-            FileTrans = FileManager.OpenModel(FileToOpen, MyFileInfos)
             Dim DSAId As Integer = FileTrans.IntegerReturn
-            DSAFile = GetWorkBook(DSAId)
+            Try
+                DSAFile = GetWorkBook(DSAId)
 
             If Not DSAFile.Worksheets.Contains("Unit Handovers & Sales") Then
 
@@ -245,14 +250,12 @@ Namespace Abovo
 
             wsCheck = DSAFile.Worksheets("Global Assumptions")
 
-            If DSAFile.Range("ModelVersion")(0, 0).Value.NumericValue >= EarliestVersion Then
+            If DSAFile.Range("ModelVersion")(0, 0).Value.NumericValue < EarliestVersion Then
 
                 MsgBox("DSA  " & FileToOpen & " is earlier than the earliest possible import version of " & EarliestVersion.ToString)
                 Return False
 
             End If
-
-            On Error GoTo 0
 
             ' If is a DSA model, and not a Consol model, of a late enough version,
             ' then record the Check Sheet's error count for later comparison.
@@ -317,11 +320,10 @@ Namespace Abovo
 
                 If InsertNewSheet(BusPlanFile, DSAFile, ImportType, NewDSAName) Then
 
-                    CloseModel(DSAId)
-
                     If InsertNewTotals(BusPlanFile, SetModelID, DSAFile, ImportType, NewDSAName) Then
 
-                        UpdateList(BusPlanFile, SetModelID, DSAFile, ImportType, NewDSAName, FileToOpen, Commitment)
+                        UpdateList(BusPlanFile, SetModelID, DSAFile, ImportType, NewDSAName, FileToOpen, CommitmentStatus)
+                        DSA_Import = True
 
                     Else
 
@@ -342,9 +344,11 @@ Namespace Abovo
 
             End If
 
-            On Error Resume Next
+            Finally
+                CloseModel(DSAId)
+            End Try
 
-            CloseModel(FileTrans.IntegerReturn)
+            Return DSA_Import
 
         End Function
 

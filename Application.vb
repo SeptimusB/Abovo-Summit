@@ -17,18 +17,19 @@ Namespace Abovo
 		<STAThread>
 		Sub Main()
 
-			DevExpress.XtraEditors.WindowsFormsSettings.SetAccentColor(AbovoBlue)
 			Application.EnableVisualStyles()
 			Application.SetCompatibleTextRenderingDefault(False)
+			DevExpress.XtraEditors.WindowsFormsSettings.SetAccentColor(AbovoBlue)
 			BonusSkins.Register()
 			SkinManager.EnableFormSkins()
 
-			ApplicationConfiguration.Initilise()
-
+			ApplicationConfiguration.Initialize()
 			ApplicationConfiguration.BaseApplicationTitle = "abovo summit"
-			Application.Run(New FormMainScreen())
 
-			FormMainScreen.Text = ApplicationConfiguration.BaseApplicationTitle
+			Using MainForm As New FormMainScreen()
+				MainForm.Text = ApplicationConfiguration.BaseApplicationTitle
+				Application.Run(MainForm)
+			End Using
 
 		End Sub
 
@@ -42,15 +43,24 @@ Namespace Abovo
 		Public Shared CopyrightMessage As String
         Private Shared WorkingModelID As Integer
 
-		Public Shared DefaultTemplateFile As String = Application.StartupPath & "\Templates\DefaultBPTemplate.xlsb"
+		Public Shared ReadOnly Property DefaultTemplateFile As String
+			Get
+				Return IO.Path.Combine(CurrentApplicationPath, "Templates", "DefaultBPTemplate.xlsb")
+			End Get
+		End Property
 
-		Public Shared Sub Initilise()
+		Public Shared Sub Initialize()
 
 			CurrentApplicationPath = Application.StartupPath()
 			CurrentWorkingDirectory = CurrentApplicationPath
-			CopyrightMessage = "© " & Year(Now()).ToString & " Abovo Business Services Limited.  All rights reserved"
+			CopyrightMessage = "© " & DateTime.Now.Year.ToString & " Abovo Business Services Limited.  All rights reserved"
 
 			'ExportServices.initialise()
+		End Sub
+
+		<Obsolete("Use Initialize instead.")>
+		Public Shared Sub Initilise()
+			Initialize()
 		End Sub
 		Public Shared Property ActiveModelID As Integer
 			Set(value As Integer)

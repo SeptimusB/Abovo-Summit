@@ -186,7 +186,6 @@ Public Class FileInstanceInterface
                 ' Close the model and dispose of the interface
                 If ExcelModels(BPModelID).CommitToCloseModel.StringReturn = "Proceed" Then
 
-                    ExcelModels(BPModelID).CloseModel()
                     FileManager.CloseModel(BPModelID)
                     FormMainScreen.RemoveModel(BPModelID)
                     Me.Dispose()
@@ -202,11 +201,14 @@ Public Class FileInstanceInterface
         End Select
 
     End Sub
-    Public Sub SaveFileAs()
+    Public Function SaveFileAs() As Boolean
         Me.Cursor = Cursors.WaitCursor
-        ExcelModels(BPModelID).SaveFileAs()
-        Me.Cursor = Cursors.Default
-    End Sub
+        Try
+            Return ExcelModels(BPModelID).SaveFileAs()
+        Finally
+            Me.Cursor = Cursors.Default
+        End Try
+    End Function
     Sub SetScale()
         Dim ScaleFactor As Single
         ScaleFactor = Me.Width / 700

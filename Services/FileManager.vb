@@ -15,6 +15,11 @@ Imports DevExpress.XtraSpreadsheet.Model
 
 Namespace Abovo
     Public Class FileManager
+        Public Enum WorkbookOpenMode
+            FullModel
+            ImportSource
+        End Enum
+
         'Core Properties
 
         Public Shared Property FileNameFormat As DocumentFormat
@@ -28,35 +33,56 @@ Namespace Abovo
 
         Public Shared ActiveWB As DevExpress.Spreadsheet.Workbook
 
-        Public Shared Sub Initialise(Parent As Object)
+        Public Shared Sub Initialise(ByVal SetParent As Object)
 
-            'Initialisethe shared File manager object
+            Parent = SetParent
+            ExcelModels = Nothing
             ExcelModelCount = -1
             OpenModelCount = 0
+            InternalFileState = 1
+            InternalBIsSaving = False
 
         End Sub
         Public Shared Function GetWorkBook(SetModelID As Integer) As DevExpress.Spreadsheet.IWorkbook
 
+            If ExcelModels Is Nothing OrElse
+               SetModelID < 0 OrElse
+               SetModelID >= ExcelModels.Length OrElse
+               ExcelModels(SetModelID) Is Nothing Then Return Nothing
+
             Return ExcelModels(SetModelID).WB
 
         End Function
-        Public Shared Function IsFileOpen(Path As String) As Boolean
+        Public Shared Function IsFileOpen(ByVal Path As String) As Boolean
 
-            If IsNothing(ExcelModels) Then Return False
+            If String.IsNullOrWhiteSpace(Path) OrElse ExcelModels Is Nothing Then
+                Return False
+            End If
 
             If ExcelModels.Length = 0 Then Return False
 
-            Dim CheckMod As ExcelModel
+            Dim CandidatePath As String
 
-            For Each CheckMod In ExcelModels
+            Try
+                CandidatePath = System.IO.Path.GetFullPath(Path)
+            Catch
+                Return False
+            End Try
+
+            For Each CheckMod As ExcelModel In ExcelModels
 
                 If CheckMod Is Nothing Then Continue For
 
-                If CheckMod.WB.Path = Path Then
+                Dim OpenPath As String = CheckMod.FileName
+                If String.IsNullOrWhiteSpace(OpenPath) AndAlso
+                   CheckMod.WB IsNot Nothing Then OpenPath = CheckMod.WB.Path
+
+                If Not String.IsNullOrWhiteSpace(OpenPath) AndAlso
+                   String.Equals(System.IO.Path.GetFullPath(OpenPath),
+                                 CandidatePath,
+                                 StringComparison.OrdinalIgnoreCase) Then
 
                     Return True
-                    Exit Function
-
                 End If
 
             Next
@@ -158,25 +184,29 @@ Namespace Abovo
             Public WorkbookMigrations As WorkbookMigrationManager
             Public WorkbookStructureRules As WorkbookStructureRuleManager
 
-            Sub New(SetModelID As Integer)
+            Sub New(
+                SetModelID As Integer,
+                Optional OpenMode As WorkbookOpenMode = WorkbookOpenMode.FullModel)
 
                 ModelID = SetModelID
                 'WB = New IWorkbook
                 ModelSpreadsheetControl = New SpreadsheetControl
 
-                WBStructureManager = New StructureManager(SetModelID)
-                WBData = New DataManager(SetModelID)
-                WBCalcEngine = New CalcEngine(SetModelID)
-                WBInterface = New InterfaceManager(SetModelID)
-                WBDataPres = New PresentationManager(SetModelID)
-                EventCoordinator = New EventManager(SetModelID, "AbovoBP")
-                TransDBM = New TransDBManager(SetModelID)
-                RDSM = New RDSManager(SetModelID)
-                InterfaceDependencies = New InterfaceDependencyManager(SetModelID)
-                TransDBSync = New TransactionalDBSynchroniser(SetModelID)
-                TransDBMaterialiser = New TransactionDBMaterialiser(SetModelID)
-                WorkbookMigrations = New WorkbookMigrationManager(SetModelID)
-                WorkbookStructureRules = New WorkbookStructureRuleManager(SetModelID)
+                If OpenMode = WorkbookOpenMode.FullModel Then
+                    WBStructureManager = New StructureManager(SetModelID)
+                    WBData = New DataManager(SetModelID)
+                    WBCalcEngine = New CalcEngine(SetModelID)
+                    WBInterface = New InterfaceManager(SetModelID)
+                    WBDataPres = New PresentationManager(SetModelID)
+                    EventCoordinator = New EventManager(SetModelID, "AbovoBP")
+                    TransDBM = New TransDBManager(SetModelID)
+                    RDSM = New RDSManager(SetModelID)
+                    InterfaceDependencies = New InterfaceDependencyManager(SetModelID)
+                    TransDBSync = New TransactionalDBSynchroniser(SetModelID)
+                    TransDBMaterialiser = New TransactionDBMaterialiser(SetModelID)
+                    WorkbookMigrations = New WorkbookMigrationManager(SetModelID)
+                    WorkbookStructureRules = New WorkbookStructureRuleManager(SetModelID)
+                End If
 
                 IsDirty = False
                 WB = ModelSpreadsheetControl.Document
@@ -275,56 +305,75 @@ Namespace Abovo
                 ColourSwatch = GetColour(SetModelID)
 
             End Sub
-            Public Sub PostLoadActions()
+            Public Function PostLoadActions() As AbovoTransaction
 
-                WBCalculationService = New CustomCalcEngine(ModelID)
+                Dim Result As New AbovoTransaction
 
-                WBCalculationService.TransDBSheetID = GetSheetID(ModelID, "Transactional DB")
+                Try
+                    Dim TransactionSheetID As Integer =
+                        GetSheetID(ModelID, "Transactional DB")
 
-                WBCalculationService.DontCalcTDBS = True
+                    If TransactionSheetID < 0 Then
+                        Throw New InvalidOperationException(
+                            "The workbook is missing the 'Transactional DB' worksheet.")
+                    End If
 
-                WB.AddService(GetType(DevExpress.XtraSpreadsheet.Services.ICustomCalculationService), WBCalculationService)
+                    WBCalculationService = New CustomCalcEngine(ModelID) With {
+                        .TransDBSheetID = TransactionSheetID,
+                        .DontCalcTDBS = True
+                    }
 
-                ChangeManager = New ModelChangeManager(ModelID)
+                    WB.AddService(
+                        GetType(DevExpress.XtraSpreadsheet.Services.ICustomCalculationService),
+                        WBCalculationService)
 
-                HistoryManager.Show()
-                HistoryManager.Hide()
+                    ChangeManager = New ModelChangeManager(ModelID)
 
-                If WorkbookMigrations IsNot Nothing Then
+                    HistoryManager.Show()
+                    HistoryManager.Hide()
 
-                    WorkbookMigrations.ReportMigrationStatus()
+                    If WorkbookMigrations IsNot Nothing Then
+                        WorkbookMigrations.ReportMigrationStatus()
 
 #If DEBUG Then
-                    'During development the migration is deliberately applied
-                    'automatically in Debug builds.  It is idempotent and the
-                    'workbook is marked dirty so the migrated XLSB is only
-                    'persisted if the user subsequently saves it.
-                    Dim MigrationResult As AbovoTransaction =
-                        WorkbookMigrations.ApplyPendingMigrations()
+                        'Debug builds reconcile the workbook to the current
+                        'schema in memory. Persistence still requires an
+                        'explicit user save.
+                        Dim MigrationResult As AbovoTransaction =
+                            WorkbookMigrations.ApplyPendingMigrations()
 
-                    If MigrationResult.BError Then
-                        Debug.Print("Workbook migration ERROR: " &
-                                    MigrationResult.StringReturn)
-                    Else
+                        If MigrationResult.BError Then
+                            Return MigrationResult
+                        End If
+
                         Debug.Print("Workbook migration: " &
                                     MigrationResult.StringReturn)
-                    End If
 #End If
+                    End If
 
-                End If
+                    Result.BSuccess = True
+                    Result.StringReturn = "Workbook services initialized."
+                    Result.StrResponseMessage = Result.StringReturn
 
-            End Sub
+                Catch ex As Exception
+                    Result.BError = True
+                    Result.IntReturnCode = -1
+                    Result.StringReturn =
+                        "Workbook services could not be initialized: " & ex.Message
+                    Result.StrResponseMessage = Result.StringReturn
+                End Try
+
+                Return Result
+
+            End Function
             Public Function GetSheetID(ModelID As Integer, SheetName As String) As Integer
 
-                Dim WS As DevExpress.Spreadsheet.Worksheet = ExcelModels(ModelID).WB.Worksheets(SheetName)
+                Dim TargetWorkbook As IWorkbook = GetWorkBook(ModelID)
+                If TargetWorkbook Is Nothing OrElse
+                   String.IsNullOrWhiteSpace(SheetName) OrElse
+                   Not TargetWorkbook.Worksheets.Contains(SheetName) Then Return -1
 
-                If WS Is Nothing Then
-
-                    Return -1
-
-                End If
-
-                Return WS.Index
+                Return TargetWorkbook.Worksheets(SheetName).Index
 
             End Function
 
@@ -392,35 +441,55 @@ Namespace Abovo
                 Return True
 
             End Function
-            Public Sub SaveFileAs()
+            Public Function SaveFileAs() As Boolean
 
-                'need to change this to managed coded dialog?
+                Dim OriginalPath As String = FileName
 
-                ModelSpreadsheetControl.SaveDocumentAs()
+                Try
+                    ModelSpreadsheetControl.SaveDocumentAs()
 
-            End Sub
-            Public Sub SaveFile()
+                    Dim SavedPath As String = WB.Path
+                    If String.IsNullOrWhiteSpace(SavedPath) OrElse
+                       String.Equals(SavedPath,
+                                     OriginalPath,
+                                     StringComparison.OrdinalIgnoreCase) Then Return False
 
-                If IsDirty Then
-
-                    Try
-
-                        ModelSpreadsheetControl.SaveDocument()
-
-                    Catch ex As Exception
-
-                        MsgBox("Sorry, an error occurred while saving. Please check the file is not open in another program and that you have write permissions to the location. Error details: " & ex.Message)
-
-                        GoTo Exiter
-
-                    End Try
-
+                    FileName = System.IO.Path.GetFullPath(SavedPath)
+                    FileInfo = New System.IO.FileInfo(FileName)
                     IsDirty = False
+                    Return True
 
-                End If
-Exiter:
+                Catch ex As Exception
+                    MessageBox.Show(
+                        "The model could not be saved to the selected location." &
+                        Environment.NewLine & Environment.NewLine & ex.Message,
+                        "Save Abovo Model As",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error)
+                    Return False
+                End Try
 
-            End Sub
+            End Function
+            Public Function SaveFile() As Boolean
+
+                If Not IsDirty Then Return True
+
+                Try
+                    ModelSpreadsheetControl.SaveDocument()
+                    IsDirty = False
+                    Return True
+
+                Catch ex As Exception
+                    MessageBox.Show(
+                        "Sorry, an error occurred while saving. Please check the file is not open in another program and that you have write permissions to the location." &
+                        Environment.NewLine & Environment.NewLine & ex.Message,
+                        "Save Abovo Model",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error)
+                    Return False
+                End Try
+
+            End Function
             Public Function CommitToCloseModel() As AbovoTransaction
 
                 Dim CloseTrans As New AbovoTransaction
@@ -437,8 +506,10 @@ Exiter:
 
                     ElseIf response = MsgBoxResult.Yes Then
 
-                        SaveFile()
-                        IsDirty = False
+                        If Not SaveFile() Then
+                            CloseTrans.StringReturn = "Cancel"
+                            Return CloseTrans
+                        End If
 
                     End If
 
@@ -451,24 +522,38 @@ Exiter:
             End Function
             Public Sub CloseModel()
 
-                'WB = Nothing
-                ModelSpreadsheetControl.CreateNewDocument()
-                ModelSpreadsheetControl.Dispose()
+                If ModelSpreadsheetControl IsNot Nothing Then
+                    RemoveHandler ModelSpreadsheetControl.UnhandledException,
+                                  AddressOf SSCUnhandledEvent
+                End If
+
+                If WBInterface IsNot Nothing Then WBInterface.CloseInterfaces()
+                If InterfaceDependencies IsNot Nothing Then InterfaceDependencies.Clear()
+                If SSViewer IsNot Nothing Then SSViewer.Dispose()
+                If ModelSpreadsheetControl IsNot Nothing Then
+                    ModelSpreadsheetControl.Dispose()
+                End If
+
+                SSViewer = Nothing
                 ModelSpreadsheetControl = Nothing
-                WBInterface.CloseInterfaces()
+                WB = Nothing
                 WBInterface = Nothing
                 WBData = Nothing
                 WBCalcEngine = Nothing
+                WBCalculationService = Nothing
                 WBStructure = Nothing
                 WBStructureManager = Nothing
                 WBDataPres = Nothing
-                If InterfaceDependencies IsNot Nothing Then InterfaceDependencies.Clear()
+                EventCoordinator = Nothing
+                ChangeManager = Nothing
+                TransDBM = Nothing
+                RDSM = Nothing
                 InterfaceDependencies = Nothing
+                TransDBSync = Nothing
                 TransDBMaterialiser = Nothing
                 WorkbookMigrations = Nothing
                 WorkbookStructureRules = Nothing
-                GC.Collect()
-                GC.WaitForPendingFinalizers()
+                InstanceInterface = Nothing
 
             End Sub
             Public Function DoesWorksheetExist(WSName As String) As Boolean
@@ -491,24 +576,53 @@ Exiter:
 
             End Function
 
-            Public Sub ProcessAsAbovoBP()
+            Public Function ProcessAsAbovoBP() As AbovoTransaction
 
-                Dim wsGA As DevExpress.Spreadsheet.Worksheet = WB.Worksheets("Global Assumptions")
-                Dim clCell As DevExpress.Spreadsheet.Cell
+                Dim Result As New AbovoTransaction
 
-                clCell = wsGA.Cells(5, 2)
+                Try
+                    If WBStructure Is Nothing Then
+                        Throw New InvalidOperationException(
+                            "The workbook interface definition has not been loaded.")
+                    End If
 
-                WBStructure.CompanyName = CStr(clCell.Value.TextValue)
+                    If WB Is Nothing OrElse
+                       Not WB.Worksheets.Contains("Global Assumptions") Then
+                        Throw New InvalidOperationException(
+                            "The workbook is missing the 'Global Assumptions' worksheet.")
+                    End If
 
-                clCell = wsGA.Cells(7, 2)
+                    Dim GlobalAssumptions As DevExpress.Spreadsheet.Worksheet =
+                        WB.Worksheets("Global Assumptions")
 
-                WBStructure.StartDate = CDate(clCell.Value.DateTimeValue)
+                    WBStructure.CompanyName =
+                        GlobalAssumptions.Cells(5, 2).Value.TextValue
+                    WBStructure.StartDate =
+                        GlobalAssumptions.Cells(7, 2).Value.DateTimeValue.ToString("yyyy-MM-dd")
 
-            End Sub
+                    If Not String.IsNullOrWhiteSpace(WBStructure.RejData) Then
+                        UnlockPassword = WBStructure.RejData
+                    End If
+
+                    Result.BSuccess = True
+                    Result.StringReturn = "Workbook metadata loaded."
+                    Result.StrResponseMessage = Result.StringReturn
+
+                Catch ex As Exception
+                    Result.BError = True
+                    Result.IntReturnCode = -1
+                    Result.StringReturn =
+                        "Workbook metadata could not be loaded: " & ex.Message
+                    Result.StrResponseMessage = Result.StringReturn
+                End Try
+
+                Return Result
+
+            End Function
 
         End Class
 
-        Private Shared InternalUnlockPassword As String = "23_t4qhe"
+        Private Shared InternalUnlockPassword As String = String.Empty
         Public Shared Property UnlockPassword As String
 
             Get
@@ -533,8 +647,34 @@ Exiter:
         End Property
         Public Shared Sub CloseModel(ModelID As Integer)
 
+            If ExcelModels Is Nothing OrElse
+               ModelID < 0 OrElse
+               ModelID >= ExcelModels.Length OrElse
+               ExcelModels(ModelID) Is Nothing Then Return
+
+            Dim ModelToClose As ExcelModel = ExcelModels(ModelID)
             ExcelModels(ModelID) = Nothing
-            OpenModelCount -= 1
+
+            Try
+                ModelToClose.CloseModel()
+            Catch ex As Exception
+                WriteLog("Error while releasing model " & ModelID.ToString() & ": " & ex.Message)
+            End Try
+
+            OpenModelCount = Math.Max(0, OpenModelCount - 1)
+
+            While ExcelModelCount >= 0 AndAlso
+                  (ExcelModels Is Nothing OrElse
+                   ExcelModelCount >= ExcelModels.Length OrElse
+                   ExcelModels(ExcelModelCount) Is Nothing)
+                ExcelModelCount -= 1
+            End While
+
+            If ExcelModelCount < 0 Then
+                ExcelModels = Nothing
+            ElseIf ExcelModels.Length > ExcelModelCount + 1 Then
+                ReDim Preserve ExcelModels(ExcelModelCount)
+            End If
 
         End Sub
         Private InternalCompanyName As String = ""
@@ -630,17 +770,29 @@ Exiter:
 
         Public Sub SaveFile(ModelID)
 
+            If ExcelModels Is Nothing OrElse
+               ModelID < 0 OrElse
+               ModelID >= ExcelModels.Length OrElse
+               ExcelModels(ModelID) Is Nothing Then
+                Throw New ArgumentOutOfRangeException(NameOf(ModelID))
+            End If
+
             Dim TimeStart As Date = Now()
             WriteLog("Starting corethread save of " & ExcelModels(ModelID).FileName)
 
             InternalBIsSaving = True
 
-            ExcelModels(ModelID).WB.SaveDocument(ExcelModels(ModelID).FileName, DocumentFormat.Xlsm)
-            InternalFileState = 2
-
-            InternalBIsSaving = False
-            WriteLog("Complete. Time taken: " & (Now() - TimeStart).ToString)
-            If IsDev Then MsgBox("Saved. Time taken: " & (Now() - TimeStart).ToString)
+            Try
+                If ExcelModels(ModelID).SaveFile() Then
+                    InternalFileState = 2
+                    WriteLog("Complete. Time taken: " & (Now() - TimeStart).ToString)
+                    If IsDev Then
+                        MsgBox("Saved. Time taken: " & (Now() - TimeStart).ToString)
+                    End If
+                End If
+            Finally
+                InternalBIsSaving = False
+            End Try
 
         End Sub
 
@@ -664,6 +816,14 @@ Exiter:
         End Sub
         Public Shared Function CloseAllModelsFromFMS(Source As FormMainScreen) As Boolean
 
+            If ExcelModels Is Nothing OrElse ExcelModels.Length = 0 Then
+                OpenModelCount = 0
+                ExcelModelCount = -1
+                ActiveWB = Nothing
+                InternalFileState = 1
+                Return True
+            End If
+
             Dim SaveCheck As ExcelModel
 
             For Each SaveCheck In ExcelModels
@@ -672,7 +832,6 @@ Exiter:
 
                     If ExcelModels(SaveCheck.ModelID).CommitToCloseModel.StringReturn = "Proceed" Then
 
-                        ExcelModels(SaveCheck.ModelID).CloseModel()
                         FileManager.CloseModel(SaveCheck.ModelID)
                         Source.RemoveModel(SaveCheck.ModelID)
 
@@ -687,7 +846,7 @@ Exiter:
 
             Next
 
-            ReDim ExcelModels(-1)
+            ExcelModels = Nothing
             ExcelModelCount = -1
             OpenModelCount = 0
 
@@ -698,27 +857,7 @@ Exiter:
         End Function
         Public Shared Function ValidateOpenFile(ModelToCheck As Integer) As AbovoTransaction
 
-            Dim ObjResponse As New AbovoTransaction
-
-            'Check if the file is a valid Abovo file
-            If ExcelModels(ModelToCheck).DoesWorksheetExist("Global Assumptions") = False Then
-
-                ObjResponse.BError = True
-                ObjResponse.StrResponseMessage = "Workbook is not a valid Abovo file."
-                Return ObjResponse
-
-            Else
-
-                If ExcelModels(ModelToCheck).WB.Worksheets("Global Assumptions").Cells("A8").DisplayText = "Business Plan Start Date" Then
-
-                    ObjResponse.BError = False
-                    ObjResponse.StringReturn = "AbovoBP"
-
-                End If
-
-            End If
-
-            Return ObjResponse
+            Return WorkbookContractValidator.Validate(GetWorkBook(ModelToCheck))
 
         End Function
 
@@ -750,129 +889,144 @@ Exiter:
             MessageBox.Show(My_Exception.Message, "An error has occured with the file")
 
         End Sub
-        Public Shared Function OpenModel(strPath As String, FileInfo As System.IO.FileInfo) As AbovoTransaction
+        Public Shared Function OpenModel(
+            ByVal strPath As String,
+            ByVal FileInfo As System.IO.FileInfo,
+            Optional ByVal OpenMode As WorkbookOpenMode = WorkbookOpenMode.FullModel) As AbovoTransaction
 
-            Dim ObjResponse As New AbovoTransaction
-
-            'CheckNotOpenAlready
-            If OpenModelCount > 0 Then
-
-                Dim CheckMod As ExcelModel
-
-                For Each CheckMod In ExcelModels
-
-                    If CheckMod.WB.Path = strPath Then
-
-                        Beep()
-                        ObjResponse.BError = True
-                        ObjResponse.StrResponseMessage = "Already open"
-                        Return ObjResponse
-                        Exit Function
-
-                    End If
-
-                Next
-
-            End If
-
-            ExcelModelCount += 1
-
-            ReDim Preserve ExcelModels(ExcelModelCount)
-
-            ExcelModels(ExcelModelCount) = New ExcelModel(ExcelModelCount)
-
-            ExcelModels(ExcelModelCount).FileInfo = FileInfo
-
-            ExcelModels(ExcelModelCount).FileName = strPath
-
+            Dim Result As New AbovoTransaction
+            Dim PreviousModelCount As Integer = ExcelModelCount
+            Dim NewModelID As Integer = PreviousModelCount + 1
+            Dim NewModel As ExcelModel = Nothing
             Dim TimeStart As Date = Now()
 
-            WriteLog("Starting corethread load of " & strPath)
-
-            ExcelModels(ExcelModelCount).ModelSpreadsheetControl.LoadDocument(strPath)
-
-            ExcelModels(ExcelModelCount).PostLoadActions()
-
-            WriteLog("Complete. Time taken: " & (Now() - TimeStart).ToString)
-
-            'ExcelModels(ExcelModelCount).WB = ExcelModels(ExcelModelCount).ModelSpreadsheetControl.Document
-
-            'InitiateWorkbook(ExcelModels(OpenModelCount).WB)
-            'If IsDev Then MsgBox("Complete. Time taken: " & (Now() - TimeStart).ToString)
-
-            ExcelModels(ExcelModelCount).ModelSpreadsheetControl.Dock = DockStyle.Fill
-            'ExcelModels(ExcelModelCount).SSInterface.Controls.Add(ExcelModels(ExcelModelCount).ModelSpreadsheetControl)
-
-            System.GC.Collect()
-            System.GC.WaitForPendingFinalizers()
-
-            Dim CheckFile As AbovoTransaction = ValidateOpenFile(ExcelModelCount)
-
-
-            If CheckFile.BError = False Then
-
-                If CheckFile.StringReturn = "AbovoBP" Then
-
-
-
-                    ObjResponse.BError = False
-                    ObjResponse.IntReturnCode = 0
-                    ObjResponse.StrResponseMessage = "File loaded successfully."
-                    ObjResponse.IntegerReturn = ExcelModelCount
-                    ObjResponse.StringReturn = "AbovoBP"
-                    InternalFileState = 2
-
-                    If ExcelModels(ExcelModelCount).WBStructureManager.CreateStructureFromXML("NeedtoSetToFileXML").BError = False Then
-
-                        ExcelModels(ExcelModelCount).ProcessAsAbovoBP()
-
-                    Else
-
-
-
-                    End If
-
-
-
-
-
-
-
+            Try
+                If String.IsNullOrWhiteSpace(strPath) Then
+                    Throw New ArgumentException(
+                        "A model path is required.",
+                        NameOf(strPath))
                 End If
 
-            Else
+                Dim FullPath As String = System.IO.Path.GetFullPath(strPath)
 
-                Beep()
-                ObjResponse.BError = True
-                ObjResponse.StrResponseMessage = "Sorry, this is not a valid Abovo file."
-                GoTo Exiter
+                If Not System.IO.File.Exists(FullPath) Then
+                    Throw New System.IO.FileNotFoundException(
+                        "The selected model does not exist.",
+                        FullPath)
+                End If
 
-            End If
+                If IsFileOpen(FullPath) Then
+                    Throw New InvalidOperationException(
+                        "The selected model is already open.")
+                End If
 
-            System.GC.Collect()
-            System.GC.WaitForPendingFinalizers()
+                WriteLog("Starting core-thread load of " & FullPath)
 
-            'XML Part(address??????)
+                ReDim Preserve ExcelModels(NewModelID)
+                NewModel = New ExcelModel(NewModelID, OpenMode)
+                ExcelModels(NewModelID) = NewModel
+                ExcelModelCount = NewModelID
 
+                NewModel.FileInfo =
+                    If(FileInfo, New System.IO.FileInfo(FullPath))
+                NewModel.FileName = FullPath
+                NewModel.ModelSpreadsheetControl.LoadDocument(FullPath)
 
+                Dim LoadedModelType As String = "ImportSource"
 
-            ApplicationConfiguration.ActiveModelID = ExcelModelCount
-            ExcelModels(ExcelModelCount).WBCalcEngine.CalcManual()
-            ExcelModels(ExcelModelCount).WBCalcEngine.ChainCalc()
-            ExcelModels(ExcelModelCount).FileName = strPath
-Exiter:
+                If OpenMode = WorkbookOpenMode.FullModel Then
+                    Dim ContractResult As AbovoTransaction =
+                        ValidateOpenFile(NewModelID)
+                    If ContractResult.BError Then
+                        Throw New System.IO.InvalidDataException(
+                            ContractResult.StringReturn)
+                    End If
 
-            Return ObjResponse
-            Exit Function
+                    Dim ServiceResult As AbovoTransaction =
+                        NewModel.PostLoadActions()
+                    If ServiceResult.BError Then
+                        Throw New InvalidOperationException(ServiceResult.StringReturn)
+                    End If
 
-Err_Handler_1:
+                    Dim StructureResult As AbovoTransaction =
+                        NewModel.WBStructureManager.CreateStructureFromXML()
+                    If StructureResult.BError Then
+                        Throw New InvalidOperationException(StructureResult.StringReturn)
+                    End If
 
-Err_Clean:
+                    Dim MetadataResult As AbovoTransaction =
+                        NewModel.ProcessAsAbovoBP()
+                    If MetadataResult.BError Then
+                        Throw New InvalidOperationException(MetadataResult.StringReturn)
+                    End If
 
-            ObjResponse.BError = True
-            ObjResponse.IntReturnCode = -1
+                    NewModel.ModelSpreadsheetControl.Dock = DockStyle.Fill
+                    NewModel.WBCalcEngine.CalcManual()
+                    NewModel.WBCalcEngine.ChainCalc()
+                    LoadedModelType = ContractResult.StringReturn
+                End If
+
+                OpenModelCount += 1
+                If OpenMode = WorkbookOpenMode.FullModel Then
+                    InternalFileState = 2
+                    ApplicationConfiguration.ActiveModelID = NewModelID
+                End If
+
+                Result.BSuccess = True
+                Result.IntReturnCode = 0
+                Result.IntegerReturn = NewModelID
+                Result.StringReturn = LoadedModelType
+                Result.StrResponseMessage = "File loaded successfully."
+
+                WriteLog(
+                    "Completed model load in " &
+                    (Now() - TimeStart).ToString() &
+                    ": " & FullPath)
+
+            Catch ex As Exception
+                RollBackFailedOpen(NewModelID, PreviousModelCount, NewModel)
+
+                Result.BError = True
+                Result.BSuccess = False
+                Result.IntReturnCode = -1
+                Result.StringReturn = ex.Message
+                Result.StrResponseMessage = ex.Message
+
+                WriteLog("Model load failed: " & ex.Message, strPath)
+            End Try
+
+            Return Result
 
         End Function
+
+        Private Shared Sub RollBackFailedOpen(
+            ByVal ModelID As Integer,
+            ByVal PreviousModelCount As Integer,
+            ByVal Model As ExcelModel)
+
+            Try
+                If Model IsNot Nothing Then Model.CloseModel()
+            Catch
+                'Preserve the original load failure.
+            End Try
+
+            If ExcelModels IsNot Nothing AndAlso
+               ModelID >= 0 AndAlso
+               ModelID < ExcelModels.Length Then
+                ExcelModels(ModelID) = Nothing
+            End If
+
+            ExcelModelCount = PreviousModelCount
+
+            If PreviousModelCount < 0 Then
+                ExcelModels = Nothing
+            ElseIf ExcelModels IsNot Nothing AndAlso
+                   ExcelModels.Length > PreviousModelCount + 1 Then
+                ReDim Preserve ExcelModels(PreviousModelCount)
+            End If
+
+        End Sub
+
 
 #End Region
 

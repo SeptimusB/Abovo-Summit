@@ -36,6 +36,7 @@ Public Class FormMainScreen
     Public ActiveModel As Integer
     Private FileInstances() As FileInstanceInterface
     Private FileInstanceIndex As Integer = -1
+    Private ModelsClosedForShutdown As Boolean
 
     Public Sub New()
 
@@ -44,25 +45,21 @@ Public Class FormMainScreen
 
 
         'SplashScreenManagerStartup.ShowWaitForm()
-        WindowsFormsSettings.SetAccentColor(AbovoBlue)
         DevExpress.XtraEditors.WindowsFormsSettings.SmartMouseWheelProcessing = False
-        WindowsFormsSettings.DefaultFont = New System.Drawing.Font("Sergio UI", 10)
+        WindowsFormsSettings.DefaultFont = New System.Drawing.Font("Segoe UI", 10)
 
         InitializeComponent()
 
+        If String.IsNullOrWhiteSpace(ApplicationConfiguration.CurrentApplicationPath) Then
+            ApplicationConfiguration.Initialize()
+        End If
+        If String.IsNullOrWhiteSpace(ApplicationConfiguration.BaseApplicationTitle) Then
+            ApplicationConfiguration.BaseApplicationTitle = "abovo summit"
+        End If
+
         ModelCollection.Initialise()
         FileManager.Initialise(Me)
-        Application.EnableVisualStyles()
-
-        BonusSkins.Register()
-
-        SkinManager.EnableFormSkins()
-
-
-
-        ApplicationConfiguration.Initilise()
-
-        ApplicationConfiguration.BaseApplicationTitle = "abovo summit"
+        Abovo.AbovoAppCls.Initialise()
 
         Me.Text = ApplicationConfiguration.BaseApplicationTitle
 
@@ -72,8 +69,6 @@ Public Class FormMainScreen
         SetInitialSizes()
 
         rs.FindAllControls(Me)
-
-        Abovo.AbovoAppCls.Initialise()
 
 
         LrgFontSize = DefaultLrgFontSize
@@ -232,7 +227,21 @@ Public Class FormMainScreen
 #Region "ApplicationFormEvents"
     Sub CloseApplication()
 
-        Me.Dispose()
+        Me.Close()
+
+    End Sub
+
+    Protected Overrides Sub OnFormClosing(e As FormClosingEventArgs)
+
+        If Not ModelsClosedForShutdown Then
+            ModelsClosedForShutdown = CloseAllModelsFromFMS(Me)
+            If Not ModelsClosedForShutdown Then
+                e.Cancel = True
+                Return
+            End If
+        End If
+
+        MyBase.OnFormClosing(e)
 
     End Sub
     Sub AddEvHandler()
@@ -261,85 +270,106 @@ Public Class FormMainScreen
 
 #End Region
 #Region "ApplicationProcessEvents"
-    Sub OpenModelProceedureBP(Optional ByVal AutoFileToOpen As String = "None")
+    Sub OpenModelProceedureBP(Optional ByVal AutoFileToOpen As String = Nothing)
 
-        Dim FileToOpen As String
+        Dim FileToOpen As String = AutoFileToOpen
+        Dim OpenedModelID As Integer = -1
 
-        'If IsFileOpen Then
+        SystemLog("Starting model import")
+        XtraOpenFileDialogMainScreen.Filter = "Abovo Models|*.xlsb;*.abp;*.adsa"
 
-        'If Abovo.AbovoAppCls.AppState = 1 Then
+        If String.IsNullOrWhiteSpace(FileToOpen) OrElse
+           String.Equals(FileToOpen, "None", StringComparison.OrdinalIgnoreCase) Then
 
-        '    Dim ABMsgBox As New AbovoMessageBox("Close current BP?", "MBOkCancel", Me, "Close this BP")
-
-        '    If ABMsgBox.GetResponse = DialogResult.Cancel Then Exit Sub
-
-        'End If
-
-        SystemLog("Starting perf import")
-
-        XtraOpenFileDialogMainScreen.Filter = "Abovo Models |*.xlsb;*.xlsb;*.abp;*.adsa"
-
-        If AutoFileToOpen = "None" Then
-
-            If XtraOpenFileDialogMainScreen.ShowDialog = Windows.Forms.DialogResult.Cancel Then Exit Sub
+            If XtraOpenFileDialogMainScreen.ShowDialog() <> DialogResult.OK Then Return
             FileToOpen = XtraOpenFileDialogMainScreen.FileName
-
-        Else
-
-            FileToOpen = AutoFileToOpen
 
         End If
 
-        If IsFileOpen(FileToOpen) Then
+        FileToOpen = IO.Path.GetFullPath(FileToOpen)
 
-            MsgBox(FileToOpen & " is already open")
-            Exit Sub
+        If Not IO.File.Exists(FileToOpen) Then
+            MessageBox.Show(Me,
+                            "The selected model does not exist:" & Environment.NewLine & FileToOpen,
+                            "Open Abovo Model",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning)
+            Return
+        End If
 
+        If FileManager.IsFileOpen(FileToOpen) Then
+            MessageBox.Show(Me,
+                            "This model is already open:" & Environment.NewLine & FileToOpen,
+                            "Open Abovo Model",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information)
+            Return
         End If
 
         Me.Cursor = Cursors.WaitCursor
 
-        MyFileInfos = My.Computer.FileSystem.GetFileInfo(FileToOpen)
+        Try
+            MyFileInfos = New IO.FileInfo(FileToOpen)
+            ProgressPanel("Loading " & FileToOpen & "...", "Abovo BP", 0)
 
-        ProgressPanel("Loading " & FileToOpen & "...", "Abovo BP", 0)
+            Dim FileOpenResult As AbovoTransaction =
+                FileManager.OpenModel(FileToOpen, MyFileInfos)
 
-        Dim FileOpenResult As AbovoTransaction
+            If FileOpenResult.BError Then
+                Dim ErrorMessage As String = FileOpenResult.StringReturn
+                If String.IsNullOrWhiteSpace(ErrorMessage) Then
+                    ErrorMessage = FileOpenResult.StrResponseMessage
+                End If
+                If String.IsNullOrWhiteSpace(ErrorMessage) Then
+                    ErrorMessage = "The model could not be opened."
+                End If
 
-        FileOpenResult = FileManager.OpenModel(FileToOpen, MyFileInfos)
-
-        If FileOpenResult.BError = False Then
-
-            ActiveModel = FileOpenResult.IntegerReturn
-
-            If FileOpenResult.StringReturn = "AbovoBP" Then
-
-                PopulateControlsFileBP(ActiveModel)
-                PostLoadActionsBP(ActiveModel)
-
-            ElseIf FileOpenResult.StringReturn = "AbovoDSA" Then
-
-            Else
-
-                MsgBox("This file type is not recognised")
-                'PopulateControlsDSA()
+                ProgressPanel("Error opening file: " & ErrorMessage, "Abovo BP", 2)
+                MessageBox.Show(Me,
+                                ErrorMessage,
+                                "Error Opening File",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error)
+                Return
             End If
 
+            OpenedModelID = FileOpenResult.IntegerReturn
+            ActiveModel = OpenedModelID
 
-        Else
+            Select Case FileOpenResult.StringReturn
+                Case "AbovoBP"
+                    PopulateControlsFileBP(ActiveModel)
+                    PostLoadActionsBP(ActiveModel)
+                Case "AbovoDSA"
+                    'Reserved for the DSA-specific interface.
+                Case Else
+                    Throw New InvalidOperationException("The loaded model type is not recognised.")
+            End Select
 
-            ProgressPanel("Error opening file: " & FileOpenResult.StringReturn, "Abovo BP", 2)
+            ProgressPanel("Finished.", "Abovo BP", 2)
+
+        Catch ex As Exception
+            If OpenedModelID >= 0 Then
+                Try
+                    If ExcelModels IsNot Nothing AndAlso
+                       OpenedModelID < ExcelModels.Length AndAlso
+                       ExcelModels(OpenedModelID) IsNot Nothing Then
+                        FileManager.CloseModel(OpenedModelID)
+                    End If
+                    RemoveModel(OpenedModelID)
+                Catch
+                    'Keep the original open failure as the user-facing error.
+                End Try
+            End If
+
+            MessageBox.Show(Me,
+                            "The model could not be opened." & Environment.NewLine & ex.Message,
+                            "Error Opening File",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error)
+        Finally
             Me.Cursor = Cursors.Default
-            Dim ABMsgBox As New AbovoMessageBox(FileOpenResult.StringReturn, "MBOK", Me, "Error Opening File")
-            'ABMsgBox.ShowDialog()
-            'ABMsgBox.Dispose()
-            ABMsgBox = Nothing
-            Exit Sub
-
-        End If
-
-
-        ProgressPanel("Finished..", "Abovo BP", 2)
-        Me.Cursor = Cursors.Default
+        End Try
 
     End Sub
 
@@ -369,15 +399,33 @@ Public Class FormMainScreen
     End Function
     Public Sub PostLoadActionsBP(ModelID As Integer)
 
+        If ExcelModels Is Nothing OrElse
+           ModelID < 0 OrElse
+           ModelID >= ExcelModels.Length OrElse
+           ExcelModels(ModelID) Is Nothing Then Return
+
         Dim ThisBP As IWorkbook = ExcelModels(ModelID).WB
+        Dim StressModeName As DefinedName =
+            ThisBP.DefinedNames.GetDefinedName("StressTestMode")
 
+        If StressModeName Is Nothing OrElse StressModeName.Range Is Nothing Then Return
 
-        If ThisBP.Range("StressTestMode")(0, 0).Value.TextValue = "Y" Then
+        If String.Equals(StressModeName.Range(0, 0).Value.TextValue,
+                         "Y",
+                         StringComparison.OrdinalIgnoreCase) Then
 
             If MsgBox("WARNING: ths model is in Stress Test mode." & Chr(13) & "Do you wish to switch to Business Plan mode?", Buttons:=vbYesNo + vbQuestion) = vbYes Then
 
-                ThisBP.Range("StressTestMode")(0, 0).SetValueFromText("N")
-                ThisBP.DefinedNames.Add("Mode", "Business Plan")
+                StressModeName.Range(0, 0).SetValueFromText("N")
+
+                Dim ModeName As DefinedName =
+                    ThisBP.DefinedNames.GetDefinedName("Mode")
+
+                If ModeName Is Nothing Then
+                    ThisBP.DefinedNames.Add("Mode", """Business Plan""")
+                Else
+                    ModeName.RefersTo = """Business Plan"""
+                End If
 
             End If
 
@@ -437,7 +485,6 @@ Public Class FormMainScreen
 
                 SplashScreenManagerMainForm.SetWaitFormCaption("Finished")
                 SplashScreenManagerMainForm.SetWaitFormDescription(strDisplayText)
-                Threading.Thread.Sleep(500)
                 SplashScreenManagerMainForm.CloseWaitForm()
 
         End Select
@@ -458,7 +505,7 @@ Public Class FormMainScreen
                 OpenModelProceedureBP()
 
             Case "CreateNewBP"
-                MsgBox("No approved template found, awaiting code signing")
+                NewBP()
 
             Case "CompareBPs"
 
@@ -470,51 +517,61 @@ Public Class FormMainScreen
 
     Private Sub NewBP()
 
-        If Not DoesFileExist(ApplicationConfiguration.DefaultTemplateFile) Then
-            Dim ABMsgBox As New AbovoMessageBox("No approved template found", "MBOK", Me, "Create New BP")
-            'ABMsgBox.ShowDialog()
-            'ABMsgBox.Dispose()
-            ABMsgBox = Nothing
-            Exit Sub
+        Dim TemplatePath As String = ApplicationConfiguration.DefaultTemplateFile
+        If Not IO.File.Exists(TemplatePath) Then
+            MessageBox.Show(Me,
+                            "No approved template was found at:" &
+                            Environment.NewLine & TemplatePath,
+                            "Create New BP",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning)
+            Return
         End If
 
         Me.Cursor = Cursors.WaitCursor
+        Dim NewModelID As Integer = -1
 
-        MyFileInfos = My.Computer.FileSystem.GetFileInfo(ApplicationConfiguration.DefaultTemplateFile)
+        Try
+            MyFileInfos = New IO.FileInfo(TemplatePath)
+            ProgressPanel("Loading " & TemplatePath & "...", "Abovo BP", 0)
 
-        ProgressPanel("Loading " & ApplicationConfiguration.DefaultTemplateFile & "...", "Abovo BP", 0)
+            Dim FileOpenResult As AbovoTransaction =
+                FileManager.OpenModel(TemplatePath, MyFileInfos)
 
-        Dim FileOpenResult As AbovoTransaction
+            If FileOpenResult.BError Then
+                Throw New InvalidOperationException(FileOpenResult.StrResponseMessage)
+            End If
 
-        FileOpenResult = FileManager.OpenModel(ApplicationConfiguration.DefaultTemplateFile, MyFileInfos)
+            NewModelID = FileOpenResult.IntegerReturn
+            ActiveModel = NewModelID
+            Dim FileInstanceID As Integer = PopulateControlsFileBP(NewModelID)
+            PostLoadActionsBP(NewModelID)
 
-        If FileOpenResult.BError = False Then
+            If Not FileInstances(FileInstanceID).SaveFileAs() Then
+                FileManager.CloseModel(NewModelID)
+                RemoveModel(NewModelID)
+                NewModelID = -1
+                ProgressPanel("Creation cancelled.", "Abovo BP", 2)
+                Return
+            End If
 
-            ActiveModel = FileOpenResult.IntegerReturn
+            ProgressPanel("Finished.", "Abovo BP", 2)
 
-            Dim x As Integer = PopulateControlsFileBP(ActiveModel)
+        Catch ex As Exception
+            If NewModelID >= 0 Then
+                FileManager.CloseModel(NewModelID)
+                RemoveModel(NewModelID)
+            End If
 
-            FileInstances(x).SaveFileAs()
-
-
-        Else
-
-            ProgressPanel("Error opening file: " & FileOpenResult.StringReturn, "Abovo BP", 2)
+            ProgressPanel("Error creating file: " & ex.Message, "Abovo BP", 2)
+            MessageBox.Show(Me,
+                            ex.Message,
+                            "Create New BP",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error)
+        Finally
             Me.Cursor = Cursors.Default
-            Dim ABMsgBox As New AbovoMessageBox(FileOpenResult.StringReturn, "MBOK", Me, "Error Opening File")
-            'ABMsgBox.ShowDialog()
-            'ABMsgBox.Dispose()
-            ABMsgBox = Nothing
-            Exit Sub
-
-        End If
-
-
-        ProgressPanel("Finished..", "Abovo BP", 2)
-        Me.Cursor = Cursors.Default
-
-
-
+        End Try
 
     End Sub
 
@@ -533,6 +590,7 @@ Public Class FormMainScreen
                 ' Exit
                 If CloseAllModelsFromFMS(Me) Then
 
+                    ModelsClosedForShutdown = True
                     CloseApplication()
 
                 End If

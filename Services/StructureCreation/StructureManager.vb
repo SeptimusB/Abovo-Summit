@@ -19,17 +19,69 @@ Namespace Abovo
 
         End Sub
 
-        Public Function CreateStructureFromXML(StringXML As String) As AbovoTransaction
+        Public Function CreateStructureFromXML(
+            Optional ByVal StructureSource As String = Nothing) As AbovoTransaction
 
-            Dim Trans As New AbovoTransaction
+            Dim Result As New AbovoTransaction
 
-            Dim reader As New System.Xml.Serialization.XmlSerializer(GetType(Abovo_Model_Def))
-            'Dim file As New System.IO.StreamReader(Application.StartupPath() & "\Structure.xml")
-            Dim file As New System.IO.StreamReader(Application.StartupPath & "\Structure.xml")
-            ExcelModels(ModelID).WBStructure = CType(reader.Deserialize(file), Abovo_Model_Def)
-            IsInitiliased = True
+            Try
+                Dim Serializer As New XmlSerializer(GetType(Abovo_Model_Def))
+                Dim ParsedStructure As Abovo_Model_Def
 
-            Return Trans
+                If Not String.IsNullOrWhiteSpace(StructureSource) AndAlso
+                   StructureSource.TrimStart().StartsWith("<", StringComparison.Ordinal) Then
+
+                    Using SourceReader As New System.IO.StringReader(StructureSource)
+                        ParsedStructure =
+                            CType(Serializer.Deserialize(SourceReader), Abovo_Model_Def)
+                    End Using
+
+                Else
+                    Dim StructurePath As String
+
+                    If String.IsNullOrWhiteSpace(StructureSource) Then
+                        StructurePath =
+                            System.IO.Path.Combine(Application.StartupPath, "Structure.xml")
+                    Else
+                        StructurePath = System.IO.Path.GetFullPath(StructureSource)
+                    End If
+
+                    If Not System.IO.File.Exists(StructurePath) Then
+                        Throw New System.IO.FileNotFoundException(
+                            "The workbook interface definition could not be found.",
+                            StructurePath)
+                    End If
+
+                    Using SourceReader As New System.IO.StreamReader(StructurePath)
+                        ParsedStructure =
+                            CType(Serializer.Deserialize(SourceReader), Abovo_Model_Def)
+                    End Using
+                End If
+
+                If ParsedStructure Is Nothing Then
+                    Throw New InvalidOperationException(
+                        "The workbook interface definition was empty.")
+                End If
+
+                ExcelModels(ModelID).WBStructure = ParsedStructure
+                DefinedStructure = ParsedStructure
+                IsInitiliased = True
+
+                Result.BSuccess = True
+                Result.StringReturn = "Workbook structure loaded."
+                Result.StrResponseMessage = Result.StringReturn
+
+            Catch ex As Exception
+                IsInitiliased = False
+                Result.BError = True
+                Result.IntReturnCode = -1
+                Result.StringReturn =
+                    "The workbook interface definition could not be loaded: " &
+                    ex.Message
+                Result.StrResponseMessage = Result.StringReturn
+            End Try
+
+            Return Result
 
         End Function
 
@@ -37,8 +89,8 @@ Namespace Abovo
     Public Class Abovo_Model_Def
 
         <XmlElement("Name")> Public Name As String
-        <XmlElement("DefID")> Public FileID As String
-        <XmlElement("FileID")> Public DefID As String
+        <XmlElement("DefID")> Public DefID As String
+        <XmlElement("FileID")> Public FileID As String
         <XmlElement("CompanyName")> Public CompanyName As String
         <XmlElement("StartDate")> Public StartDate As String
         <XmlElement("RejData")> Public RejData As String

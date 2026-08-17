@@ -46,25 +46,19 @@ Namespace Abovo
 
             Dim FileOpenResult As AbovoTransaction
             Dim MyFileInfos As IO.FileInfo = My.Computer.FileSystem.GetFileInfo(FileToOpen)
-            Dim ActiveRentModelID As Integer
+            Dim ActiveRentModelID As Integer = -1
 
-            FileOpenResult = FileManager.OpenModel(FileToOpen, MyFileInfos)
+            FileOpenResult = FileManager.OpenModel(FileToOpen, MyFileInfos, FileManager.WorkbookOpenMode.ImportSource)
 
             If FileOpenResult.BError = False Then
 
                 ActiveRentModelID = FileOpenResult.IntegerReturn
 
-                If Not FileOpenResult.StringReturn = "AbovoRM" Then
+                ActiveRentModel = FileManager.GetWorkBook(ActiveRentModelID)
 
-                    ActiveRentModel = FileManager.GetWorkBook(ActiveRentModelID)
-
-                Else
-
-                    MsgBox("The selected file is not a valid Rent Restructuring model. Please select another file.")
-                    GoTo Exiter
-
-                End If
-
+            Else
+                MsgBox(FileOpenResult.StrResponseMessage)
+                GoTo Exiter
             End If
 
             Dim SourceRange As CellRange
@@ -196,25 +190,19 @@ Err_Handler:
 
             Dim FileOpenResult As AbovoTransaction
             Dim MyFileInfos As IO.FileInfo = My.Computer.FileSystem.GetFileInfo(FileToOpen)
-            Dim ActiveMCModelID As Integer
+            Dim ActiveMCModelID As Integer = -1
 
-            FileOpenResult = FileManager.OpenModel(FileToOpen, MyFileInfos)
+            FileOpenResult = FileManager.OpenModel(FileToOpen, MyFileInfos, FileManager.WorkbookOpenMode.ImportSource)
 
             If FileOpenResult.BError = False Then
 
                 ActiveMCModelID = FileOpenResult.IntegerReturn
 
-                If Not FileOpenResult.StringReturn = "AbovoMCM" Then
+                ActiveMCModel = FileManager.GetWorkBook(ActiveMCModelID)
 
-                    ActiveMCModel = FileManager.GetWorkBook(ActiveMCModelID)
-
-                Else
-
-                    MsgBox("The selected file is not a valid Management & Service Costs model. Please select another file.")
-                    GoTo Exiter
-
-                End If
-
+            Else
+                MsgBox(FileOpenResult.StrResponseMessage)
+                GoTo Exiter
             End If
 
 
@@ -501,25 +489,19 @@ Err_Handler:
 
             Dim FileOpenResult As AbovoTransaction
             Dim MyFileInfos As IO.FileInfo = My.Computer.FileSystem.GetFileInfo(FileToOpen)
-            Dim ActiveRMModelID As Integer
+            Dim ActiveRMModelID As Integer = -1
 
-            FileOpenResult = FileManager.OpenModel(FileToOpen, MyFileInfos)
+            FileOpenResult = FileManager.OpenModel(FileToOpen, MyFileInfos, FileManager.WorkbookOpenMode.ImportSource)
 
             If FileOpenResult.BError = False Then
 
                 ActiveRMModelID = FileOpenResult.IntegerReturn
 
-                If Not FileOpenResult.StringReturn = "AbovoMCM" Then
+                ActiveRMModel = FileManager.GetWorkBook(ActiveRMModelID)
 
-                    ActiveRMModel = FileManager.GetWorkBook(ActiveRMModelID)
-
-                Else
-
-                    MsgBox("The selected file is not a valid Repairs and Maint Costs model. Please select another file.")
-                    GoTo Exiter
-
-                End If
-
+            Else
+                MsgBox(FileOpenResult.StrResponseMessage)
+                GoTo Exiter
             End If
 
             Dim SourceRange As CellRange
@@ -547,6 +529,8 @@ Err_Handler:
 Exiter:
 
             On Error Resume Next
+
+            FileManager.CloseModel(ActiveRMModelID)
 
 
 
