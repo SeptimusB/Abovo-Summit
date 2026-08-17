@@ -1,0 +1,6 @@
+Paste validation - carry cel def to tag / use from?
+Highlight rows text colour
+Define columns not working - going to add rows
+Link to (and back)
+
+

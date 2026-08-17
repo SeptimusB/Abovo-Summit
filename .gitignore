@@ -1,0 +1,26 @@
+# Visual Studio user and workspace state
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build outputs
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+
+# Restored packages (packages.config remains tracked)
+packages/
+
+# Logs and transient files
+*.log
+*.tmp
+*.cache
+
+# Signing keys must remain local
+*.pfx
+
