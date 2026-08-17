@@ -226,7 +226,19 @@ Namespace Abovo
     <Serializable()>
     Public Class CellRangeDataSource
 
-        <XmlElement("Worksheet")> Public WSName As String
+        Private _WSName As String
+
+        <XmlElement("Worksheet")>
+        Public Property WSName As String
+            Get
+                Return _WSName
+            End Get
+            Set(value As String)
+                'XmlSerializer preserves indentation inside string content.
+                'Worksheet names are identifiers, so trim formatting whitespace.
+                _WSName = If(value Is Nothing, Nothing, value.Trim())
+            End Set
+        End Property
         <XmlElement("NRDSName")> Public NRDSName As String
         <XmlElement("ColsDefinedBy")> Public ColsDefinedBy As String
         <XmlElement("ColsDefinedByData")> Public ColsDefinedByData As String

@@ -9569,19 +9569,7 @@ SectionSelect:
         Dim SentRSDT As String = DataPres.DataSets(SetDSIndex).DataColumns(ColSent).ColumnTag.DataType
         Dim SourceDataPoint As CellDataPoint = DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(ColSent)
 
-        'If Value Is Nothing Then
-
-        'Handle Null Push
-        DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(ColSent).IsEmpty = True
-
-
-        'Else
-
         SystemLog("Value sent to dataset index: " & SetDSIndex.ToString & " Row: " & rowIndex.ToString & " Column: " & ColSent.ToString)
-
-        DataPres.DataSets(SetDSIndex).IsDirty = True
-
-        DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(ColSent).IsEmpty = False
 
         Dim DCE As New DataChangeEvent With {
                     .ModelID = ModelID,
@@ -9599,31 +9587,48 @@ SectionSelect:
             Case "S"
 
                 DCE.OriginalValue = DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(ColSent).StringValue
-                DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(ColSent).StringValue = Value
 
             Case "B"
 
                 DCE.OriginalValue = DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(ColSent).BoolValue.ToString
-                DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(ColSent).BoolValue = Value
 
             Case "N", "P", "C", "D", "M", "R", "SM"
 
                 DCE.OriginalValue = DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(ColSent).RealValue.ToString
-                DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(ColSent).RealValue = Value
 
             Case "I", "Y"
 
                 DCE.OriginalValue = DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(ColSent).IntValue.ToString
-                DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(ColSent).IntValue = Value
 
             Case Else
                 'DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(ColSent).StringValue = Value
 
         End Select
 
-        ChangeMan.ProcessChange(DCE)
+        Dim ChangeResult As AbovoTransaction = ChangeMan.ProcessChange(DCE)
 
-        'End If
+        If ChangeResult.BError Then
+            If RefreshAfter Then RefreshData()
+            Return
+        End If
+
+        DataPres.DataSets(SetDSIndex).IsDirty = True
+        Dim WrittenCell As DevExpress.Spreadsheet.Cell =
+            GetWorkBook(ModelID).Worksheets(SourceDataPoint.SourceSheet).Cells(SourceDataPoint.SourceAddress)
+        SourceDataPoint.IsEmpty = WrittenCell.Value.IsEmpty
+
+        If Not SourceDataPoint.IsEmpty Then
+            Select Case SentRSDT
+                Case "S"
+                    SourceDataPoint.StringValue = WrittenCell.DisplayText
+                Case "B"
+                    SourceDataPoint.BoolValue = WrittenCell.Value.NumericValue <> 0
+                Case "N", "P", "C", "D", "M", "R", "SM"
+                    SourceDataPoint.RealValue = WrittenCell.Value.NumericValue
+                Case "I", "Y"
+                    SourceDataPoint.IntValue = CInt(WrittenCell.Value.NumericValue)
+            End Select
+        End If
 
         If RefreshAfter Then RefreshData()
 
@@ -9678,7 +9683,7 @@ SectionSelect:
                         .Description = DataTag.Label & " updated from " & OldValueString & " to " & sender.editvalue.ToString,
                         .WSName = DataTag.TargetWorksheet.Name,
                         .CellAddress = DataTag.TargetCell,
-                        .ChangedValue = sender.editvalue.ToString,
+                        .ChangedValue = sender.editvalue,
                         .OriginalValue = OldValueString,
                         .DataFormat = DataTag.DataType,
                         .TimeStamp = Now(),
@@ -10107,10 +10112,10 @@ SectionSelect:
 
                 'RepeatsByNR header '+' buttons use NRRIbyCOL.
                 '
-                'Although these appear as COLUMNS in the interface, the repeated
-                'values are stored as ROWS in the source named range and are then
-                'pivoted/transposed into grid columns. Therefore the established
-                'workbook operation is intentionally WorkbookManager.InsertRows.
+                'NRRIbyCOL describes the interface presentation, not necessarily the
+                'physical source orientation. Most legacy ranges are vertical and
+                'transposed into interface columns; Service Charge and some multi-row
+                'ranges are horizontal. Expand the named range on its dominant axis.
                 Dim args As New XtraInputBoxArgs()
 
                 args.Caption = "Abovo Summit - Add Columns"
@@ -10169,11 +10174,30 @@ SectionSelect:
 
                     Me.Cursor = Cursors.WaitCursor
 
-                    Dim InsertResult As AbovoTransaction =
-                        WorkbookManager.InsertRows(
-                            ModelID,
-                            ActToken.ActionStrData1,
-                            NewColumns)
+                    Dim TargetDefinedName As DevExpress.Spreadsheet.DefinedName =
+                        ExcelModels(ModelID).WB.DefinedNames.GetDefinedName(
+                            ActToken.ActionStrData1)
+
+                    Dim ExpandsByRows As Boolean =
+                        TargetDefinedName IsNot Nothing AndAlso
+                        TargetDefinedName.Range IsNot Nothing AndAlso
+                        TargetDefinedName.Range.RowCount > TargetDefinedName.Range.ColumnCount
+
+                    Dim InsertResult As AbovoTransaction
+
+                    If ExpandsByRows Then
+                        InsertResult =
+                            WorkbookManager.InsertRows(
+                                ModelID,
+                                ActToken.ActionStrData1,
+                                NewColumns)
+                    Else
+                        InsertResult =
+                            WorkbookManager.InsertColumns(
+                                ModelID,
+                                ActToken.ActionStrData1,
+                                NewColumns)
+                    End If
 
                     If InsertResult IsNot Nothing AndAlso InsertResult.BError Then
 
@@ -10793,7 +10817,7 @@ SectionSelect:
                         .Description = "Column " & SourceTag.EditingNRIndexPosition.ToString & " updated from " & Convert.ToString(SourceTag.LastEditorValue) & " to " & Convert.ToString(NewVal),
                         .TargetNR = SourceTag.EditingNRName,
                         .TargetNRIndex = SourceTag.EditingNRIndexPosition,
-                        .ChangedValue = Convert.ToString(NewVal),
+                        .ChangedValue = NewVal,
                         .NROrientation = SourceTag.NROrientation,
                         .OriginalValue = SourceTag.LastEditorValue,
                         .DataFormat = SourceTag.EditorFormat,
@@ -10885,7 +10909,7 @@ SectionSelect:
                         .Description = "Column " & SourceTag.EditingNRIndexPosition.ToString & " updated from " & Convert.ToString(SourceTag.LastEditorValue) & " to " & Convert.ToString(NewVal),
                         .TargetNR = SourceTag.EditingNRName,
                         .TargetNRIndex = SourceTag.EditingNRIndexPosition,
-                        .ChangedValue = Convert.ToString(NewVal),
+                        .ChangedValue = NewVal,
                         .NROrientation = SourceTag.NROrientation,
                         .OriginalValue = SourceTag.LastEditorValue,
                         .DataFormat = SourceTag.EditorFormat,

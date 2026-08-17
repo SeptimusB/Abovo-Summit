@@ -135,10 +135,24 @@ CreatePresentation:
 
                 End If
 
+                ReDim Sections(DPCS.InterfaceSections.Count - 1)
+
+                Dim InitialDataSetCount As Integer = 0
+
+                For Each SectionDefinition As CSInterfaceSection In DPCS.InterfaceSections
+                    For Each ElementDefinition In SectionDefinition.IElements
+                        Select Case ElementDefinition.Type
+                            Case "Grid", "VGrid", "LiveGrid", "TextBox", "Label", "ComboBox", "DateBox"
+                                InitialDataSetCount += 1
+                        End Select
+                    Next
+                Next
+
+                ReDim DataSets(InitialDataSetCount - 1)
+
                 For Each ISection In DPCS.InterfaceSections
 
                     SectionCount += 1
-                    ReDim Preserve Sections(SectionCount)
                     Sections(SectionCount) = New PresentationSection With {
                         .Name = ISection.ISName,
                         .ID = SectionCount}
@@ -154,6 +168,8 @@ CreatePresentation:
             Sub ProcessSection(SetModelID As Integer, ByVal Section As PresentationSection, ByVal ISection As CSInterfaceSection)
 
                 SElementCount = -1
+                Dim Model = FileManager.ExcelModels(SetModelID)
+                Dim WBData = Model.WBData
 
                 If ISection.IsExpanded = "FALSE" Then Section.Expanded = False
 
@@ -163,15 +179,18 @@ CreatePresentation:
 
                     StrName += ISection.ISLABELPreText
 
-                    SystemLog("DT:" & FileManager.ExcelModels(SetModelID).WB.Worksheets(DefaultWorksheet).Cells(ISection.ISLABELSource).DisplayText)
+                    Dim LabelText As String =
+                        Model.WB.Worksheets(DefaultWorksheet).Cells(ISection.ISLABELSource).DisplayText
 
-                    If FileManager.ExcelModels(SetModelID).WB.Worksheets(DefaultWorksheet).Cells(ISection.ISLABELSource).DisplayText = "" Then
+                    SystemLog("DT:" & LabelText)
+
+                    If LabelText = "" Then
 
                         StrName += "(Undefined)"
 
                     Else
 
-                        StrName += FileManager.ExcelModels(SetModelID).WB.Worksheets(DefaultWorksheet).Cells(ISection.ISLABELSource).DisplayText
+                        StrName += LabelText
 
                     End If
 
@@ -180,13 +199,12 @@ CreatePresentation:
 
                 End If
 
-                'ReDim as maybe recreated
-                ReDim Section.SectionElements(SElementCount)
+                'ReDim as the section may be recreated independently later.
+                ReDim Section.SectionElements(ISection.IElements.Count - 1)
 
                 For Each ISElement In ISection.IElements
 
                     SElementCount += 1
-                    ReDim Preserve Section.SectionElements(SElementCount)
 
                     Section.SectionElements(SElementCount) = New PresentationSectionElement With {.PSEIndex = SElementCount}
 
@@ -196,8 +214,8 @@ CreatePresentation:
                         Section.SectionElements(SElementCount).Type = ISElement.Type
 
                         DataSetCount += 1
-                        ReDim Preserve DataSets(DataSetCount)
-                        DataSets(DataSetCount) = FileManager.ExcelModels(SetModelID).WBData.GetISEDataStructure(ModelID, GSID, CSID, SectionCount, CInt(ISElement.DataSource))
+                        EnsureDataSetSlot(DataSetCount)
+                        DataSets(DataSetCount) = WBData.GetISEDataStructure(ModelID, GSID, CSID, SectionCount, CInt(ISElement.DataSource))
                         Section.SectionElements(SElementCount).ControlSourceIndex = DataSetCount
 
                         If ISElement.GridControls.Count > 0 Then
@@ -220,9 +238,9 @@ CreatePresentation:
 
                         SystemLog("LiveGrid added")
                         DataSetCount += 1
-                        ReDim Preserve DataSets(DataSetCount)
+                        EnsureDataSetSlot(DataSetCount)
                         Section.SectionElements(SElementCount).Type = "LiveGrid"
-                        DataSets(DataSetCount) = FileManager.ExcelModels(SetModelID).WBData.GetISEDataStructure(ModelID, GSID, CSID, SectionCount, CInt(ISElement.DataSource))
+                        DataSets(DataSetCount) = WBData.GetISEDataStructure(ModelID, GSID, CSID, SectionCount, CInt(ISElement.DataSource))
                         Section.SectionElements(SElementCount).Tag.Description = ISElement.Description
 
                     ElseIf ISElement.Type = "ControlGroup" Then
@@ -300,24 +318,24 @@ CreatePresentation:
 
                         DataSetCount += 1
                         Section.SectionElements(SElementCount).Type = ISElement.Type
-                        ReDim Preserve DataSets(DataSetCount)
-                        DataSets(DataSetCount) = FileManager.ExcelModels(SetModelID).WBData.GetISEDataStructure(ModelID, GSID, CSID, SectionCount, CInt(ISElement.DataSource))
+                        EnsureDataSetSlot(DataSetCount)
+                        DataSets(DataSetCount) = WBData.GetISEDataStructure(ModelID, GSID, CSID, SectionCount, CInt(ISElement.DataSource))
                         Section.SectionElements(SElementCount).ControlSourceIndex = DataSetCount
 
                     ElseIf ISElement.Type = "ComboBox" Then
 
                         DataSetCount += 1
                         Section.SectionElements(SElementCount).Type = "ComboBox"
-                        ReDim Preserve DataSets(DataSetCount)
-                        DataSets(DataSetCount) = FileManager.ExcelModels(SetModelID).WBData.GetISEDataStructure(ModelID, GSID, CSID, SectionCount, CInt(ISElement.DataSource))
+                        EnsureDataSetSlot(DataSetCount)
+                        DataSets(DataSetCount) = WBData.GetISEDataStructure(ModelID, GSID, CSID, SectionCount, CInt(ISElement.DataSource))
                         Section.SectionElements(SElementCount).ControlSourceIndex = DataSetCount
 
                     ElseIf ISElement.Type = "DateBox" Then
 
                         DataSetCount += 1
                         Section.SectionElements(SElementCount).Type = "DateBox"
-                        ReDim Preserve DataSets(DataSetCount)
-                        DataSets(DataSetCount) = FileManager.ExcelModels(SetModelID).WBData.GetISEDataStructure(ModelID, GSID, CSID, SectionCount, CInt(ISElement.DataSource))
+                        EnsureDataSetSlot(DataSetCount)
+                        DataSets(DataSetCount) = WBData.GetISEDataStructure(ModelID, GSID, CSID, SectionCount, CInt(ISElement.DataSource))
                         Section.SectionElements(SElementCount).ControlSourceIndex = DataSetCount
 
                     ElseIf ISElement.Type = "HTMLRender" Then
@@ -346,6 +364,14 @@ CreatePresentation:
 
 
             End Sub
+
+            Private Sub EnsureDataSetSlot(ByVal RequiredIndex As Integer)
+
+                If DataSets IsNot Nothing AndAlso RequiredIndex < DataSets.Length Then Return
+                ReDim Preserve DataSets(RequiredIndex)
+
+            End Sub
+
             Public Sub RedefineInterfaceSection(SectionID)
 
                 Sections(SectionID) = Nothing

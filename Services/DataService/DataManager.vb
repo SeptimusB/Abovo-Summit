@@ -209,7 +209,7 @@ Namespace Abovo
                                 CellExamineNRD = DefiningRange(0, x)
                                 ColHead = Replace(DataFieldDefinition.FieldName, "vblf", vbLf) & " vblf " & CellExamineNRD.DisplayText
                                 If Len(DataFieldDefinition.Units) > 0 Then ColHead += DataFieldDefinition.Units
-                                ReDim Preserve DataSets(DataSetIndex).DataColumns(ColIndex)
+                                EnsureArrayCapacity(DataSets(DataSetIndex).DataColumns, ColIndex)
 
                                 DataSets(DataSetIndex).DataColumns(ColIndex) = New SheetDataColumn With {
                                         .ColumnTag = New DataColumnTag With {
@@ -232,7 +232,7 @@ Namespace Abovo
 
                             ColIndex += 1
 
-                            ReDim Preserve DataSets(DataSetIndex).DataColumns(ColIndex)
+                            EnsureArrayCapacity(DataSets(DataSetIndex).DataColumns, ColIndex)
 
                             DataSets(DataSetIndex).DataColumns(ColIndex) = New SheetDataColumn With {
                                         .ColumnTag = New DataColumnTag With {
@@ -805,7 +805,7 @@ Namespace Abovo
                         If DataFieldDefinition.IsDummy = "TRUE" Then
 
                             ColIndex += 1
-                            ReDim Preserve DataSets(DataSetIndex).DataColumns(ColIndex)
+                            EnsureArrayCapacity(DataSets(DataSetIndex).DataColumns, ColIndex)
                             DataSets(DataSetIndex).DataColumns(ColIndex) = New SheetDataColumn With {
                                     .ColumnTag = New DataColumnTag With {
                                     .ColumnHeading = "",
@@ -911,7 +911,7 @@ Namespace Abovo
 
                                 ColIndex += 1
 
-                                ReDim Preserve DataSets(DataSetIndex).DataColumns(ColIndex)
+                                EnsureArrayCapacity(DataSets(DataSetIndex).DataColumns, ColIndex)
 
                                 If DataFieldDefinition.HasRule = "TRUE" Then
 
@@ -1015,7 +1015,9 @@ Namespace Abovo
 
                                     CellExamine = DataRange(ActualRowIndex + RowOffset, i + ColOffset)
 
-                                    ReDim Preserve DataSets(DataSetIndex).DataRows(i + ForBandRowOffset).DataCells(ColIndex)
+                                    EnsureArrayCapacity(
+                                        DataSets(DataSetIndex).DataRows(i + ForBandRowOffset).DataCells,
+                                        ColIndex)
 
                                     Dim LockCell As Boolean = False
 
@@ -1082,7 +1084,7 @@ Nextnrds:
                             If DataFieldDefinition.IsDummy = "TRUE" Then
 
                                 ColIndex += 1
-                                ReDim Preserve DataSets(DataSetIndex).DataColumns(ColIndex)
+                                EnsureArrayCapacity(DataSets(DataSetIndex).DataColumns, ColIndex)
                                 DataSets(DataSetIndex).DataColumns(ColIndex) = New SheetDataColumn With {
                                     .ColumnTag = New DataColumnTag With {
                                     .ColumnHeading = "",
@@ -1100,7 +1102,7 @@ Nextnrds:
 
                             ColIndex += 1
 
-                            ReDim Preserve DataSets(DataSetIndex).DataColumns(ColIndex)
+                            EnsureArrayCapacity(DataSets(DataSetIndex).DataColumns, ColIndex)
 
                             If DataFieldDefinition.HasRule = "TRUE" Then
                                 DataSets(DataSetIndex).HasRules = True
@@ -1173,7 +1175,9 @@ Nextnrds:
 
                                 CellExamine = DataRange(j + RowOffset, i + ColOffset)
 
-                                ReDim Preserve DataSets(DataSetIndex).DataRows(i + ForBandRowOffset).DataCells(ColIndex)
+                                EnsureArrayCapacity(
+                                    DataSets(DataSetIndex).DataRows(i + ForBandRowOffset).DataCells,
+                                    ColIndex)
 
                                 DataSets(DataSetIndex).DataRows(i + ForBandRowOffset).DataCells(ColIndex) = New CellDataPoint With {
                                 .FoColor = CellExamine.Font.Color,
@@ -1198,8 +1202,6 @@ Nextnrds:
                                         DataSets(DataSetIndex).DataRows(i + ForBandRowOffset).IsEmpty = False
 
                                     End If
-
-                                    SystemLog("Adding from: " & CellExamine.GetReferenceA1 & ". Display text " & CellExamine.DisplayText & " (Len:" & Len(CellExamine.DisplayText) & "). Numeric value " & CellExamine.Value.NumericValue.ToString)
 
                                     Select Case CurrDataType
 
@@ -1493,7 +1495,7 @@ NextDFD:
                         If DataFieldDefinition.IsDummy = "TRUE" Then
 
                             ColIndex += 1
-                            ReDim Preserve DataSets(DataSetIndex).DataColumns(ColIndex)
+                            EnsureArrayCapacity(DataSets(DataSetIndex).DataColumns, ColIndex)
                             DataSets(DataSetIndex).DataColumns(ColIndex) = New SheetDataColumn With {
                                         .ColumnTag = New DataColumnTag With {
                                         .ColumnHeading = "",
@@ -1619,7 +1621,7 @@ NextDFD:
 
                                 End If
 
-                                ReDim Preserve DataSets(DataSetIndex).DataColumns(ColIndex)
+                                EnsureArrayCapacity(DataSets(DataSetIndex).DataColumns, ColIndex)
 
                                 'Dim CurrColHeading As String
                                 Dim HeaderText As String = ""
@@ -1714,7 +1716,9 @@ NextDFD:
 
                                     CellExamine = DataRange(j + RowOffset, (DataRangeIndex + ColOffset))
 
-                                    ReDim Preserve DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex)
+                                    EnsureArrayCapacity(
+                                        DataSets(DataSetIndex).DataRows(j).DataCells,
+                                        ColIndex)
 
                                     Dim LockCell As Boolean = False
 
@@ -1732,7 +1736,8 @@ NextDFD:
 
                                         If ValidationsSet.HasValidations Then
 
-                                            Dim ChkRange As DevExpress.Spreadsheet.CellRange = DataRange(j + RowOffset, i + ColOffset)
+                                            Dim ChkRange As DevExpress.Spreadsheet.CellRange =
+                                                DataRange(j + RowOffset, DataRangeIndex + ColOffset)
                                             Dim TryList As List(Of String) = ValidationsSet.CheckValidation(ChkRange)
 
                                             If TryList IsNot Nothing Then
@@ -1747,7 +1752,10 @@ NextDFD:
 
                                     End If
 
-                                    If ApplyRule Then DataSets(DataSetIndex).DataRows(i).DataCells(ColIndex).IsLocked = IIf(CellExamine.Fill.PatternType = PatternType.Solid, False, True)
+                                    If ApplyRule Then
+                                        DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).IsLocked =
+                                            IIf(CellExamine.Fill.PatternType = PatternType.Solid, False, True)
+                                    End If
 
                                     If Not CellExamine.Value.IsEmpty Then
 
@@ -1803,7 +1811,7 @@ Nextnrds2:
 
                             ColIndex += 1
 
-                            ReDim Preserve DataSets(DataSetIndex).DataColumns(ColIndex)
+                            EnsureArrayCapacity(DataSets(DataSetIndex).DataColumns, ColIndex)
 
                             If DataFieldDefinition.HasRule = "TRUE" Then
 
@@ -1852,7 +1860,9 @@ Nextnrds2:
 
                                 CellExamine = DataRange(j + RowOffset, i + ColOffset)
 
-                                ReDim Preserve DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex)
+                                EnsureArrayCapacity(
+                                    DataSets(DataSetIndex).DataRows(j).DataCells,
+                                    ColIndex)
 
                                 Dim LockCell As Boolean = False
                                 If CellExamine.Protection.Locked Then LockCell = True
@@ -1938,6 +1948,11 @@ NextDFD2:
 #End Region
             End If
 
+            'The merge builders add cells column-by-column. Grow their arrays in
+            'chunks while building, then restore the exact public array shape once.
+            'This avoids copying every prior cell for every newly-created column.
+            TrimDataCellCapacity(DataSets(DataSetIndex))
+
             Dim UsedRows As Integer = 0
 
             For i = 0 To DataSets(DataSetIndex).RowCount - 1
@@ -1956,6 +1971,55 @@ NextDFD2:
             Return DataSets(DataSetIndex)
 
         End Function
+
+        Private Shared Sub EnsureArrayCapacity(Of T)(ByRef Items() As T,
+                                                     ByVal RequiredIndex As Integer)
+
+            If RequiredIndex < 0 Then Return
+
+            Dim CurrentLength As Integer = If(Items Is Nothing, 0, Items.Length)
+            If RequiredIndex < CurrentLength Then Return
+
+            Dim NewLength As Integer = If(CurrentLength = 0, 4, CurrentLength)
+
+            While NewLength <= RequiredIndex
+                NewLength *= 2
+            End While
+
+            ReDim Preserve Items(NewLength - 1)
+
+        End Sub
+
+        Private Shared Sub TrimDataCellCapacity(ByVal DataSet As DataCellRange)
+
+            If DataSet Is Nothing OrElse DataSet.DataRows Is Nothing Then Return
+
+            Dim LastColumnIndex As Integer = -1
+
+            If DataSet.DataColumns IsNot Nothing Then
+                For ColumnIndex As Integer = DataSet.DataColumns.Length - 1 To 0 Step -1
+                    If DataSet.DataColumns(ColumnIndex).ColumnTag IsNot Nothing Then
+                        LastColumnIndex = ColumnIndex
+                        Exit For
+                    End If
+                Next
+            End If
+
+            If DataSet.DataColumns IsNot Nothing AndAlso
+               DataSet.DataColumns.Length <> LastColumnIndex + 1 Then
+
+                ReDim Preserve DataSet.DataColumns(LastColumnIndex)
+            End If
+
+            For Each DataRow As SheetDataRow In DataSet.DataRows
+                If DataRow Is Nothing OrElse DataRow.DataCells Is Nothing Then Continue For
+                If DataRow.DataCells.Length = LastColumnIndex + 1 Then Continue For
+
+                ReDim Preserve DataRow.DataCells(LastColumnIndex)
+            Next
+
+        End Sub
+
         Public Function RenderIEHTMLCource(ModelID, SetGSID, SetCSID, SetIntSecID, SetISDID) As String
 
             Dim StrOutput As New StringBuilder(My.Resources.StringTemplates.HTMLFinanceTableHeader)
@@ -2182,8 +2246,8 @@ NextDFD2:
         Public NROrientation As Orientation
         Public TargetNR As String
         Public TargetNRIndex As Integer
-        Public OriginalValue As String
-        Public ChangedValue As String
+        Public OriginalValue As Object
+        Public ChangedValue As Object
         Public DataFormat As String
         Public TimeStamp As DateTime
         Public UserName As String
@@ -4060,6 +4124,7 @@ ErrorHandler:
             Public HasValidations As Boolean = False
             Public ValidationLists() As List(Of String)
             Public ValListCount As Integer = -1
+            Private ReadOnly ValidationListIndexes As New Dictionary(Of List(Of String), Integer)
 
             Sub New(SetIndex As Integer, SetModelID As Integer)
 
@@ -4072,9 +4137,17 @@ ErrorHandler:
             End Sub
             Public Function AddValList(AddedList As List(Of String)) As Integer
 
+                If AddedList Is Nothing Then Return -1
+
+                Dim ExistingIndex As Integer
+                If ValidationListIndexes.TryGetValue(AddedList, ExistingIndex) Then
+                    Return ExistingIndex
+                End If
+
                 ValListCount += 1
                 ReDim Preserve ValidationLists(ValListCount)
                 ValidationLists(ValListCount) = AddedList
+                ValidationListIndexes.Add(AddedList, ValListCount)
                 Return ValListCount
 
             End Function
@@ -4085,6 +4158,10 @@ ErrorHandler:
 
                 Dim DP As CellDataPoint
                 Dim SourceCell As DevExpress.Spreadsheet.Cell
+                Dim WB As DevExpress.Spreadsheet.IWorkbook = GetWorkBook(ModelID)
+                If WB Is Nothing Then Return
+
+                Dim WorksheetCache As New Dictionary(Of String, DevExpress.Spreadsheet.Worksheet)(StringComparer.OrdinalIgnoreCase)
 
                 For Each SheetDataColumn In DataColumns
 
@@ -4093,7 +4170,7 @@ ErrorHandler:
                         For Each SheetDataRow In DataRows
 
                             DP = SheetDataRow.DataCells(SheetDataColumn.Index)
-                            SourceCell = GetWorkBook(ModelID).Worksheets(DP.SourceSheet).Cells(DP.SourceAddress)
+                            SourceCell = GetCachedWorksheet(WB, WorksheetCache, DP.SourceSheet).Cells(DP.SourceAddress)
 
                             Select Case SheetDataColumn.ColumnTag.DataType
 
@@ -4137,6 +4214,10 @@ ErrorHandler:
 
                 Dim DP As CellDataPoint
                 Dim SourceCell As DevExpress.Spreadsheet.Cell
+                Dim WB As DevExpress.Spreadsheet.IWorkbook = ExcelModels(ModelID).WB
+                If WB Is Nothing Then Return
+
+                Dim WorksheetCache As New Dictionary(Of String, DevExpress.Spreadsheet.Worksheet)(StringComparer.OrdinalIgnoreCase)
 
                 For Each SheetDataColumn In DataColumns
 
@@ -4146,8 +4227,9 @@ ErrorHandler:
 
                             If SheetDataRow.IsControlRow Or SheetDataRow.IsSpacerRow Then GoTo nextDP
                             DP = SheetDataRow.DataCells(SheetDataColumn.Index)
-                            SourceCell = ExcelModels(ModelID).WB.Worksheets(DP.SourceSheet).Cells(DP.SourceAddress)
-                            SheetDataRow.DataCells(SheetDataColumn.Index).IsLocked = IIf(SourceCell.Fill.PatternType = PatternType.Solid, False, True)
+                            SourceCell = GetCachedWorksheet(WB, WorksheetCache, DP.SourceSheet).Cells(DP.SourceAddress)
+                            SheetDataRow.DataCells(SheetDataColumn.Index).IsLocked =
+                                SourceCell.Fill.PatternType <> PatternType.Solid
 nextDP:
                         Next
 
@@ -4156,6 +4238,21 @@ nextDP:
                 Next
 
             End Sub
+
+            Private Shared Function GetCachedWorksheet(
+                ByVal WB As DevExpress.Spreadsheet.IWorkbook,
+                ByVal WorksheetCache As Dictionary(Of String, DevExpress.Spreadsheet.Worksheet),
+                ByVal WorksheetName As String) As DevExpress.Spreadsheet.Worksheet
+
+                Dim WS As DevExpress.Spreadsheet.Worksheet = Nothing
+
+                If Not WorksheetCache.TryGetValue(WorksheetName, WS) Then
+                    WS = WB.Worksheets(WorksheetName)
+                    WorksheetCache.Add(WorksheetName, WS)
+                End If
+
+                Return WS
+            End Function
 
             Public Function Clone() As Object Implements ICloneable.Clone
                 Return Me.MemberwiseClone
@@ -4301,8 +4398,9 @@ nextDP:
     Class DataValidationsSet
 
 
-        Public ValidatedRanges(-1) As ValidatedRange
-        Private ValidatedRangeCount As Integer = -1
+        Private ReadOnly ValidatedRanges As New List(Of ValidatedRange)
+        Private LastMatchedRangeIndex As Integer = -1
+        Private HasOverlappingRanges As Boolean = False
         Public HasValidations As Boolean = False
 
         Public Sub New(WS As DevExpress.Spreadsheet.Worksheet)
@@ -4316,18 +4414,12 @@ nextDP:
                     For Each validation As DevExpress.Spreadsheet.DataValidation In validations
 
                         If validation.ValidationType = DevExpress.Spreadsheet.DataValidationType.List Then
-                            Dim OutList As New List(Of String)
-                            'Dim listValues As String = String.Join(",", validation.Formula1.Split(","c).Select(Function(x) x.Trim().Trim("""")))
-                            'If Not String.IsNullOrEmpty(listValues) Then
-                            '    DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).ValidationList = listValues
-                            If validation.Criteria.TextValue IsNot Nothing Then
-                                Dim CriArray() As String = validation.Criteria.TextValue.Split(",")
-                                Dim CriList As List(Of String) = CriArray.ToList()
+                            Dim CriList As List(Of String) = GetValidationChoices(validation, WS)
+
+                            If CriList.Count > 0 Then
                                 AddValidatedRange(validation.Range, CriList)
                                 HasValidations = True
                             End If
-
-                            'End If
                         End If
 
                     Next validation
@@ -4340,13 +4432,96 @@ nextDP:
 
         End Sub
 
+        Private Shared Function GetValidationChoices(
+            Validation As DevExpress.Spreadsheet.DataValidation,
+            WS As DevExpress.Spreadsheet.Worksheet) As List(Of String)
+
+            Dim Choices As New List(Of String)
+            Dim Criteria As DevExpress.Spreadsheet.ValueObject = Validation.Criteria
+
+            If Criteria Is Nothing OrElse Criteria.IsEmpty Then Return Choices
+
+            If Criteria.IsRange Then
+                AddRangeChoices(Criteria.RangeValue, Choices)
+                Return Choices
+            End If
+
+            If Criteria.IsFormula Then
+                Dim Formula As String = Criteria.FormulaInvariant
+                Dim SourceRange As DevExpress.Spreadsheet.CellRange = ResolveValidationRange(WS, Formula)
+
+                If SourceRange IsNot Nothing Then
+                    AddRangeChoices(SourceRange, Choices)
+                    Return Choices
+                End If
+            End If
+
+            If Criteria.IsText AndAlso Not String.IsNullOrWhiteSpace(Criteria.TextValue) Then
+                For Each Item As String In Criteria.TextValue.Split(","c)
+                    Dim Choice As String = Item.Trim().Trim(""""c)
+                    If Choice.Length > 0 Then Choices.Add(Choice)
+                Next
+            End If
+
+            Return Choices
+        End Function
+
+        Private Shared Function ResolveValidationRange(
+            WS As DevExpress.Spreadsheet.Worksheet,
+            Formula As String) As DevExpress.Spreadsheet.CellRange
+
+            If String.IsNullOrWhiteSpace(Formula) Then Return Nothing
+
+            Dim Reference As String = Formula.Trim()
+            If Reference.StartsWith("=", StringComparison.Ordinal) Then Reference = Reference.Substring(1)
+
+            Try
+                Dim SheetName As DevExpress.Spreadsheet.DefinedName = WS.DefinedNames.GetDefinedName(Reference)
+                If SheetName IsNot Nothing Then Return SheetName.Range
+            Catch
+                'The expression is not a worksheet-scoped range name.
+            End Try
+
+            Try
+                Dim WorkbookName As DevExpress.Spreadsheet.DefinedName = WS.Workbook.DefinedNames.GetDefinedName(Reference)
+                If WorkbookName IsNot Nothing Then Return WorkbookName.Range
+            Catch
+                'The expression is not a workbook-scoped range name.
+            End Try
+
+            Try
+                Return WS.Workbook.Range(Reference)
+            Catch
+                Return Nothing
+            End Try
+        End Function
+
+        Private Shared Sub AddRangeChoices(
+            SourceRange As DevExpress.Spreadsheet.CellRange,
+            Choices As List(Of String))
+
+            If SourceRange Is Nothing Then Return
+
+            For RowIndex As Integer = 0 To SourceRange.RowCount - 1
+                For ColumnIndex As Integer = 0 To SourceRange.ColumnCount - 1
+                    Dim Choice As String = SourceRange(RowIndex, ColumnIndex).DisplayText.Trim()
+                    If Choice.Length > 0 Then Choices.Add(Choice)
+                Next
+            Next
+        End Sub
+
         Sub AddValidatedRange(CellRange As DevExpress.Spreadsheet.CellRange, ChoiceList As List(Of String))
 
-            ValidatedRangeCount += 1
-            ReDim Preserve ValidatedRanges(ValidatedRangeCount)
-            ValidatedRanges(ValidatedRangeCount) = New ValidatedRange With {
+            For Each ExistingRange As ValidatedRange In ValidatedRanges
+                If CellRange.IsIntersecting(ExistingRange.CellRange) Then
+                    HasOverlappingRanges = True
+                    Exit For
+                End If
+            Next
+
+            ValidatedRanges.Add(New ValidatedRange With {
                 .CellRange = CellRange,
-                .ChoiceList = ChoiceList}
+                .ChoiceList = ChoiceList})
 
         End Sub
 
@@ -4359,12 +4534,28 @@ nextDP:
 
         Public Function CheckValidation(CellToExamine As DevExpress.Spreadsheet.CellRange) As List(Of String)
 
-            For Each ValRange In ValidatedRanges
+            If CellToExamine Is Nothing Then Return Nothing
+
+            If Not HasOverlappingRanges AndAlso
+               LastMatchedRangeIndex >= 0 AndAlso
+               LastMatchedRangeIndex < ValidatedRanges.Count Then
+
+                Dim LastMatch As ValidatedRange = ValidatedRanges(LastMatchedRangeIndex)
+                If CellToExamine.IsIntersecting(LastMatch.CellRange) Then
+                    Return LastMatch.ChoiceList
+                End If
+            End If
+
+            For RangeIndex As Integer = 0 To ValidatedRanges.Count - 1
+
+                If RangeIndex = LastMatchedRangeIndex Then Continue For
+
+                Dim ValRange As ValidatedRange = ValidatedRanges(RangeIndex)
 
                 If CellToExamine.IsIntersecting(ValRange.CellRange) Then
 
+                    LastMatchedRangeIndex = RangeIndex
                     Return ValRange.ChoiceList
-                    Exit Function
 
                 End If
 

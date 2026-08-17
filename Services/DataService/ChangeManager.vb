@@ -6,6 +6,7 @@ Imports Abovo.AbovoAppCls
 Imports DevExpress.Spreadsheet
 Imports DevExpress.Utils.Extensions
 Imports DevExpress.XtraEditors.Repository
+Imports System.Globalization
 Namespace Abovo
     Public Class MasterChangeLog
 
@@ -88,47 +89,53 @@ Namespace Abovo
         Public Function ProcessChange(SentDataChangeEvent As DataChangeEvent) As AbovoTransaction
 
             Dim ChangeTransaction As New AbovoTransaction
+            Dim TargetCell As DevExpress.Spreadsheet.Cell = Nothing
+            Dim OriginalCellValue As DevExpress.Spreadsheet.CellValue = DevExpress.Spreadsheet.CellValue.Empty
+            Dim HasOriginalCellValue As Boolean = False
 
             Dim CLE As New ChangeLogEvent With {
                 .ModelID = ModelID,
                 .Description = SentDataChangeEvent.Description,
-                .WSName = SentDataChangeEvent.WSName,
-                .CellAddress = SentDataChangeEvent.CellAddress,
-                .OriginalValue = SentDataChangeEvent.OriginalValue,
-                .ChangedValue = SentDataChangeEvent.ChangedValue,
+                .WSName = NormalizeIdentifier(SentDataChangeEvent.WSName),
+                .CellAddress = NormalizeIdentifier(SentDataChangeEvent.CellAddress),
+                .OriginalValue = Convert.ToString(SentDataChangeEvent.OriginalValue, CultureInfo.CurrentCulture),
+                .ChangedValue = Convert.ToString(SentDataChangeEvent.ChangedValue, CultureInfo.CurrentCulture),
                 .TimeStamp = SentDataChangeEvent.TimeStamp,
                 .UserName = SentDataChangeEvent.UserName,
                 .DataType = SentDataChangeEvent.DataFormat
             }
 
             Try
-
-                If SentDataChangeEvent.ChangedValue = Nothing Then
-
-                    WB.Worksheets(SentDataChangeEvent.WSName).Cells(SentDataChangeEvent.CellAddress).ClearContents()
-
-                Else
-
-                    WB.Worksheets(SentDataChangeEvent.WSName).Cells(SentDataChangeEvent.CellAddress).SetValueFromText(SentDataChangeEvent.ChangedValue.ToString)
-
-                End If
-
-
-                CLE.Status = 1
-                ChangeTransaction.BError = False
+                TargetCell = WB.Worksheets(CLE.WSName).Cells(CLE.CellAddress)
+                OriginalCellValue = TargetCell.Value
+                HasOriginalCellValue = True
+                WriteTypedValue(TargetCell, SentDataChangeEvent.ChangedValue, SentDataChangeEvent.DataFormat)
 
             Catch ex As Exception
 
-                MsgBox("Error processing change event for ModelID " & ModelID & " on cell " & SentDataChangeEvent.WSName & "!" & SentDataChangeEvent.CellAddress & " - " & ex.Message, MsgBoxStyle.Critical)
-                SystemLog("Error processing change event for ModelID " & ModelID & " on cell " & SentDataChangeEvent.WSName & "!" & SentDataChangeEvent.CellAddress & " - " & ex.Message)
+                If TargetCell IsNot Nothing AndAlso HasOriginalCellValue Then
+                    Try
+                        TargetCell.Value = OriginalCellValue
+                    Catch
+                        'Preserve the original write error in the transaction.
+                    End Try
+                End If
+
+                MsgBox("Error processing change event for ModelID " & ModelID & " on cell " & CLE.WSName & "!" & CLE.CellAddress & " - " & ex.Message, MsgBoxStyle.Critical)
+                SystemLog("Error processing change event for ModelID " & ModelID & " on cell " & CLE.WSName & "!" & CLE.CellAddress & " - " & ex.Message)
                 CLE.Status = 3
                 ChangeTransaction.BError = True
-                ChangeTransaction.StrResponseMessage = "Error processing change event for ModelID " & ModelID & " on cell " & SentDataChangeEvent.WSName & "!" & SentDataChangeEvent.CellAddress & " - " & ex.Message
+                ChangeTransaction.BSuccess = False
+                ChangeTransaction.StrResponseMessage = "Error processing change event for ModelID " & ModelID & " on cell " & CLE.WSName & "!" & CLE.CellAddress & " - " & ex.Message
+                MasterChangeLog.AddChangeLogEvent(CLE)
+                Return ChangeTransaction
 
             End Try
 
+            CLE.Status = 1
+            ChangeTransaction.BError = False
+            ChangeTransaction.BSuccess = True
             MasterChangeLog.AddChangeLogEvent(CLE)
-
             ExcelModels(ModelID).IsDirty = True
             ExcelModels(ModelID).WBCalcEngine.CalculateWSs()
 
@@ -139,52 +146,160 @@ Namespace Abovo
         Public Function ProcessChangeByNRAddressing(SentDataChangeEvent As DataChangeEvent) As AbovoTransaction
 
             Dim ChangeTransaction As New AbovoTransaction
-            Dim TargetRange As DevExpress.Spreadsheet.CellRange = WB.Range(SentDataChangeEvent.TargetNR)
-
+            Dim TargetRange As DevExpress.Spreadsheet.CellRange = Nothing
             Dim TargetCell As DevExpress.Spreadsheet.Cell = Nothing
-
-            If SentDataChangeEvent.NROrientation = Orientation.Horizontal Then
-                TargetCell = TargetRange(0, SentDataChangeEvent.TargetNRIndex)
-            Else
-                TargetCell = TargetRange(SentDataChangeEvent.TargetNRIndex, 0)
-            End If
-
-
+            Dim OriginalCellValue As DevExpress.Spreadsheet.CellValue = DevExpress.Spreadsheet.CellValue.Empty
+            Dim HasOriginalCellValue As Boolean = False
             Dim CLE As New ChangeLogEvent With {
                 .ModelID = ModelID,
                 .Description = SentDataChangeEvent.Description,
-                .WSName = TargetRange.Worksheet.Name,
-                .CellAddress = TargetCell.GetReferenceA1,
-                .OriginalValue = SentDataChangeEvent.OriginalValue,
-                .ChangedValue = SentDataChangeEvent.ChangedValue,
+                .OriginalValue = Convert.ToString(SentDataChangeEvent.OriginalValue, CultureInfo.CurrentCulture),
+                .ChangedValue = Convert.ToString(SentDataChangeEvent.ChangedValue, CultureInfo.CurrentCulture),
                 .TimeStamp = SentDataChangeEvent.TimeStamp,
                 .UserName = SentDataChangeEvent.UserName,
                 .DataType = SentDataChangeEvent.DataFormat
             }
 
             Try
+                TargetRange = WB.Range(NormalizeIdentifier(SentDataChangeEvent.TargetNR))
 
-                TargetCell.SetValueFromText(SentDataChangeEvent.ChangedValue.ToString)
-                CLE.Status = 1
-                ChangeTransaction.BError = False
+                If SentDataChangeEvent.NROrientation = Orientation.Horizontal Then
+                    TargetCell = TargetRange(0, SentDataChangeEvent.TargetNRIndex)
+                Else
+                    TargetCell = TargetRange(SentDataChangeEvent.TargetNRIndex, 0)
+                End If
+
+                CLE.WSName = TargetRange.Worksheet.Name
+                CLE.CellAddress = TargetCell.GetReferenceA1
+                OriginalCellValue = TargetCell.Value
+                HasOriginalCellValue = True
+                WriteTypedValue(TargetCell, SentDataChangeEvent.ChangedValue, SentDataChangeEvent.DataFormat)
 
             Catch ex As Exception
 
-                MsgBox("Error processing change event for ModelID " & ModelID & " on cell " & SentDataChangeEvent.WSName & "!" & SentDataChangeEvent.CellAddress & " - " & ex.Message, MsgBoxStyle.Critical)
-                SystemLog("Error processing change event for ModelID " & ModelID & " on cell " & SentDataChangeEvent.WSName & "!" & SentDataChangeEvent.CellAddress & " - " & ex.Message)
+                If TargetCell IsNot Nothing AndAlso HasOriginalCellValue Then
+                    Try
+                        TargetCell.Value = OriginalCellValue
+                    Catch
+                        'Preserve the original write error in the transaction.
+                    End Try
+                End If
+
+                Dim TargetDescription As String = If(String.IsNullOrEmpty(CLE.WSName), NormalizeIdentifier(SentDataChangeEvent.TargetNR), CLE.WSName & "!" & CLE.CellAddress)
+                MsgBox("Error processing change event for ModelID " & ModelID & " on " & TargetDescription & " - " & ex.Message, MsgBoxStyle.Critical)
+                SystemLog("Error processing change event for ModelID " & ModelID & " on " & TargetDescription & " - " & ex.Message)
                 CLE.Status = 3
                 ChangeTransaction.BError = True
-                ChangeTransaction.StrResponseMessage = "Error processing change event for ModelID " & ModelID & " on cell " & SentDataChangeEvent.WSName & "!" & SentDataChangeEvent.CellAddress & " - " & ex.Message
+                ChangeTransaction.BSuccess = False
+                ChangeTransaction.StrResponseMessage = "Error processing change event for ModelID " & ModelID & " on " & TargetDescription & " - " & ex.Message
+                MasterChangeLog.AddChangeLogEvent(CLE)
+                Return ChangeTransaction
 
             End Try
 
+            CLE.Status = 1
+            ChangeTransaction.BError = False
+            ChangeTransaction.BSuccess = True
             MasterChangeLog.AddChangeLogEvent(CLE)
-
             ExcelModels(ModelID).IsDirty = True
             ExcelModels(ModelID).WBCalcEngine.CalculateWSs()
 
             Return ChangeTransaction
 
+        End Function
+
+        Private Shared Function NormalizeIdentifier(Value As String) As String
+            Return If(Value Is Nothing, Nothing, Value.Trim())
+        End Function
+
+        Private Shared Sub WriteTypedValue(TargetCell As DevExpress.Spreadsheet.Cell,
+                                           ChangedValue As Object,
+                                           DataFormat As String)
+
+            If ChangedValue Is Nothing OrElse Convert.IsDBNull(ChangedValue) Then
+                TargetCell.ClearContents()
+                Return
+            End If
+
+            Dim FormatCode As String = If(DataFormat, String.Empty).Trim().ToUpperInvariant()
+
+            Select Case FormatCode
+                Case "S", "FL", "DUMMY", String.Empty
+                    TargetCell.Value = Convert.ToString(ChangedValue, CultureInfo.CurrentCulture)
+                Case "B"
+                    TargetCell.Value = If(ConvertToBoolean(ChangedValue), 1, 0)
+                Case "I", "Y"
+                    TargetCell.Value = ConvertToInteger(ChangedValue)
+                Case "D", "DM"
+                    TargetCell.Value = DevExpress.Spreadsheet.CellValue.FromObject(ConvertToDateOrSerial(ChangedValue))
+                Case "N", "P", "C", "M", "SM", "R"
+                    TargetCell.Value = ConvertToDouble(ChangedValue)
+                Case Else
+                    'Unknown structure formats retain the caller's runtime type.
+                    TargetCell.Value = DevExpress.Spreadsheet.CellValue.FromObject(ChangedValue)
+            End Select
+        End Sub
+
+        Private Shared Function ConvertToBoolean(Value As Object) As Boolean
+            If TypeOf Value Is Boolean Then Return DirectCast(Value, Boolean)
+
+            Dim Text As String = Convert.ToString(Value, CultureInfo.CurrentCulture).Trim()
+            Dim ParsedBoolean As Boolean
+            If Boolean.TryParse(Text, ParsedBoolean) Then Return ParsedBoolean
+
+            Select Case Text.ToUpperInvariant()
+                Case "Y", "YES"
+                    Return True
+                Case "N", "NO"
+                    Return False
+            End Select
+
+            Return ConvertToDouble(Value) <> 0
+        End Function
+
+        Private Shared Function ConvertToInteger(Value As Object) As Integer
+            If Not TypeOf Value Is String AndAlso TypeOf Value Is IConvertible Then
+                Return Convert.ToInt32(Value, CultureInfo.InvariantCulture)
+            End If
+
+            Dim ParsedValue As Integer
+            Dim Text As String = Convert.ToString(Value, CultureInfo.CurrentCulture).Trim()
+            If Integer.TryParse(Text, NumberStyles.Integer Or NumberStyles.AllowThousands, CultureInfo.CurrentCulture, ParsedValue) Then Return ParsedValue
+            If Integer.TryParse(Text, NumberStyles.Integer Or NumberStyles.AllowThousands, CultureInfo.InvariantCulture, ParsedValue) Then Return ParsedValue
+
+            Throw New FormatException("'" & Text & "' is not a valid whole number.")
+        End Function
+
+        Private Shared Function ConvertToDouble(Value As Object) As Double
+            If Not TypeOf Value Is String AndAlso TypeOf Value Is IConvertible Then
+                Return Convert.ToDouble(Value, CultureInfo.InvariantCulture)
+            End If
+
+            Dim ParsedValue As Double
+            Dim Text As String = Convert.ToString(Value, CultureInfo.CurrentCulture).Trim()
+            If Double.TryParse(Text, NumberStyles.Any, CultureInfo.CurrentCulture, ParsedValue) Then Return ParsedValue
+            If Double.TryParse(Text, NumberStyles.Any, CultureInfo.InvariantCulture, ParsedValue) Then Return ParsedValue
+
+            Throw New FormatException("'" & Text & "' is not a valid number.")
+        End Function
+
+        Private Shared Function ConvertToDateOrSerial(Value As Object) As Object
+            If TypeOf Value Is DateTime Then Return DirectCast(Value, DateTime)
+
+            If Not TypeOf Value Is String AndAlso TypeOf Value Is IConvertible Then
+                Return Convert.ToDouble(Value, CultureInfo.InvariantCulture)
+            End If
+
+            Dim Text As String = Convert.ToString(Value, CultureInfo.CurrentCulture).Trim()
+            Dim SerialValue As Double
+            If Double.TryParse(Text, NumberStyles.Any, CultureInfo.CurrentCulture, SerialValue) Then Return SerialValue
+            If Double.TryParse(Text, NumberStyles.Any, CultureInfo.InvariantCulture, SerialValue) Then Return SerialValue
+
+            Dim ParsedDate As DateTime
+            If DateTime.TryParse(Text, CultureInfo.CurrentCulture, DateTimeStyles.AllowWhiteSpaces, ParsedDate) Then Return ParsedDate
+            If DateTime.TryParse(Text, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, ParsedDate) Then Return ParsedDate
+
+            Throw New FormatException("'" & Text & "' is not a valid date.")
         End Function
 
     End Class
