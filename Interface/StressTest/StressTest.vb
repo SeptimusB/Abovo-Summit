@@ -86,7 +86,7 @@ Public Class StressTest
     Private NativeDashboardCharts As TableLayoutPanel
     Private NativeDashboardSummary As GridControl
     Private NativeSensitivityGrid As GridControl
-    Private NativeSensitivityView As GridView
+    Private NativeSensitivityView As BandedGridView
     Private CovenantSummaryPanel As TableLayoutPanel
     Private NativeComparativeSelectors As New List(Of DevExpress.XtraEditors.ComboBoxEdit)
     Private NativeComparativeChartsA As TableLayoutPanel
@@ -2127,8 +2127,14 @@ Public Class StressTest
     Private Sub BuildNativeSensitivityPage()
 
         WebBrowserStressCaptureOutput.Visible = False
-        NativeSensitivityGrid = CreateReadOnlyGrid()
-        NativeSensitivityView = CType(NativeSensitivityGrid.MainView, GridView)
+        NativeSensitivityGrid = New GridControl With {.Dock = DockStyle.Fill}
+        NativeSensitivityView = New BandedGridView(NativeSensitivityGrid)
+        NativeSensitivityGrid.MainView = NativeSensitivityView
+        NativeSensitivityGrid.ViewCollection.Add(NativeSensitivityView)
+        NativeSensitivityView.OptionsBehavior.Editable = False
+        NativeSensitivityView.OptionsView.ShowGroupPanel = False
+        NativeSensitivityView.OptionsView.ColumnAutoWidth = False
+        NativeSensitivityView.OptionsView.ShowBands = True
         NativeSensitivityView.OptionsSelection.MultiSelect = True
         NativeSensitivityView.OptionsSelection.MultiSelectMode =
             DevExpress.XtraGrid.Views.Grid.GridMultiSelectMode.RowSelect
@@ -2136,6 +2142,8 @@ Public Class StressTest
             AddressOf NativeSensitivityCustomDrawCell
         AddHandler NativeSensitivityView.CustomDrawColumnHeader,
             AddressOf NativeSensitivityCustomDrawColumnHeader
+        AddHandler NativeSensitivityView.CalcRowHeight,
+            AddressOf NativeSensitivityCalcRowHeight
         TablePanelSSList.SetColumn(NativeSensitivityGrid, 0)
         TablePanelSSList.SetRow(NativeSensitivityGrid, 1)
         TablePanelSSList.Controls.Add(NativeSensitivityGrid)
@@ -2155,47 +2163,36 @@ Public Class StressTest
             ActiveWorkbook.DefinedNames.GetDefinedName("StressSensitivityData").Range
         Dim Data As New System.Data.DataTable
         Data.Columns.Add("SourceRow", GetType(Integer))
-        Data.Columns.Add("Description", GetType(String))
-        Data.Columns.Add("Peak Debt", GetType(String))
-        Data.Columns.Add("Peak Debt Year", GetType(String))
-        Data.Columns.Add("Repayment Year", GetType(String))
-        For ColumnIndex As Integer = 4 To 8
-            Dim Header As String = Sheet.Cells(4, ColumnIndex).DisplayText
-            If String.IsNullOrWhiteSpace(Header) Then Header = "Breach " & (ColumnIndex - 3).ToString()
-            Data.Columns.Add(Header.Replace(Environment.NewLine, " "), GetType(String))
-        Next
-        Data.Columns.Add("Captured", GetType(String))
-        Data.Columns.Add("File", GetType(String))
+        Data.Columns.Add("RowKind", GetType(String))
         Data.Columns.Add("IsReferenceRow", GetType(Boolean))
-
-        'Worksheet rows 7 and 8 are the live, read-only reference rows shown
-        'above the captured sensitivity records in the original interface.
-        For RowIndex As Integer = 6 To 7
-            AddNativeSensitivityRow(Data, Sheet, RowIndex, True)
+        For ColumnIndex As Integer = 0 To 60
+            Data.Columns.Add("C" & ColumnIndex.ToString(), GetType(String))
         Next
+
+        AddNativeSensitivityRow(Data, Sheet, 6, "Target", True)
+        AddNativeSensitivityRow(Data, Sheet, 7, "GoldenRule", True)
+        AddNativeSensitivityRow(Data, Sheet, -1, "Spacer", True)
+        AddNativeSensitivityRow(Data, Sheet, 9, "Live", True)
 
         For RowIndex As Integer = DataRows.TopRowIndex To DataRows.BottomRowIndex
             If String.IsNullOrWhiteSpace(Sheet.Cells(RowIndex, 0).DisplayText) Then Continue For
-            AddNativeSensitivityRow(Data, Sheet, RowIndex, False)
+            AddNativeSensitivityRow(Data, Sheet, RowIndex, "Capture", False)
         Next
 
         NativeSensitivityGrid.DataSource = Data
+        NativeSensitivityGrid.ForceInitialize()
+        NativeSensitivityView.PopulateColumns()
         If NativeSensitivityView.Columns("SourceRow") IsNot Nothing Then
             NativeSensitivityView.Columns("SourceRow").Visible = False
+        End If
+        If NativeSensitivityView.Columns("RowKind") IsNot Nothing Then
+            NativeSensitivityView.Columns("RowKind").Visible = False
         End If
         If NativeSensitivityView.Columns("IsReferenceRow") IsNot Nothing Then
             NativeSensitivityView.Columns("IsReferenceRow").Visible = False
         End If
-        SetSensitivitySourceColumn("Description", 0)
-        SetSensitivitySourceColumn("Peak Debt", 1)
-        SetSensitivitySourceColumn("Peak Debt Year", 2)
-        SetSensitivitySourceColumn("Repayment Year", 3)
-        For ColumnIndex As Integer = 4 To 8
-            NativeSensitivityView.Columns(ColumnIndex + 1).Tag = ColumnIndex
-        Next
-        SetSensitivitySourceColumn("Captured", 59)
-        SetSensitivitySourceColumn("File", 60)
-        NativeSensitivityView.BestFitColumns()
+
+        ConfigureNativeSensitivityBands(Sheet)
 
     End Sub
 
@@ -2203,29 +2200,91 @@ Public Class StressTest
         Data As System.Data.DataTable,
         Sheet As DevExpress.Spreadsheet.Worksheet,
         RowIndex As Integer,
+        RowKind As String,
         IsReferenceRow As Boolean)
 
         Dim Row As System.Data.DataRow = Data.NewRow()
         Row("SourceRow") = RowIndex
-        Row("Description") = Sheet.Cells(RowIndex, 0).DisplayText
-        Row("Peak Debt") = Sheet.Cells(RowIndex, 1).DisplayText
-        Row("Peak Debt Year") = Sheet.Cells(RowIndex, 2).DisplayText
-        Row("Repayment Year") = Sheet.Cells(RowIndex, 3).DisplayText
-        For ColumnIndex As Integer = 4 To 8
-            Row(ColumnIndex + 1) = Sheet.Cells(RowIndex, ColumnIndex).DisplayText
-        Next
-        Row("Captured") = Sheet.Cells(RowIndex, 59).DisplayText
-        Row("File") = Sheet.Cells(RowIndex, 60).DisplayText
+        Row("RowKind") = RowKind
         Row("IsReferenceRow") = IsReferenceRow
+        If RowIndex >= 0 Then
+            For ColumnIndex As Integer = 0 To 60
+                Row("C" & ColumnIndex.ToString()) =
+                    Sheet.Cells(RowIndex, ColumnIndex).DisplayText
+            Next
+        End If
         Data.Rows.Add(Row)
 
     End Sub
 
-    Private Sub SetSensitivitySourceColumn(FieldName As String, SourceColumn As Integer)
+    Private Sub ConfigureNativeSensitivityBands(
+        Sheet As DevExpress.Spreadsheet.Worksheet)
 
-        If NativeSensitivityView.Columns(FieldName) IsNot Nothing Then
-            NativeSensitivityView.Columns(FieldName).Tag = SourceColumn
+        NativeSensitivityView.Bands.Clear()
+
+        Dim SummaryBand As New GridBand With {.Caption = "Summary"}
+        SummaryBand.Fixed = DevExpress.XtraGrid.Columns.FixedStyle.Left
+        NativeSensitivityView.Bands.Add(SummaryBand)
+        ApplyWorkbookCellAppearance(SummaryBand.AppearanceHeader, Sheet.Cells(4, 0))
+        For ColumnIndex As Integer = 0 To 8
+            ConfigureNativeSensitivityColumn(
+                SummaryBand, Sheet, ColumnIndex,
+                Sheet.Cells(4, ColumnIndex).DisplayText,
+                If(ColumnIndex = 0, 180, If(ColumnIndex = 1, 90, 78)),
+                ColumnIndex <= 3)
+        Next
+
+        For GroupIndex As Integer = 0 To 4
+            Dim FirstColumn As Integer = 9 + (GroupIndex * 10)
+            Dim MetricBand As New GridBand With {
+                .Caption = Sheet.Cells(4, FirstColumn).DisplayText
+            }
+            NativeSensitivityView.Bands.Add(MetricBand)
+            ApplyWorkbookCellAppearance(
+                MetricBand.AppearanceHeader, Sheet.Cells(4, FirstColumn))
+            For ColumnIndex As Integer = FirstColumn To FirstColumn + 9
+                Dim Caption As String = Sheet.Cells(5, ColumnIndex).DisplayText
+                If String.IsNullOrWhiteSpace(Caption) Then
+                    Caption = (ColumnIndex - FirstColumn + 1).ToString()
+                End If
+                ConfigureNativeSensitivityColumn(
+                    MetricBand, Sheet, ColumnIndex, Caption, 64, True)
+            Next
+        Next
+
+        Dim CaptureBand As New GridBand With {.Caption = "Capture details"}
+        NativeSensitivityView.Bands.Add(CaptureBand)
+        ApplyWorkbookCellAppearance(CaptureBand.AppearanceHeader, Sheet.Cells(4, 59))
+        ConfigureNativeSensitivityColumn(
+            CaptureBand, Sheet, 59, Sheet.Cells(4, 59).DisplayText, 130, False)
+        ConfigureNativeSensitivityColumn(
+            CaptureBand, Sheet, 60, Sheet.Cells(4, 60).DisplayText, 280, False)
+
+    End Sub
+
+    Private Sub ConfigureNativeSensitivityColumn(
+        Band As GridBand,
+        Sheet As DevExpress.Spreadsheet.Worksheet,
+        SourceColumn As Integer,
+        Caption As String,
+        Width As Integer,
+        RightAlign As Boolean)
+
+        Dim Column As BandedGridColumn =
+            TryCast(NativeSensitivityView.Columns("C" & SourceColumn.ToString()),
+                    BandedGridColumn)
+        If Column Is Nothing Then Return
+        Column.Caption = Caption.Replace(Environment.NewLine, " ")
+        Column.Tag = SourceColumn
+        Column.Width = Width
+        Column.MinWidth = Math.Min(Width, 50)
+        Column.OptionsColumn.ReadOnly = True
+        Column.OptionsColumn.AllowEdit = False
+        If RightAlign Then
+            Column.AppearanceCell.TextOptions.HAlignment = HorzAlignment.Far
+            Column.AppearanceHeader.TextOptions.HAlignment = HorzAlignment.Center
         End If
+        Band.Columns.Add(Column)
 
     End Sub
 
@@ -2236,6 +2295,22 @@ Public Class StressTest
         If e.RowHandle < 0 OrElse e.Column Is Nothing OrElse
            Not TypeOf e.Column.Tag Is Integer Then Return
 
+        Dim RowKindValue As Object =
+            NativeSensitivityView.GetRowCellValue(e.RowHandle, "RowKind")
+        Dim RowKind As String =
+            If(RowKindValue Is Nothing OrElse RowKindValue Is DBNull.Value,
+               String.Empty, RowKindValue.ToString())
+        If String.Equals(RowKind, "Spacer", StringComparison.Ordinal) Then
+            e.Appearance.BackColor = Color.White
+            e.Appearance.ForeColor = Color.White
+            e.Appearance.Options.UseBackColor = True
+            e.Appearance.Options.UseForeColor = True
+            e.DisplayText = String.Empty
+            e.DefaultDraw()
+            e.Handled = True
+            Return
+        End If
+
         Dim SourceRowValue As Object =
             NativeSensitivityView.GetRowCellValue(e.RowHandle, "SourceRow")
         If SourceRowValue Is Nothing OrElse SourceRowValue Is DBNull.Value Then Return
@@ -2244,10 +2319,58 @@ Public Class StressTest
             ActiveWorkbook.Worksheets("Stress Sensitivity List").Cells(
                 Convert.ToInt32(SourceRowValue), CInt(e.Column.Tag))
 
-        ApplyWorkbookCellAppearance(e.Appearance, SourceCell)
+        ApplySensitivityCellAppearance(e.Appearance, SourceCell)
 
         e.DefaultDraw()
         e.Handled = True
+
+    End Sub
+
+    Private Sub ApplySensitivityCellAppearance(
+        Appearance As DevExpress.Utils.AppearanceObject,
+        SourceCell As DevExpress.Spreadsheet.Cell)
+
+        If SourceCell Is Nothing Then Return
+
+        'The sensitivity sheet's conditional formats resolve red/amber/green
+        'against the Target and Golden Rule rows. FillColor is the resolved
+        'workbook colour used by the original HTML renderer; BackgroundColor
+        'would return only the unconditioned white base fill.
+        Dim Background As Color = SourceCell.FillColor
+        If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
+        Dim Foreground As Color = SourceCell.Font.Color
+        If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = AbovoBlue
+
+        Appearance.BackColor = Background
+        Appearance.ForeColor = Foreground
+        Appearance.Options.UseBackColor = True
+        Appearance.Options.UseForeColor = True
+        If SourceCell.Font.Bold Then
+            Appearance.Font = New Font(
+                Appearance.Font, Appearance.Font.Style Or FontStyle.Bold)
+            Appearance.Options.UseFont = True
+        End If
+
+    End Sub
+
+    Private Sub NativeSensitivityCalcRowHeight(
+        sender As Object,
+        e As DevExpress.XtraGrid.Views.Grid.RowHeightEventArgs)
+
+        If e.RowHandle < 0 Then Return
+        Dim RowKindValue As Object =
+            NativeSensitivityView.GetRowCellValue(e.RowHandle, "RowKind")
+        Dim RowKind As String =
+            If(RowKindValue Is Nothing OrElse RowKindValue Is DBNull.Value,
+               String.Empty, RowKindValue.ToString())
+        If String.Equals(RowKind, "Spacer", StringComparison.Ordinal) Then
+            e.RowHeight = 12
+        ElseIf String.Equals(RowKind, "Target", StringComparison.Ordinal) OrElse
+               String.Equals(RowKind, "GoldenRule", StringComparison.Ordinal) Then
+            e.RowHeight = 26
+        Else
+            e.RowHeight = 22
+        End If
 
     End Sub
 
@@ -2257,9 +2380,12 @@ Public Class StressTest
 
         If e.Column Is Nothing OrElse Not TypeOf e.Column.Tag Is Integer Then Return
 
+        Dim SourceColumn As Integer = CInt(e.Column.Tag)
+        Dim HeaderRow As Integer = If(SourceColumn >= 9 AndAlso SourceColumn <= 58, 5, 4)
         Dim HeaderCell As DevExpress.Spreadsheet.Cell =
-            ActiveWorkbook.Worksheets("Stress Sensitivity List").Cells(4, CInt(e.Column.Tag))
-        ApplyWorkbookCellAppearance(e.Appearance, HeaderCell)
+            ActiveWorkbook.Worksheets("Stress Sensitivity List").Cells(
+                HeaderRow, SourceColumn)
+        ApplySensitivityCellAppearance(e.Appearance, HeaderCell)
         e.DefaultDraw()
         e.Handled = True
 
