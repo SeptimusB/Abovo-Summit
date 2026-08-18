@@ -2897,7 +2897,18 @@ Public Class StressTest
         Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
         If Not TryGetNativePlannerSourceCell(e.RowHandle, e.Column, SourceCell) Then Return
 
-        ApplyWorkbookCellAppearance(e.Appearance, SourceCell)
+        If e.Column.OptionsColumn.AllowEdit AndAlso
+           Not IsWorkbookLinkedGridCellEditable(SourceCell) Then
+            'Mirror DataInterfaceTemplate: the pattern decides whether a
+            'rule-controlled cell is locked; locked cells are then drawn using
+            'the standard disabled-rule appearance rather than the pattern colour.
+            e.Appearance.BackColor = Color.Lavender
+            e.Appearance.ForeColor = Color.WhiteSmoke
+            e.Appearance.Options.UseBackColor = True
+            e.Appearance.Options.UseForeColor = True
+        Else
+            ApplyWorkbookCellAppearance(e.Appearance, SourceCell)
+        End If
 
         If NativePlannerView.IsCellSelected(e.RowHandle, e.Column) Then
             e.Appearance.BackColor = Color.Beige
@@ -2968,7 +2979,9 @@ Public Class StressTest
 
         If SourceCell Is Nothing Then Return
 
-        Dim Background As Color = GetWorkbookCellDisplayBackground(SourceCell)
+        'DataInterfaceTemplate stores the workbook background separately from
+        'its pattern-based rule lock. Keep those responsibilities separate here.
+        Dim Background As Color = SourceCell.Fill.BackgroundColor
         If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
 
         Dim Foreground As Color = SourceCell.Font.Color
@@ -3059,29 +3072,6 @@ Public Class StressTest
         End Try
 
     End Sub
-
-    Private Function GetWorkbookCellDisplayBackground(
-        SourceCell As DevExpress.Spreadsheet.Cell) As Color
-
-        If SourceCell Is Nothing Then Return Color.White
-
-        Select Case SourceCell.Fill.PatternType
-            Case PatternType.None
-                Return Color.White
-            Case PatternType.Solid
-                Return SourceCell.Fill.BackgroundColor
-            Case Else
-                'FillColor flattens patterned conditional formats to their base
-                'background (grey in the Planner). The spreadsheet renderer uses
-                'the evaluated pattern colour, which is the visible locked state.
-                Dim PatternColor As Color = SourceCell.Fill.PatternColor
-                If Not PatternColor.IsEmpty AndAlso PatternColor.A > 0 Then
-                    Return PatternColor
-                End If
-                Return SourceCell.Fill.BackgroundColor
-        End Select
-
-    End Function
 
     Private Sub CalculateStressWorkbook(Optional UseRecursiveEngine As Boolean = False)
 
