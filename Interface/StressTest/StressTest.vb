@@ -2353,7 +2353,8 @@ Public Class StressTest
         }
 
         NativePlannerScenario = CreateNativeCombo(160)
-        NativePlannerScenario.Properties.Items.AddRange(DefaultScenarioNames().Cast(Of Object).ToArray())
+        NativePlannerScenario.Properties.Items.AddRange(
+            DefaultScenarioNames().Skip(1).Cast(Of Object).ToArray())
         NativePlannerScenario.SelectedIndex = 0
         NativePlannerName = New DevExpress.XtraEditors.TextEdit With {.Width = 230}
         NativePlannerImportMode = CreateNativeCombo(230)
@@ -2591,28 +2592,36 @@ Public Class StressTest
 
     End Function
 
+    Private Function SelectedPlannerScenarioIndex() As Integer
+
+        If NativePlannerScenario Is Nothing OrElse
+           NativePlannerScenario.SelectedIndex < 0 Then Return 1
+
+        'The editable planner contains Test 1 through Test 10. The hidden D:H
+        'block is the dashboard base result (S0), not planner scenario zero.
+        Return Math.Min(10, NativePlannerScenario.SelectedIndex + 1)
+
+    End Function
+
     Private Sub RefreshNativePlanner()
 
         If NativePlannerScenario Is Nothing Then Return
         LoadingNativeViews = True
         Try
-            Dim ScenarioIndex As Integer = Math.Max(0, NativePlannerScenario.SelectedIndex)
+            Dim ScenarioIndex As Integer = SelectedPlannerScenarioIndex()
             Dim StartColumn As Integer = ScenarioStartColumn(ScenarioIndex)
             Dim Sheet As DevExpress.Spreadsheet.Worksheet = ActiveWorkbook.Worksheets("Multivariable Planner")
             NativePlannerName.Properties.ReadOnly = Sheet.Cells(7, StartColumn).Protection.Locked
-            NativePlannerInclude.Properties.ReadOnly = Sheet.Cells(6, StartColumn).Protection.Locked
+            NativePlannerInclude.Properties.ReadOnly = Sheet.Cells(6, 3).Protection.Locked
             NativePlannerImportMode.Properties.ReadOnly = Sheet.Cells(6, StartColumn).Protection.Locked
             NativePlannerName.EditValue = Sheet.Cells(7, StartColumn).DisplayText
-            NativePlannerInclude.Visible = ScenarioIndex = 0
-            NativePlannerImportMode.Visible = ScenarioIndex > 0
-            If ScenarioIndex = 0 Then
-                NativePlannerInclude.Checked =
-                    String.Equals(Sheet.Cells(6, StartColumn).DisplayText, "Yes", StringComparison.OrdinalIgnoreCase)
-            Else
-                NativePlannerImportMode.EditValue = Sheet.Cells(6, StartColumn).DisplayText
-                If String.IsNullOrWhiteSpace(Convert.ToString(NativePlannerImportMode.EditValue)) Then
-                    NativePlannerImportMode.EditValue = "Use assumptions below"
-                End If
+            NativePlannerInclude.Visible = True
+            NativePlannerImportMode.Visible = True
+            NativePlannerInclude.Checked =
+                String.Equals(Sheet.Cells(6, 3).DisplayText, "Yes", StringComparison.OrdinalIgnoreCase)
+            NativePlannerImportMode.EditValue = Sheet.Cells(6, StartColumn).DisplayText
+            If String.IsNullOrWhiteSpace(Convert.ToString(NativePlannerImportMode.EditValue)) Then
+                NativePlannerImportMode.EditValue = "Use assumptions below"
             End If
 
             Dim Data As New System.Data.DataTable
@@ -2707,7 +2716,7 @@ Public Class StressTest
         If LoadingNativeViews Then Return
         Dim Sheet As DevExpress.Spreadsheet.Worksheet = ActiveWorkbook.Worksheets("Multivariable Planner")
         Dim Target As DevExpress.Spreadsheet.Cell =
-            Sheet.Cells(7, ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex)))
+            Sheet.Cells(7, ScenarioStartColumn(SelectedPlannerScenarioIndex()))
         If Not ProcessStressTestCellChange(
                 Target, NativePlannerName.EditValue, "S",
                 "Stress-test scenario name updated") Then
@@ -2780,10 +2789,10 @@ Public Class StressTest
 
     Private Sub NativePlannerImportModeChanged(sender As Object, e As EventArgs)
 
-        If LoadingNativeViews OrElse NativePlannerScenario.SelectedIndex <= 0 Then Return
+        If LoadingNativeViews OrElse NativePlannerScenario.SelectedIndex < 0 Then Return
         Dim Target As DevExpress.Spreadsheet.Cell =
             ActiveWorkbook.Worksheets("Multivariable Planner").
-                Cells(6, ScenarioStartColumn(NativePlannerScenario.SelectedIndex))
+                Cells(6, ScenarioStartColumn(SelectedPlannerScenarioIndex()))
         If Not ProcessStressTestCellChange(
                 Target, NativePlannerImportMode.EditValue, "S",
                 "Stress-test scenario import mode updated") Then
@@ -2794,7 +2803,7 @@ Public Class StressTest
 
     Private Sub NativePlannerIncludeChanged(sender As Object, e As EventArgs)
 
-        If LoadingNativeViews OrElse NativePlannerScenario.SelectedIndex <> 0 Then Return
+        If LoadingNativeViews Then Return
         Dim Target As DevExpress.Spreadsheet.Cell =
             ActiveWorkbook.Worksheets("Multivariable Planner").Cells(6, 3)
         If Not ProcessStressTestCellChange(
@@ -2837,7 +2846,7 @@ Public Class StressTest
         Dim Target As DevExpress.Spreadsheet.Cell =
             ActiveWorkbook.Worksheets("Multivariable Planner").
                 Cells(SourceRow,
-                      ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex)) + ValueOffset)
+                      ScenarioStartColumn(SelectedPlannerScenarioIndex()) + ValueOffset)
         Dim DataFormat As String = "N"
         If ValueOffset >= 2 Then
             DataFormat = "I"
@@ -2959,11 +2968,11 @@ Public Class StressTest
         Select Case Column.FieldName
             Case "Assumption" : SourceColumn = 0
             Case "ShortName" : SourceColumn = 1
-            Case "Change1" : SourceColumn = ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex))
-            Case "Change2" : SourceColumn = ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex)) + 1
-            Case "Change1FromYear" : SourceColumn = ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex)) + 2
-            Case "Change2FromYear" : SourceColumn = ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex)) + 3
-            Case "ToYear" : SourceColumn = ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex)) + 4
+            Case "Change1" : SourceColumn = ScenarioStartColumn(SelectedPlannerScenarioIndex())
+            Case "Change2" : SourceColumn = ScenarioStartColumn(SelectedPlannerScenarioIndex()) + 1
+            Case "Change1FromYear" : SourceColumn = ScenarioStartColumn(SelectedPlannerScenarioIndex()) + 2
+            Case "Change2FromYear" : SourceColumn = ScenarioStartColumn(SelectedPlannerScenarioIndex()) + 3
+            Case "ToYear" : SourceColumn = ScenarioStartColumn(SelectedPlannerScenarioIndex()) + 4
             Case Else : Return False
         End Select
 
@@ -3042,7 +3051,7 @@ Public Class StressTest
 
     Private Sub ClearNativeScenario_Click(sender As Object, e As EventArgs)
 
-        Dim ScenarioIndex As Integer = Math.Max(0, NativePlannerScenario.SelectedIndex)
+        Dim ScenarioIndex As Integer = SelectedPlannerScenarioIndex()
         If DevExpress.XtraEditors.XtraMessageBox.Show(
                 "Clear the selected scenario definition?", "Clear scenario",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question) <> DialogResult.Yes Then Return
@@ -3367,8 +3376,10 @@ Public Class StressTest
             If NativePlannerScenario IsNot Nothing Then
                 Dim Selected As Integer = Math.Max(0, NativePlannerScenario.SelectedIndex)
                 NativePlannerScenario.Properties.Items.Clear()
-                NativePlannerScenario.Properties.Items.AddRange(Names.Cast(Of Object).ToArray())
-                NativePlannerScenario.SelectedIndex = Selected
+                NativePlannerScenario.Properties.Items.AddRange(
+                    Names.Skip(1).Cast(Of Object).ToArray())
+                NativePlannerScenario.SelectedIndex =
+                    Math.Min(Selected, NativePlannerScenario.Properties.Items.Count - 1)
             End If
             If NativeDashboardScenario IsNot Nothing Then
                 Dim Selected As Integer = Math.Max(0, NativeDashboardScenario.SelectedIndex)
