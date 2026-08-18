@@ -105,7 +105,6 @@
 
 '                End Select
 
-'                SystemLog("Adding column: " & PresentedColumn.ColumnTag.ColumnHeading)
 
 '                PropertyArray(PropertiesCount) = New UnboundSourceProperty With {
 '                        .UserTag = PresentedColumn.ColumnTag,
@@ -146,7 +145,6 @@
 '        End Sub
 '        Private Function GetDSData(ByVal rowIndex As Integer, ByVal PropertyIndex As Integer) As Object
 
-'            'If DoDataLog Then SystemLog("Value requested from dataset: " & SetDSIndex.ToString & " Row: " & rowIndex.ToString & " Column: " & PropertyIndex.ToString)
 
 '            Dim DP As CellDataPoint = CellAddressArray.
 
@@ -169,7 +167,6 @@
 '                Case "S"
 
 '                    DP.StringValue = DPC.DisplayText
-'                    'SystemLog("DSIndex " & SetDSIndex.ToString & " returning string " & DPC.Value.TextValue & " From " & DP.SourceAddress & " of " & DP.SourceSheet)
 '                    Return DPC.DisplayText
 '                    Exit Function
 
@@ -180,15 +177,12 @@
 '                    Exit Function
 
 '                Case "N", "P", "C", "M"
-'                    SystemLog("UBS Index " & UBSIndex.ToString & " with DSIndex " & SetDSIndex.ToString & " returning " & DPC.Value.NumericValue.ToString & " From " & DP.SourceAddress & " of " & DP.SourceSheet)
 '                    DP.RealValue = DPC.Value.NumericValue
 '                    Return DPC.Value.NumericValue
 '                    Exit Function
 
 '                Case "I", "Y"
 
-'                    'If DoDataLog Then SystemLog("Returning Integer " & DP.IntValue)
-'                    'SystemLog("UBS Index " & UBSIndex.ToString & " with DSIndex " & SetDSIndex.ToString & " returning " & DPC.Value.NumericValue & " From " & DP.SourceAddress & " of " & DP.SourceSheet)
 '                    DP.IntValue = DPC.Value.NumericValue
 '                    Return CInt(DPC.Value.NumericValue)
 '                    Exit Function

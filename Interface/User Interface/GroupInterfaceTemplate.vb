@@ -141,7 +141,6 @@ Public Class GroupInterfaceTemplate
         'DefineMenus
         Dim CS As ChildStructure
 
-        SystemLog("LoadingStructure")
 
         For Each CS In ExcelModels(ModelID).WBStructure.GroupStructures(SetGSID).ChildStructures
 
@@ -238,7 +237,6 @@ Public Class GroupInterfaceTemplate
 
     End Sub
     Sub AddNavigatorItem(ItemName As String, IntTag As AbovoInterfaceTag, IsMaster As String, Optional ByVal GroupName As String = "None")
-        SystemLog("Adding - " & ItemName & " " & IsMaster & " G:" & GroupName)
 
 
 
@@ -424,8 +422,6 @@ Public Class GroupInterfaceTemplate
         If IsNothing(ActiveInterface) Then Exit Sub
 
         Try
-            Debug.Print("GIT is this wide: " & Me.Width)
-            'Debug.Print("DMA Active is this wide: " & DockManagerAssumptions.ActivePanel.Width)
             ActiveInterface.ResizeControlsCommand()
         Catch ex As Exception
         End Try
@@ -483,7 +479,6 @@ Public Class GroupInterfaceTemplate
     End Sub
     Public Sub ShowInterface(SetModelID As Integer, SetCSID As Integer, Optional ByVal ShowSpecial As Boolean = False, Optional ByVal SpecialData As String = "None", Optional ByVal Interfacelink As ElementInterfaceLinkTag = Nothing)
 
-        SystemLog("Interface called" & SetCSID)
 
         Dim doc As BaseDocument = DocumentManagerAssumptions.View.Documents.FirstOrDefault(Function(x) x.Control.Tag.ToString() = SetCSID)
 

@@ -114,7 +114,6 @@ Namespace Abovo
             Loop
 
             expcontext = Nothing
-            systemlog("PMCost return " & TotCost.ToString)
             Return TotCost
 
         End Function

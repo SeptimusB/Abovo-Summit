@@ -201,14 +201,12 @@ Namespace Abovo
 
 
                         If Range.ColumnCount - 1 < j Then
-                            'Debug.Print("Skipping " & i & " " & j)
                             StrOutput += "<td height = " & HeightS & " Class=xl882235 style='font-size:10.0pt;'>@nbsp;</td>"
                             Continue For
                         End If
 
                         CellExamine = Range(i, j)
 
-                        'Debug.Print(CellExamine.FillColor.ToString & " " & CellExamine.DisplayText)
 
                         StrOutput += "<td height = " & HeightS & " bgcolor='" & ToHex(CellExamine.FillColor) & "' Class=xl882235 style='font-size:10.0pt;"
 

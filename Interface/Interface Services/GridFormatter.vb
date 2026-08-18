@@ -24,7 +24,6 @@ Namespace Abovo
 
                 End If
 
-                Debug.Print("Column " & x & " fn is " & GVCol.FieldName)
                 x = x + 1
 
             Next

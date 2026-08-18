@@ -333,8 +333,6 @@ Namespace Abovo
                     HistoryManager.Hide()
 
                     If WorkbookMigrations IsNot Nothing Then
-                        WorkbookMigrations.ReportMigrationStatus()
-
 #If DEBUG Then
                         'Debug builds reconcile the workbook to the current
                         'schema in memory. Persistence still requires an
@@ -346,8 +344,6 @@ Namespace Abovo
                             Return MigrationResult
                         End If
 
-                        Debug.Print("Workbook migration: " &
-                                    MigrationResult.StringReturn)
 #End If
                     End If
 

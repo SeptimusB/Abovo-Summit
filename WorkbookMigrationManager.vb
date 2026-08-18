@@ -168,47 +168,6 @@ Namespace Abovo
 
         End Function
 
-        Public Sub ReportMigrationStatus()
-
-            Dim Version As Integer = GetSchemaVersion()
-
-            Debug.Print("")
-            Debug.Print("================================================================")
-            Debug.Print("ABOVO WORKBOOK MIGRATION STATUS")
-            Debug.Print("================================================================")
-            Debug.Print("Workbook schema version: " & Version.ToString)
-            Debug.Print("Summit code schema version: " & CurrentSchemaVersion.ToString)
-            Debug.Print("Development Identified templates installed: " &
-                        IsDevelopmentIdentifiedMaterialiserInstalled().ToString)
-            Debug.Print("Excel standalone-compatible schema: " &
-                        IsExcelStandaloneCompatibleSchema().ToString)
-
-            If Version < CurrentSchemaVersion Then
-
-                If Version <= 2 Then
-                    Debug.Print("Pending safe migration path: schema " &
-                                Version.ToString &
-                                " -> schema 10 (experimental schemas 3/4 are bypassed).")
-                Else
-                    Debug.Print("Experimental schema detected; automatic promotion is disabled.")
-                End If
-
-            ElseIf Version = CurrentSchemaVersion Then
-                Debug.Print("Workbook schema is current.")
-            Else
-                Debug.Print("WARNING: workbook schema is NEWER than this Summit build. " &
-                            "No automatic migration will be attempted.")
-            End If
-
-            Debug.Print("Persisted XLSB policy: FORMULA-BACKED / EXCEL-COMPATIBLE")
-            Debug.Print("================================================================")
-
-            If Version = 9 Then
-                DiagnoseDevelopmentIdentifiedShadowComparison()
-            End If
-
-        End Sub
-
         Public Function ApplyPendingMigrations() As AbovoTransaction
 
             Dim Result As New AbovoTransaction With {.BError = False}
@@ -354,10 +313,6 @@ Namespace Abovo
 
             Try
 
-                Debug.Print("")
-                Debug.Print("================================================================")
-                Debug.Print("WORKBOOK MIGRATION 001 START - CAPTURE DEVELOPMENT IDENTIFIED TEMPLATES")
-                Debug.Print("================================================================")
 
                 If WB.History.IsEnabled Then
                     WB.History.IsEnabled = False
@@ -419,11 +374,7 @@ Namespace Abovo
                 Result.StringReturn =
                     "Migration 001 captured Development Identified formula templates without changing live TransactionDB formulas."
 
-                Debug.Print("WORKBOOK MIGRATION 001 COMPLETE: " &
-                            MigrationTimer.ElapsedMilliseconds.ToString & "ms")
 
-                Debug.Print("Live TransactionDB formula state: UNCHANGED")
-                Debug.Print("================================================================")
 
             Catch ex As Exception
 
@@ -431,8 +382,6 @@ Namespace Abovo
                 Result.StringReturn =
                     "Migration 001 failed: " & ex.Message
 
-                Debug.Print("WORKBOOK MIGRATION 001 ERROR: " &
-                            ex.ToString)
 
             Finally
 
@@ -524,12 +473,6 @@ Namespace Abovo
             Dim IsExperimentalValueOnlyState As Boolean =
                 DetectExperimentalSchema1State(WB, MetadataWS)
 
-            Debug.Print("")
-            Debug.Print("================================================================")
-            Debug.Print("WORKBOOK MIGRATION 002 START - EXCEL COMPATIBILITY CONTRACT")
-            Debug.Print("================================================================")
-            Debug.Print("Experimental schema-1 value-only state detected: " &
-                        IsExperimentalValueOnlyState.ToString)
 
             If IsExperimentalValueOnlyState Then
 
@@ -549,7 +492,6 @@ Namespace Abovo
 
                 If RestoreResult.BError Then Return RestoreResult
 
-                Debug.Print("Experimental schema-1 live values repaired back to formulas.")
 
             Else
 
@@ -575,8 +517,6 @@ Namespace Abovo
                                                       TransactionWS,
                                                       TemplateWS)
 
-                Debug.Print("Live TransactionDB formulas were already intact; no formula rewrite was required.")
-                Debug.Print("Template cache recaptured using encoded R1C1 storage.")
 
             End If
 
@@ -610,9 +550,6 @@ Namespace Abovo
 
             ExcelModels(ModelID).IsDirty = True
 
-            Debug.Print("WORKBOOK MIGRATION 002 COMPLETE")
-            Debug.Print("Persisted TransactionDB Development Identified blocks are formula-backed.")
-            Debug.Print("================================================================")
 
             Result.StringReturn =
                 "Migration 002 established the Excel-compatible workbook contract."
@@ -747,12 +684,6 @@ Namespace Abovo
 
             Try
 
-                Debug.Print("")
-                Debug.Print("================================================================")
-                Debug.Print("WORKBOOK MIGRATION 005 START - DEVELOPMENT SHADOW COMPARISON")
-                Debug.Print("================================================================")
-                Debug.Print("Transactional DB structural changes: NONE")
-                Debug.Print("TransCopy_* name changes: NONE")
 
                 If WB.History.IsEnabled Then
                     WB.History.IsEnabled = False
@@ -933,15 +864,6 @@ Namespace Abovo
                                     If ExamplesPrinted <
                                        MaximumExamples Then
 
-                                        Debug.Print(
-                                            "SHADOW VALUE MISMATCH " &
-                                            TargetName &
-                                            " source=" &
-                                            SourceCell.GetReferenceA1() &
-                                            " shadow=" &
-                                            ShadowCell.GetReferenceA1() &
-                                            ": " &
-                                            ValueReason)
 
                                         ExamplesPrinted += 1
 
@@ -956,15 +878,6 @@ Namespace Abovo
                                 If ExamplesPrinted <
                                    MaximumExamples Then
 
-                                    Debug.Print(
-                                        "SHADOW EVALUATION ERROR " &
-                                        TargetName &
-                                        " source=" &
-                                        SourceCell.GetReferenceA1() &
-                                        " shadow=" &
-                                        ShadowCell.GetReferenceA1() &
-                                        ": " &
-                                        ex.Message)
 
                                     ExamplesPrinted += 1
 
@@ -999,17 +912,6 @@ Namespace Abovo
                                     If ExamplesPrinted <
                                        MaximumExamples Then
 
-                                        Debug.Print(
-                                            "SHADOW FORMULA MISMATCH " &
-                                            TargetName &
-                                            " source=" &
-                                            SourceCell.GetReferenceA1() &
-                                            " shadow=" &
-                                            ShadowCell.GetReferenceA1() &
-                                            ": source R1C1=" &
-                                            SourceSignature &
-                                            "; shadow R1C1=" &
-                                            ShadowSignature)
 
                                         ExamplesPrinted += 1
 
@@ -1048,22 +950,6 @@ Namespace Abovo
 
                     Next
 
-                    Debug.Print("  SHADOW " &
-                                TargetName &
-                                ": source=" &
-                                SourceRange.GetReferenceA1() &
-                                ", shadow active=" &
-                                ShadowWS.Range.FromLTRB(
-                                    0,
-                                    ShadowTop,
-                                    SourceRange.ColumnCount - 1,
-                                    ShadowFooterRow).
-                                    GetReferenceA1() &
-                                ", canonical footer row=" &
-                                (CanonicalFooterRow + 1).ToString &
-                                ", elapsed=" &
-                                BlockTimer.ElapsedMilliseconds.ToString &
-                                "ms")
 
                 Next
 
@@ -1129,29 +1015,11 @@ Namespace Abovo
 
                 ExcelModels(ModelID).IsDirty = True
 
-                Debug.Print("")
-                Debug.Print("--- Development shadow parity summary ---")
-                Debug.Print("Cells compared: " &
-                            TotalCells.ToString)
-                Debug.Print("Formula cells: " &
-                            FormulaCells.ToString)
-                Debug.Print("Constant cells: " &
-                            ConstantCells.ToString)
-                Debug.Print("Value mismatches: " &
-                            ValueMismatches.ToString)
-                Debug.Print("Normalised formula mismatches: " &
-                            FormulaMismatches.ToString)
-                Debug.Print("Evaluation errors: " &
-                            EvaluationErrors.ToString)
 
                 If ValueMismatches = 0 AndAlso
                    FormulaMismatches = 0 AndAlso
                    EvaluationErrors = 0 Then
 
-                    Debug.Print(
-                        "SHADOW COMPARISON INDICATOR: PASS - relocated " &
-                        "Development formulas/constants reproduce every " &
-                        "current TransactionDB active cell.")
 
                     Result.StringReturn =
                         "Migration 005 created the Development shadow and " &
@@ -1160,9 +1028,6 @@ Namespace Abovo
 
                 Else
 
-                    Debug.Print(
-                        "SHADOW COMPARISON INDICATOR: ANALYSE - do not repoint " &
-                        "TransCopy_* names.")
 
                     Result.StringReturn =
                         "Migration 005 created the Development shadow but parity " &
@@ -1170,10 +1035,6 @@ Namespace Abovo
 
                 End If
 
-                Debug.Print("WORKBOOK MIGRATION 005 COMPLETE: " &
-                            MigrationTimer.ElapsedMilliseconds.ToString &
-                            "ms")
-                Debug.Print("================================================================")
 
             Catch ex As Exception
 
@@ -1182,8 +1043,6 @@ Namespace Abovo
                     "Migration 005 failed: " &
                     ex.Message
 
-                Debug.Print("WORKBOOK MIGRATION 005 ERROR: " &
-                            ex.ToString)
 
             Finally
 
@@ -1676,16 +1535,8 @@ Namespace Abovo
 
             Dim WB As IWorkbook = GetWorkbook()
 
-            Debug.Print("")
-            Debug.Print("================================================================")
-            Debug.Print("DEVELOPMENT IDENTIFIED MULTI-SHEET CAPACITY LOAD AUDIT")
-            Debug.Print("================================================================")
-            Debug.Print("Workbook schema version: " &
-                        GetSchemaVersion().ToString)
 
             If WB Is Nothing Then
-                Debug.Print("Shadow audit: workbook unavailable.")
-                Debug.Print("================================================================")
                 Return
             End If
 
@@ -1699,25 +1550,16 @@ Namespace Abovo
                     WB,
                     MetadataSheetName)
 
-            Debug.Print("Shadow worksheet present: " &
-                        (ShadowWS IsNot Nothing).ToString)
 
             If ShadowWS IsNot Nothing Then
-                Debug.Print("Shadow worksheet visibility: " &
-                            ShadowWS.VisibilityType.ToString)
             End If
 
             If MetadataWS IsNot Nothing AndAlso
                MetadataWS.Cells(11, 1).Value.IsText Then
 
-                Debug.Print("Stored shadow parity status: " &
-                            MetadataWS.Cells(11, 1).Value.TextValue)
 
             End If
 
-            Debug.Print("TransCopy_* names repointed: FALSE")
-            Debug.Print("Shadow fast-path active: FALSE (comparison mode only)")
-            Debug.Print("================================================================")
 
         End Sub
 
@@ -2002,13 +1844,6 @@ Namespace Abovo
 
             Try
 
-                Debug.Print("")
-                Debug.Print("================================================================")
-                Debug.Print("WORKBOOK MIGRATION 010 START - ACTIVATE DEVELOPMENT MIRRORS")
-                Debug.Print("================================================================")
-                Debug.Print("Transactional DB structural changes: NONE")
-                Debug.Print("Original TransactionDB blocks: PRESERVED")
-                Debug.Print("Excel round-trip source anchors: ENABLED")
 
                 If WB.History.IsEnabled Then
                     WB.History.IsEnabled = False
@@ -2151,17 +1986,6 @@ Namespace Abovo
                         SourceAnchor.Range,
                         MirrorRange)
 
-                    Debug.Print(
-                        "  ACTIVE " &
-                        TargetName &
-                        ": source=" &
-                        SourceAnchor.Range.Worksheet.Name &
-                        "!" &
-                        SourceAnchor.Range.GetReferenceA1() &
-                        ", mirror=" &
-                        MirrorRange.Worksheet.Name &
-                        "!" &
-                        MirrorRange.GetReferenceA1())
 
                     System.Windows.Forms.Application.DoEvents()
 
@@ -2196,10 +2020,6 @@ Namespace Abovo
                 Result.StringReturn =
                     "Migration 010 activated Development Identified production mirrors."
 
-                Debug.Print("WORKBOOK MIGRATION 010 COMPLETE: " &
-                            MigrationTimer.ElapsedMilliseconds.ToString &
-                            "ms")
-                Debug.Print("================================================================")
 
             Catch ex As Exception
 
@@ -2208,8 +2028,6 @@ Namespace Abovo
                     "Migration 010 failed: " &
                     ex.Message
 
-                Debug.Print("WORKBOOK MIGRATION 010 ERROR: " &
-                            ex.ToString)
 
             Finally
 
@@ -2355,9 +2173,6 @@ Namespace Abovo
                         ": both the preserved Transactional DB block and the live Summit mirror changed since the last trusted state. " &
                         "Summit has not overwritten either version."
 
-                    Debug.Print("ROUND-TRIP CONFLICT: " &
-                                TargetName &
-                                " sourceChanged=True mirrorChanged=True")
 
                     Return Result
 
@@ -2374,8 +2189,6 @@ Namespace Abovo
                         SourceDN.Range,
                         MirrorDN.Range)
 
-                    Debug.Print("ROUND-TRIP MIRROR ADVANCE ACCEPTED: " &
-                                TargetName)
 
                     Continue For
 
@@ -2394,8 +2207,6 @@ Namespace Abovo
                         ", but its range geometry no longer matches the Summit mirror. " &
                         "Automatic import has been refused."
 
-                    Debug.Print("ROUND-TRIP GEOMETRY CONFLICT: " &
-                                TargetName)
 
                     Return Result
 
@@ -2439,8 +2250,6 @@ Namespace Abovo
 
                 ImportedBlocks += 1
 
-                Debug.Print("ROUND-TRIP EXCEL EDIT IMPORTED: " &
-                            TargetName)
 
                 System.Windows.Forms.Application.DoEvents()
 
@@ -2561,15 +2370,6 @@ Namespace Abovo
 
             Try
 
-                Debug.Print("")
-                Debug.Print("================================================================")
-                Debug.Print("WORKBOOK MIGRATION 009 START - SPARSE DEVELOPMENT MULTI-SHEET CAPACITY")
-                Debug.Print("================================================================")
-                Debug.Print("Transactional DB structural changes: NONE")
-                Debug.Print("TransCopy_* name changes: NONE")
-                Debug.Print("Reserved capacity per Development block: " &
-                            DevelopmentShadowCapacity.ToString)
-                Debug.Print("Unused future rows: BLANK / NO LIVE FORMULAS")
 
                 If WB.History.IsEnabled Then
                     WB.History.IsEnabled = False
@@ -2950,47 +2750,11 @@ Namespace Abovo
 
                     End If
 
-                    Debug.Print(
-                        "SPARSE MULTI-SHEET " &
-                        TargetName &
-                        " -> " &
-                        MirrorSheetName &
-                        ": currentRows=" &
-                        CurrentDataCount.ToString &
-                        ", reserve=" &
-                        DevelopmentShadowCapacity.ToString &
-                        ", valueMismatch=" &
-                        BlockValueMismatches.ToString &
-                        ", formulaMismatch=" &
-                        BlockFormulaMismatches.ToString &
-                        ", dryRunErrors=" &
-                        BlockDryRunErrors.ToString &
-                        ", calculate=" &
-                        CalculationTimer.ElapsedMilliseconds.ToString &
-                        "ms, total=" &
-                        BlockTimer.ElapsedMilliseconds.ToString &
-                        "ms")
 
                     System.Windows.Forms.Application.DoEvents()
 
                 Next
 
-                Debug.Print("")
-                Debug.Print("--- Sparse Development multi-sheet summary ---")
-                Debug.Print("Current value mismatches: " &
-                            TotalCurrentValueMismatches.ToString)
-                Debug.Print("Current formula mismatches: " &
-                            TotalCurrentFormulaMismatches.ToString)
-                Debug.Print("Dry-run generation errors: " &
-                            TotalDryRunErrors.ToString)
-                Debug.Print("Dry-run formula cells: " &
-                            TotalDryRunFormulaCells.ToString)
-                Debug.Print("Dry-run constant cells: " &
-                            TotalDryRunConstantCells.ToString)
-                Debug.Print("Dry-run blank cells: " &
-                            TotalDryRunBlankCells.ToString)
-                Debug.Print("Block failures: " &
-                            BlockFailures.ToString)
 
                 Dim ValidationPassed As Boolean =
                     TotalCurrentValueMismatches = 0 AndAlso
@@ -3000,14 +2764,9 @@ Namespace Abovo
 
                 If ValidationPassed Then
 
-                    Debug.Print(
-                        "SPARSE MULTI-SHEET CAPACITY VALIDATION: PASS")
 
                 Else
 
-                    Debug.Print(
-                        "SPARSE MULTI-SHEET CAPACITY VALIDATION: ANALYSE - " &
-                        "do not repoint TransCopy_* names.")
 
                 End If
 
@@ -3049,10 +2808,6 @@ Namespace Abovo
                     "Migration 009 completed sparse Development multi-sheet capacity validation. " &
                     "Original TransCopy_* names remain unchanged."
 
-                Debug.Print("WORKBOOK MIGRATION 009 COMPLETE: " &
-                            MigrationTimer.ElapsedMilliseconds.ToString &
-                            "ms")
-                Debug.Print("================================================================")
 
             Catch ex As Exception
 
@@ -3061,8 +2816,6 @@ Namespace Abovo
                     "Migration 009 failed: " &
                     ex.Message
 
-                Debug.Print("WORKBOOK MIGRATION 009 ERROR: " &
-                            ex.ToString)
 
             Finally
 
@@ -3278,13 +3031,6 @@ Namespace Abovo
 
             Try
 
-                Debug.Print("")
-                Debug.Print("================================================================")
-                Debug.Print("WORKBOOK MIGRATION 008 START - DEVELOPMENT GENERATION-RULE AUDIT")
-                Debug.Print("================================================================")
-                Debug.Print("Transactional DB structural changes: NONE")
-                Debug.Print("TransCopy_* name changes: NONE")
-                Debug.Print("Future shadow rows populated: NONE")
 
                 If WB.History.IsEnabled Then
                     WB.History.IsEnabled = False
@@ -3397,9 +3143,6 @@ Namespace Abovo
 
                 System.Windows.Forms.Application.DoEvents()
 
-                Debug.Print("Shadow worksheet Calculate(): " &
-                            CalculationTimer.ElapsedMilliseconds.ToString &
-                            "ms")
 
                 'Exact parity gate before any generation-rule inference.
                 Dim ValueMismatches As Integer = 0
@@ -3477,14 +3220,6 @@ Namespace Abovo
 
                 Next
 
-                Debug.Print("")
-                Debug.Print("--- Schema 8 parity gate ---")
-                Debug.Print("Value mismatches: " &
-                            ValueMismatches.ToString)
-                Debug.Print("Normalised formula mismatches: " &
-                            FormulaMismatches.ToString)
-                Debug.Print("Comparison errors: " &
-                            ComparisonErrors.ToString)
 
                 If ValueMismatches <> 0 OrElse
                    FormulaMismatches <> 0 OrElse
@@ -3495,11 +3230,6 @@ Namespace Abovo
 
                 End If
 
-                Debug.Print("PARITY GATE: PASS")
-                Debug.Print("")
-                Debug.Print("================================================================")
-                Debug.Print("DEVELOPMENT IDENTIFIED FUTURE-ROW GENERATION-RULE AUDIT")
-                Debug.Print("================================================================")
 
                 Dim UnsafeCount As Integer = 0
                 Dim FormulaRuleCount As Integer = 0
@@ -3521,13 +3251,6 @@ Namespace Abovo
                     Dim DataBottom As Integer =
                         SourceRange.BottomRowIndex - 1
 
-                    Debug.Print("")
-                    Debug.Print("BLOCK " &
-                                TargetName &
-                                ": data rows=" &
-                                (DataBottom - DataTop + 1).ToString &
-                                ", " &
-                                SourceRange.GetReferenceA1())
 
                     For ColumnIndex As Integer = SourceRange.LeftColumnIndex To SourceRange.RightColumnIndex
 
@@ -3591,16 +3314,6 @@ Namespace Abovo
                             RuleSignature,
                             StringComparison.Ordinal) Then
 
-                            Debug.Print(
-                                "  CROSS-BLOCK RULE DIFFERENCE column " &
-                                ColumnName &
-                                ": " &
-                                TargetName &
-                                " -> " &
-                                Rule.RuleType.ToString &
-                                " [" &
-                                Rule.Detail &
-                                "]")
 
                         End If
 
@@ -3611,30 +3324,12 @@ Namespace Abovo
                         If Rule.RuleType =
                            ShadowGenerationRuleType.MixedUnsafe Then
 
-                            Debug.Print(
-                                "  UNSAFE " &
-                                ColumnName &
-                                ": " &
-                                Rule.Detail)
 
                         ElseIf Rule.RuleType =
                                ShadowGenerationRuleType.IntegerSequence OrElse
                                Rule.RuleType =
                                ShadowGenerationRuleType.NumericLinearSequence Then
 
-                            Debug.Print(
-                                "  GENERATED " &
-                                ColumnName &
-                                ": " &
-                                Rule.RuleType.ToString &
-                                ", first=" &
-                                Rule.FirstNumericValue.ToString(
-                                    "R",
-                                    CultureInfo.InvariantCulture) &
-                                ", step=" &
-                                Rule.NumericStep.ToString(
-                                    "R",
-                                    CultureInfo.InvariantCulture))
 
                         End If
 
@@ -3646,33 +3341,12 @@ Namespace Abovo
 
                 Next
 
-                Debug.Print("")
-                Debug.Print("--- Generation-rule summary across all blocks/columns ---")
-                Debug.Print("FormulaPattern: " &
-                            FormulaRuleCount.ToString)
-                Debug.Print("Blank: " &
-                            BlankRuleCount.ToString)
-                Debug.Print("InvariantConstant: " &
-                            InvariantRuleCount.ToString)
-                Debug.Print("IntegerSequence: " &
-                            IntegerSequenceCount.ToString)
-                Debug.Print("NumericLinearSequence: " &
-                            NumericLinearCount.ToString)
-                Debug.Print("MixedUnsafe: " &
-                            UnsafeCount.ToString)
 
                 If UnsafeCount = 0 Then
 
-                    Debug.Print(
-                        "GENERATION-RULE AUDIT: PASS - every current data column " &
-                        "has a deterministic rule candidate.")
 
                 Else
 
-                    Debug.Print(
-                        "GENERATION-RULE AUDIT: ANALYSE - " &
-                        UnsafeCount.ToString &
-                        " block/column rule(s) require explicit handling.")
 
                 End If
 
@@ -3720,10 +3394,6 @@ Namespace Abovo
                     "Migration 008 completed the Development future-row " &
                     "generation-rule audit. Original TransCopy_* names remain unchanged."
 
-                Debug.Print("WORKBOOK MIGRATION 008 COMPLETE: " &
-                            MigrationTimer.ElapsedMilliseconds.ToString &
-                            "ms")
-                Debug.Print("================================================================")
 
             Catch ex As Exception
 
@@ -3732,8 +3402,6 @@ Namespace Abovo
                     "Migration 008 failed: " &
                     ex.Message
 
-                Debug.Print("WORKBOOK MIGRATION 008 ERROR: " &
-                            ex.ToString)
 
             Finally
 
@@ -4113,12 +3781,6 @@ Namespace Abovo
 
             Try
 
-                Debug.Print("")
-                Debug.Print("================================================================")
-                Debug.Print("WORKBOOK MIGRATION 007 START - RECALCULATED COORDINATE SHADOW")
-                Debug.Print("================================================================")
-                Debug.Print("Transactional DB structural changes: NONE")
-                Debug.Print("TransCopy_* name changes: NONE")
 
                 If WB.History.IsEnabled Then
                     WB.History.IsEnabled = False
@@ -4224,13 +3886,6 @@ Namespace Abovo
 
                     Next
 
-                    Debug.Print("  BUILT SHADOW " &
-                                TargetName &
-                                " " &
-                                SourceRange.GetReferenceA1() &
-                                ": " &
-                                BuildTimer.ElapsedMilliseconds.ToString &
-                                "ms")
 
                 Next
 
@@ -4245,9 +3900,6 @@ Namespace Abovo
 
                 ShadowWS.Calculate()
 
-                Debug.Print("Shadow worksheet Calculate(): " &
-                            CalculationTimer.ElapsedMilliseconds.ToString &
-                            "ms")
 
                 'SECOND PASS: compare only after the shadow dependency graph has
                 'been recalculated.
@@ -4310,17 +3962,6 @@ Namespace Abovo
                                     If ExamplesPrinted <
                                        MaximumExamples Then
 
-                                        Debug.Print(
-                                            "SHADOW VALUE MISMATCH " &
-                                            TargetName &
-                                            " " &
-                                            SourceCell.GetReferenceA1() &
-                                            ": " &
-                                            ValueReason &
-                                            "; source=" &
-                                            SourceCell.Value.ToString() &
-                                            "; shadow=" &
-                                            ShadowCell.Value.ToString())
 
                                         ExamplesPrinted += 1
 
@@ -4335,13 +3976,6 @@ Namespace Abovo
                                 If ExamplesPrinted <
                                    MaximumExamples Then
 
-                                    Debug.Print(
-                                        "SHADOW COMPARISON ERROR " &
-                                        TargetName &
-                                        " " &
-                                        SourceCell.GetReferenceA1() &
-                                        ": " &
-                                        ex.Message)
 
                                     ExamplesPrinted += 1
 
@@ -4376,15 +4010,6 @@ Namespace Abovo
                                     If ExamplesPrinted <
                                        MaximumExamples Then
 
-                                        Debug.Print(
-                                            "SHADOW FORMULA MISMATCH " &
-                                            TargetName &
-                                            " " &
-                                            SourceCell.GetReferenceA1() &
-                                            ": source R1C1=" &
-                                            SourceSignature &
-                                            "; shadow R1C1=" &
-                                            ShadowSignature)
 
                                         ExamplesPrinted += 1
 
@@ -4398,11 +4023,6 @@ Namespace Abovo
 
                     Next
 
-                    Debug.Print("  COMPARED SHADOW " &
-                                TargetName &
-                                ": " &
-                                CompareTimer.ElapsedMilliseconds.ToString &
-                                "ms")
 
                 Next
 
@@ -4467,27 +4087,11 @@ Namespace Abovo
                 MetadataWS.Cells(0, 1).Value = 7
                 ExcelModels(ModelID).IsDirty = True
 
-                Debug.Print("")
-                Debug.Print("--- Recalculated coordinate-shadow parity summary ---")
-                Debug.Print("Cells compared: " &
-                            TotalCells.ToString)
-                Debug.Print("Formula cells: " &
-                            FormulaCells.ToString)
-                Debug.Print("Constant cells: " &
-                            ConstantCells.ToString)
-                Debug.Print("Value mismatches: " &
-                            ValueMismatches.ToString)
-                Debug.Print("Normalised formula mismatches: " &
-                            FormulaMismatches.ToString)
-                Debug.Print("Comparison errors: " &
-                            EvaluationErrors.ToString)
 
                 If ValueMismatches = 0 AndAlso
                    FormulaMismatches = 0 AndAlso
                    EvaluationErrors = 0 Then
 
-                    Debug.Print(
-                        "RECALCULATED COORDINATE SHADOW INDICATOR: PASS")
 
                     Result.StringReturn =
                         "Migration 007 achieved exact recalculated coordinate-shadow parity. " &
@@ -4495,9 +4099,6 @@ Namespace Abovo
 
                 Else
 
-                    Debug.Print(
-                        "RECALCULATED COORDINATE SHADOW INDICATOR: ANALYSE - " &
-                        "do not repoint TransCopy_* names.")
 
                     Result.StringReturn =
                         "Migration 007 created/recalculated the coordinate shadow but " &
@@ -4505,10 +4106,6 @@ Namespace Abovo
 
                 End If
 
-                Debug.Print("WORKBOOK MIGRATION 007 COMPLETE: " &
-                            MigrationTimer.ElapsedMilliseconds.ToString &
-                            "ms")
-                Debug.Print("================================================================")
 
             Catch ex As Exception
 
@@ -4517,8 +4114,6 @@ Namespace Abovo
                     "Migration 007 failed: " &
                     ex.Message
 
-                Debug.Print("WORKBOOK MIGRATION 007 ERROR: " &
-                            ex.ToString)
 
             Finally
 
@@ -4636,12 +4231,6 @@ Namespace Abovo
 
             Try
 
-                Debug.Print("")
-                Debug.Print("================================================================")
-                Debug.Print("WORKBOOK MIGRATION 006 START - COORDINATE-PRESERVING DEVELOPMENT SHADOW")
-                Debug.Print("================================================================")
-                Debug.Print("Transactional DB structural changes: NONE")
-                Debug.Print("TransCopy_* name changes: NONE")
 
                 If WB.History.IsEnabled Then
                     WB.History.IsEnabled = False
@@ -4779,15 +4368,6 @@ Namespace Abovo
                                     If ExamplesPrinted <
                                        MaximumExamples Then
 
-                                        Debug.Print(
-                                            "SHADOW VALUE MISMATCH " &
-                                            TargetName &
-                                            " source=" &
-                                            SourceCell.GetReferenceA1() &
-                                            " shadow=" &
-                                            ShadowCell.GetReferenceA1() &
-                                            ": " &
-                                            ValueReason)
 
                                         ExamplesPrinted += 1
 
@@ -4802,15 +4382,6 @@ Namespace Abovo
                                 If ExamplesPrinted <
                                    MaximumExamples Then
 
-                                    Debug.Print(
-                                        "SHADOW EVALUATION ERROR " &
-                                        TargetName &
-                                        " source=" &
-                                        SourceCell.GetReferenceA1() &
-                                        " shadow=" &
-                                        ShadowCell.GetReferenceA1() &
-                                        ": " &
-                                        ex.Message)
 
                                     ExamplesPrinted += 1
 
@@ -4845,15 +4416,6 @@ Namespace Abovo
                                     If ExamplesPrinted <
                                        MaximumExamples Then
 
-                                        Debug.Print(
-                                            "SHADOW FORMULA MISMATCH " &
-                                            TargetName &
-                                            " " &
-                                            SourceCell.GetReferenceA1() &
-                                            ": source R1C1=" &
-                                            SourceSignature &
-                                            "; shadow R1C1=" &
-                                            ShadowSignature)
 
                                         ExamplesPrinted += 1
 
@@ -4867,15 +4429,6 @@ Namespace Abovo
 
                     Next
 
-                    Debug.Print("  SHADOW " &
-                                TargetName &
-                                ": source=" &
-                                SourceRange.GetReferenceA1() &
-                                ", shadow=" &
-                                SourceRange.GetReferenceA1() &
-                                " (same coordinates), elapsed=" &
-                                BlockTimer.ElapsedMilliseconds.ToString &
-                                "ms")
 
                 Next
 
@@ -4937,27 +4490,11 @@ Namespace Abovo
                 MetadataWS.Cells(0, 1).Value = 6
                 ExcelModels(ModelID).IsDirty = True
 
-                Debug.Print("")
-                Debug.Print("--- Coordinate-preserving shadow parity summary ---")
-                Debug.Print("Cells compared: " &
-                            TotalCells.ToString)
-                Debug.Print("Formula cells: " &
-                            FormulaCells.ToString)
-                Debug.Print("Constant cells: " &
-                            ConstantCells.ToString)
-                Debug.Print("Value mismatches: " &
-                            ValueMismatches.ToString)
-                Debug.Print("Normalised formula mismatches: " &
-                            FormulaMismatches.ToString)
-                Debug.Print("Evaluation errors: " &
-                            EvaluationErrors.ToString)
 
                 If ValueMismatches = 0 AndAlso
                    FormulaMismatches = 0 AndAlso
                    EvaluationErrors = 0 Then
 
-                    Debug.Print(
-                        "COORDINATE-PRESERVING SHADOW INDICATOR: PASS")
 
                     Result.StringReturn =
                         "Migration 006 achieved exact coordinate-preserving " &
@@ -4965,9 +4502,6 @@ Namespace Abovo
 
                 Else
 
-                    Debug.Print(
-                        "COORDINATE-PRESERVING SHADOW INDICATOR: ANALYSE - " &
-                        "do not repoint TransCopy_* names.")
 
                     Result.StringReturn =
                         "Migration 006 created the coordinate-preserving shadow " &
@@ -4975,10 +4509,6 @@ Namespace Abovo
 
                 End If
 
-                Debug.Print("WORKBOOK MIGRATION 006 COMPLETE: " &
-                            MigrationTimer.ElapsedMilliseconds.ToString &
-                            "ms")
-                Debug.Print("================================================================")
 
             Catch ex As Exception
 
@@ -4987,8 +4517,6 @@ Namespace Abovo
                     "Migration 006 failed: " &
                     ex.Message
 
-                Debug.Print("WORKBOOK MIGRATION 006 ERROR: " &
-                            ex.ToString)
 
             Finally
 
@@ -5100,13 +4628,6 @@ Namespace Abovo
 
             Try
 
-                Debug.Print("")
-                Debug.Print("================================================================")
-                Debug.Print("WORKBOOK MIGRATION 003 START - FORMULA-BACKED DEVELOPMENT CAPACITY")
-                Debug.Print("================================================================")
-                Debug.Print("Target Development Identified capacity: " &
-                            DevelopmentIdentifiedCapacity.ToString &
-                            " data rows + active/footer row")
 
                 If WB.History.IsEnabled Then
                     WB.History.IsEnabled = False
@@ -5194,8 +4715,6 @@ Namespace Abovo
                     If ExistingCapacity IsNot Nothing AndAlso
                        ExistingCapacity.Range IsNot Nothing Then
 
-                        Debug.Print("  " & TargetName &
-                                    ": capacity name already exists; validating only.")
 
                         Continue For
 
@@ -5307,23 +4826,9 @@ Namespace Abovo
                             CanonicalFooter,
                             PasteSpecial.All)
 
-                        Debug.Print("  " &
-                                    TargetName &
-                                    ": reserve +" &
-                                    RowsToReserve.ToString &
-                                    " rows; insert=" &
-                                    InsertElapsed.ToString &
-                                    "ms, formula fill=" &
-                                    FillElapsed.ToString &
-                                    "ms, footer restore=" &
-                                    FooterTimer.ElapsedMilliseconds.ToString &
-                                    "ms")
 
                     Else
 
-                        Debug.Print("  " &
-                                    TargetName &
-                                    ": already at target capacity.")
 
                     End If
 
@@ -5343,15 +4848,6 @@ Namespace Abovo
                     '
                     'All AbovoCap_* names are therefore created in one final pass
                     'after every structural insertion has completed.
-                    Debug.Print("    active (intermediate) " &
-                                TargetName &
-                                "=" &
-                                DN.Range.GetReferenceA1() &
-                                "; physical capacity rows=" &
-                                DevelopmentIdentifiedCapacity.ToString &
-                                "; total=" &
-                                BlockTimer.ElapsedMilliseconds.ToString &
-                                "ms")
 
                     'Migration 003 is intentionally a one-time structural
                     'operation and can take more than sixty seconds across all
@@ -5378,8 +4874,6 @@ Namespace Abovo
                 'TransCopy_* names.  This is the key invariant: active names are
                 'the authoritative location; capacity metadata is derived from
                 'them, never from pre-shift row coordinates.
-                Debug.Print("")
-                Debug.Print("  Finalising formula-capacity defined names...")
 
                 For Each TargetName As String In DevelopmentSingleNames
 
@@ -5428,13 +4922,6 @@ Namespace Abovo
 
                     End If
 
-                    Debug.Print("    " &
-                                CapacityName &
-                                "=" &
-                                FinalCapacityRange.GetReferenceA1() &
-                                " (active=" &
-                                ActiveRange.GetReferenceA1() &
-                                ")")
 
                 Next
 
@@ -5465,11 +4952,6 @@ Namespace Abovo
                 Result.StringReturn =
                     "Migration 003 installed formula-backed Development Identified TransactionDB capacity."
 
-                Debug.Print("WORKBOOK MIGRATION 003 COMPLETE: " &
-                            MigrationTimer.ElapsedMilliseconds.ToString &
-                            "ms")
-                Debug.Print("Persisted XLSB remains formula-backed and Excel-compatible.")
-                Debug.Print("================================================================")
 
             Catch ex As Exception
 
@@ -5478,8 +4960,6 @@ Namespace Abovo
                     "Migration 003 failed: " &
                     ex.Message
 
-                Debug.Print("WORKBOOK MIGRATION 003 ERROR: " &
-                            ex.ToString)
 
             Finally
 
@@ -5571,10 +5051,6 @@ Namespace Abovo
 
             End If
 
-            Debug.Print("")
-            Debug.Print("================================================================")
-            Debug.Print("WORKBOOK MIGRATION 004 START - REPAIR DEVELOPMENT CAPACITY NAMES")
-            Debug.Print("================================================================")
 
             Dim RepairTimer As Stopwatch = Stopwatch.StartNew()
 
@@ -5667,12 +5143,6 @@ Namespace Abovo
 
                     End If
 
-                    Debug.Print("  " &
-                                CapacityName &
-                                ": " &
-                                PreviousReference &
-                                " -> " &
-                                CorrectCapacity.GetReferenceA1())
 
                 Next
 
@@ -5705,10 +5175,6 @@ Namespace Abovo
                 Result.StringReturn =
                     "Migration 004 repaired Development Identified capacity names without changing workbook cells."
 
-                Debug.Print("WORKBOOK MIGRATION 004 COMPLETE: " &
-                            RepairTimer.ElapsedMilliseconds.ToString &
-                            "ms")
-                Debug.Print("================================================================")
 
             Catch ex As Exception
 
@@ -5717,8 +5183,6 @@ Namespace Abovo
                     "Migration 004 failed: " &
                     ex.Message
 
-                Debug.Print("WORKBOOK MIGRATION 004 ERROR: " &
-                            ex.ToString)
 
             End Try
 
@@ -5749,8 +5213,6 @@ Namespace Abovo
                     "Workbook is not available."
 
                 If PrintDetail Then
-                    Debug.Print("CAPACITY VALIDATION FAIL: " &
-                                FailureReason)
                 End If
 
                 Return False
@@ -5768,8 +5230,6 @@ Namespace Abovo
                     "; schema 3 or later is required."
 
                 If PrintDetail Then
-                    Debug.Print("CAPACITY VALIDATION FAIL: " &
-                                FailureReason)
                 End If
 
                 Return False
@@ -5801,9 +5261,6 @@ Namespace Abovo
                         "' is missing."
 
                     If PrintDetail Then
-                        Debug.Print("  FAIL " &
-                                    TargetName &
-                                    ": active defined name missing")
                     End If
 
                     Continue For
@@ -5819,9 +5276,6 @@ Namespace Abovo
                         "' does not resolve to a range."
 
                     If PrintDetail Then
-                        Debug.Print("  FAIL " &
-                                    TargetName &
-                                    ": active range unresolved")
                     End If
 
                     Continue For
@@ -5837,12 +5291,6 @@ Namespace Abovo
                         "' is missing."
 
                     If PrintDetail Then
-                        Debug.Print("  FAIL " &
-                                    TargetName &
-                                    ": capacity name '" &
-                                    CapacityName &
-                                    "' missing; active=" &
-                                    ActiveDN.Range.GetReferenceA1())
                     End If
 
                     Continue For
@@ -5858,10 +5306,6 @@ Namespace Abovo
                         "' does not resolve to a range."
 
                     If PrintDetail Then
-                        Debug.Print("  FAIL " &
-                                    TargetName &
-                                    ": capacity range unresolved; active=" &
-                                    ActiveDN.Range.GetReferenceA1())
                     End If
 
                     Continue For
@@ -5918,35 +5362,6 @@ Namespace Abovo
 
                 If PrintDetail Then
 
-                    Debug.Print("  " &
-                                If(BlockValid, "PASS ", "FAIL ") &
-                                TargetName &
-                                ": active=" &
-                                ActiveRange.Worksheet.Name &
-                                "!" &
-                                ActiveRange.GetReferenceA1() &
-                                " [" &
-                                ActiveRange.RowCount.ToString &
-                                " rows], capacity=" &
-                                CapacityRange.Worksheet.Name &
-                                "!" &
-                                CapacityRange.GetReferenceA1() &
-                                " [" &
-                                CapacityRange.RowCount.ToString &
-                                " rows / " &
-                                CapacityDataRows.ToString &
-                                " data capacity], sameSheet=" &
-                                SameWorksheet.ToString &
-                                ", sameTop=" &
-                                SameTop.ToString &
-                                ", sameLeft=" &
-                                SameLeft.ToString &
-                                ", sameRight=" &
-                                SameRight.ToString &
-                                ", largeEnough=" &
-                                CapacityLargeEnough.ToString &
-                                ", activeWithin=" &
-                                ActiveWithinCapacity.ToString)
 
                 End If
 
@@ -5986,10 +5401,7 @@ Namespace Abovo
             If PrintDetail Then
 
                 If AllValid Then
-                    Debug.Print("CAPACITY VALIDATION RESULT: PASS")
                 Else
-                    Debug.Print("CAPACITY VALIDATION RESULT: FAIL - " &
-                                FailureReason)
                 End If
 
             End If
@@ -6000,15 +5412,6 @@ Namespace Abovo
 
         Public Sub DiagnoseDevelopmentIdentifiedFormulaCapacity()
 
-            Debug.Print("")
-            Debug.Print("================================================================")
-            Debug.Print("DEVELOPMENT IDENTIFIED FORMULA CAPACITY LOAD AUDIT")
-            Debug.Print("================================================================")
-            Debug.Print("Workbook schema version: " &
-                        GetSchemaVersion().ToString)
-            Debug.Print("Expected formula-backed capacity: " &
-                        DevelopmentIdentifiedCapacity.ToString &
-                        " data rows per block")
 
             Dim FailureReason As String = Nothing
             Dim Valid As Boolean =
@@ -6016,15 +5419,10 @@ Namespace Abovo
                     FailureReason,
                     True)
 
-            Debug.Print("Fast-path availability: " &
-                        Valid.ToString)
 
             If Not Valid Then
-                Debug.Print("Fast-path disabled because: " &
-                            FailureReason)
             End If
 
-            Debug.Print("================================================================")
 
         End Sub
 
@@ -6112,10 +5510,6 @@ Namespace Abovo
 
             Try
 
-                Debug.Print("Expanding formula-backed Development Identified capacity: " &
-                            CurrentCapacity.ToString &
-                            " -> " &
-                            NewCapacity.ToString)
 
                 If WB.History.IsEnabled Then
                     WB.History.IsEnabled = False
@@ -6221,13 +5615,6 @@ Namespace Abovo
                             CapacityRange.RightColumnIndex,
                             NewCanonicalFooterRow)
 
-                    Debug.Print("  " &
-                                CapacityDN.Name &
-                                " +" &
-                                RowsToAdd.ToString &
-                                " formula rows: " &
-                                T.ElapsedMilliseconds.ToString &
-                                "ms")
 
                 Next
 
@@ -6506,8 +5893,6 @@ Namespace Abovo
 
             Catch ex As Exception
 
-                Debug.Print("Migration 003 context yield failed: " &
-                            ex.Message)
 
                 'If EndUpdate succeeded but BeginUpdate did not, leave
                 'UpdateStarted False so the outer Finally does not issue an

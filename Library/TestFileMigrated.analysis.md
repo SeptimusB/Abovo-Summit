@@ -69,12 +69,17 @@ The first 466 are concentrated in covenant/chart-series ranges where `#N/A` is c
 
 ## Follow-up risks
 
-1. `FileManager.SaveFile` explicitly saves with `DocumentFormat.Xlsm` even though the main model input is `.xlsb`. The normal `SpreadsheetControl.SaveDocument()` path should preserve the loaded format, but the explicit method is a format-integrity risk if invoked.
-2. `StructureManager.CreateStructureFromXML` ignores its `StringXML` argument and always reads `Structure.xml` from the application directory.
-3. `Abovo_Model_Def` maps XML `DefID` into `FileID` and XML `FileID` into `DefID`; the field names are reversed in code.
-4. Workbook service initialization and Debug migration occur before `ValidateOpenFile`; malformed/non-Abovo workbooks can fail before the intended validation message.
-5. A worksheet-protection value is hard-coded in source and `Structure.xml`. It must not be treated as a security boundary.
-6. `ApplicationConfiguration.DefaultTemplateFile` points to `Templates\DefaultBPTemplate.xlsb`, but that template is not present in the repository.
-7. The project has no automated test project, so workbook compatibility currently depends on manual/integration validation.
-8. The embedded VBA project was not readable through automation and therefore remains outside this review.
+The 18 August 2026 application code pass confirmed that four earlier concerns are already resolved in the current source:
 
+- `FileManager.SaveFile` uses `SpreadsheetControl.SaveDocument()`, preserving the loaded workbook format.
+- `StructureManager.CreateStructureFromXML` accepts inline XML, an explicit file path, or the deployed `Structure.xml` default.
+- `Abovo_Model_Def.DefID` and `FileID` map directly to their corresponding XML elements.
+- `FileManager.OpenModel` validates the workbook contract immediately after loading and before post-load service initialization.
+
+Remaining risks:
+
+1. A worksheet-protection value is stored in source and `Structure.xml`; worksheet protection must not be treated as a security boundary.
+2. `ApplicationConfiguration.DefaultTemplateFile` points to `Templates\DefaultBPTemplate.xlsb`, but that template is not present in the repository.
+3. Pending workbook migrations are applied only in Debug builds. The baseline is already schema 10, but older production workbooks will not be upgraded by a Release build.
+4. The project has no automated test project, so workbook compatibility currently depends on manual/integration validation.
+5. The embedded VBA project was not readable through automation and therefore remains outside this review.

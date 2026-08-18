@@ -45,6 +45,9 @@ Public Class StressTest
 
     Inherits DevExpress.XtraEditors.XtraForm
 
+    Private Const BreachOutputFirstColumnIndex As Integer = 26 'AA
+    Private Const BreachOutputColumnCount As Integer = 6       'AA:AF
+
     Private STMode As String
     Private StandardPercentSpinEdit As RepositoryItemSpinEdit
     Private StandardYesEmptyEdit As RepositoryItemComboBox
@@ -68,6 +71,27 @@ Public Class StressTest
     Private DSStressSenitivityLiveDataRange As RangeDataSource
     Private DSStressSenitivityCaputresDataRange As RangeDataSource
 
+    Private NativePlannerScenario As DevExpress.XtraEditors.ComboBoxEdit
+    Private NativePlannerName As DevExpress.XtraEditors.TextEdit
+    Private NativePlannerImportMode As DevExpress.XtraEditors.ComboBoxEdit
+    Private NativePlannerInclude As DevExpress.XtraEditors.CheckEdit
+    Private NativePlannerGrid As GridControl
+    Private NativePlannerView As GridView
+    Private NativePlannerData As System.Data.DataTable
+    Private NativeYearEditor As RepositoryItemComboBox
+    Private NativeDashboardScenario As DevExpress.XtraEditors.ComboBoxEdit
+    Private NativeDashboardCharts As TableLayoutPanel
+    Private NativeDashboardSummary As GridControl
+    Private NativeSensitivityGrid As GridControl
+    Private NativeSensitivityView As GridView
+    Private CovenantSummaryPanel As TableLayoutPanel
+    Private NativeComparativeSelectors As New List(Of DevExpress.XtraEditors.ComboBoxEdit)
+    Private NativeComparativeChartsA As TableLayoutPanel
+    Private NativeComparativeChartsB As TableLayoutPanel
+    Private NativeComparativeSummaryA As GridControl
+    Private NativeComparativeSummaryB As GridControl
+    Private LoadingNativeViews As Boolean
+
     Private ModelID As Integer
     Private ExportPackageCount As Integer = 0
     Private ExportPackagesIndex As Integer = -1
@@ -75,6 +99,9 @@ Public Class StressTest
 
     Private PresentedDS As Abovo.DataObject.DataCellRange
     Private ScaleUnits As Integer
+    Private FirstTabReferenceSize As Size = Size.Empty
+    Private FirstTabBaseFontSize As Single
+    Private UpdatingCovenantSelection As Boolean
     Private ExportMode As String
     Private MyColourSwatch As Color
     Private Formatter As ObjectFormatter
@@ -136,6 +163,8 @@ Public Class StressTest
 
         BuildHTMLRenders()
 
+        InitialiseNativeStressViews()
+
         XtraTabControlStressTest.LookAndFeel.UseDefaultLookAndFeel = False
         XtraTabControlStressTest.LookAndFeel.Style = DevExpress.LookAndFeel.LookAndFeelStyle.UltraFlat
         XtraTabControlStressTest.Appearance.BackColor = Color.White
@@ -168,8 +197,7 @@ Public Class StressTest
 
         WindowsUIButtonPanelStressNavigator.ForeColor = AbovoBlue
 
-
-
+        ConfigureResponsiveFirstTab()
         AddHandlers()
 
     End Sub
@@ -240,35 +268,47 @@ Public Class StressTest
             Case "SSList"
 
                 XtraTabControlStressTest.SelectedTabPage = XtraTabPageSSL
+                RenderStressHeaderHTMLData()
 
             Case "Comp1"
 
                 XtraTabControlStressTest.SelectedTabPage = XtraTabPageCompA
+                RefreshNativeComparativeViews()
 
             Case "Comp2"
 
                 XtraTabControlStressTest.SelectedTabPage = XtraTabPageCompB
+                RefreshNativeComparativeViews()
 
             Case "MVPlan"
 
                 XtraTabControlStressTest.SelectedTabPage = XtraTabPageMVP
+                RefreshNativePlanner()
 
             Case "MVDash"
 
                 XtraTabControlStressTest.SelectedTabPage = XtraTabPageDashboard
+                RefreshNativeDashboard()
 
         End Select
 
     End Sub
+
     Public Sub SetActive()
 
-        'ExcelModels(ModelID).WBCalcEngine.CalcAuto()
+        If XtraTabControlStressTest.SelectedTabPage Is XtraTabPageMVP Then
+            RefreshNativePlanner()
+        ElseIf XtraTabControlStressTest.SelectedTabPage Is XtraTabPageDashboard Then
+            RefreshNativeDashboard()
+        ElseIf XtraTabControlStressTest.SelectedTabPage Is XtraTabPageCompA Then
+            RefreshNativeComparativeViews()
+        ElseIf XtraTabControlStressTest.SelectedTabPage Is XtraTabPageCompB Then
+            RefreshNativeComparativeViews()
+        End If
 
     End Sub
 
     Public Sub SetDeactivated()
-
-        'ExcelModels(ModelID).WBCalcEngine.CalcManual()
 
     End Sub
 
@@ -593,6 +633,9 @@ Public Class StressTest
         Dim ColNames As New SourceColumnDetector(ColList, ColMap)
 
         RDSOptions.DataSourceColumnTypeDetector = ColNames
+        'AA:AF may be hidden while Business Plan mode is active.  The interface
+        'still needs all six fields available when Multivariable mode is enabled.
+        RDSOptions.SkipHiddenColumns = False
 
         range = worksheet.Range(ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestOutputTextRange)
         DSTextOutputsDataRange = range.GetDataSource(RDSOptions)
@@ -611,7 +654,11 @@ Public Class StressTest
         ModelPostingComboBoxSelectCovenant.SetTargetCell = "AD3"
         ModelPostingComboBoxSelectCovenant.InitialiseFromNRP("CovenantSelect")
         ModelPostingComboBoxSelectCovenant.SetLimitToList = True
+        ModelPostingComboBoxSelectCovenant.Properties.TextEditStyle =
+            DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
         ModelPostingComboBoxSelectCovenant.ProcesDefValue()
+        AddHandler ModelPostingComboBoxSelectCovenant.EditValueChanged,
+            AddressOf CovenantSelectionChanged
 
         ColList = New List(Of String) From {
             "Year",
@@ -640,7 +687,7 @@ Public Class StressTest
 
         'AddHandler DSStressSenitivityLiveDataRange.ListChanged, AddressOf RenderStressHeaderHTMLData
 
-        UnhideColumnsCommand()
+        If STMode = "Y" Then UnhideColumnsCommand()
         ProcessMitigationsGrid()
         ProcessStressesGrid()
         ProcesstextOutputGrid()
@@ -667,7 +714,8 @@ Public Class StressTest
         Dim WSTarget As DevExpress.Spreadsheet.Worksheet = ExcelModels(ModelID).WB.Worksheets("Live Multivariable Planner")
         ' Unhide the columns in the range
         Try
-            ExcelModels(ModelID).WB.Worksheets("Live Multivariable Planner").Columns.Unhide(25, 32)
+            ExcelModels(ModelID).WB.Worksheets("Live Multivariable Planner").Columns.Unhide(
+                BreachOutputFirstColumnIndex, BreachOutputColumnCount)
         Catch ex As Exception
 
         End Try
@@ -682,8 +730,6 @@ Public Class StressTest
 
     Sub ProcessBreachesGrid(OnOff As Boolean)
 
-        Exit Sub
-
         If OnOff = False Then
 
             GridControlBreaches.DataSource = Nothing
@@ -696,9 +742,16 @@ Public Class StressTest
 
             GridControlBreaches.Enabled = True
             GridControlBreaches.Visible = True
-            GridControlBreaches.DataSource = DSBreachOutputsDataRange
+            GridControlBreaches.DataSource = BuildBreachOutputTable()
 
             Dim GV As GridView = GridControlBreaches.MainView
+            GridControlBreaches.ForceInitialize()
+            GV.PopulateColumns()
+            If GV.Columns.Count < 6 Then
+                GridControlBreaches.RefreshDataSource()
+                Return
+            End If
+            GV.OptionsView.ShowGroupPanel = False
 
             GV.Columns(0).Caption = "Year"
             GV.Columns(1).Caption = "Mvt"
@@ -716,25 +769,18 @@ Public Class StressTest
 
             GV.Columns(2).AppearanceHeader.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
             GV.Columns(2).AppearanceCell.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
-            GV.Columns(2).DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric
-
-            GV.Columns(2).DisplayFormat.FormatString = "p2"
             GV.Columns(3).AppearanceHeader.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
             GV.Columns(3).AppearanceCell.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
-            GV.Columns(3).DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric
-            GV.Columns(3).DisplayFormat.FormatString = "p2"
             GV.Columns(4).AppearanceHeader.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
             GV.Columns(4).AppearanceCell.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
-            GV.Columns(4).DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric
-            GV.Columns(4).DisplayFormat.FormatString = "p2"
 
             GV.Columns(5).AppearanceCell.ForeColor = Color.Red
 
             GV.Columns(1).AppearanceCell.ForeColor = Color.Red
             GV.Columns(1).AppearanceCell.Font = New System.Drawing.Font("Wingdings", 13, FontStyle.Regular)
+            GV.OptionsView.ColumnAutoWidth = True
             GV.BestFitColumns()
 
-            UpdateGridSizeNonWr(GV, GridControlTextOut)
             Formatter.FormatGridView(GV, GridControlBreaches)
 
 
@@ -1044,7 +1090,8 @@ Public Class StressTest
         If STMode = "N" Then
 
             Try
-                ActiveWorkbook.Worksheets("Live Multivariable Planner").Columns.Hide(25, 32)
+                ActiveWorkbook.Worksheets("Live Multivariable Planner").Columns.Hide(
+                    BreachOutputFirstColumnIndex, BreachOutputColumnCount)
             Catch ex As Exception
 
             End Try
@@ -1178,7 +1225,9 @@ Public Class StressTest
             CovChart.Titles(0).Text = AddTitle
             CovChart.Titles(0).EnableAntialiasing = DevExpress.Utils.DefaultBoolean.True
             CovChart.Titles(0).DXFont = New DXFont("Tahoma", 10, DXFontStyle.Bold)
-            CovChart.Height = 223
+            CovChart.Titles(0).Visibility = DevExpress.Utils.DefaultBoolean.True
+            CovChart.Titles(0).Dock = ChartTitleDockStyle.Top
+            CovChart.Titles(0).Alignment = StringAlignment.Center
             ' Add the chart to the form.
 
             CovChart.Dock = DockStyle.Fill
@@ -1344,6 +1393,8 @@ Public Class StressTest
         End If
 
         ActiveWorkbook.Calculate()
+        ProcessBreachesGrid(STMode = "Y")
+        RefreshCovenantSummary()
         BuildCovCharts()
 
         Me.Cursor = Cursors.Default
@@ -1352,6 +1403,7 @@ Public Class StressTest
 
     Sub StressTestModeAdjustments()
 
+        UnhideColumnsCommand()
         UNProtectWS(ModelID, "OW - Live Stress Reporting")
 
         Dim SourceRange As DevExpress.Spreadsheet.CellRange = ExcelModels(ModelID).WB.Range("StressSwitch")
@@ -1365,89 +1417,429 @@ Public Class StressTest
 
     Sub Stress_Sensitivity_Capture()
 
-        Debug.Print("1")
         UNProtectWS(ModelID, "Stress Sensitivity List")
 
         Dim WB As IWorkbook = ExcelModels(ModelID).WB
-        Debug.Print("2")
-        WB.DefinedNames.GetDefinedName("StressSensitivityDate").Range(0.0).Value = Now()
+        Try
+            WB.DefinedNames.GetDefinedName("StressSensitivityDate").Range(0, 0).Value = Now()
 
-RestartFrom:
+            Dim SourceRow As DevExpress.Spreadsheet.CellRange =
+                WB.DefinedNames.GetDefinedName("StressSensitivity").Range
+            Dim WSTarget As DevExpress.Spreadsheet.Worksheet =
+                WB.Worksheets("Stress Sensitivity List")
+            Dim BottomRow As DevExpress.Spreadsheet.CellRange = Nothing
 
-        Dim TargetDefinedName As DevExpress.Spreadsheet.DefinedName = WB.DefinedNames.GetDefinedName("StressSensitivityData")
-        Dim CRTarget As DevExpress.Spreadsheet.CellRange
-        Dim WSTarget As DevExpress.Spreadsheet.Worksheet = WB.Worksheets("Stress Sensitivity List")
+            For Attempt As Integer = 0 To 1
+                Dim DataRows As DevExpress.Spreadsheet.CellRange =
+                    WB.DefinedNames.GetDefinedName("StressSensitivityData").Range
+                Dim CaptureArea As DevExpress.Spreadsheet.CellRange =
+                    WSTarget.Range.FromLTRB(
+                        SourceRow.LeftColumnIndex,
+                        DataRows.TopRowIndex,
+                        SourceRow.RightColumnIndex,
+                        DataRows.BottomRowIndex)
 
-        Dim Lref As Integer = TargetDefinedName.Range.LeftColumnIndex
-        Dim Rref As Integer = TargetDefinedName.Range.RightColumnIndex
-        Dim Tref As Integer = TargetDefinedName.Range.TopRowIndex
-        Dim Bref As Integer = TargetDefinedName.Range.BottomRowIndex
+                For RowIndex As Integer = CaptureArea.TopRowIndex To CaptureArea.BottomRowIndex
+                    Dim CandidateRow As DevExpress.Spreadsheet.CellRange =
+                        WSTarget.Range.FromLTRB(
+                            CaptureArea.LeftColumnIndex,
+                            RowIndex,
+                            CaptureArea.RightColumnIndex,
+                            RowIndex)
 
-        TargetDefinedName = Nothing
-        Debug.Print("3")
-        CRTarget = WSTarget.Range.FromLTRB(Lref, Tref, Rref, Bref)
-        Debug.Print("Target range from " & CRTarget.TopRowIndex & " to " & CRTarget.BottomRowIndex)
-        'ExcelModels(ModelID).WB.BeginUpdate()
+                    If CandidateRow.ToArray().All(Function(Cell) Cell.Value.IsEmpty) Then
+                        BottomRow = CandidateRow
+                        Exit For
+                    End If
+                Next
 
-        Debug.Print("4")
-        ' Find Empty Row
-        Dim bottomRow As DevExpress.Spreadsheet.CellRange = Nothing
+                If BottomRow IsNot Nothing Then
+                    Exit For
+                End If
 
-        Debug.Print("5")
-        Debug.Print("Iterating from " & CRTarget.TopRowIndex & " to " & CRTarget.TopRowIndex + CRTarget.RowCount - 1)
+                InsertRows(ModelID, "StressSensitivityData", 1, True)
+            Next
 
-        For i As Integer = CRTarget.TopRowIndex To CRTarget.TopRowIndex + CRTarget.RowCount - 1
-
-            Dim rowCell As DevExpress.Spreadsheet.CellRange = WSTarget.Range.FromLTRB(CRTarget.LeftColumnIndex, i, CRTarget.RightColumnIndex, i)
-
-            If rowCell.ToArray().All(Function(cell) cell.Value.IsEmpty) Then
-
-                bottomRow = rowCell
-                Exit For
-
+            If BottomRow Is Nothing Then
+                Throw New InvalidOperationException("A new stress sensitivity row could not be created.")
             End If
 
-            rowCell = Nothing
+            BottomRow.CopyFrom(SourceRow, PasteSpecial.Values)
 
-        Next
-        Debug.Print("6")
-        If (bottomRow Is Nothing) Then
+            'The worksheet source formula deliberately reports "Base" while the
+            'model is in Business Plan mode.  A quick capture made through this
+            'interface should retain the description the user entered instead.
+            Dim CaptureName As String = TextEditMultivariableName.Text.Trim()
+            If Not String.IsNullOrWhiteSpace(CaptureName) AndAlso
+               Not String.Equals(CaptureName, "Base", StringComparison.OrdinalIgnoreCase) Then
+                BottomRow(0, 0).Value = CellValue.FromObject(CaptureName)
+            End If
 
-            ' Extend
-            Debug.Print("Bottom Row Is Nothing, extending the range")
-            CRTarget = Nothing
-            WSTarget = Nothing
-
-
-            InsertRows(ModelID, "StressSensitivityData", 1, True)
-
-            Debug.Print("rows inserted")
-            Debug.Print("6a")
-            GoTo RestartFrom
-
-        End If
-
-        Dim SourceRow As DevExpress.Spreadsheet.CellRange = WB.DefinedNames.GetDefinedName("StressSensitivity").Range
-        Debug.Print("Copying from " & SourceRow.BottomRowIndex & " To " & bottomRow.BottomRowIndex)
-        Debug.Print("7")
-        bottomRow.CopyFrom(SourceRow, PasteSpecial.Values)
-
-        bottomRow = Nothing
-        SourceRow = Nothing
-
-        CRTarget = Nothing
-        WSTarget = Nothing
-        WB = Nothing
-        Debug.Print("8")
-        ProtectWS(ModelID, "Stress Sensitivity List")
+            WB.Calculate()
+        Finally
+            ProtectWS(ModelID, "Stress Sensitivity List")
+        End Try
 
     End Sub
 
 
     Sub DeStressAdjustments()
 
-        ExcelModels(ModelID).WB.Worksheets("Live Multivariable Planner").Columns.Hide(25, 32)
+        ExcelModels(ModelID).WB.Worksheets("Live Multivariable Planner").Columns.Hide(
+            BreachOutputFirstColumnIndex, BreachOutputColumnCount)
         ProcessBreachesGrid(False)
+
+    End Sub
+
+    Private Function BuildBreachOutputTable() As System.Data.DataTable
+
+        Dim Data As New System.Data.DataTable
+        For Each ColumnName As String In {"Year", "Mvt", "Base", "Live", "Target", "Met/Breach"}
+            Data.Columns.Add(ColumnName, GetType(String))
+        Next
+
+        Dim Sheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("Live Multivariable Planner")
+        Dim SourceRange As DevExpress.Spreadsheet.CellRange =
+            Sheet.Range(ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestBreachOutputRange)
+
+        For RowIndex As Integer = SourceRange.TopRowIndex To SourceRange.BottomRowIndex
+            Dim Row As System.Data.DataRow = Data.NewRow()
+            For ColumnOffset As Integer = 0 To 5
+                Row(ColumnOffset) =
+                    Sheet.Cells(RowIndex, SourceRange.LeftColumnIndex + ColumnOffset).DisplayText
+            Next
+            Data.Rows.Add(Row)
+        Next
+
+        Return Data
+
+    End Function
+
+    Private Sub ConfigureResponsiveFirstTab()
+
+        TablePanelStressInputs.AutoSize = False
+        TablePanelStressInputs.Dock = DockStyle.None
+        TablePanelStressInputs.Anchor = AnchorStyles.Top Or AnchorStyles.Bottom
+        TablePanelStressInputs.UseSkinIndents = False
+        TablePanelStressInputs.Padding = New Padding(8)
+        TablePanelStressInputs.Columns.Clear()
+        TablePanelStressInputs.Columns.AddRange(
+            New DevExpress.Utils.Layout.TablePanelColumn() {
+                New DevExpress.Utils.Layout.TablePanelColumn(
+                    DevExpress.Utils.Layout.TablePanelEntityStyle.Relative, 18.0!),
+                New DevExpress.Utils.Layout.TablePanelColumn(
+                    DevExpress.Utils.Layout.TablePanelEntityStyle.Relative, 27.0!),
+                New DevExpress.Utils.Layout.TablePanelColumn(
+                    DevExpress.Utils.Layout.TablePanelEntityStyle.Relative, 34.0!),
+                New DevExpress.Utils.Layout.TablePanelColumn(
+                    DevExpress.Utils.Layout.TablePanelEntityStyle.Relative, 21.0!)
+            })
+        TablePanelStressInputs.Rows.Clear()
+        TablePanelStressInputs.Rows.AddRange(
+            New DevExpress.Utils.Layout.TablePanelRow() {
+                New DevExpress.Utils.Layout.TablePanelRow(
+                    DevExpress.Utils.Layout.TablePanelEntityStyle.Absolute, 116.0!),
+                New DevExpress.Utils.Layout.TablePanelRow(
+                    DevExpress.Utils.Layout.TablePanelEntityStyle.Relative, 100.0!)
+            })
+
+        ConfigureModePanel()
+        ConfigureCapturePanel()
+        ConfigureQuickCapturePanel()
+        ConfigureCovenantPanel()
+        ConfigureCovenantOutputRows()
+        AddHandler XtraTabPageLMVP.Resize, AddressOf FirstTabPageResized
+
+        PanelControlCovSel.Visible = STMode = "Y"
+        GridControlBreaches.Visible = STMode = "Y"
+
+    End Sub
+
+    Private Function NewFirstTabLayout(ColumnCount As Integer) As TableLayoutPanel
+
+        Dim Layout As New TableLayoutPanel With {
+            .Dock = DockStyle.Fill,
+            .BackColor = Color.White,
+            .ColumnCount = ColumnCount,
+            .Margin = New Padding(0),
+            .Padding = New Padding(10, 7, 10, 7)
+        }
+        Return Layout
+
+    End Function
+
+    Private Sub ConfigureModePanel()
+
+        PanelControl1.Controls.Clear()
+        Dim Layout As TableLayoutPanel = NewFirstTabLayout(1)
+        Layout.RowCount = 2
+        Layout.RowStyles.Add(New RowStyle(SizeType.Percent, 45.0!))
+        Layout.RowStyles.Add(New RowStyle(SizeType.Percent, 55.0!))
+        LabelControl3.Dock = DockStyle.Fill
+        LabelControl3.AutoSizeMode = DevExpress.XtraEditors.LabelAutoSizeMode.None
+        LabelControl3.Appearance.TextOptions.VAlignment = VertAlignment.Center
+        ToggleModeSwitch.Dock = DockStyle.Left
+        Layout.Controls.Add(LabelControl3, 0, 0)
+        Layout.Controls.Add(ToggleModeSwitch, 0, 1)
+        PanelControl1.Controls.Add(Layout)
+
+    End Sub
+
+    Private Sub ConfigureCapturePanel()
+
+        PanelControl3.Controls.Clear()
+        Dim Layout As TableLayoutPanel = NewFirstTabLayout(2)
+        Layout.RowCount = 1
+        Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 42.0!))
+        Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 58.0!))
+        SimpleButtonCapture.Text = "Capture scenario"
+        SimpleButtonCapture.Dock = DockStyle.None
+        SimpleButtonCapture.Anchor = AnchorStyles.Top Or AnchorStyles.Left Or AnchorStyles.Right
+        SimpleButtonCapture.Height = 42
+        SimpleButtonCapture.Margin = New Padding(4, 12, 10, 12)
+
+        Dim SelectionLayout As New TableLayoutPanel With {
+            .Dock = DockStyle.Fill, .BackColor = Color.White,
+            .ColumnCount = 1, .RowCount = 2, .Margin = New Padding(0)
+        }
+        SelectionLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 32.0!))
+        SelectionLayout.RowStyles.Add(New RowStyle(SizeType.Percent, 100.0!))
+        LabelControl1.Dock = DockStyle.Fill
+        LabelControl1.AutoSizeMode = DevExpress.XtraEditors.LabelAutoSizeMode.None
+        LabelControl1.Appearance.TextOptions.VAlignment = VertAlignment.Center
+        ComboBoxBreachMode.Dock = DockStyle.Fill
+        ComboBoxBreachMode.Margin = New Padding(0, 0, 0, 4)
+        SelectionLayout.Controls.Add(LabelControl1, 0, 0)
+        SelectionLayout.Controls.Add(ComboBoxBreachMode, 0, 1)
+
+        Layout.Controls.Add(SimpleButtonCapture, 0, 0)
+        Layout.Controls.Add(SelectionLayout, 1, 0)
+        PanelControl3.Controls.Add(Layout)
+
+    End Sub
+
+    Private Sub ConfigureQuickCapturePanel()
+
+        PanelControl2.Controls.Clear()
+        Dim Layout As TableLayoutPanel = NewFirstTabLayout(3)
+        Layout.RowCount = 1
+        Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 34.0!))
+        Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 15.0!))
+        Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 51.0!))
+        SimpleButtonQC.Dock = DockStyle.Fill
+        SimpleButtonQC.Margin = New Padding(0, 2, 10, 2)
+        LabelControl4.Text = "Capture as:"
+        LabelControl4.Dock = DockStyle.Fill
+        LabelControl4.AutoSizeMode = DevExpress.XtraEditors.LabelAutoSizeMode.None
+        LabelControl4.Appearance.TextOptions.HAlignment = HorzAlignment.Far
+        LabelControl4.Appearance.TextOptions.VAlignment = VertAlignment.Center
+        LabelControl4.Margin = New Padding(0, 0, 8, 0)
+        TextEditMultivariableName.Properties.UseAdvancedMode = DefaultBoolean.False
+        TextEditMultivariableName.Properties.NullValuePrompt = "Scenario name"
+        TextEditMultivariableName.Dock = DockStyle.Fill
+        TextEditMultivariableName.Margin = New Padding(0, 10, 0, 10)
+        Layout.Controls.Add(SimpleButtonQC, 0, 0)
+        Layout.Controls.Add(LabelControl4, 1, 0)
+        Layout.Controls.Add(TextEditMultivariableName, 2, 0)
+        PanelControl2.Controls.Add(Layout)
+
+    End Sub
+
+    Private Sub ConfigureCovenantPanel()
+
+        PanelControlCovSel.Controls.Clear()
+        Dim Layout As TableLayoutPanel = NewFirstTabLayout(1)
+        Layout.RowCount = 2
+        Layout.RowStyles.Add(New RowStyle(SizeType.Percent, 45.0!))
+        Layout.RowStyles.Add(New RowStyle(SizeType.Percent, 55.0!))
+        LabelControl2.Text = "Selected covenant"
+        LabelControl2.Dock = DockStyle.Fill
+        LabelControl2.AutoSizeMode = DevExpress.XtraEditors.LabelAutoSizeMode.None
+        LabelControl2.Appearance.TextOptions.VAlignment = VertAlignment.Center
+        ModelPostingComboBoxSelectCovenant.Dock = DockStyle.Fill
+        Layout.Controls.Add(LabelControl2, 0, 0)
+        Layout.Controls.Add(ModelPostingComboBoxSelectCovenant, 0, 1)
+        PanelControlCovSel.Controls.Add(Layout)
+
+    End Sub
+
+    Private Sub ConfigureCovenantOutputRows()
+
+        TablePanelOutputs.UseSkinIndents = False
+        TablePanelOutputs.Padding = New Padding(6)
+        TablePanelOutputs.Rows.Clear()
+        TablePanelOutputs.Rows.AddRange(
+            New DevExpress.Utils.Layout.TablePanelRow() {
+                New DevExpress.Utils.Layout.TablePanelRow(
+                    DevExpress.Utils.Layout.TablePanelEntityStyle.Absolute, 198.0!),
+                New DevExpress.Utils.Layout.TablePanelRow(
+                    DevExpress.Utils.Layout.TablePanelEntityStyle.Relative, 1.0!),
+                New DevExpress.Utils.Layout.TablePanelRow(
+                    DevExpress.Utils.Layout.TablePanelEntityStyle.Relative, 1.0!),
+                New DevExpress.Utils.Layout.TablePanelRow(
+                    DevExpress.Utils.Layout.TablePanelEntityStyle.Relative, 1.0!),
+                New DevExpress.Utils.Layout.TablePanelRow(
+                    DevExpress.Utils.Layout.TablePanelEntityStyle.Relative, 1.0!),
+                New DevExpress.Utils.Layout.TablePanelRow(
+                    DevExpress.Utils.Layout.TablePanelEntityStyle.Relative, 1.0!)
+            })
+        GridControlTextOut.Visible = False
+
+        If CovenantSummaryPanel Is Nothing Then
+            CovenantSummaryPanel = New TableLayoutPanel With {
+                .Dock = DockStyle.Fill,
+                .BackColor = Color.White,
+                .ColumnCount = 2,
+                .RowCount = 1,
+                .Margin = New Padding(0),
+                .Padding = New Padding(0)
+            }
+            CovenantSummaryPanel.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 50.0!))
+            CovenantSummaryPanel.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 50.0!))
+            TablePanelOutputs.Controls.Add(CovenantSummaryPanel)
+        End If
+
+        TablePanelOutputs.SetColumn(CovenantSummaryPanel, 0)
+        TablePanelOutputs.SetRow(CovenantSummaryPanel, 0)
+        CovenantSummaryPanel.BringToFront()
+        RefreshCovenantSummary()
+        TablePanelOutputs.SetRow(CvntChart1, 1)
+        TablePanelOutputs.SetRow(CvntChart2, 2)
+        TablePanelOutputs.SetRow(CvntChart3, 3)
+        TablePanelOutputs.SetRow(CvntChart4, 4)
+        TablePanelOutputs.SetRow(CvntChart5, 5)
+        For Each Chart As ChartControl In {
+                CvntChart1, CvntChart2, CvntChart3, CvntChart4, CvntChart5}
+            Chart.Dock = DockStyle.Fill
+            Chart.Margin = New Padding(4, 5, 4, 5)
+        Next
+
+    End Sub
+
+    Private Sub RefreshCovenantSummary()
+
+        If CovenantSummaryPanel Is Nothing Then Return
+
+        Dim Sheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("Live Multivariable Planner")
+
+        CovenantSummaryPanel.SuspendLayout()
+        Try
+            CovenantSummaryPanel.Controls.Clear()
+            CovenantSummaryPanel.Controls.Add(
+                CreateCovenantSummaryBlock(Sheet, 16, 18, 19), 0, 0) 'Q, S, T
+            CovenantSummaryPanel.Controls.Add(
+                CreateCovenantSummaryBlock(Sheet, 21, 23, 24), 1, 0) 'V, X, Y
+        Finally
+            CovenantSummaryPanel.ResumeLayout(True)
+        End Try
+
+    End Sub
+
+    Private Function CreateCovenantSummaryBlock(
+        Sheet As DevExpress.Spreadsheet.Worksheet,
+        LabelColumn As Integer,
+        TargetColumn As Integer,
+        CurrentColumn As Integer) As TableLayoutPanel
+
+        Dim Block As New TableLayoutPanel With {
+            .Dock = DockStyle.Fill,
+            .BackColor = Color.White,
+            .ColumnCount = 3,
+            .RowCount = 7,
+            .Margin = New Padding(4, 2, 4, 4),
+            .Padding = New Padding(4, 0, 4, 0)
+        }
+        Block.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 56.0!))
+        Block.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 22.0!))
+        Block.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 22.0!))
+        Block.RowStyles.Add(New RowStyle(SizeType.Absolute, 28.0!))
+        For RowIndex As Integer = 1 To 6
+            Block.RowStyles.Add(New RowStyle(SizeType.Percent, CSng(100.0 / 6.0)))
+        Next
+
+        Block.Controls.Add(CreateCovenantSummaryLabel("", Nothing, HorzAlignment.Near, True), 0, 0)
+        Block.Controls.Add(CreateCovenantSummaryLabel("Target", Nothing, HorzAlignment.Far, True), 1, 0)
+        Block.Controls.Add(CreateCovenantSummaryLabel("Current", Nothing, HorzAlignment.Far, True), 2, 0)
+
+        For RowOffset As Integer = 0 To 5
+            Dim WorksheetRow As Integer = 7 + RowOffset
+            Block.Controls.Add(
+                CreateCovenantSummaryLabel(
+                    Sheet.Cells(WorksheetRow, LabelColumn).DisplayText,
+                    Sheet.Cells(WorksheetRow, LabelColumn), HorzAlignment.Near, False),
+                0, RowOffset + 1)
+            Block.Controls.Add(
+                CreateCovenantSummaryLabel(
+                    Sheet.Cells(WorksheetRow, TargetColumn).DisplayText,
+                    Sheet.Cells(WorksheetRow, TargetColumn), HorzAlignment.Far, False),
+                1, RowOffset + 1)
+            Block.Controls.Add(
+                CreateCovenantSummaryLabel(
+                    Sheet.Cells(WorksheetRow, CurrentColumn).DisplayText,
+                    Sheet.Cells(WorksheetRow, CurrentColumn), HorzAlignment.Far, False),
+                2, RowOffset + 1)
+        Next
+
+        Return Block
+
+    End Function
+
+    Private Function CreateCovenantSummaryLabel(
+        Text As String,
+        SourceCell As DevExpress.Spreadsheet.Cell,
+        Alignment As HorzAlignment,
+        IsHeader As Boolean) As DevExpress.XtraEditors.LabelControl
+
+        Dim Label As New DevExpress.XtraEditors.LabelControl With {
+            .Text = Text,
+            .Dock = DockStyle.Fill,
+            .AutoSizeMode = DevExpress.XtraEditors.LabelAutoSizeMode.None,
+            .Margin = New Padding(2, 0, 2, 0),
+            .Padding = New Padding(5, 0, 5, 0)
+        }
+        Label.Appearance.TextOptions.HAlignment = Alignment
+        Label.Appearance.TextOptions.VAlignment = VertAlignment.Center
+
+        If SourceCell IsNot Nothing Then
+            ApplyWorkbookCellAppearance(Label.Appearance, SourceCell)
+        Else
+            Label.Appearance.BackColor = Color.WhiteSmoke
+            Label.Appearance.ForeColor = AbovoBlue
+            Label.Appearance.Options.UseBackColor = True
+            Label.Appearance.Options.UseForeColor = True
+        End If
+
+        If IsHeader OrElse (SourceCell IsNot Nothing AndAlso SourceCell.Font.Bold) Then
+            Label.Appearance.Font = New Font(Label.Font, FontStyle.Bold)
+            Label.Appearance.Options.UseFont = True
+        End If
+
+        Return Label
+
+    End Function
+
+    Private Sub CovenantSelectionChanged(sender As Object, e As EventArgs)
+
+        If UpdatingCovenantSelection Then Return
+        Dim SelectedCovenant As String =
+            Convert.ToString(ModelPostingComboBoxSelectCovenant.EditValue).Trim()
+        If String.IsNullOrWhiteSpace(SelectedCovenant) Then Return
+
+        UpdatingCovenantSelection = True
+        Me.Cursor = Cursors.WaitCursor
+        Try
+            ActiveWorkbook.Worksheets("Live Multivariable Planner").
+                Range("AD3")(0, 0).Value = CellValue.FromObject(SelectedCovenant)
+            ActiveWorkbook.Calculate()
+            RefreshCovenantSummary()
+            BuildCovCharts()
+            ProcessBreachesGrid(STMode = "Y")
+        Finally
+            Me.Cursor = Cursors.Default
+            UpdatingCovenantSelection = False
+        End Try
 
     End Sub
 
@@ -1458,27 +1850,157 @@ RestartFrom:
 
     End Sub
 
-    Private Sub StressTest_ResizeEnd(sender As Object, e As EventArgs) Handles MyBase.ResizeEnd
+    Private Sub StressTest_Shown(sender As Object, e As EventArgs) Handles MyBase.Shown
 
-        MiddleObject(SimpleButtonQC, PanelControl2)
-        'MiddleObject(SimpleButtonModeSwitch, PanelControl1)
-
-        MiddleObject(SimpleButtonCapture, PanelControl3)
-        MiddleObject(LabelControl1, PanelControl3)
-        MiddleObject(SimpleButtonCapture, PanelControl3)
-
-        MiddleObject(ModelPostingComboBoxSelectCovenant, PanelControlCovSel)
-        MiddleObject(LabelControl2, PanelControlCovSel)
+        FirstTabReferenceSize = Me.ClientSize
+        FirstTabBaseFontSize = Me.Font.Size
+        ApplyResponsiveFirstTabScale()
 
     End Sub
 
+    Private Sub FirstTabPageResized(sender As Object, e As EventArgs)
+
+        ApplyResponsiveFirstTabScale()
+
+    End Sub
+
+    Private Sub StressTest_Resize(sender As Object, e As EventArgs) Handles MyBase.Resize
+
+        ApplyResponsiveFirstTabScale()
+
+    End Sub
+
+    Private Sub ApplyResponsiveFirstTabScale()
+
+        If FirstTabBaseFontSize <= 0 OrElse
+           Me.WindowState = FormWindowState.Minimized Then Return
+
+        Dim WorkspaceWidth As Integer = Math.Min(2200, XtraTabPageLMVP.ClientSize.Width)
+        Dim WorkspaceLeft As Integer =
+            Math.Max(0, (XtraTabPageLMVP.ClientSize.Width - WorkspaceWidth) \ 2)
+        TablePanelStressInputs.Bounds =
+            New Rectangle(WorkspaceLeft, 0, WorkspaceWidth, XtraTabPageLMVP.ClientSize.Height)
+
+        Dim WidthScale As Double = WorkspaceWidth / 1920.0
+        Dim HeightScale As Double = XtraTabPageLMVP.ClientSize.Height / 980.0
+        Dim Scale As Double = Math.Max(0.88, Math.Min(1.25, Math.Min(WidthScale, HeightScale)))
+        Dim FontSize As Single = CSng(Math.Max(9.5, FirstTabBaseFontSize * Scale))
+        ApplyControlFont(XtraTabPageLMVP, FontSize)
+        Dim HeaderHeight As Single = CSng(Math.Max(112.0, 120.0 * Scale))
+        TablePanelStressInputs.Rows(0).Height = HeaderHeight
+
+        Dim OutputHeight As Double = Math.Min(
+            1180.0, Math.Max(620.0, XtraTabPageLMVP.ClientSize.Height - HeaderHeight - 12.0))
+        TablePanelOutputs.Rows(0).Height = CSng(Math.Max(190.0, OutputHeight * 0.22))
+        For RowIndex As Integer = 1 To 5
+            TablePanelOutputs.Rows(RowIndex).Height = 1.0!
+        Next
+
+        For Each Grid As GridControl In FindControls(Of GridControl)(XtraTabPageLMVP)
+            Dim View As GridView = TryCast(Grid.MainView, GridView)
+            If View Is Nothing Then Continue For
+            View.Appearance.Row.Font = New Font(View.Appearance.Row.Font.FontFamily, FontSize)
+            View.Appearance.HeaderPanel.Font =
+                New Font(View.Appearance.HeaderPanel.Font.FontFamily, FontSize, FontStyle.Bold)
+            View.RowHeight = CInt(Math.Max(22, 27 * Scale))
+            View.ColumnPanelRowHeight = CInt(Math.Max(28, 34 * Scale))
+        Next
+
+        If GridView2.Columns.Count > 1 Then
+            GridView2.Columns(1).AppearanceCell.Font =
+                New Font("Wingdings", CSng(FontSize * 1.15), FontStyle.Regular)
+        End If
+        For Each Chart As ChartControl In {
+                CvntChart1, CvntChart2, CvntChart3, CvntChart4, CvntChart5}
+            If Chart.Titles.Count > 0 Then
+                Chart.Titles(0).DXFont =
+                    New DXFont("Tahoma", Math.Min(FontSize, 9.5F), DXFontStyle.Bold)
+            End If
+        Next
+
+    End Sub
+
+    Private Sub ApplyControlFont(Parent As Control, FontSize As Single)
+
+        For Each Child As Control In Parent.Controls
+            Child.Font = New Font(Child.Font.FontFamily, FontSize, Child.Font.Style)
+            If Child.HasChildren Then ApplyControlFont(Child, FontSize)
+        Next
+
+    End Sub
+
+    Private Iterator Function FindControls(Of T As Control)(
+        Parent As Control) As IEnumerable(Of T)
+
+        For Each Child As Control In Parent.Controls
+            If TypeOf Child Is T Then Yield DirectCast(Child, T)
+            If Child.HasChildren Then
+                For Each Descendant As T In FindControls(Of T)(Child)
+                    Yield Descendant
+                Next
+            End If
+        Next
+
+    End Function
+
     Private Sub SimpleButtonQC_Click(sender As Object, e As EventArgs) Handles SimpleButtonQC.Click
 
+        RunStressSensitivityCapture()
+
+    End Sub
+
+    Private Sub RunStressSensitivityCapture()
+
         Me.Cursor = Cursors.WaitCursor
+        Try
+            Stress_Sensitivity_Capture()
+            RenderStressHeaderHTMLData()
+        Finally
+            Me.Cursor = Cursors.Default
+        End Try
 
-        Stress_Sensitivity_Capture()
+    End Sub
 
-        Me.Cursor = Cursors.Default
+    Private Sub SimpleButtonExtraQC_Click(sender As Object, e As EventArgs) Handles SimpleButtonExtraQC.Click
+
+        RunStressSensitivityCapture()
+
+    End Sub
+
+    Private Sub SimpleButtonClearAllQCData_Click(sender As Object, e As EventArgs) Handles SimpleButtonClearAllQCData.Click
+
+        If DevExpress.XtraEditors.XtraMessageBox.Show(
+                "Clear every captured stress sensitivity record? This cannot be undone within this screen.",
+                "Clear stress sensitivity captures",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning) <> DialogResult.Yes Then
+            Return
+        End If
+
+        Me.Cursor = Cursors.WaitCursor
+        UNProtectWS(ModelID, "Stress Sensitivity List")
+
+        Try
+            Dim SourceRow As DevExpress.Spreadsheet.CellRange =
+                ActiveWorkbook.DefinedNames.GetDefinedName("StressSensitivity").Range
+            Dim DataRows As DevExpress.Spreadsheet.CellRange =
+                ActiveWorkbook.DefinedNames.GetDefinedName("StressSensitivityData").Range
+            Dim Worksheet As DevExpress.Spreadsheet.Worksheet =
+                ActiveWorkbook.Worksheets("Stress Sensitivity List")
+            Dim CaptureArea As DevExpress.Spreadsheet.CellRange =
+                Worksheet.Range.FromLTRB(
+                    SourceRow.LeftColumnIndex,
+                    DataRows.TopRowIndex,
+                    SourceRow.RightColumnIndex,
+                    DataRows.BottomRowIndex)
+
+            CaptureArea.ClearContents()
+            ActiveWorkbook.Calculate()
+            RenderStressHeaderHTMLData()
+        Finally
+            ProtectWS(ModelID, "Stress Sensitivity List")
+            Me.Cursor = Cursors.Default
+        End Try
 
     End Sub
 
@@ -1503,20 +2025,1348 @@ RestartFrom:
         RangeList.Add(range3)
 
         WebBrowserStressCaptureOutput.DocumentText = RenderRangeCells(RangeList)
+        RefreshNativeSensitivityList()
 
 
 
     End Sub
 
+    Private Sub InitialiseNativeStressViews()
+
+        BuildNativeSensitivityPage()
+        BuildNativePlannerPage()
+        BuildNativeDashboardPage()
+        BuildNativeComparativePage(XtraTabPageCompA, False)
+        BuildNativeComparativePage(XtraTabPageCompB, True)
+
+        If ComboBoxBreachMode.SelectedIndex < 0 Then ComboBoxBreachMode.SelectedIndex = 0
+        AddHandler SimpleButtonCapture.Click, AddressOf CaptureCurrentLiveScenario_Click
+        AddHandler ComboBoxBreachMode.SelectedIndexChanged, AddressOf LiveScenarioNumberChanged
+
+        RefreshNativePlanner()
+        RefreshNativeSensitivityList()
+        RefreshNativeDashboard()
+        RefreshNativeComparativeViews()
+
+    End Sub
+
+    Private Sub BuildNativeSensitivityPage()
+
+        WebBrowserStressCaptureOutput.Visible = False
+        NativeSensitivityGrid = CreateReadOnlyGrid()
+        NativeSensitivityView = CType(NativeSensitivityGrid.MainView, GridView)
+        NativeSensitivityView.OptionsSelection.MultiSelect = True
+        NativeSensitivityView.OptionsSelection.MultiSelectMode =
+            DevExpress.XtraGrid.Views.Grid.GridMultiSelectMode.RowSelect
+        AddHandler NativeSensitivityView.CustomDrawCell,
+            AddressOf NativeSensitivityCustomDrawCell
+        AddHandler NativeSensitivityView.CustomDrawColumnHeader,
+            AddressOf NativeSensitivityCustomDrawColumnHeader
+        TablePanelSSList.SetColumn(NativeSensitivityGrid, 0)
+        TablePanelSSList.SetRow(NativeSensitivityGrid, 1)
+        TablePanelSSList.Controls.Add(NativeSensitivityGrid)
+        NativeSensitivityGrid.BringToFront()
+        SimpleButtonClearQCSelectedData.Visible = True
+        AddHandler SimpleButtonClearQCSelectedData.Click,
+            AddressOf DeleteSelectedStressCaptures_Click
+
+    End Sub
+
+    Private Sub RefreshNativeSensitivityList()
+
+        If NativeSensitivityGrid Is Nothing Then Return
+        Dim Sheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("Stress Sensitivity List")
+        Dim DataRows As DevExpress.Spreadsheet.CellRange =
+            ActiveWorkbook.DefinedNames.GetDefinedName("StressSensitivityData").Range
+        Dim Data As New System.Data.DataTable
+        Data.Columns.Add("SourceRow", GetType(Integer))
+        Data.Columns.Add("Description", GetType(String))
+        Data.Columns.Add("Peak Debt", GetType(String))
+        Data.Columns.Add("Peak Debt Year", GetType(String))
+        Data.Columns.Add("Repayment Year", GetType(String))
+        For ColumnIndex As Integer = 4 To 8
+            Dim Header As String = Sheet.Cells(4, ColumnIndex).DisplayText
+            If String.IsNullOrWhiteSpace(Header) Then Header = "Breach " & (ColumnIndex - 3).ToString()
+            Data.Columns.Add(Header.Replace(Environment.NewLine, " "), GetType(String))
+        Next
+        Data.Columns.Add("Captured", GetType(String))
+        Data.Columns.Add("File", GetType(String))
+
+        For RowIndex As Integer = DataRows.TopRowIndex To DataRows.BottomRowIndex
+            If String.IsNullOrWhiteSpace(Sheet.Cells(RowIndex, 0).DisplayText) Then Continue For
+            Dim Row As System.Data.DataRow = Data.NewRow()
+            Row("SourceRow") = RowIndex
+            Row("Description") = Sheet.Cells(RowIndex, 0).DisplayText
+            Row("Peak Debt") = Sheet.Cells(RowIndex, 1).DisplayText
+            Row("Peak Debt Year") = Sheet.Cells(RowIndex, 2).DisplayText
+            Row("Repayment Year") = Sheet.Cells(RowIndex, 3).DisplayText
+            For ColumnIndex As Integer = 4 To 8
+                Row(ColumnIndex + 1) = Sheet.Cells(RowIndex, ColumnIndex).DisplayText
+            Next
+            Row("Captured") = Sheet.Cells(RowIndex, 59).DisplayText
+            Row("File") = Sheet.Cells(RowIndex, 60).DisplayText
+            Data.Rows.Add(Row)
+        Next
+
+        NativeSensitivityGrid.DataSource = Data
+        If NativeSensitivityView.Columns("SourceRow") IsNot Nothing Then
+            NativeSensitivityView.Columns("SourceRow").Visible = False
+        End If
+        SetSensitivitySourceColumn("Description", 0)
+        SetSensitivitySourceColumn("Peak Debt", 1)
+        SetSensitivitySourceColumn("Peak Debt Year", 2)
+        SetSensitivitySourceColumn("Repayment Year", 3)
+        For ColumnIndex As Integer = 4 To 8
+            NativeSensitivityView.Columns(ColumnIndex + 1).Tag = ColumnIndex
+        Next
+        SetSensitivitySourceColumn("Captured", 59)
+        SetSensitivitySourceColumn("File", 60)
+        NativeSensitivityView.BestFitColumns()
+
+    End Sub
+
+    Private Sub SetSensitivitySourceColumn(FieldName As String, SourceColumn As Integer)
+
+        If NativeSensitivityView.Columns(FieldName) IsNot Nothing Then
+            NativeSensitivityView.Columns(FieldName).Tag = SourceColumn
+        End If
+
+    End Sub
+
+    Private Sub NativeSensitivityCustomDrawCell(
+        sender As Object,
+        e As DevExpress.XtraGrid.Views.Base.RowCellCustomDrawEventArgs)
+
+        If e.RowHandle < 0 OrElse e.Column Is Nothing OrElse
+           Not TypeOf e.Column.Tag Is Integer Then Return
+
+        Dim SourceRowValue As Object =
+            NativeSensitivityView.GetRowCellValue(e.RowHandle, "SourceRow")
+        If SourceRowValue Is Nothing OrElse SourceRowValue Is DBNull.Value Then Return
+
+        Dim SourceCell As DevExpress.Spreadsheet.Cell =
+            ActiveWorkbook.Worksheets("Stress Sensitivity List").Cells(
+                Convert.ToInt32(SourceRowValue), CInt(e.Column.Tag))
+
+        ApplyWorkbookCellAppearance(e.Appearance, SourceCell)
+
+        If NativeSensitivityView.IsCellSelected(e.RowHandle, e.Column) Then
+            e.Appearance.BackColor = Color.Beige
+            e.Appearance.ForeColor = Color.Black
+        End If
+
+        e.DefaultDraw()
+        e.Handled = True
+
+    End Sub
+
+    Private Sub NativeSensitivityCustomDrawColumnHeader(
+        sender As Object,
+        e As DevExpress.XtraGrid.Views.Grid.ColumnHeaderCustomDrawEventArgs)
+
+        If e.Column Is Nothing OrElse Not TypeOf e.Column.Tag Is Integer Then Return
+
+        Dim HeaderCell As DevExpress.Spreadsheet.Cell =
+            ActiveWorkbook.Worksheets("Stress Sensitivity List").Cells(4, CInt(e.Column.Tag))
+        ApplyWorkbookCellAppearance(e.Appearance, HeaderCell)
+        e.DefaultDraw()
+        e.Handled = True
+
+    End Sub
+
+    Private Sub DeleteSelectedStressCaptures_Click(sender As Object, e As EventArgs)
+
+        Dim SelectedHandles As Integer() = NativeSensitivityView.GetSelectedRows()
+        If SelectedHandles.Length = 0 Then
+            DevExpress.XtraEditors.XtraMessageBox.Show(
+                "Select one or more captured scenarios to delete.", "Delete captures")
+            Return
+        End If
+        If DevExpress.XtraEditors.XtraMessageBox.Show(
+                "Delete the selected captured stress-test records?",
+                "Delete captures", MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning) <> DialogResult.Yes Then Return
+
+        UNProtectWS(ModelID, "Stress Sensitivity List")
+        Try
+            Dim Sheet As DevExpress.Spreadsheet.Worksheet =
+                ActiveWorkbook.Worksheets("Stress Sensitivity List")
+            For Each RowHandle As Integer In SelectedHandles
+                Dim SourceRow As Integer =
+                    Convert.ToInt32(NativeSensitivityView.GetRowCellValue(RowHandle, "SourceRow"))
+                Sheet.Range.FromLTRB(0, SourceRow, 60, SourceRow).ClearContents()
+            Next
+            ActiveWorkbook.Calculate()
+            RefreshNativeSensitivityList()
+        Finally
+            ProtectWS(ModelID, "Stress Sensitivity List")
+        End Try
+
+    End Sub
+
+    Private Sub BuildNativePlannerPage()
+
+        XtraTabPageMVP.Controls.Clear()
+        Dim Root As New TableLayoutPanel With {
+            .Dock = DockStyle.Fill, .BackColor = Color.White, .ColumnCount = 1, .RowCount = 2
+        }
+        Root.RowStyles.Add(New RowStyle(SizeType.Absolute, 72))
+        Root.RowStyles.Add(New RowStyle(SizeType.Percent, 100))
+        Dim Toolbar As New FlowLayoutPanel With {
+            .Dock = DockStyle.Fill, .BackColor = Color.White,
+            .Padding = New Padding(12, 14, 12, 8), .WrapContents = False
+        }
+
+        NativePlannerScenario = CreateNativeCombo(160)
+        NativePlannerScenario.Properties.Items.AddRange(DefaultScenarioNames().Cast(Of Object).ToArray())
+        NativePlannerScenario.SelectedIndex = 0
+        NativePlannerName = New DevExpress.XtraEditors.TextEdit With {.Width = 230}
+        NativePlannerImportMode = CreateNativeCombo(230)
+        NativePlannerImportMode.Properties.Items.AddRange(New Object() {
+            "Use assumptions below", "Import data from another business plan model"
+        })
+        NativePlannerInclude = New DevExpress.XtraEditors.CheckEdit With {
+            .Text = "Include base in data import", .AutoSizeInLayoutControl = True
+        }
+        Dim CalculateButton As New DevExpress.XtraEditors.SimpleButton With {
+            .Text = "Apply and recalculate", .Width = 155, .Height = 36
+        }
+        Dim GenerateButton As New DevExpress.XtraEditors.SimpleButton With {
+            .Text = "Generate dashboard", .Width = 155, .Height = 36
+        }
+        Dim ClearButton As New DevExpress.XtraEditors.SimpleButton With {
+            .Text = "Clear scenario", .Width = 120, .Height = 36
+        }
+        Toolbar.Controls.Add(CreateNativeLabel("Scenario"))
+        Toolbar.Controls.Add(NativePlannerScenario)
+        Toolbar.Controls.Add(CreateNativeLabel("Name"))
+        Toolbar.Controls.Add(NativePlannerName)
+        Toolbar.Controls.Add(NativePlannerImportMode)
+        Toolbar.Controls.Add(NativePlannerInclude)
+        Toolbar.Controls.Add(CalculateButton)
+        Toolbar.Controls.Add(GenerateButton)
+        Toolbar.Controls.Add(ClearButton)
+
+        NativePlannerGrid = New GridControl With {.Dock = DockStyle.Fill}
+        NativePlannerView = New GridView(NativePlannerGrid)
+        NativePlannerGrid.MainView = NativePlannerView
+        NativePlannerGrid.ViewCollection.Add(NativePlannerView)
+        NativePlannerView.OptionsView.ShowGroupPanel = False
+        NativePlannerView.OptionsView.ShowAutoFilterRow = True
+        NativePlannerView.OptionsView.ColumnAutoWidth = False
+        NativePlannerView.OptionsBehavior.EditorShowMode = DevExpress.Utils.EditorShowMode.MouseDownFocused
+
+        NativeYearEditor = New RepositoryItemComboBox
+        NativeYearEditor.Items.Add("")
+        For YearNumber As Integer = 1 To 40
+            NativeYearEditor.Items.Add(YearNumber)
+        Next
+        NativeYearEditor.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
+        NativePlannerGrid.RepositoryItems.Add(NativeYearEditor)
+        NativePlannerGrid.RepositoryItems.Add(StandardPercentSpinEdit)
+        NativePlannerGrid.RepositoryItems.Add(StandardYesEmptyEdit)
+        NativePlannerGrid.RepositoryItems.Add(Standard2digitnumberTextBoxEdit)
+
+        Root.Controls.Add(Toolbar, 0, 0)
+        Root.Controls.Add(NativePlannerGrid, 0, 1)
+        XtraTabPageMVP.Controls.Add(Root)
+
+        AddHandler NativePlannerScenario.SelectedIndexChanged, AddressOf NativePlannerScenarioChanged
+        AddHandler NativePlannerName.EditValueChanged, AddressOf NativePlannerNameChanged
+        AddHandler NativePlannerImportMode.SelectedIndexChanged, AddressOf NativePlannerImportModeChanged
+        AddHandler NativePlannerInclude.CheckedChanged, AddressOf NativePlannerIncludeChanged
+        AddHandler NativePlannerView.CellValueChanged, AddressOf NativePlannerCellValueChanged
+        AddHandler NativePlannerView.CustomRowCellEdit, AddressOf NativePlannerCustomRowCellEdit
+        AddHandler NativePlannerView.CustomDrawCell, AddressOf NativePlannerCustomDrawCell
+        AddHandler NativePlannerView.ShowingEditor, AddressOf NativePlannerShowingEditor
+        AddHandler NativePlannerView.CustomColumnDisplayText, AddressOf NativePlannerCustomColumnDisplayText
+        AddHandler CalculateButton.Click, Sub() RecalculateAndRefreshNativeViews()
+        AddHandler GenerateButton.Click, AddressOf GenerateMultivariableDashboard_Click
+        AddHandler ClearButton.Click, AddressOf ClearNativeScenario_Click
+
+    End Sub
+
+    Private Sub BuildNativeDashboardPage()
+
+        XtraTabPageDashboard.Controls.Clear()
+        Dim Root As New TableLayoutPanel With {
+            .Dock = DockStyle.Fill, .BackColor = Color.White, .ColumnCount = 1, .RowCount = 2
+        }
+        Root.RowStyles.Add(New RowStyle(SizeType.Absolute, 62))
+        Root.RowStyles.Add(New RowStyle(SizeType.Percent, 100))
+        Dim Toolbar As New FlowLayoutPanel With {
+            .Dock = DockStyle.Fill, .BackColor = Color.White,
+            .Padding = New Padding(12, 12, 12, 6), .WrapContents = False
+        }
+        NativeDashboardScenario = CreateNativeCombo(240)
+        Toolbar.Controls.Add(CreateNativeLabel("Captured scenario"))
+        Toolbar.Controls.Add(NativeDashboardScenario)
+
+        Dim Body As New TableLayoutPanel With {
+            .Dock = DockStyle.Fill, .BackColor = Color.White, .ColumnCount = 2, .RowCount = 1
+        }
+        Body.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 72))
+        Body.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 28))
+        NativeDashboardCharts = New TableLayoutPanel With {
+            .Dock = DockStyle.Fill, .BackColor = Color.White,
+            .ColumnCount = 3, .RowCount = 2, .Padding = New Padding(6)
+        }
+        For Index As Integer = 1 To 3
+            NativeDashboardCharts.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 33.333F))
+        Next
+        NativeDashboardCharts.RowStyles.Add(New RowStyle(SizeType.Percent, 50))
+        NativeDashboardCharts.RowStyles.Add(New RowStyle(SizeType.Percent, 50))
+
+        NativeDashboardSummary = CreateReadOnlyGrid()
+        Body.Controls.Add(NativeDashboardCharts, 0, 0)
+        Body.Controls.Add(NativeDashboardSummary, 1, 0)
+        Root.Controls.Add(Toolbar, 0, 0)
+        Root.Controls.Add(Body, 0, 1)
+        XtraTabPageDashboard.Controls.Add(Root)
+        AddHandler NativeDashboardScenario.SelectedIndexChanged, AddressOf NativeDashboardScenarioChanged
+
+    End Sub
+
+    Private Sub BuildNativeComparativePage(Page As DevExpress.XtraTab.XtraTabPage, IsSecondPage As Boolean)
+
+        Page.Controls.Clear()
+        Dim Root As New TableLayoutPanel With {
+            .Dock = DockStyle.Fill, .BackColor = Color.White, .ColumnCount = 1, .RowCount = 3
+        }
+        Root.RowStyles.Add(New RowStyle(SizeType.Absolute, 62))
+        Root.RowStyles.Add(New RowStyle(SizeType.Percent, 68))
+        Root.RowStyles.Add(New RowStyle(SizeType.Percent, 32))
+        Dim Toolbar As New FlowLayoutPanel With {
+            .Dock = DockStyle.Fill, .BackColor = Color.White,
+            .Padding = New Padding(10, 10, 10, 4), .WrapContents = False
+        }
+        For ScenarioSlot As Integer = 0 To 3
+            Dim Selector As DevExpress.XtraEditors.ComboBoxEdit = CreateNativeCombo(145)
+            Selector.Tag = ScenarioSlot
+            NativeComparativeSelectors.Add(Selector)
+            Toolbar.Controls.Add(CreateNativeLabel("Comparison " & (ScenarioSlot + 1).ToString()))
+            Toolbar.Controls.Add(Selector)
+            AddHandler Selector.SelectedIndexChanged, AddressOf NativeComparativeScenarioChanged
+        Next
+        If IsSecondPage Then
+            AddComparisonYearSelector(Toolbar, "Gearing start", 12)
+            AddComparisonYearSelector(Toolbar, "Op margin start", 14)
+            AddComparisonYearSelector(Toolbar, "Debt/unit start", 13)
+        Else
+            AddComparisonYearSelector(Toolbar, "Debt start", 10)
+            AddComparisonYearSelector(Toolbar, "EBITDA start", 11)
+        End If
+
+        Dim Charts As New TableLayoutPanel With {
+            .Dock = DockStyle.Fill, .BackColor = Color.White,
+            .ColumnCount = If(IsSecondPage, 3, 2), .RowCount = 1, .Padding = New Padding(6)
+        }
+        For Index As Integer = 1 To Charts.ColumnCount
+            Charts.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, CSng(100.0 / Charts.ColumnCount)))
+        Next
+        Dim Summary As GridControl = CreateReadOnlyGrid()
+        If IsSecondPage Then
+            NativeComparativeChartsB = Charts
+            NativeComparativeSummaryB = Summary
+        Else
+            NativeComparativeChartsA = Charts
+            NativeComparativeSummaryA = Summary
+        End If
+        Root.Controls.Add(Toolbar, 0, 0)
+        Root.Controls.Add(Charts, 0, 1)
+        Root.Controls.Add(Summary, 0, 2)
+        Page.Controls.Add(Root)
+
+    End Sub
+
+    Private Function CreateReadOnlyGrid() As GridControl
+
+        Dim Grid As New GridControl With {.Dock = DockStyle.Fill}
+        Dim View As New GridView(Grid)
+        Grid.MainView = View
+        Grid.ViewCollection.Add(View)
+        View.OptionsBehavior.Editable = False
+        View.OptionsView.ShowGroupPanel = False
+        View.OptionsView.ColumnAutoWidth = True
+        Return Grid
+
+    End Function
+
+    Private Function CreateNativeLabel(Caption As String) As DevExpress.XtraEditors.LabelControl
+
+        Return New DevExpress.XtraEditors.LabelControl With {
+            .Text = Caption, .AutoSizeMode = DevExpress.XtraEditors.LabelAutoSizeMode.Default,
+            .Margin = New Padding(8, 8, 4, 0)
+        }
+
+    End Function
+
+    Private Function CreateNativeCombo(Width As Integer) As DevExpress.XtraEditors.ComboBoxEdit
+
+        Dim Editor As New DevExpress.XtraEditors.ComboBoxEdit With {.Width = Width}
+        Editor.Properties.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
+        Return Editor
+
+    End Function
+
+    Private Sub AddComparisonYearSelector(Toolbar As FlowLayoutPanel, Caption As String, WorkingRow As Integer)
+
+        Dim Editor As New DevExpress.XtraEditors.SpinEdit With {.Width = 70, .Tag = WorkingRow}
+        Editor.Properties.MinValue = 0
+        Editor.Properties.MaxValue = 20
+        Editor.Properties.IsFloatValue = False
+        Editor.EditValue = GetNumericValue(
+            ActiveWorkbook.Worksheets("OW - Covenant Calculation").Cells(WorkingRow - 1, 2))
+        Toolbar.Controls.Add(CreateNativeLabel(Caption))
+        Toolbar.Controls.Add(Editor)
+        AddHandler Editor.EditValueChanged, AddressOf NativeComparisonYearChanged
+
+    End Sub
+
+    Private Function DefaultScenarioNames() As List(Of String)
+
+        Dim Names As New List(Of String) From {"Base Case"}
+        For Index As Integer = 1 To 10
+            Names.Add("Scenario " & Index.ToString())
+        Next
+        Return Names
+
+    End Function
+
+    Private Function WorkbookScenarioNames() As List(Of String)
+
+        Dim Result As New List(Of String)
+        Dim Sheet As DevExpress.Spreadsheet.Worksheet = ActiveWorkbook.Worksheets("Multivariable Planner")
+        Dim Defaults As List(Of String) = DefaultScenarioNames()
+        For ScenarioIndex As Integer = 0 To 10
+            Dim NameValue As String = Sheet.Cells(7, ScenarioStartColumn(ScenarioIndex)).DisplayText.Trim()
+            If String.IsNullOrWhiteSpace(NameValue) Then NameValue = Defaults(ScenarioIndex)
+            Result.Add(NameValue)
+        Next
+        Return Result
+
+    End Function
+
+    Private Function ScenarioStartColumn(ScenarioIndex As Integer) As Integer
+
+        Return 3 + (ScenarioIndex * 5)
+
+    End Function
+
+    Private Sub RefreshNativePlanner()
+
+        If NativePlannerScenario Is Nothing Then Return
+        LoadingNativeViews = True
+        Try
+            Dim ScenarioIndex As Integer = Math.Max(0, NativePlannerScenario.SelectedIndex)
+            Dim StartColumn As Integer = ScenarioStartColumn(ScenarioIndex)
+            Dim Sheet As DevExpress.Spreadsheet.Worksheet = ActiveWorkbook.Worksheets("Multivariable Planner")
+            NativePlannerName.EditValue = Sheet.Cells(7, StartColumn).DisplayText
+            NativePlannerInclude.Visible = ScenarioIndex = 0
+            NativePlannerImportMode.Visible = ScenarioIndex > 0
+            If ScenarioIndex = 0 Then
+                NativePlannerInclude.Checked =
+                    String.Equals(Sheet.Cells(6, StartColumn).DisplayText, "Yes", StringComparison.OrdinalIgnoreCase)
+            Else
+                NativePlannerImportMode.EditValue = Sheet.Cells(6, StartColumn).DisplayText
+                If String.IsNullOrWhiteSpace(Convert.ToString(NativePlannerImportMode.EditValue)) Then
+                    NativePlannerImportMode.EditValue = "Use assumptions below"
+                End If
+            End If
+
+            Dim Data As New System.Data.DataTable
+            Data.Columns.Add("SourceRow", GetType(Integer))
+            Data.Columns.Add("Section", GetType(String))
+            Data.Columns.Add("Assumption", GetType(String))
+            Data.Columns.Add("ShortName", GetType(String))
+            Data.Columns.Add("Change1", GetType(Object))
+            Data.Columns.Add("Change2", GetType(Object))
+            Data.Columns.Add("Change1FromYear", GetType(Object))
+            Data.Columns.Add("Change2FromYear", GetType(Object))
+            Data.Columns.Add("ToYear", GetType(Object))
+            Data.Columns.Add("ValueFormat", GetType(String))
+            AddPlannerRows(Data, Sheet, StartColumn, 9, 47, "Stress")
+            AddPlannerRows(Data, Sheet, StartColumn, 51, 75, "Mitigation")
+            NativePlannerData = Data
+            NativePlannerGrid.DataSource = Data
+            ConfigureNativePlannerColumns()
+        Finally
+            LoadingNativeViews = False
+        End Try
+
+    End Sub
+
+    Private Sub AddPlannerRows(Data As System.Data.DataTable,
+                               Sheet As DevExpress.Spreadsheet.Worksheet,
+                               StartColumn As Integer,
+                               FirstRow As Integer,
+                               LastRow As Integer,
+                               SectionName As String)
+
+        For RowIndex As Integer = FirstRow To LastRow
+            Dim Row As System.Data.DataRow = Data.NewRow()
+            Row("SourceRow") = RowIndex
+            Row("Section") = SectionName
+            Row("Assumption") = Sheet.Cells(RowIndex, 0).DisplayText
+            Row("ShortName") = Sheet.Cells(RowIndex, 1).DisplayText
+            For ValueIndex As Integer = 0 To 4
+                Row(4 + ValueIndex) = CellToObject(Sheet.Cells(RowIndex, StartColumn + ValueIndex))
+            Next
+            Row("ValueFormat") = Sheet.Cells(RowIndex, StartColumn).NumberFormat
+            Data.Rows.Add(Row)
+        Next
+
+    End Sub
+
+    Private Sub ConfigureNativePlannerColumns()
+
+        If NativePlannerView.Columns.Count = 0 Then Return
+        NativePlannerView.Columns("SourceRow").Visible = False
+        NativePlannerView.Columns("ValueFormat").Visible = False
+        NativePlannerView.Columns("Section").OptionsColumn.AllowEdit = False
+        NativePlannerView.Columns("Assumption").OptionsColumn.AllowEdit = False
+        NativePlannerView.Columns("ShortName").OptionsColumn.AllowEdit = True
+        NativePlannerView.Columns("Section").GroupIndex = 0
+        NativePlannerView.Columns("Section").SortOrder = DevExpress.Data.ColumnSortOrder.Descending
+        NativePlannerView.Columns("Assumption").Width = 330
+        NativePlannerView.Columns("ShortName").Width = 180
+        NativePlannerView.Columns("Change1").Caption = "Change 1"
+        NativePlannerView.Columns("Change2").Caption = "Change 2"
+        NativePlannerView.Columns("Change1FromYear").Caption = "Change 1 from year"
+        NativePlannerView.Columns("Change2FromYear").Caption = "Change 2 from year"
+        NativePlannerView.Columns("ToYear").Caption = "To year"
+        For Each ColumnName As String In {"Change1FromYear", "Change2FromYear", "ToYear"}
+            NativePlannerView.Columns(ColumnName).ColumnEdit = NativeYearEditor
+            NativePlannerView.Columns(ColumnName).Width = 125
+        Next
+        NativePlannerView.Columns("Change1").Width = 115
+        NativePlannerView.Columns("Change2").Width = 115
+        NativePlannerView.ExpandAllGroups()
+
+    End Sub
+
+    Private Function CellToObject(Cell As DevExpress.Spreadsheet.Cell) As Object
+
+        If Cell.Value.IsEmpty Then Return DBNull.Value
+        If Cell.Value.IsNumeric Then Return Cell.Value.NumericValue
+        If Cell.Value.IsBoolean Then Return Cell.Value.BooleanValue
+        If Cell.Value.IsDateTime Then Return Cell.Value.DateTimeValue
+        Return Cell.Value.TextValue
+
+    End Function
+
+    Private Sub NativePlannerScenarioChanged(sender As Object, e As EventArgs)
+
+        If Not LoadingNativeViews Then RefreshNativePlanner()
+
+    End Sub
+
+    Private Sub NativePlannerNameChanged(sender As Object, e As EventArgs)
+
+        If LoadingNativeViews Then Return
+        Dim Sheet As DevExpress.Spreadsheet.Worksheet = ActiveWorkbook.Worksheets("Multivariable Planner")
+        Sheet.Cells(7, ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex))).Value =
+            CellValue.FromObject(Convert.ToString(NativePlannerName.EditValue))
+
+    End Sub
+
+    Private Sub NativePlannerImportModeChanged(sender As Object, e As EventArgs)
+
+        If LoadingNativeViews OrElse NativePlannerScenario.SelectedIndex <= 0 Then Return
+        ActiveWorkbook.Worksheets("Multivariable Planner").
+            Cells(6, ScenarioStartColumn(NativePlannerScenario.SelectedIndex)).Value =
+            CellValue.FromObject(Convert.ToString(NativePlannerImportMode.EditValue))
+
+    End Sub
+
+    Private Sub NativePlannerIncludeChanged(sender As Object, e As EventArgs)
+
+        If LoadingNativeViews OrElse NativePlannerScenario.SelectedIndex <> 0 Then Return
+        ActiveWorkbook.Worksheets("Multivariable Planner").Cells(6, 3).Value =
+            CellValue.FromObject(If(NativePlannerInclude.Checked, "Yes", ""))
+
+    End Sub
+
+    Private Sub NativePlannerCellValueChanged(sender As Object,
+                                              e As DevExpress.XtraGrid.Views.Base.CellValueChangedEventArgs)
+
+        If LoadingNativeViews OrElse e.RowHandle < 0 Then Return
+
+        Dim SourceRow As Integer =
+            Convert.ToInt32(NativePlannerView.GetRowCellValue(e.RowHandle, "SourceRow"))
+
+        If e.Column.FieldName = "ShortName" Then
+            Dim ShortNameCell As DevExpress.Spreadsheet.Cell =
+                ActiveWorkbook.Worksheets("Multivariable Planner").Cells(SourceRow, 1)
+
+            If e.Value Is Nothing OrElse e.Value Is DBNull.Value OrElse
+               String.IsNullOrWhiteSpace(Convert.ToString(e.Value)) Then
+                ShortNameCell.ClearContents()
+            Else
+                ShortNameCell.Value = CellValue.FromObject(Convert.ToString(e.Value))
+            End If
+            Return
+        End If
+
+        Dim ValueOffset As Integer
+        Select Case e.Column.FieldName
+            Case "Change1" : ValueOffset = 0
+            Case "Change2" : ValueOffset = 1
+            Case "Change1FromYear" : ValueOffset = 2
+            Case "Change2FromYear" : ValueOffset = 3
+            Case "ToYear" : ValueOffset = 4
+            Case Else : Return
+        End Select
+        Dim Target As DevExpress.Spreadsheet.Cell =
+            ActiveWorkbook.Worksheets("Multivariable Planner").
+                Cells(SourceRow,
+                      ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex)) + ValueOffset)
+        If e.Value Is Nothing OrElse e.Value Is DBNull.Value OrElse
+           String.IsNullOrWhiteSpace(Convert.ToString(e.Value)) Then
+            Target.ClearContents()
+        Else
+            Target.Value = CellValue.FromObject(e.Value)
+        End If
+
+    End Sub
+
+    Private Sub NativePlannerCustomDrawCell(
+        sender As Object,
+        e As DevExpress.XtraGrid.Views.Base.RowCellCustomDrawEventArgs)
+
+        Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
+        If Not TryGetNativePlannerSourceCell(e.RowHandle, e.Column, SourceCell) Then Return
+
+        ApplyWorkbookCellAppearance(e.Appearance, SourceCell)
+
+        If NativePlannerView.IsCellSelected(e.RowHandle, e.Column) Then
+            e.Appearance.BackColor = Color.Beige
+            e.Appearance.ForeColor = Color.Black
+        End If
+
+        e.DefaultDraw()
+        e.Handled = True
+
+    End Sub
+
+    Private Sub NativePlannerShowingEditor(sender As Object, e As CancelEventArgs)
+
+        Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
+        If Not TryGetNativePlannerSourceCell(
+                NativePlannerView.FocusedRowHandle,
+                NativePlannerView.FocusedColumn,
+                SourceCell) OrElse SourceCell.Protection.Locked Then
+            e.Cancel = True
+        End If
+
+    End Sub
+
+    Private Function TryGetNativePlannerSourceCell(
+        RowHandle As Integer,
+        Column As DevExpress.XtraGrid.Columns.GridColumn,
+        ByRef SourceCell As DevExpress.Spreadsheet.Cell) As Boolean
+
+        If RowHandle < 0 OrElse Column Is Nothing Then Return False
+
+        Dim SourceRowValue As Object =
+            NativePlannerView.GetRowCellValue(RowHandle, "SourceRow")
+        If SourceRowValue Is Nothing OrElse SourceRowValue Is DBNull.Value Then Return False
+
+        Dim SourceColumn As Integer
+        Select Case Column.FieldName
+            Case "Assumption" : SourceColumn = 0
+            Case "ShortName" : SourceColumn = 1
+            Case "Change1" : SourceColumn = ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex))
+            Case "Change2" : SourceColumn = ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex)) + 1
+            Case "Change1FromYear" : SourceColumn = ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex)) + 2
+            Case "Change2FromYear" : SourceColumn = ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex)) + 3
+            Case "ToYear" : SourceColumn = ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex)) + 4
+            Case Else : Return False
+        End Select
+
+        SourceCell = ActiveWorkbook.Worksheets("Multivariable Planner").Cells(
+            Convert.ToInt32(SourceRowValue), SourceColumn)
+        Return SourceCell IsNot Nothing
+
+    End Function
+
+    Private Sub ApplyWorkbookCellAppearance(
+        Appearance As DevExpress.Utils.AppearanceObject,
+        SourceCell As DevExpress.Spreadsheet.Cell)
+
+        If SourceCell Is Nothing Then Return
+
+        Dim Background As Color = SourceCell.Fill.BackgroundColor
+        If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
+
+        Dim Foreground As Color = SourceCell.Font.Color
+        If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = AbovoBlue
+
+        Appearance.BackColor = Background
+        Appearance.ForeColor = Foreground
+        Appearance.Options.UseBackColor = True
+        Appearance.Options.UseForeColor = True
+
+    End Sub
+
+    Private Sub NativePlannerCustomRowCellEdit(sender As Object, e As CustomRowCellEditEventArgs)
+
+        If e.RowHandle < 0 Then Return
+        If e.Column.FieldName = "Change1FromYear" OrElse
+           e.Column.FieldName = "Change2FromYear" OrElse e.Column.FieldName = "ToYear" Then
+            e.RepositoryItem = NativeYearEditor
+            Return
+        End If
+        If e.Column.FieldName <> "Change1" AndAlso e.Column.FieldName <> "Change2" Then Return
+        Dim SourceRow As Integer =
+            Convert.ToInt32(NativePlannerView.GetRowCellValue(e.RowHandle, "SourceRow"))
+        Dim Format As String =
+            Convert.ToString(NativePlannerView.GetRowCellValue(e.RowHandle, "ValueFormat"))
+        If SourceRow = 34 OrElse SourceRow = 64 OrElse SourceRow = 65 Then
+            e.RepositoryItem = StandardYesEmptyEdit
+        ElseIf Format.Contains("%") Then
+            e.RepositoryItem = StandardPercentSpinEdit
+        Else
+            e.RepositoryItem = Standard2digitnumberTextBoxEdit
+        End If
+
+    End Sub
+
+    Private Sub NativePlannerCustomColumnDisplayText(
+        sender As Object,
+        e As DevExpress.XtraGrid.Views.Base.CustomColumnDisplayTextEventArgs)
+
+        If e.ListSourceRowIndex < 0 OrElse
+           (e.Column.FieldName <> "Change1" AndAlso e.Column.FieldName <> "Change2") OrElse
+           e.Value Is Nothing OrElse e.Value Is DBNull.Value Then Return
+        Dim RowHandle As Integer = NativePlannerView.GetRowHandle(e.ListSourceRowIndex)
+        Dim Format As String =
+            Convert.ToString(NativePlannerView.GetRowCellValue(RowHandle, "ValueFormat"))
+        Dim NumericValue As Double
+        If Not Double.TryParse(Convert.ToString(e.Value), NumericValue) Then Return
+        If Format.Contains("%") Then
+            e.DisplayText = NumericValue.ToString("P2")
+        ElseIf Format.Contains(ChrW(&HA3)) OrElse Format.Contains("$") Then
+            e.DisplayText = NumericValue.ToString(
+                "C0", Globalization.CultureInfo.GetCultureInfo("en-GB"))
+        Else
+            e.DisplayText = NumericValue.ToString("N2")
+        End If
+
+    End Sub
+
+    Private Sub ClearNativeScenario_Click(sender As Object, e As EventArgs)
+
+        Dim ScenarioIndex As Integer = Math.Max(0, NativePlannerScenario.SelectedIndex)
+        If DevExpress.XtraEditors.XtraMessageBox.Show(
+                "Clear the selected scenario definition?", "Clear scenario",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question) <> DialogResult.Yes Then Return
+        Dim Sheet As DevExpress.Spreadsheet.Worksheet = ActiveWorkbook.Worksheets("Multivariable Planner")
+        Dim StartColumn As Integer = ScenarioStartColumn(ScenarioIndex)
+        Sheet.Range.FromLTRB(StartColumn, 9, StartColumn + 4, 47).ClearContents()
+        Sheet.Range.FromLTRB(StartColumn, 51, StartColumn + 4, 75).ClearContents()
+        If ScenarioIndex > 0 Then
+            ActiveWorkbook.DefinedNames.GetDefinedName(
+                "S" & ScenarioIndex.ToString() & "Data").Range.ClearContents()
+        End If
+        ActiveWorkbook.Calculate()
+        RefreshNativePlanner()
+
+    End Sub
+
+    Private Sub RecalculateAndRefreshNativeViews()
+
+        Me.Cursor = Cursors.WaitCursor
+        Try
+            ActiveWorkbook.Calculate()
+            RefreshNativeDashboard()
+            RefreshNativeComparativeViews()
+        Finally
+            Me.Cursor = Cursors.Default
+        End Try
+
+    End Sub
+
+    Private Sub LiveScenarioNumberChanged(sender As Object, e As EventArgs)
+
+        If ComboBoxBreachMode.SelectedIndex >= 0 Then
+            ActiveWorkbook.DefinedNames.GetDefinedName("StressTestNumber").Range(0, 0).Value =
+                CellValue.FromObject(ComboBoxBreachMode.SelectedItem.ToString())
+        End If
+
+    End Sub
+
+    Private Sub CaptureCurrentLiveScenario_Click(sender As Object, e As EventArgs)
+
+        If ComboBoxBreachMode.SelectedIndex < 0 Then
+            DevExpress.XtraEditors.XtraMessageBox.Show(
+                "Select a test number first.", "Capture multivariable assumptions")
+            Return
+        End If
+        Dim ScenarioName As String = Convert.ToString(TextEditMultivariableName.EditValue).Trim()
+        If String.IsNullOrWhiteSpace(ScenarioName) OrElse
+           String.Equals(ScenarioName, "Base", StringComparison.OrdinalIgnoreCase) Then
+            DevExpress.XtraEditors.XtraMessageBox.Show(
+                "Enter a multivariable scenario name first.", "Capture multivariable assumptions")
+            Return
+        End If
+
+        Dim ScenarioIndex As Integer = ComboBoxBreachMode.SelectedIndex + 1
+        Me.Cursor = Cursors.WaitCursor
+        UNProtectWS(ModelID, "Multivariable Planner")
+        UNProtectWS(ModelID, "OW - Captured Data")
+        Try
+            CopyRangeValues(
+                ActiveWorkbook.DefinedNames.GetDefinedName("LiveAssumptions").Range,
+                ActiveWorkbook.DefinedNames.GetDefinedName(
+                    "Assumptions" & ScenarioIndex.ToString()).Range)
+            CopyRangeValues(
+                ActiveWorkbook.DefinedNames.GetDefinedName("LiveAssumptionsA").Range,
+                ActiveWorkbook.DefinedNames.GetDefinedName(
+                    "AssumptionsA" & ScenarioIndex.ToString()).Range)
+            ActiveWorkbook.Worksheets("Multivariable Planner").
+                Cells(7, ScenarioStartColumn(ScenarioIndex)).Value =
+                CellValue.FromObject(ScenarioName)
+            ActiveWorkbook.DefinedNames.GetDefinedName(
+                "ImportMode" & ScenarioIndex.ToString()).Range(0, 0).Value =
+                CellValue.FromObject("Use assumptions below")
+            CopyRangeValues(
+                ActiveWorkbook.DefinedNames.GetDefinedName("StressLiveInfo").Range,
+                ActiveWorkbook.DefinedNames.GetDefinedName(
+                    "S" & ScenarioIndex.ToString() & "Data").Range)
+            ActiveWorkbook.Calculate()
+            RefreshAllNativeScenarioSelectors()
+            RefreshNativePlanner()
+            RefreshNativeDashboard()
+            RefreshNativeComparativeViews()
+        Finally
+            ProtectWS(ModelID, "Multivariable Planner")
+            ProtectWS(ModelID, "OW - Captured Data")
+            Me.Cursor = Cursors.Default
+        End Try
+        DevExpress.XtraEditors.XtraMessageBox.Show(
+            "The current live assumptions and results were captured as " &
+            ScenarioName & ".", "Capture complete")
+
+    End Sub
+
+    Private Sub GenerateMultivariableDashboard_Click(sender As Object, e As EventArgs)
+
+        If DevExpress.XtraEditors.XtraMessageBox.Show(
+                "Run and capture every configured multivariable scenario? This may take several minutes.",
+                "Generate multivariable dashboard",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question) <> DialogResult.Yes Then Return
+
+        Dim LiveAssumptions As DevExpress.Spreadsheet.CellRange =
+            ActiveWorkbook.DefinedNames.GetDefinedName("LiveAssumptions").Range
+        Dim LiveAssumptionsA As DevExpress.Spreadsheet.CellRange =
+            ActiveWorkbook.DefinedNames.GetDefinedName("LiveAssumptionsA").Range
+        Dim SavedLive As CellValue(,) = SnapshotRange(LiveAssumptions)
+        Dim SavedLiveA As CellValue(,) = SnapshotRange(LiveAssumptionsA)
+        Dim SavedMode As String =
+            ActiveWorkbook.DefinedNames.GetDefinedName("StressTestMode").Range(0, 0).DisplayText
+        Dim SavedModeReference As String =
+            ActiveWorkbook.DefinedNames.GetDefinedName("Mode").RefersTo
+        Dim OriginalTitle As String = Me.Text
+
+        Me.Cursor = Cursors.WaitCursor
+        UNProtectWS(ModelID, "Multivariable Planner")
+        UNProtectWS(ModelID, "OW - Captured Data")
+        UNProtectWS(ModelID, "Live Multivariable Planner")
+        Try
+            SetWorkbookStressMode(False)
+            LiveAssumptions.ClearContents()
+            LiveAssumptionsA.ClearContents()
+            ActiveWorkbook.Calculate()
+            CopyRangeValues(
+                ActiveWorkbook.DefinedNames.GetDefinedName("StressLiveInfo").Range,
+                ActiveWorkbook.DefinedNames.GetDefinedName("S0Data").Range)
+
+            Dim Names As List(Of String) = WorkbookScenarioNames()
+            For ScenarioIndex As Integer = 1 To 10
+                Me.Text = "Generating dashboard - " & Names(ScenarioIndex)
+                Windows.Forms.Application.DoEvents()
+                Dim TargetData As DevExpress.Spreadsheet.CellRange =
+                    ActiveWorkbook.DefinedNames.GetDefinedName(
+                        "S" & ScenarioIndex.ToString() & "Data").Range
+                If String.IsNullOrWhiteSpace(Names(ScenarioIndex)) Then
+                    TargetData.ClearContents()
+                    Continue For
+                End If
+
+                Dim ImportMode As String =
+                    ActiveWorkbook.DefinedNames.GetDefinedName(
+                        "ImportMode" & ScenarioIndex.ToString()).Range(0, 0).DisplayText
+                If Not String.Equals(
+                        ImportMode, "Use assumptions below",
+                        StringComparison.OrdinalIgnoreCase) Then
+                    If Not ImportScenarioResults(Names(ScenarioIndex), TargetData) Then Continue For
+                Else
+                    SetWorkbookStressMode(True)
+                    CopyRangeValues(
+                        ActiveWorkbook.DefinedNames.GetDefinedName(
+                            "Assumptions" & ScenarioIndex.ToString()).Range,
+                        LiveAssumptions)
+                    CopyRangeValues(
+                        ActiveWorkbook.DefinedNames.GetDefinedName(
+                            "AssumptionsA" & ScenarioIndex.ToString()).Range,
+                        LiveAssumptionsA)
+                    ActiveWorkbook.Calculate()
+                    CopyRangeValues(
+                        ActiveWorkbook.DefinedNames.GetDefinedName("StressLiveInfo").Range,
+                        TargetData)
+                    SetWorkbookStressMode(False)
+                End If
+            Next
+        Catch ex As Exception
+            DevExpress.XtraEditors.XtraMessageBox.Show(
+                "Dashboard generation stopped: " & ex.Message,
+                "Multivariable dashboard", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        Finally
+            RestoreRange(LiveAssumptions, SavedLive)
+            RestoreRange(LiveAssumptionsA, SavedLiveA)
+            ActiveWorkbook.DefinedNames.GetDefinedName(
+                "StressTestMode").Range(0, 0).Value = CellValue.FromObject(SavedMode)
+            ActiveWorkbook.DefinedNames.GetDefinedName("Mode").RefersTo = SavedModeReference
+            ActiveWorkbook.Calculate()
+            ProtectWS(ModelID, "Multivariable Planner")
+            ProtectWS(ModelID, "OW - Captured Data")
+            ProtectWS(ModelID, "Live Multivariable Planner")
+            Me.Text = OriginalTitle
+            Me.Cursor = Cursors.Default
+        End Try
+
+        RefreshAllNativeScenarioSelectors()
+        RefreshNativeDashboard()
+        RefreshNativeComparativeViews()
+        XtraTabControlStressTest.SelectedTabPage = XtraTabPageDashboard
+
+    End Sub
+
+    Private Sub SetWorkbookStressMode(Enabled As Boolean)
+
+        ActiveWorkbook.DefinedNames.GetDefinedName("StressTestMode").Range(0, 0).Value =
+            CellValue.FromObject(If(Enabled, "Y", "N"))
+        ActiveWorkbook.DefinedNames.GetDefinedName("Mode").RefersTo =
+            If(Enabled, """Stress Test""", """Business Plan""")
+
+    End Sub
+
+    Private Function ImportScenarioResults(
+        ScenarioName As String,
+        TargetData As DevExpress.Spreadsheet.CellRange) As Boolean
+
+        Using Dialog As New DevExpress.XtraEditors.XtraOpenFileDialog()
+            Dialog.Title = "Select business plan results for " & ScenarioName
+            Dialog.Filter = "Abovo business plan models|*.xlsb;*.abp;*.xlsm;*.xlsx"
+            If Dialog.ShowDialog() <> DialogResult.OK Then Return False
+            Using SourceWorkbook As New DevExpress.Spreadsheet.Workbook()
+                SourceWorkbook.LoadDocument(Dialog.FileName)
+                Dim SourceName As DevExpress.Spreadsheet.DefinedName =
+                    SourceWorkbook.DefinedNames.GetDefinedName("StressLiveInfo")
+                If SourceName Is Nothing OrElse SourceName.Range Is Nothing Then
+                    DevExpress.XtraEditors.XtraMessageBox.Show(
+                        "The selected model does not contain the StressLiveInfo results range.",
+                        "Import scenario")
+                    Return False
+                End If
+                CopyRangeValues(SourceName.Range, TargetData)
+            End Using
+        End Using
+        Return True
+
+    End Function
+
+    Private Sub CopyRangeValues(Source As DevExpress.Spreadsheet.CellRange,
+                                Target As DevExpress.Spreadsheet.CellRange)
+
+        If Source.RowCount <> Target.RowCount OrElse
+           Source.ColumnCount <> Target.ColumnCount Then
+            Throw New InvalidOperationException(
+                "Stress-test source and target ranges do not have matching dimensions.")
+        End If
+        For RowIndex As Integer = 0 To Source.RowCount - 1
+            For ColumnIndex As Integer = 0 To Source.ColumnCount - 1
+                Target(RowIndex, ColumnIndex).Value = Source(RowIndex, ColumnIndex).Value
+            Next
+        Next
+
+    End Sub
+
+    Private Function SnapshotRange(
+        Source As DevExpress.Spreadsheet.CellRange) As CellValue(,)
+
+        Dim Values(Source.RowCount - 1, Source.ColumnCount - 1) As CellValue
+        For RowIndex As Integer = 0 To Source.RowCount - 1
+            For ColumnIndex As Integer = 0 To Source.ColumnCount - 1
+                Values(RowIndex, ColumnIndex) = Source(RowIndex, ColumnIndex).Value
+            Next
+        Next
+        Return Values
+
+    End Function
+
+    Private Sub RestoreRange(
+        Target As DevExpress.Spreadsheet.CellRange, Values As CellValue(,))
+
+        For RowIndex As Integer = 0 To Target.RowCount - 1
+            For ColumnIndex As Integer = 0 To Target.ColumnCount - 1
+                Target(RowIndex, ColumnIndex).Value = Values(RowIndex, ColumnIndex)
+            Next
+        Next
+
+    End Sub
+
+    Private Sub RefreshAllNativeScenarioSelectors()
+
+        Dim Names As List(Of String) = WorkbookScenarioNames()
+        LoadingNativeViews = True
+        Try
+            If NativePlannerScenario IsNot Nothing Then
+                Dim Selected As Integer = Math.Max(0, NativePlannerScenario.SelectedIndex)
+                NativePlannerScenario.Properties.Items.Clear()
+                NativePlannerScenario.Properties.Items.AddRange(Names.Cast(Of Object).ToArray())
+                NativePlannerScenario.SelectedIndex = Selected
+            End If
+            If NativeDashboardScenario IsNot Nothing Then
+                Dim Selected As Integer = Math.Max(0, NativeDashboardScenario.SelectedIndex)
+                NativeDashboardScenario.Properties.Items.Clear()
+                NativeDashboardScenario.Properties.Items.AddRange(Names.Cast(Of Object).ToArray())
+                NativeDashboardScenario.SelectedIndex = Math.Min(Selected, Names.Count - 1)
+            End If
+            For Each Selector As DevExpress.XtraEditors.ComboBoxEdit In NativeComparativeSelectors
+                Dim SelectedText As String = Convert.ToString(Selector.EditValue)
+                Selector.Properties.Items.Clear()
+                Selector.Properties.Items.AddRange(Names.Cast(Of Object).ToArray())
+                Dim Match As Integer = Names.FindIndex(
+                    Function(Item) String.Equals(
+                        Item, SelectedText, StringComparison.OrdinalIgnoreCase))
+                Selector.SelectedIndex =
+                    If(Match >= 0, Match,
+                       Math.Min(Convert.ToInt32(Selector.Tag) + 1, Names.Count - 1))
+            Next
+        Finally
+            LoadingNativeViews = False
+        End Try
+
+    End Sub
+
+    Private Sub NativeDashboardScenarioChanged(sender As Object, e As EventArgs)
+
+        If Not LoadingNativeViews Then RefreshNativeDashboard()
+
+    End Sub
+
+    Private Sub RefreshNativeDashboard()
+
+        If NativeDashboardScenario Is Nothing Then Return
+        Dim Names As List(Of String) = WorkbookScenarioNames()
+        LoadingNativeViews = True
+        Try
+            Dim PreviousIndex As Integer = Math.Max(0, NativeDashboardScenario.SelectedIndex)
+            NativeDashboardScenario.Properties.Items.Clear()
+            NativeDashboardScenario.Properties.Items.AddRange(Names.Cast(Of Object).ToArray())
+            NativeDashboardScenario.SelectedIndex = Math.Min(PreviousIndex, Names.Count - 1)
+            Dim ScenarioIndex As Integer = Math.Max(0, NativeDashboardScenario.SelectedIndex)
+            ActiveWorkbook.Worksheets("Multivariable Dashboard").Range("E6")(0, 0).Value =
+                CellValue.FromObject(Names(ScenarioIndex))
+            ActiveWorkbook.Calculate()
+
+            Dim BaseData As DevExpress.Spreadsheet.CellRange =
+                ActiveWorkbook.DefinedNames.GetDefinedName("S0Data").Range
+            Dim ScenarioData As DevExpress.Spreadsheet.CellRange =
+                ActiveWorkbook.DefinedNames.GetDefinedName(
+                    "S" & ScenarioIndex.ToString() & "Data").Range
+            Dim TargetData As DevExpress.Spreadsheet.CellRange =
+                ActiveWorkbook.Worksheets("Multivariable Planner").Range("BI10:BM49")
+            Dim YearData As DevExpress.Spreadsheet.CellRange =
+                ActiveWorkbook.Worksheets("OW - Live Stress Reporting").Range("B8:B47")
+            Dim DirectionData As DevExpress.Spreadsheet.CellRange =
+                ActiveWorkbook.Worksheets("Multivariable Planner").Range("BO8:BS8")
+            Dim MetricNames As String() = {
+                "Gearing", "Operating Margin", "EBITDA MRI", "Debt / Unit", "Debt"
+            }
+
+            NativeDashboardCharts.SuspendLayout()
+            NativeDashboardCharts.Controls.Clear()
+            Dim Summary As New System.Data.DataTable
+            Summary.Columns.Add("Metric", GetType(String))
+            Summary.Columns.Add("Rule", GetType(String))
+            Summary.Columns.Add("Breaches", GetType(Integer))
+            Summary.Columns.Add("WorstValue", GetType(String))
+            Summary.Columns.Add("WorstYear", GetType(String))
+
+            For MetricIndex As Integer = 0 To 4
+                Dim Chart As ChartControl = BuildMetricChart(
+                    MetricNames(MetricIndex), YearData, TargetData, BaseData,
+                    ScenarioData, MetricIndex, Names(ScenarioIndex))
+                NativeDashboardCharts.Controls.Add(
+                    Chart, MetricIndex Mod 3, MetricIndex \ 3)
+
+                Dim Direction As String = DirectionData(0, MetricIndex).DisplayText
+                Dim Breaches As Integer = 0
+                Dim IsMinimum As Boolean =
+                    String.Equals(Direction, "Greater", StringComparison.OrdinalIgnoreCase)
+                Dim WorstValue As Double = If(IsMinimum, Double.MaxValue, Double.MinValue)
+                Dim WorstYear As String = ""
+                For RowIndex As Integer = 0 To 39
+                    Dim Actual As Double = GetNumericValue(ScenarioData(RowIndex, MetricIndex))
+                    Dim Target As Double = GetNumericValue(TargetData(RowIndex, MetricIndex))
+                    If If(IsMinimum, Actual < Target, Actual > Target) Then Breaches += 1
+                    If (IsMinimum AndAlso Actual < WorstValue) OrElse
+                       (Not IsMinimum AndAlso Actual > WorstValue) Then
+                        WorstValue = Actual
+                        WorstYear = YearData(RowIndex, 0).DisplayText
+                    End If
+                Next
+                Summary.Rows.Add(
+                    MetricNames(MetricIndex), If(IsMinimum, "Minimum", "Maximum"),
+                    Breaches, FormatMetricValue(MetricIndex, WorstValue), WorstYear)
+            Next
+            NativeDashboardCharts.ResumeLayout()
+            NativeDashboardSummary.DataSource = Summary
+            CType(NativeDashboardSummary.MainView, GridView).BestFitColumns()
+        Finally
+            LoadingNativeViews = False
+        End Try
+
+    End Sub
+
+    Private Function BuildMetricChart(
+        Title As String,
+        Years As DevExpress.Spreadsheet.CellRange,
+        Targets As DevExpress.Spreadsheet.CellRange,
+        BaseData As DevExpress.Spreadsheet.CellRange,
+        ScenarioData As DevExpress.Spreadsheet.CellRange,
+        MetricIndex As Integer,
+        ScenarioName As String) As ChartControl
+
+        Dim Chart As New ChartControl With {.Dock = DockStyle.Fill, .BackColor = Color.White}
+        Dim TargetSeries As New DevExpress.XtraCharts.Series("Target", ViewType.Line)
+        Dim BaseSeries As New DevExpress.XtraCharts.Series("Base Case", ViewType.Line)
+        Dim ScenarioSeries As New DevExpress.XtraCharts.Series(ScenarioName, ViewType.Line)
+        For RowIndex As Integer = 0 To 39
+            Dim YearLabel As String = Years(RowIndex, 0).DisplayText
+            AddSeriesPoint(TargetSeries, YearLabel, Targets(RowIndex, MetricIndex))
+            AddSeriesPoint(BaseSeries, YearLabel, BaseData(RowIndex, MetricIndex))
+            AddSeriesPoint(ScenarioSeries, YearLabel, ScenarioData(RowIndex, MetricIndex))
+        Next
+        Chart.Series.Add(TargetSeries)
+        Chart.Series.Add(BaseSeries)
+        If Not String.Equals(
+                ScenarioName, "Base Case", StringComparison.OrdinalIgnoreCase) Then
+            Chart.Series.Add(ScenarioSeries)
+        End If
+        Chart.Titles.Add(New DevExpress.XtraCharts.ChartTitle With {.Text = Title})
+        Chart.Legend.Visibility = DevExpress.Utils.DefaultBoolean.True
+        Dim Diagram As XYDiagram = TryCast(Chart.Diagram, XYDiagram)
+        If Diagram IsNot Nothing Then
+            Diagram.AxisX.Label.Angle = -45
+            Diagram.AxisX.Label.ResolveOverlappingOptions.AllowRotate = True
+        End If
+        Return Chart
+
+    End Function
+
+    Private Sub AddSeriesPoint(
+        Series As DevExpress.XtraCharts.Series,
+        Argument As String,
+        Cell As DevExpress.Spreadsheet.Cell)
+
+        If Cell.Value.IsNumeric Then
+            Series.Points.Add(New SeriesPoint(Argument, Cell.Value.NumericValue))
+        End If
+
+    End Sub
+
+    Private Function GetNumericValue(Cell As DevExpress.Spreadsheet.Cell) As Double
+
+        If Cell IsNot Nothing AndAlso Cell.Value.IsNumeric Then Return Cell.Value.NumericValue
+        Return 0
+
+    End Function
+
+    Private Function FormatMetricValue(MetricIndex As Integer, Value As Double) As String
+
+        If MetricIndex <= 2 Then Return Value.ToString("P1")
+        Return Value.ToString("N1")
+
+    End Function
+
+    Private Sub NativeComparativeScenarioChanged(sender As Object, e As EventArgs)
+
+        If LoadingNativeViews Then Return
+        Dim Selector As DevExpress.XtraEditors.ComboBoxEdit =
+            TryCast(sender, DevExpress.XtraEditors.ComboBoxEdit)
+        If Selector Is Nothing Then Return
+        Dim Slot As Integer = Convert.ToInt32(Selector.Tag)
+        ActiveWorkbook.Worksheets("Comparative").Cells(11 + (Slot * 2), 2).Value =
+            CellValue.FromObject(Convert.ToString(Selector.EditValue))
+        ActiveWorkbook.Calculate()
+        RefreshNativeComparativeViews()
+
+    End Sub
+
+    Private Sub NativeComparisonYearChanged(sender As Object, e As EventArgs)
+
+        If LoadingNativeViews Then Return
+        Dim Editor As DevExpress.XtraEditors.SpinEdit =
+            TryCast(sender, DevExpress.XtraEditors.SpinEdit)
+        If Editor Is Nothing Then Return
+        Dim WorkingRow As Integer = Convert.ToInt32(Editor.Tag)
+        ActiveWorkbook.Worksheets("OW - Covenant Calculation").
+            Cells(WorkingRow - 1, 2).Value =
+            CellValue.FromObject(Convert.ToInt32(Editor.Value))
+        ActiveWorkbook.Calculate()
+        RefreshNativeComparativeViews()
+
+    End Sub
+
+    Private Sub RefreshNativeComparativeViews()
+
+        If NativeComparativeChartsA Is Nothing OrElse
+           NativeComparativeChartsB Is Nothing Then Return
+        Dim Names As List(Of String) = WorkbookScenarioNames()
+        LoadingNativeViews = True
+        Try
+            Dim Sheet As DevExpress.Spreadsheet.Worksheet =
+                ActiveWorkbook.Worksheets("Comparative")
+            For Each Selector As DevExpress.XtraEditors.ComboBoxEdit In NativeComparativeSelectors
+                Dim Slot As Integer = Convert.ToInt32(Selector.Tag)
+                Dim SelectedName As String =
+                    Sheet.Cells(11 + (Slot * 2), 2).DisplayText
+                Selector.Properties.Items.Clear()
+                Selector.Properties.Items.AddRange(Names.Cast(Of Object).ToArray())
+                Dim Match As Integer = Names.FindIndex(
+                    Function(Item) String.Equals(
+                        Item, SelectedName, StringComparison.OrdinalIgnoreCase))
+                Selector.SelectedIndex =
+                    If(Match >= 0, Match, Math.Min(Slot + 1, Names.Count - 1))
+            Next
+
+            ActiveWorkbook.Calculate()
+            Dim Working As DevExpress.Spreadsheet.Worksheet =
+                ActiveWorkbook.Worksheets("OW - Covenant Calculation")
+            NativeComparativeChartsA.SuspendLayout()
+            NativeComparativeChartsA.Controls.Clear()
+            NativeComparativeChartsA.Controls.Add(
+                BuildComparisonChart("Debt", Working, 62, 63, 68), 0, 0)
+            NativeComparativeChartsA.Controls.Add(
+                BuildComparisonChart("EBITDA MRI", Working, 70, 71, 76), 1, 0)
+            NativeComparativeChartsA.ResumeLayout()
+
+            NativeComparativeChartsB.SuspendLayout()
+            NativeComparativeChartsB.Controls.Clear()
+            NativeComparativeChartsB.Controls.Add(
+                BuildComparisonChart("Gearing", Working, 82, 83, 88), 0, 0)
+            NativeComparativeChartsB.Controls.Add(
+                BuildComparisonChart("Operating Margin", Working, 98, 99, 104), 1, 0)
+            NativeComparativeChartsB.Controls.Add(
+                BuildComparisonChart("Debt / Unit", Working, 90, 91, 96), 2, 0)
+            NativeComparativeChartsB.ResumeLayout()
+
+            NativeComparativeSummaryA.DataSource = BuildComparativeSummaryA()
+            CType(NativeComparativeSummaryA.MainView, GridView).BestFitColumns()
+            NativeComparativeSummaryB.DataSource = BuildComparativeSummaryB()
+            CType(NativeComparativeSummaryB.MainView, GridView).BestFitColumns()
+        Finally
+            LoadingNativeViews = False
+        End Try
+
+    End Sub
+
+    Private Function BuildComparisonChart(
+        Title As String,
+        Sheet As DevExpress.Spreadsheet.Worksheet,
+        ArgumentColumn As Integer,
+        FirstSeriesColumn As Integer,
+        LastSeriesColumn As Integer) As ChartControl
+
+        Dim Chart As New ChartControl With {.Dock = DockStyle.Fill, .BackColor = Color.White}
+        For SeriesColumn As Integer = FirstSeriesColumn To LastSeriesColumn
+            Dim SeriesName As String = Sheet.Cells(17, SeriesColumn).DisplayText
+            If String.IsNullOrWhiteSpace(SeriesName) Then
+                SeriesName = "Series " & (SeriesColumn - FirstSeriesColumn + 1).ToString()
+            End If
+            Dim NewSeries As New DevExpress.XtraCharts.Series(SeriesName, ViewType.Line)
+            For RowIndex As Integer = 18 To 37
+                AddSeriesPoint(
+                    NewSeries, Sheet.Cells(RowIndex, ArgumentColumn).DisplayText,
+                    Sheet.Cells(RowIndex, SeriesColumn))
+            Next
+            Chart.Series.Add(NewSeries)
+        Next
+        Chart.Titles.Add(New DevExpress.XtraCharts.ChartTitle With {.Text = Title})
+        Chart.Legend.Visibility = DevExpress.Utils.DefaultBoolean.True
+        Dim Diagram As XYDiagram = TryCast(Chart.Diagram, XYDiagram)
+        If Diagram IsNot Nothing Then
+            Diagram.AxisX.Label.Angle = -45
+            Diagram.AxisX.Label.ResolveOverlappingOptions.AllowRotate = True
+        End If
+        Return Chart
+
+    End Function
+
+    Private Function BuildComparativeSummaryA() As System.Data.DataTable
+
+        Dim Table As New System.Data.DataTable
+        Table.Columns.Add("Scenario", GetType(String))
+        Table.Columns.Add("Peak Debt", GetType(String))
+        Table.Columns.Add("Peak Debt Year", GetType(String))
+        Table.Columns.Add("Repayment Year", GetType(String))
+        Table.Columns.Add("Max Debt / Unit", GetType(String))
+        Table.Columns.Add("Min EBITDA MRI", GetType(String))
+        Table.Columns.Add("EBITDA Year", GetType(String))
+        Dim Sheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("Comparative")
+        For ResultIndex As Integer = 0 To 5
+            Dim SourceRow As Integer = 7 + (ResultIndex * 2)
+            Dim EbitdaRow As Integer = 35 + (ResultIndex * 2)
+            Table.Rows.Add(
+                Sheet.Cells(SourceRow, 6).DisplayText,
+                Sheet.Cells(SourceRow, 8).DisplayText,
+                Sheet.Cells(SourceRow, 9).DisplayText,
+                Sheet.Cells(SourceRow, 10).DisplayText,
+                Sheet.Cells(SourceRow, 11).DisplayText,
+                Sheet.Cells(EbitdaRow, 15).DisplayText,
+                Sheet.Cells(EbitdaRow, 17).DisplayText)
+        Next
+        Return Table
+
+    End Function
+
+    Private Function BuildComparativeSummaryB() As System.Data.DataTable
+
+        Dim Table As New System.Data.DataTable
+        Table.Columns.Add("Scenario", GetType(String))
+        Table.Columns.Add("Max Gearing", GetType(String))
+        Table.Columns.Add("Gearing Year", GetType(String))
+        Table.Columns.Add("Min Op Margin", GetType(String))
+        Table.Columns.Add("Op Margin Year", GetType(String))
+        Table.Columns.Add("Max Debt / Unit", GetType(String))
+        Table.Columns.Add("Debt / Unit Year", GetType(String))
+        Dim Sheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("Comparative 2")
+        For ResultIndex As Integer = 0 To 5
+            Dim SourceRow As Integer = 34 + (ResultIndex * 2)
+            Table.Rows.Add(
+                Sheet.Cells(SourceRow, 15).DisplayText,
+                Sheet.Cells(SourceRow, 17).DisplayText,
+                Sheet.Cells(SourceRow, 18).DisplayText,
+                Sheet.Cells(SourceRow, 20).DisplayText,
+                Sheet.Cells(SourceRow, 21).DisplayText,
+                Sheet.Cells(SourceRow, 23).DisplayText,
+                Sheet.Cells(SourceRow, 24).DisplayText)
+        Next
+        Return Table
+
+    End Function
+
 
     'Private Sub SimpleButton1_Click(sender As Object, e As EventArgs) Handles SimpleButton1.Click
 
-    '    'Debug.Print(WrapCG_MitsMoney.Width.ToString & " " & WrapCG_MitsMoney.Height.ToString)
-    '    'Debug.Print(WrapCG_MitsDev.Width.ToString & " " & WrapCG_MitsDev.Height.ToString)
-    '    'Debug.Print(WrapCG_Mits.Width.ToString & " " & WrapCG_Mits.Height.ToString)
-    '    'Debug.Print(WrapCG_MitsMoney.WrappedCGC.Width.ToString & " " & WrapCG_MitsMoney.WrappedCGC.Height.ToString)
-    '    'Debug.Print(WrapCG_MitsDev.WrappedCGC.Width.ToString & " " & WrapCG_MitsDev.WrappedCGC.Height.ToString)
-    '    'Debug.Print(WrapCG_Mits.WrappedCGC.Width.ToString & " " & WrapCG_Mits.WrappedCGC.Height.ToString)
     'End Sub
     '    Sub StressTestDataCapture()
 

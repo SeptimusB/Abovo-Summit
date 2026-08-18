@@ -1135,9 +1135,6 @@ Namespace Abovo
                         End Select
 
 #If DEBUG Then
-                        Debug.Print("WorkbookStructureRuleManager.Insert '" &
-                                    Rule.RuleID & "' sheet '" & WS.Name &
-                                    "': " & SheetTimer.ElapsedMilliseconds.ToString & "ms")
 #End If
 
                         ChangedWorksheets.Add(WS.Name)
@@ -1185,12 +1182,6 @@ Namespace Abovo
                 RunPostActions(Rule, ChangedWorksheets)
 
 #If DEBUG Then
-                Debug.Print("WorkbookStructureRuleManager.Insert '" &
-                            Rule.RuleID & "' post-actions: " &
-                            PostActionTimer.ElapsedMilliseconds.ToString & "ms")
-                Debug.Print("WorkbookStructureRuleManager.Insert '" &
-                            Rule.RuleID & "' total: " &
-                            TotalTimer.ElapsedMilliseconds.ToString & "ms")
 #End If
 
             End If
@@ -1349,9 +1340,6 @@ Namespace Abovo
                         Next
 
 #If DEBUG Then
-                        Debug.Print("WorkbookStructureRuleManager.Delete '" &
-                                    Rule.RuleID & "' sheet '" & WS.Name &
-                                    "': " & SheetTimer.ElapsedMilliseconds.ToString & "ms")
 #End If
 
                         ChangedWorksheets.Add(WS.Name)
@@ -1396,12 +1384,6 @@ Namespace Abovo
                 RunPostActions(Rule, ChangedWorksheets)
 
 #If DEBUG Then
-                Debug.Print("WorkbookStructureRuleManager.Delete '" &
-                            Rule.RuleID & "' post-actions: " &
-                            PostActionTimer.ElapsedMilliseconds.ToString & "ms")
-                Debug.Print("WorkbookStructureRuleManager.Delete '" &
-                            Rule.RuleID & "' total: " &
-                            TotalTimer.ElapsedMilliseconds.ToString & "ms")
 #End If
 
             End If
@@ -1444,13 +1426,6 @@ Namespace Abovo
                 WS.Columns(WidthTemplateColumnIndex).Width
 
 #If DEBUG Then
-            Debug.Print("    [" & WS.Name &
-                        "] content template col=" &
-                        TemplateColumnIndex.ToString &
-                        ", width template col=" &
-                        WidthTemplateColumnIndex.ToString &
-                        ", width=" &
-                        TemplateWidth.ToString)
 #End If
 
             WS.Columns.Insert(InsertIndex, RecordCount)
@@ -1683,9 +1658,6 @@ Namespace Abovo
             DN.Range = NewRange
 
 #If DEBUG Then
-            Debug.Print("WorkbookStructureRuleManager resized '" &
-                        Snapshot.Name & "' to " &
-                        NewRange.GetReferenceA1())
 #End If
 
         End Sub
@@ -1721,14 +1693,6 @@ Namespace Abovo
                 Count = Math.Max(0, Count)
 
 #If DEBUG Then
-                Debug.Print("WorkbookStructureRuleManager record count '" &
-                            Rule.RuleID &
-                            "': physical=" &
-                            PhysicalCount.ToString &
-                            ", adjustment=" &
-                            Rule.RecordCountAdjustment.ToString &
-                            ", logical=" &
-                            Count.ToString)
 #End If
 
                 Return Count

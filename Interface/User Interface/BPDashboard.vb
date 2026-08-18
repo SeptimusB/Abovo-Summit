@@ -870,7 +870,6 @@ Public Class BPDashboard
 
         Formatter.FormatAccordianControl(AcControl)
 
-        SystemLog("Starting")
         AcControl.BeginUpdate()
 
         Dim Section As PresentationSection
@@ -878,11 +877,9 @@ Public Class BPDashboard
         Dim hyperlinkLabelControl1 As New HyperlinkLabelControl()
         AcElementlist = New List(Of AccordionControlElement)
 
-        SystemLog("Presentation object: " & DataPres.Name & " with section count " & DataPres.Sections.Length.ToString)
 
         For Each Section In DataPres.Sections
 
-            SystemLog("Adding presentation section: " & Section.Name)
 
             DataSourceCount += 1
             AcElementCount += 1
@@ -902,7 +899,6 @@ Public Class BPDashboard
 
 
 
-            SystemLog("Adding element: " & AcElements(AcElementCount).Name)
 
             AcContainersCount += 1
 
@@ -921,9 +917,6 @@ Public Class BPDashboard
 
                     ActiveDataSet = DataPres.DataSets(SectionElement.ControlSourceIndex)
 
-                    SystemLog("Adding data from: " & ActiveDataSet.Name)
-                    SystemLog("Col count: " & ActiveDataSet.ColCount)
-                    SystemLog("Row count: " & ActiveDataSet.RowCount)
 
                     ColList = New List(Of String)
 
@@ -955,7 +948,6 @@ Public Class BPDashboard
                             Case Else
                                 PropType = GetType(String)
                         End Select
-                        SystemLog("Adding column: " & PresentedColumn.ColumnTag.ColumnHeading)
                         PropertyArray(PropertiesCount) = New UnboundSourceProperty With {
                             .UserTag = ColCount,
                             .Name = ColName,
@@ -992,10 +984,8 @@ Public Class BPDashboard
                     GridControls(GridCount).MainView = UsedGridViews(GridViewCount)
                     UsedGridViews(GridViewCount).PopulateColumns()
 
-                    SystemLog("Calling records " & ActiveDataSet.RowCount)
 
                     Dim testUBS As AbovoUnboundSource = TryCast(GridControls(GridCount).DataSource, AbovoUnboundSource)
-                    SystemLog("Adding grid control with datasource ")
 
                     DataSources(DataSourceCount).SetRowCount(ActiveDataSet.RowCount)
 
@@ -1139,8 +1129,6 @@ Public Class BPDashboard
     Private Sub UnboundDS_ValueNeeded(ByVal sender As Object, ByVal e As DevExpress.Data.UnboundSourceValueNeededEventArgs)
 
         Dim UDSSender As AbovoUnboundSource = sender
-        SystemLog("Value request: " & UDSSender.UBSTag.DSIndex)
-        'SystemLog(UDSSender.Tag)
         e.Value = GetDSData(UDSSender.UBSTag.DSIndex, e.RowIndex, e.PropertyIndex)
     End Sub
     Private Sub UnboundDS_ValuePushed(ByVal sender As Object, ByVal e As DevExpress.Data.UnboundSourceValuePushedEventArgs)
@@ -1148,11 +1136,9 @@ Public Class BPDashboard
     End Sub
     Private Function GetDSData(ByVal SetDSIndex As Integer, ByVal rowIndex As Integer, ByVal PropertyIndex As Integer) As Object
 
-        SystemLog("Value requested from dataset: " & SetDSIndex.ToString & " Row: " & rowIndex.ToString & " Column: " & PropertyIndex.ToString)
 
         Dim DP As CellDataPoint = DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(PropertyIndex)
 
-        SystemLog("Returning value of type: " & DataPres.DataSets(SetDSIndex).DataColumns(PropertyIndex).ColumnTag.DataType)
 
         Select Case DataPres.DataSets(SetDSIndex).DataColumns(PropertyIndex).ColumnTag.DataType
 
@@ -1539,7 +1525,6 @@ Public Class BPDashboard
         'RepositoryItemIntegerEdit.Appearance.Font = GetFont("Small", Me.Scalefactor, True)
         'RepositoryItemComboBoxSOCIStockType.Appearance.Font = GetFont("Small", Me.Scalefactor, True)
 
-        'SystemLog("SF=" & Scalefactor)
 
         'colPropertyStockDescription1.Width = GridControlStockGrid.Width * 0.25
         'colPropertyOwnedManaged1.Width = GridControlStockGrid.Width * 0.125
@@ -1596,7 +1581,6 @@ Public Class BPDashboard
         'WindowsUIButtonPanelSaveClose.AppearanceButton.Pressed.Font = GetFont("Small", Me.ScaleFactor)
         'Me.GroupBoxFileActions.Font = GetFont("Small", Me.ScaleFactor)
         'Me.WindowsUIButtonPanelBPActions.ButtonBackgroundImages
-        'SystemLog("Small font size:" & Me.XtraTabControlMainNavigator.AppearancePage.HeaderHotTracked.Font.SizeInPoints.ToString)
 
     End Sub
     Sub ResizeControls()
@@ -1610,9 +1594,6 @@ Public Class BPDashboard
         'PictureBoxAbovoLogo.Height = CInt(PictureBoxAbovoLogo.Width * 0.483)
 
         'DockPanelSettings.Width = SetWidth
-        'SystemLog("GBPDHe:" & GroupBoxProgramDetails.Height)
-        'SystemLog("WUIBTop:" & WindowsUIButtonPanelExitHelp.Top)
-        'SystemLog("ABLBot:" & PictureBoxAbovoLogo.Bottom)
         'WindowsUIButtonPanelExitHelp.Left = ScaleUnits
         'GroupBoxProgramDetails.Width = SetWidth
         'XtraTabControlMainNavigator.Top = ScaleUnits

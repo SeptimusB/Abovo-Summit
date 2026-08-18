@@ -109,7 +109,6 @@ Namespace Abovo
                 Return
             End If
 
-            Debug.Print("Inplace editor - custom draw - " & e.Column.AbsoluteIndex)
             If e.Column.AbsoluteIndex = 0 Then Return
             If e.Column Is _Column Then
                 'e.Appearance.Options.UseBackColor = True
@@ -139,7 +138,6 @@ Namespace Abovo
                         _EditorHeight)
 
                 DrawEditorHelper.DrawColumnInplaceEditor(e, _Item, EditValue, GetRightIndent(), _EditorHeight)
-                Debug.Print("Inplace editor - finished custom draw - " & e.Column.AbsoluteIndex)
                 e.Handled = True
 
             End If

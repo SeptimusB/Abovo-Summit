@@ -68,7 +68,6 @@ Namespace Abovo
         End Function
         Public Function GetStatus() As String
 
-            SystemLog(vbLf + "XXXXXXXXXXXXXXX Full Object Status Request XXXXXXXXXXXXXXXX" + vbLf + vbLf)
             Dim Output As New StringBuilder(4096)
             Output.Append("'''''''''''''''''''''''''''''''''").Append(vbLf)
 
@@ -144,9 +143,6 @@ Namespace Abovo
 
             Dim Trans As New AbovoTransaction
             Dim g = ExcelModels(ModelID)
-            SystemLog("'''''''''''''''''''''''''''''''''''")
-            SystemLog("Data structure call.  ModelID: " & ModelID.ToString & " CS ID:" & SetCSID & " Interface Section ID:" & SetIntSecID & " Datasource ID:" & SetISDID)
-            SystemLog("'''''''''''''''''''''''''''''''''''")
             Dim IEDSource As ISEDatasource = ExcelModels(ModelID).WBStructure.GroupStructures(SetGSID).ChildStructures(SetCSID).InterfaceSections(SetIntSecID).ISDatasources(SetISDID)
             Dim CellExamine As DevExpress.Spreadsheet.Cell
             Dim CellExamineRight As DevExpress.Spreadsheet.Cell
@@ -688,7 +684,6 @@ Namespace Abovo
                 If CRSource.NRDSName = "CR" Then
 
                     DataRange = CurrWS.Range(CRSource.DataRange)
-                    SystemLog("Reading from " & CRSource.DataRange)
 
                 Else
 
@@ -702,7 +697,6 @@ Namespace Abovo
 
                 Dim conditionalFormattings As DevExpress.Spreadsheet.ConditionalFormattingCollection = CurrWS.ConditionalFormattings
 
-                SystemLog("Adding rows: " & DataRange.ColumnCount.ToString)
 
                 For i = 0 To DataRange.ColumnCount - (1 + RecordSkipOffset)
 
@@ -732,7 +726,6 @@ Namespace Abovo
                         If CellRangeSource.OffSetNR = "CR" Then
 
                             DataRange = CurrWS.Range(CellRangeSource.DataRange)
-                            SystemLog("Reading from " & CRSource.DataRange)
 
                         Else
 
@@ -765,7 +758,6 @@ Namespace Abovo
                         If CellRangeSource.NRDSName = "CR" Then
 
                             DataRange = CurrWS.Range(CellRangeSource.DataRange)
-                            SystemLog("Reading from " & CRSource.DataRange)
 
                         Else
 
@@ -1406,7 +1398,6 @@ NextDFD:
                     If CRSource.NRDSName = "CR" Then
 
                         DataRange = CurrWS.Range(CRSource.DataRange)
-                        SystemLog("Reading from " & CRSource.DataRange)
 
                     Else
 
@@ -1441,7 +1432,6 @@ NextDFD:
                         If CellRangeSource.NRDSName = "CR" Then
 
                             DataRange = CurrWS.Range(CellRangeSource.DataRange)
-                            SystemLog("Reading from " & CellRangeSource.DataRange)
 
                         Else
 
@@ -1473,7 +1463,6 @@ NextDFD:
                         If CellRangeSource.NRDSName = "CR" Then
 
                             DataRange = CurrWS.Range(CellRangeSource.DataRange)
-                            SystemLog("Reading from " & CellRangeSource.DataRange)
 
                         Else
 
@@ -2515,7 +2504,6 @@ ErrorHandler:
 
         '    For Each DS As Integer In DataSetsToMerge
 
-        '        SystemLog("Merging " & DataSets(DS).Name)
 
         '        'add columns
         '        For Each SourceColumn As SheetDataColumn In DataSets(DS).DataColumns
@@ -2558,23 +2546,16 @@ ErrorHandler:
         '    Dim ColPosition As Integer = 0
         '    Dim LastPosition As Integer = 0
 
-        '    SystemLog("Merged array: " & DataSets(DataSetIndex).Name)
-        '    SystemLog("Rows: " & UBound(DataSets(DataSetIndex).DataRows))
-        '    SystemLog("Defined Columns: " & UBound(DataSets(DataSetIndex).DataColumns))
-        '    SystemLog("Columns from row: " & UBound(DataSets(DataSetIndex).DataRows(0).DataCells))
 
         '    For Each DS As Integer In DataSetsToMerge
 
-        '        SystemLog("Populating from: " & DataSets(DS).Name)
 
         '        'add columns
         '        For Each SourceRow As SheetDataRow In DataSets(DS).DataRows
 
-        '            'SystemLog("Doing source row:" & SourceRow.Index)
 
         '            For Each SourceCell As CellDataPoint In SourceRow.DataCells
 
-        '                'SystemLog("Doing source cell:" & SourceCell.Index)
 
         '                DataSets(DataSetIndex).DataRows(SourceRow.Index).DataCells(SourceCell.Index + ColPosition) = New CellDataPoint With {
         '                    .IsEmpty = SourceCell.IsEmpty,
@@ -2638,12 +2619,9 @@ ErrorHandler:
 
             'Dim j As Integer = 0
 
-            'SystemLog(vbLf + "--------------UNION ACROSS-----------------")
-            'SystemLog("Merging to " & SetName)
 
             'For Each DS As Integer In DataSetsToMerge
 
-            '    SystemLog("Sourcing from " & DataSets(DS).Name & " (" & DS.ToString & ")")
 
             '    'add columns
             '    For Each SourceColumn As SheetDataColumn In DataSets(DS).DataColumns
@@ -2656,7 +2634,6 @@ ErrorHandler:
             '            .Index = ColCount - 1
             '        }
 
-            '        SystemLog("Adding column " & SourceColumn.ColumnTag.ColumnHeading & " (" & SourceColumn.ColumnTag.DataType & ")")
             '    Next
 
             '    'add rows
@@ -2695,23 +2672,16 @@ ErrorHandler:
             'Dim ColPosition As Integer = 0
             'Dim LastPosition As Integer = 0
 
-            'SystemLog("Merged array: " & DataSets(DataSetIndex).Name)
-            'SystemLog("Rows: " & UBound(DataSets(DataSetIndex).DataRows))
-            'SystemLog("Defined Columns: " & UBound(DataSets(DataSetIndex).DataColumns))
-            'SystemLog("Columns from row: " & UBound(DataSets(DataSetIndex).DataRows(0).DataCells))
 
             'For Each DS As Integer In DataSetsToMerge
 
-            '    SystemLog("Populating from: " & DataSets(DS).Name)
 
             '    'add columns
             '    For Each SourceRow As SheetDataRow In DataSets(DS).DataRows
 
-            '        'SystemLog("Doing source row:" & SourceRow.Index)
 
             '        For Each SourceCell As CellDataPoint In SourceRow.DataCells
 
-            '            'SystemLog("Doing source cell:" & SourceCell.Index)
 
             '            DataSets(DataSetIndex).DataRows(SourceRow.Index).DataCells(SourceCell.Index + ColPosition) = New CellDataPoint With {
             '                .IsEmpty = SourceCell.IsEmpty,
@@ -2771,7 +2741,6 @@ ErrorHandler:
 
             'ReDim Preserve DataSets(DataSetIndex)
 
-            ''SystemLog("Reading header range: " & RangeName)
             'Trans.IntegerReturn = DataSetIndex
 
             'DataSets(DataSetIndex) = New DataCellRange(DataSetIndex, ModelID) With {
@@ -2914,7 +2883,6 @@ ErrorHandler:
 
             'ReDim Preserve DataSets(DataSetIndex)
 
-            ''SystemLog("Reading header range: " & RangeName)
             'Trans.IntegerReturn = DataSetIndex
 
             'DataSets(DataSetIndex) = New DataCellRange(DataSetIndex) With {
@@ -2978,7 +2946,6 @@ ErrorHandler:
 
             'ReDim Preserve DataSets(DataSetIndex).DataRows(CRTargetRange.ColumnCount - 1)
 
-            'SystemLog("Setting rows to: " & Activeposition.ToString)
 
             'For i = 0 To DataSets(DataSetIndex).RowCount - 1
 
@@ -3078,7 +3045,6 @@ ErrorHandler:
 
             'ReDim Preserve DataSets(DataSetIndex)
 
-            ''SystemLog("Reading header range: " & RangeName)
             'Trans.IntegerReturn = DataSetIndex
 
             'DataSets(DataSetIndex) = New DataCellRange(DataSetIndex) With {
@@ -3132,7 +3098,6 @@ ErrorHandler:
 
             'For i = 1 To Len(FormatMap)
 
-            '    'SystemLog("Doing i: " & i.ToString)
 
             '    c = Mid(FormatMap, i, 1)
 
@@ -3143,9 +3108,6 @@ ErrorHandler:
             '        For j = 0 To CRTargetRange.ColumnCount - 1
 
             '            clCell = CRTargetRange(i - 1, j)
-            '            'SystemLog("Readig cell: " & clCell.GetReferenceA1)
-            '            'SystemLog("Cellnv: " & clCell.Value.NumericValue.ToString)
-            '            'SystemLog("Cellnv: " & clCell.DisplayText)
             '            DataSets(DataSetIndex).DataRows(j).DataCells(Activeposition) = New CellDataPoint With {
             '                .Index = Activeposition,
             '                .DataType = c,
@@ -3153,8 +3115,6 @@ ErrorHandler:
             '            }
 
             '            If Len(clCell.DisplayText) > 0 Then
-            '                'SystemLog("About to cast row: " & j.ToString)
-            '                'SystemLog("About to cast Col: " & Activeposition.ToString)
 
             '                DataSets(DataSetIndex).DataRows(j).DataCells(Activeposition).IsEmpty = False
 
@@ -3210,7 +3170,6 @@ ErrorHandler:
 
             'Next
 
-            SystemLog("Finish")
             Return Trans
 
         End Function
@@ -3225,7 +3184,6 @@ ErrorHandler:
             '            DataSetIndex += 1
             '            ReDim Preserve DataSets(DataSetIndex)
             '            DataSetCount += 1
-            '            SystemLog("Reading range: " & RangeName)
             '            Trans.IntegerReturn = DataSetIndex
 
             '            Dim SetRowCount As Integer
@@ -3241,9 +3199,6 @@ ErrorHandler:
             '                .FormatMap = FormatMap
             '            }
 
-            '            SystemLog("Source Col count: " & CRTargetRange.ColumnCount.ToString)
-            '            SystemLog("Source Row count: " & CRTargetRange.RowCount.ToString)
-            '            SystemLog("Set Row count: " & SetRowCount.ToString)
             '            ReDim Preserve DataSets(DataSetIndex).DataRows(SetRowCount - 1)
 
             '            Dim i, j As Short
@@ -3300,9 +3255,6 @@ ErrorHandler:
 
             '                    ReDim Preserve DataSets(DataSetIndex).DataRows(i).DataCells(Activeposition)
 
-            '                    SystemLog("Adding Cell data point to " & DataSets(DataSetIndex).Name & " Row: ")
-            '                    SystemLog("Row: " & DataSets(DataSetIndex).DataRows(i).Index.ToString)
-            '                    SystemLog("Cell: " & Activeposition.ToString)
             '                    DataSets(DataSetIndex).DataRows(i).DataCells(Activeposition) = New CellDataPoint
 
             '                    clCell = CRTargetRange(i, j)
@@ -3314,7 +3266,6 @@ ErrorHandler:
             '                    If Len(clCell.DisplayText) > 0 Then
 
             '                        DataSets(DataSetIndex).DataRows(i).DataCells(Activeposition).IsEmpty = False
-            '                        SystemLog(DataSets(DataSetIndex).DataColumns(Activeposition).ColumnTag.DataType)
 
             '                        Select Case DataSets(DataSetIndex).DataColumns(Activeposition).ColumnTag.DataType
 
@@ -3385,7 +3336,6 @@ ErrorHandler:
             '            DataSetIndex += 1
             '            ReDim Preserve DataSets(DataSetIndex)
             '            DataSetCount += 1
-            '            SystemLog("Reading worksheet: " & SourceSheet)
             '            Trans.IntegerReturn = DataSetIndex
 
             '            Dim SetRowCount As Integer
@@ -3401,9 +3351,6 @@ ErrorHandler:
             '                .FormatMap = FormatMap
             '            }
 
-            '            SystemLog("Source Col count: " & CRTargetRange.ColumnCount.ToString)
-            '            SystemLog("Source Row count: " & CRTargetRange.RowCount.ToString)
-            '            SystemLog("Set Row count: " & SetRowCount.ToString)
             '            ReDim Preserve DataSets(DataSetIndex).DataRows(SetRowCount - 1)
 
             '            Dim i, j As Short
@@ -3462,9 +3409,6 @@ ErrorHandler:
 
             '                    ReDim Preserve DataSets(DataSetIndex).DataRows(i).DataCells(Activeposition)
 
-            '                    SystemLog("Adding Cell data point to " & DataSets(DataSetIndex).Name & " Row: ")
-            '                    SystemLog("Row: " & DataSets(DataSetIndex).DataRows(i).Index.ToString)
-            '                    SystemLog("Cell: " & Activeposition.ToString)
             '                    DataSets(DataSetIndex).DataRows(i).DataCells(Activeposition) = New CellDataPoint
 
             '                    clCell = CRTargetRange(i, j)
@@ -3476,7 +3420,6 @@ ErrorHandler:
             '                    If Len(clCell.DisplayText) > 0 Then
 
             '                        DataSets(DataSetIndex).DataRows(i).DataCells(Activeposition).IsEmpty = False
-            '                        SystemLog(DataSets(DataSetIndex).DataColumns(Activeposition).ColumnTag.DataType)
 
             '                        Select Case DataSets(DataSetIndex).DataColumns(Activeposition).ColumnTag.DataType
 
@@ -3539,7 +3482,6 @@ ErrorHandler:
 
             MsgBox("CallContext")
 
-            SystemLog("CALL GetISEDataStructure")
             Dim Trans As New AbovoTransaction
             Dim IEDSource As ISEDatasource = ExcelModels(ModelID).WBStructure.GroupStructures(SetGSID).ChildStructures(SetCSID).InterfaceSections(SetIntSecID).ISDatasources(SetISDID)
             Dim CellExamine As DevExpress.Spreadsheet.Cell

@@ -578,10 +578,6 @@ Public Class FormMainScreen
 
     End Sub
 
-    Private Sub SimpleButton1_Click_1(sender As Object, e As EventArgs) 
-        PlayForm.Show()
-    End Sub
-
     Private Sub hideContainerRight_Click(sender As Object, e As EventArgs) Handles hideContainerRight.Click
 
     End Sub

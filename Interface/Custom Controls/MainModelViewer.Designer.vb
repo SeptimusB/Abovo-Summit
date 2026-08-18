@@ -19,15 +19,10 @@ Partial Class MainModelViewer
     'Do not modify it using the code editor.
     <System.Diagnostics.DebuggerStepThrough()>
     Private Sub InitializeComponent()
-        Debug.Print("1")
         Me.TablePanelSSV = New DevExpress.Utils.Layout.TablePanel()
-        Debug.Print("2")
         Me.SpreadsheetFormulaBarMMV = New DevExpress.XtraSpreadsheet.SpreadsheetFormulaBar()
-        Debug.Print("3")
         CType(Me.TablePanelSSV, System.ComponentModel.ISupportInitialize).BeginInit()
-        Debug.Print("4")
         Me.TablePanelSSV.SuspendLayout()
-        Debug.Print("5")
         Me.SuspendLayout()
 
         '

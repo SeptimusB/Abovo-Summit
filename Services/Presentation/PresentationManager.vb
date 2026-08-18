@@ -55,7 +55,6 @@ CreatePresentation:
 
             Dim TransReturn As New AbovoTransaction
 
-            SystemLog("Adding CSID " & SetCSID & " to presentations.  PreIndex is " & DPIndex.ToString) ' & ". UBound is " & UBound(PresentedDataSets).ToString)
 
             DPCount += 1
             DPIndex += 1
@@ -117,7 +116,6 @@ CreatePresentation:
                 SectionCount = -1
                 DSIndex = -1
 
-                SystemLog("Presentation created with DSIndex as  " & DSIndex.ToString)
 
                 DPCS = FileManager.ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ChildStructures(CSID)
 
@@ -159,7 +157,6 @@ CreatePresentation:
 
                     ProcessSection(SetModelID, Sections(SectionCount), ISection)
 
-                    SystemLog("Section added: " & Sections(SectionCount).Name)
 
                 Next
 
@@ -182,7 +179,6 @@ CreatePresentation:
                     Dim LabelText As String =
                         Model.WB.Worksheets(DefaultWorksheet).Cells(ISection.ISLABELSource).DisplayText
 
-                    SystemLog("DT:" & LabelText)
 
                     If LabelText = "" Then
 
@@ -210,7 +206,6 @@ CreatePresentation:
 
                     If ISElement.Type = "Grid" Or ISElement.Type = "VGrid" Then
 
-                        SystemLog("Grid added")
                         Section.SectionElements(SElementCount).Type = ISElement.Type
 
                         DataSetCount += 1
@@ -236,7 +231,6 @@ CreatePresentation:
 
                     ElseIf ISElement.Type = "LiveGrid" Then
 
-                        SystemLog("LiveGrid added")
                         DataSetCount += 1
                         EnsureDataSetSlot(DataSetCount)
                         Section.SectionElements(SElementCount).Type = "LiveGrid"
@@ -245,7 +239,6 @@ CreatePresentation:
 
                     ElseIf ISElement.Type = "ControlGroup" Then
 
-                        SystemLog("ControlGroup added")
                         Section.SectionElements(SElementCount).Type = "ControlGroup"
 
                         If ISElement.InterfaceControls.Count > 0 Then
@@ -268,7 +261,6 @@ CreatePresentation:
 
                     ElseIf ISElement.Type = "Link" Then
 
-                        SystemLog("Link added")
                         Section.SectionElements(SElementCount).Type = "Link"
 
                         If ISElement.LinkObjects.Count > 0 Then

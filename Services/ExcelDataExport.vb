@@ -33,9 +33,6 @@ Namespace Abovo
             Dim ActiveRow As Integer = 0
             Dim ActiveColumn As Integer = 0
             Dim NumberFormatString As String = "#,###;[red](#,###);0"
-            SystemLog("Row Count: " & RowCount)
-            SystemLog("Data Row Count: " & DataRowCount)
-            SystemLog("Group Row Count: " & GroupRowCOunt)
 
             Dim WSCell As Cell = ws.Cells(ActiveRow, ActiveColumn)
             WSCell.Value = "Exported Data " & Now().ToString

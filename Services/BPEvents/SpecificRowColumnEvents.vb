@@ -766,7 +766,6 @@ ErrHandler:
             '                    'JW 5/5/22 Note 84176
             '                    DoEvents
 
-            '                    SystemLog "Copy A"
             '        Selection.Copy
 
             '                    IncActiveLine
@@ -776,12 +775,10 @@ ErrHandler:
 
 
 
-            '                    SystemLog "Before paste"
 
             '        ActiveSheet.Paste
             '                    Range("B1").Select
 
-            '                    SystemLog "After paste"
 
 
             '        Sheets("Development BP Assumptions").Select
@@ -792,7 +789,6 @@ ErrHandler:
 
             '                    'Deprecated on instruction AY JW Note 86992
 
-            '                    '        SystemLog "Loop in InsertDvptColumns"
 
 
             '                    '        For i = 1 To LastRow
@@ -808,11 +804,9 @@ ErrHandler:
             '                    '
             '                    '        Next i
 
-            '                    '        SystemLog "End loop"
 
             '                    If y > 1 Then
 
-            '                        SystemLog "Y > 1"
 
             '            y = y - 1
             '                        x = x + 1
@@ -826,7 +820,6 @@ ErrHandler:
             '                        '   Set and select range of columns to be inserted
             '                        Range(Columns(x), Columns(x + y - 1)).Select
 
-            '                        SystemLog "Insert"
 
             '            Selection.Insert Shift:=xlToRight
 
@@ -834,7 +827,6 @@ ErrHandler:
 
             '                        Columns(x - 1).Select
 
-            '                        SystemLog "Copy B"
 
             '            Selection.Copy
             '                        Range(Columns(x), Columns(x + y - 1)).Select
@@ -842,7 +834,6 @@ ErrHandler:
 
             '                        IncActiveLine
 
-            '                        SystemLog "Paste B"
 
             '            ActiveSheet.Paste
             '                        Range("B1").Select
@@ -969,7 +960,6 @@ ErrHandler:
             '                            Sheets("Development BP Assumptions").Select
             '                            Range("A1").Cells(1, x - y).Activate
 
-            '                            SystemLog "Calculate in DeleteDvptColumns"
 
             '                ABVCalculate
 
@@ -1060,20 +1050,17 @@ ErrHandler:
 
             '                    '   Set and select range of columns to be inserted
 
-            '                    SystemLog "Select in Run_Insert_Multi_Dvpt_Columns"
 
             '        Range(Columns(x), Columns(x + y - 1)).Select
             '                    Selection.Insert Shift:=xlToRight
             '        Columns(x - 1).Select
 
-            '                    SystemLog "Copy in Run_Insert_Multi_Dvpt_Columns"
 
             '        Selection.Copy
 
             '                    Range(Columns(x), Columns(x + y - 1)).Select
             '                    Cells(1, x + y - 1).Activate
 
-            '                    SystemLog "Paste in Run_Insert_Multi_Dvpt_Columns"
 
             '        ActiveSheet.Paste
 
@@ -1087,7 +1074,6 @@ ErrHandler:
 
             '                    LastRow = ActiveCell.SpecialCells(xlLastCell).Row
 
-            '                    SystemLog "Run_Insert_Multi_Dvpt_Columns Loop"
 
             ''        For i = 1 To LastRow
             '                    '
@@ -1100,9 +1086,7 @@ ErrHandler:
             '                    '
             '                    '        Next i
 
-            '                    SystemLog "End Run_Insert_Multi_Dvpt_Columns loop"
 
-            '        SystemLog "Calculate in Run_Insert_Multi_Dvpt_Columns"
             '        ABVCalculate
 
             '                    Range("A1").Cells(1, x).Activate
@@ -1188,7 +1172,6 @@ ErrHandler:
             '                        Sheets("Development BP Assumptions").Select
             '                        Range("A1").Cells(1, x - y).Activate
 
-            '                        SystemLog "Calculate in Delete_Multi_Dvpt_Columns"
             '            ABVCalculate
 
             '                        For Each s In DvptSheets()
@@ -1287,7 +1270,6 @@ ErrHandler:
             '                            Sheets("Development BP Assumptions").Select
             '                            Range("A1").Cells(1, y).Activate
 
-            '                            SystemLog "Calculate in Delete_Spec_Dvpt_Column"
 
             '                ABVCalculate
 
@@ -1441,7 +1423,6 @@ ErrHandler:
 
             '                            End If
 
-            '                            SystemLog "Calculate in Insert_Spec_Dvpt_Column"
             '                ABVCalculate
 
             '                            For Each s In DvptSheets()

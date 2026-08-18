@@ -296,20 +296,6 @@ Namespace Abovo
                             ActiveRange.RightColumnIndex,
                             NewFooterRow)
 
-                    Debug.Print(
-                        "  DEVELOPMENT MIRROR " &
-                        TargetName &
-                        ": records=" &
-                        RequiredDataRows.ToString &
-                        ", oldFooter=" &
-                        OldFooterRow.ToString &
-                        ", newFooter=" &
-                        NewFooterRow.ToString &
-                        ", active=" &
-                        TargetDN.Range.GetReferenceA1() &
-                        ", elapsed=" &
-                        BlockTimer.ElapsedMilliseconds.ToString &
-                        "ms")
 
                 Next
 
@@ -328,10 +314,6 @@ Namespace Abovo
                 Result.StringReturn =
                     "Development Identified production mirrors refreshed without TransactionDB structural changes."
 
-                Debug.Print(
-                    "Development Identified production mirror refresh total: " &
-                    RefreshTimer.ElapsedMilliseconds.ToString &
-                    "ms")
 
             Catch ex As Exception
 
@@ -340,9 +322,6 @@ Namespace Abovo
                     "Development Identified production mirror refresh failed: " &
                     ex.Message
 
-                Debug.Print(
-                    "Development Identified production mirror refresh ERROR: " &
-                    ex.ToString)
 
             Finally
 
@@ -687,25 +666,12 @@ Namespace Abovo
 
                     Next
 
-                    Debug.Print("  RESTORED FORMULAS " &
-                                TargetName &
-                                " " &
-                                ActiveRange.GetReferenceA1() &
-                                ": " &
-                                BlockTimer.ElapsedMilliseconds.ToString &
-                                "ms")
 
                 Next
 
                 Result.StringReturn =
                     "Development Identified TransactionDB formula state restored successfully."
 
-                Debug.Print("Development Identified formula restore total: " &
-                            RestoreTimer.ElapsedMilliseconds.ToString &
-                            "ms; formulas=" &
-                            FormulaCellsRestored.ToString &
-                            "; constants=" &
-                            ConstantCellsRestored.ToString)
 
             Catch ex As Exception
 
@@ -714,8 +680,6 @@ Namespace Abovo
                     "Development Identified formula restoration failed: " &
                     ex.Message
 
-                Debug.Print("Development Identified formula restore ERROR: " &
-                            ex.ToString)
 
             Finally
 

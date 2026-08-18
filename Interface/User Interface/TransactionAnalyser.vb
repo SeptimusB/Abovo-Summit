@@ -264,7 +264,6 @@ Public Class TransactionAnalyser
 
     Private Sub gridView_GroupRowCollapsing(ByVal sender As Object, e As DevExpress.XtraGrid.Views.Base.RowAllowEventArgs) Handles GridViewAnalysis.GroupRowCollapsing
 
-        SystemLog("collapsing " & e.RowHandle.ToString)
 
         'If e.RowHandle Then
         '    e.Allow = False
@@ -423,7 +422,6 @@ Public Class TransactionAnalyser
 
     Private Sub DataSourceListChangedDelegate(ByVal sender As Object, e As System.ComponentModel.ListChangedEventArgs)
 
-        SystemLog("List changed")
 
         If Not HasSnapshots Then Return
 
@@ -460,7 +458,6 @@ Public Class TransactionAnalyser
         'RepositoryItemIntegerEdit.Appearance.Font = GetFont("Small", Me.Scalefactor, True)
         'RepositoryItemComboBoxSOCIStockType.Appearance.Font = GetFont("Small", Me.Scalefactor, True)
 
-        'SystemLog("SF=" & Scalefactor)
 
         'colPropertyStockDescription1.Width = GridControlStockGrid.Width * 0.25
         'colPropertyOwnedManaged1.Width = GridControlStockGrid.Width * 0.125
@@ -517,7 +514,6 @@ Public Class TransactionAnalyser
         'WindowsUIButtonPanelSaveClose.AppearanceButton.Pressed.Font = GetFont("Small", Me.ScaleFactor)
         'Me.GroupBoxFileActions.Font = GetFont("Small", Me.ScaleFactor)
         'Me.WindowsUIButtonPanelBPActions.ButtonBackgroundImages
-        'SystemLog("Small font size:" & Me.XtraTabControlMainNavigator.AppearancePage.HeaderHotTracked.Font.SizeInPoints.ToString)
 
     End Sub
     Sub ResizeControls()
@@ -531,9 +527,6 @@ Public Class TransactionAnalyser
         'PictureBoxAbovoLogo.Height = CInt(PictureBoxAbovoLogo.Width * 0.483)
 
         'DockPanelSettings.Width = SetWidth
-        'SystemLog("GBPDHe:" & GroupBoxProgramDetails.Height)
-        'SystemLog("WUIBTop:" & WindowsUIButtonPanelExitHelp.Top)
-        'SystemLog("ABLBot:" & PictureBoxAbovoLogo.Bottom)
         'WindowsUIButtonPanelExitHelp.Left = ScaleUnits
         'GroupBoxProgramDetails.Width = SetWidth
         'XtraTabControlMainNavigator.Top = ScaleUnits

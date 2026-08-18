@@ -26,8 +26,6 @@ Namespace Abovo
             Catch ex As Exception
 
 #If DEBUG Then
-                Debug.Print("TransactionalDB synchronisation notification failed for '" &
-                            TargetNamedRange & "': " & ex.Message)
 #End If
 
             End Try
@@ -283,11 +281,6 @@ Namespace Abovo
                 ThisTrans.BError = False
 
 #If DEBUG Then
-                Debug.Print("WorkbookManager.InsertRows '" & TargetNamedRange &
-                            "' +" & RowsToAdd.ToString &
-                            " rows: Insert=" & InsertElapsed.ToString &
-                            "ms, Template=" & TemplateElapsed.ToString &
-                            "ms, Total=" & PerfTimer.ElapsedMilliseconds.ToString & "ms")
 #End If
 
             Catch ex As Exception
@@ -485,11 +478,6 @@ Namespace Abovo
                 ThisTrans.BError = False
 
 #If DEBUG Then
-                Debug.Print("WorkbookManager.InsertColumns '" & TargetNamedRange &
-                            "' +" & ColsToAdd.ToString &
-                            " cols: Insert=" & InsertElapsed.ToString &
-                            "ms, Template=" & TemplateElapsed.ToString &
-                            "ms, Total=" & PerfTimer.ElapsedMilliseconds.ToString & "ms")
 #End If
 
             Catch ex As Exception
@@ -663,7 +651,6 @@ Err_Handler_A:
             TargetDefinedName = Nothing
             'TargetDefinedName.RefersTo = Nothing
 
-            Debug.Print("Inserting at row " & PriorBottomRow & " in range " & TargetNamedRange)
 
             WSTarget.Rows.Insert(PriorBottomRow + 1, RowsToAdd)
 

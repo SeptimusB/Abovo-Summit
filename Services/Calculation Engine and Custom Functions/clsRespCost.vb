@@ -139,13 +139,11 @@ Namespace Abovo
 
                 AnnualRate = 0
                 StrMatch = "=MATCH(" & i - FirstManage + 1 & ", " & ApplYears.GetReferenceR1C1(ReferenceElement.IncludeSheetName Or ReferenceElement.RowAbsolute Or ReferenceElement.ColumnAbsolute, Nothing) & ")"
-                SystemLog(StrMatch)
 
                 ValReturn = Engine.Evaluate(StrMatch, expcontext)
                 'If IsNumeric(ValReturn) Then
                 AnnualRate = ApplRates(ValReturn.NumericValue - 1).Value.NumericValue
                 'Else
-                '    Debug.Print("RC Error " & context.Sheet.ToString & " R" & context.Row.ToString & "C" & context.Column.ToString & StrMatch & " " & ValReturn.ToString)
                 '    AnnualRate = 0 ' If no match, set rate to 0
                 'End If
                 TotCost += AnnualUnits * AnnualRate
@@ -155,7 +153,6 @@ Namespace Abovo
             Loop
 
             Return TotCost
-            systemlog("RespCost return " & TotCost.ToString)
 
         End Function
 

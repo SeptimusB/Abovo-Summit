@@ -54,7 +54,6 @@ Public Class Resizer
                 End If
 
             Catch ex As Exception
-                SystemLog(ex.Message)
             End Try
 
             If ctl.Controls.Count > 0 Then

@@ -1030,7 +1030,6 @@ ColProcessBCGF:
 
         End Sub
         Private Sub OnCustomDrawColumnHeader(ByVal sender As Object, ByVal e As ColumnHeaderCustomDrawEventArgs)
-            Debug.Print("XXXXXXXXX - CD Header - XXXXXXX")
             If e.Column Is Nothing Then
 
                 e.Handled = True
@@ -1099,7 +1098,6 @@ DefaultDraw:
 
             Dim ColTag As DataColumnTag = e.Column.Tag
 
-            'Debug.Print("CombinedEditDrawer - DefaultDrawColumnHeader - " & e.Column.AbsoluteIndex)
 
             If ColTag.IsDummyColumn Then
                 e.Handled = True
@@ -1148,7 +1146,6 @@ DefaultDraw:
             bounds.X += 33
             bounds.Height = FH
 
-            'Debug.Print("CombinedEditDrawer - WithButtonDrawColumnHeader - " & e.Column.AbsoluteIndex & " : " & e.Info.Caption)
 
             Dim ForeBrush = New SolidBrush(Color.Black)
 
@@ -1248,10 +1245,8 @@ DefaultDraw:
 
         Private Sub GVCustomDrawFooterCell(ByVal sender As Object, ByVal e As DevExpress.XtraGrid.Views.Grid.FooterCellCustomDrawEventArgs)
 
-            Debug.Print("In Custom FOOTER Cell Draw col " & e.Column.AbsoluteIndex)
 
             If e.Column Is Nothing Then
-                Debug.Print("Col is nothing.....")
                 e.Handled = True
                 Return
             End If
@@ -1268,11 +1263,9 @@ DefaultDraw:
             Dim ColCheck As ButtonedColumn = IsColumnActive(e.Column)
 
             If ColCheck Is Nothing Then
-                Debug.Print("Colinactive, defult draw")
                 GoTo DrawDefault
 
             Else
-                Debug.Print("Col is active, with button draw")
                 GoTo WithButtonDraw
 
             End If
@@ -1331,14 +1324,12 @@ WithButtonDraw:
             r.Height = FH
 
             e.Cache.DrawString("Add lines", BoldF, e.Appearance.GetForeBrush(e.Cache), r, AppSF)
-            Debug.Print("With button draw footer cell" & e.Column.AbsoluteIndex)
             e.Handled = True
             Return
 
         End Sub
 
         Private Sub GVCustomDrawFooter(ByVal sender As Object, ByVal e As DevExpress.XtraGrid.Views.Base.RowObjectCustomDrawEventArgs)
-            Debug.Print("CustomDrawFooter")
             e.Handled = True
             Return
 

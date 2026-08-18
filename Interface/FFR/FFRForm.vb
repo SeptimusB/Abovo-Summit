@@ -72,28 +72,21 @@ Public Class FFRForm
 
     End Sub
     Public Sub New(SetModelID As Integer)
-        SystemLog("CounterReset")
         MyColourSwatch = ExcelModels(SetModelID).ColourSwatch
         InitializeComponent()
 
         ModelID = SetModelID
-        SystemLog("FFR1")
         Me.Width = Screen.PrimaryScreen.Bounds.Width * 0.8
         Me.Height = Screen.PrimaryScreen.Bounds.Height * 0.8
 
         AddHandler Me.WindowsUIButtonPanelSave.ButtonClick, AddressOf WindowsUIButtonPanelActions_ButtonClick
         Me.Text = "Complete the NROSH+ Financial Forecast Return for " + ExcelModels(SetModelID).WBStructure.CompanyName
         ScaleUnits = Me.Width * 0.007
-        SystemLog("FFR2")
         Form_InitilisationProcess_SetDataSources()
-        SystemLog("FFR6")
         BuildTab2()
-        SystemLog("FFR7")
-        SystemLog("Counter")
     End Sub
     Sub Form_InitilisationProcess_SetDataSources()
 
-        SystemLog("FFR3")
 
         'Tab #1 - FFR Key Definitions
 
@@ -169,7 +162,6 @@ Public Class FFRForm
 
         RegSubsRDS = range.GetDataSource(RDSOptions)
 
-        SystemLog("FFR4")
 
         range = worksheet.Range(ExcelModels(ModelID).WBStructure.FFRDefinition.FFRUnRegSubsRange)
 
@@ -185,7 +177,6 @@ Public Class FFRForm
         RDSOptions.DataSourceColumnTypeDetector = ColNames
 
         UnRegSubsRDS = range.GetDataSource(RDSOptions)
-        SystemLog("FFR5")
 
 
 
@@ -588,26 +579,22 @@ Public Class FFRForm
         If e.Page.Name = "XtraTabPageFrontSheet" Then
             If Not TabFFRFronSInitialise Then
 
-                SystemLog("Form_InitilisationProcess_BuildTabs3")
                 BuildTab3()
                 TabFFRFronSInitialise = True
 
             End If
         ElseIf e.Page.Name = "XtraTabPageInputAdjustments" Then
             If Not TabFFRIASInitialise Then
-                SystemLog("Form_InitilisationProcess_BuildTabs4")
                 BuildTab4()
                 TabFFRIASInitialise = True
             End If
         ElseIf e.Page.Name = "XtraTabPageFFRWorkings" Then
             If Not TabFFRWorkInitialise Then
-                SystemLog("Form_InitilisationProcess_BuildTabs5")
                 BuildTab5()
                 TabFFRWorkInitialise = True
             End If
         ElseIf e.Page.Name = "XtraTabPageFFRKey" Then
             If Not TabFFRKeyInitialise Then
-                SystemLog("Form_InitilisationProcess_BuildTabs1")
                 BuildTab1()
                 TabFFRKeyInitialise = True
             End If

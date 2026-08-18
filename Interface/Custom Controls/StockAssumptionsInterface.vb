@@ -196,7 +196,6 @@ Public Class StockAssumptionsInterface
         'GridViewStockNumbers.Columns(8).Visible = False
         'GridViewStockNumbers.Columns(9).Visible = False
         'GridViewStockNumbers.Columns(11).Visible = False
-        'SystemLog(GridViewStockNumbers.Columns(0).AppearanceCell.ParentAppearance.ToString)
         'MsgBox(SkinManager.DefaultSkinName)
 
         Dim element As SkinElement = SkinManager.GetSkinElement(SkinProductId.Grid, DevExpress.LookAndFeel.UserLookAndFeel.Default, "Header")
@@ -245,7 +244,6 @@ Public Class StockAssumptionsInterface
 
         Formatter.FormatAccordianControl(AcControl)
 
-        SystemLog("Starting")
         AcControl.BeginUpdate()
 
         Dim Section As PresentationSection
@@ -253,11 +251,9 @@ Public Class StockAssumptionsInterface
         Dim hyperlinkLabelControl1 As New HyperlinkLabelControl()
         AcElementlist = New List(Of AccordionControlElement)
 
-        SystemLog("Presentation object: " & DataPres.Name & " with section count " & DataPres.Sections.Length.ToString)
 
         For Each Section In DataPres.Sections
 
-            SystemLog("Adding presentation section: " & Section.Name)
 
             DataSourceCount += 1
             AcElementCount += 1
@@ -277,7 +273,6 @@ Public Class StockAssumptionsInterface
 
             Formatter.FormatAccordianControlElement(AcElements(AcElementCount))
 
-            SystemLog("Adding element: " & AcElements(AcElementCount).Name)
 
             AcContainersCount += 1
 
@@ -298,9 +293,6 @@ Public Class StockAssumptionsInterface
 
                     ActiveDataSet = DataPres.DataSets(SectionElement.ControlSourceIndex)
 
-                    SystemLog("Adding data from: " & ActiveDataSet.Name)
-                    SystemLog("Col count: " & ActiveDataSet.ColCount)
-                    SystemLog("Row count: " & ActiveDataSet.RowCount)
 
                     ColList = New List(Of String)
 
@@ -332,7 +324,6 @@ Public Class StockAssumptionsInterface
                             Case Else
                                 PropType = GetType(String)
                         End Select
-                        SystemLog("Adding column: " & PresentedColumn.ColumnTag.ColumnHeading)
                         PropertyArray(PropertiesCount) = New UnboundSourceProperty With {
                             .UserTag = ColCount,
                             .Name = ColName,
@@ -369,10 +360,8 @@ Public Class StockAssumptionsInterface
                     GridControls(GridCount).MainView = UsedGridViews(GridViewCount)
                     UsedGridViews(GridViewCount).PopulateColumns()
 
-                    SystemLog("Calling records " & ActiveDataSet.RowCount)
 
                     Dim testUBS As AbovoUnboundSource = TryCast(GridControls(GridCount).DataSource, AbovoUnboundSource)
-                    SystemLog("Adding grid control with datasource ")
 
                     DataSources(DataSourceCount).SetRowCount(ActiveDataSet.RowCount)
 
@@ -901,7 +890,6 @@ Public Class StockAssumptionsInterface
         RepositoryItemIntegerEdit.Appearance.Font = GetFont("Small", Me.Scalefactor, True)
         RepositoryItemComboBoxSOCIStockType.Appearance.Font = GetFont("Small", Me.Scalefactor, True)
 
-        SystemLog("SF=" & Scalefactor)
 
         colPropertyStockDescription1.Width = GridControlStockGrid.Width * 0.25
         colPropertyOwnedManaged1.Width = GridControlStockGrid.Width * 0.125
@@ -958,7 +946,6 @@ Public Class StockAssumptionsInterface
         'WindowsUIButtonPanelSaveClose.AppearanceButton.Pressed.Font = GetFont("Small", Me.ScaleFactor)
         'Me.GroupBoxFileActions.Font = GetFont("Small", Me.ScaleFactor)
         'Me.WindowsUIButtonPanelBPActions.ButtonBackgroundImages
-        'SystemLog("Small font size:" & Me.XtraTabControlMainNavigator.AppearancePage.HeaderHotTracked.Font.SizeInPoints.ToString)
 
     End Sub
     Sub ResizeControls()
@@ -972,9 +959,6 @@ Public Class StockAssumptionsInterface
         'PictureBoxAbovoLogo.Height = CInt(PictureBoxAbovoLogo.Width * 0.483)
 
         'DockPanelSettings.Width = SetWidth
-        'SystemLog("GBPDHe:" & GroupBoxProgramDetails.Height)
-        'SystemLog("WUIBTop:" & WindowsUIButtonPanelExitHelp.Top)
-        'SystemLog("ABLBot:" & PictureBoxAbovoLogo.Bottom)
         'WindowsUIButtonPanelExitHelp.Left = ScaleUnits
         'GroupBoxProgramDetails.Width = SetWidth
         'XtraTabControlMainNavigator.Top = ScaleUnits

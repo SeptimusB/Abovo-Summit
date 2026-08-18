@@ -159,7 +159,6 @@ Namespace Abovo
                         Properties.MaskSettings.Set("mask", "c5")
                         EditValue = TargetWorksheet.Cells(TargetCell).Value.NumericValue
                         AddHandler Enter, AddressOf AbovoDETextEdit_GotFocus
-                        Debug.Print("Setting up text edit for cell " & TargetCell & " with value " & EditValue)
 
                     Case "SM"
 
@@ -170,7 +169,6 @@ Namespace Abovo
                         Properties.MaskSettings.Set("MaskManagerType", GetType(DevExpress.Data.Mask.NumericMaskManager))
                         Properties.MaskSettings.Set("mask", "c3")
                         EditValue = TargetWorksheet.Cells(TargetCell).Value.NumericValue
-                        'Debug.Print("Setting up text edit for cell " & TargetCell & " with value " & EditValue)
 
                     Case "I"
 
@@ -399,7 +397,6 @@ Namespace Abovo
                     Text = TargetWorksheet.Cells(TargetCell).DisplayText
                     BackColor = TargetWorksheet.Cells(TargetCell).Fill.BackgroundColor
                     'ForeColor = TargetWorksheet.Cells(TargetCell).colo
-                    Debug.Print("Gleaning label data for cell " & TargetCell & Text)
 
                 Catch ex As Exception
 
@@ -544,7 +541,6 @@ Namespace Abovo
                 Try
 
                     EditValue = TargetWorksheet.Cells(TargetCell).DisplayText
-                    Debug.Print("Gleaning label data for cell " & TargetCell & Text)
 
                 Catch ex As Exception
 
@@ -684,7 +680,6 @@ Namespace Abovo
                 Try
 
                     Text = TargetWorksheet.Cells(TargetCell).DisplayText
-                    Debug.Print("Gleaning label data for cell " & TargetCell & Text)
 
                 Catch ex As Exception
 
@@ -889,7 +884,6 @@ Namespace Abovo
                     Try
 
                         Text = TargetWorksheet.Cells(TargetCell).DisplayText
-                        Debug.Print("Gleaning label data for cell " & TargetCell & Text)
 
                     Catch ex As Exception
 

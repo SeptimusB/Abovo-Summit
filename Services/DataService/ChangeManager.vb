@@ -122,7 +122,6 @@ Namespace Abovo
                 End If
 
                 MsgBox("Error processing change event for ModelID " & ModelID & " on cell " & CLE.WSName & "!" & CLE.CellAddress & " - " & ex.Message, MsgBoxStyle.Critical)
-                SystemLog("Error processing change event for ModelID " & ModelID & " on cell " & CLE.WSName & "!" & CLE.CellAddress & " - " & ex.Message)
                 CLE.Status = 3
                 ChangeTransaction.BError = True
                 ChangeTransaction.BSuccess = False
@@ -187,7 +186,6 @@ Namespace Abovo
 
                 Dim TargetDescription As String = If(String.IsNullOrEmpty(CLE.WSName), NormalizeIdentifier(SentDataChangeEvent.TargetNR), CLE.WSName & "!" & CLE.CellAddress)
                 MsgBox("Error processing change event for ModelID " & ModelID & " on " & TargetDescription & " - " & ex.Message, MsgBoxStyle.Critical)
-                SystemLog("Error processing change event for ModelID " & ModelID & " on " & TargetDescription & " - " & ex.Message)
                 CLE.Status = 3
                 ChangeTransaction.BError = True
                 ChangeTransaction.BSuccess = False

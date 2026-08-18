@@ -399,7 +399,6 @@ Public Class BPIncomeExpenditureAnalyser
 
         'Anything that needs to be done when the data source changes
 
-        'SystemLog("List changed")
 
         'RunningTotalStore.Clear()
         'ReDim RunningGrandTotals(40)
@@ -986,7 +985,6 @@ Public Class BPIncomeExpenditureAnalyser
     End Sub
     Private Sub GridView_GroupRowCollapsing(ByVal sender As Object, e As DevExpress.XtraGrid.Views.Base.RowAllowEventArgs)
 
-        'SystemLog("Collapsing " & e.RowHandle.ToString)
 
         'If e.RowHandle Then
         '    e.Allow = False
@@ -995,7 +993,6 @@ Public Class BPIncomeExpenditureAnalyser
     End Sub
     Private Sub GridView_Event_GroupRowExpanding(ByVal sender As CustomGridView, e As DevExpress.XtraGrid.Views.Base.RowAllowEventArgs)
 
-        SystemLog("Expanding " & sender.Name & " " & e.RowHandle.ToString)
 
         Dim RLev As Integer = sender.GetRowLevel(e.RowHandle)
 
@@ -1035,7 +1032,6 @@ Public Class BPIncomeExpenditureAnalyser
         '        Dim CurrRef As Integer = CInt(Microsoft.VisualBasic.Right(FN, Len(FN) - 5))
 
         '        RunningTotals(CurrRef) += CDbl(e.DisplayText)
-        '        If CurrRef = 1 Then SystemLog("Total" & FN & ": " & RunningTotals(CurrRef).ToString)
 
         '    End If
 
@@ -1164,7 +1160,6 @@ Public Class BPIncomeExpenditureAnalyser
         Dim CRC As Integer = sender.GetChildRowCount(ParentGroupRowHandle)
 
         Caption = sender.GetGroupRowDisplayText(e.RowHandle)
-        ' SystemLog(e.RowHandle & ":" & Caption)
         Caption = Trim(Caption)
 
         Select Case RLev
@@ -1320,7 +1315,6 @@ Public Class BPIncomeExpenditureAnalyser
         If info.Column.FieldName = "OrderedSOCIGroup" Or info.Column.FieldName = "OrderedSOCIHeading" Or info.Column.FieldName = "OrderedCFloGroup" Or info.Column.FieldName = "OrderedCFloHeading" Then
 
             Dim GroupingItem As String = Convert.ToString(view.GetGroupRowValue(e.RowHandle, info.Column))
-            'SystemLog(sender.Name & ": " & GroupingItem & ":" & e.RowHandle.ToString)
             If Len(GroupingItem) < 5 Then
 
                 info.GroupText = "UndefinedHeadingOrGroup"
@@ -1803,7 +1797,6 @@ Public Class BPIncomeExpenditureAnalyser
 
 
 
-        '    SystemLog("----------")
 
         '    PopMenuIntialised = True
 
@@ -1884,7 +1877,6 @@ Public Class BPIncomeExpenditureAnalyser
 
                 'If FN = "Year 1" And GroupLevel = 5 And RH = 0 Then
 
-                '    SystemLog("=====Total Store Cleared=======")
                 '    RunningTotalStore.Clear()
                 '    ReDim RunningGrandTotals(40)
 
@@ -1905,7 +1897,6 @@ Public Class BPIncomeExpenditureAnalyser
 
                     'If GroupLevel = 1 Then
 
-                    '    If FN = "Year 1" Then SystemLog("Storing running total at GL:" & GroupLevel.ToString & " RH: " & RH.ToString & " Value: " & GridTotals(CurrRef))
                     '    RunningTotalStore.AddRowTotal(RH, CurrRef, RunningGrandTotals(CurrRef))
                     '    e.TotalValue = RunningGrandTotals(CurrRef)
 
@@ -1917,7 +1908,6 @@ Public Class BPIncomeExpenditureAnalyser
 
                 Else
 
-                    'If FN = "Year 1" Then SystemLog("Returning total at GL:" & GroupLevel.ToString & " RH: " & RH.ToString & " Value: " & GridTotals(CurrRef))
 
                     ' e.TotalValue = GridTotals(CurrRef)
 
@@ -1951,9 +1941,6 @@ Public Class BPIncomeExpenditureAnalyser
         'PictureBoxAbovoLogo.Height = CInt(PictureBoxAbovoLogo.Width * 0.483)
 
         'DockPanelSettings.Width = SetWidth
-        'SystemLog("GBPDHe:" & GroupBoxProgramDetails.Height)
-        'SystemLog("WUIBTop:" & WindowsUIButtonPanelExitHelp.Top)
-        'SystemLog("ABLBot:" & PictureBoxAbovoLogo.Bottom)
         'WindowsUIButtonPanelExitHelp.Left = ScaleUnits
         'GroupBoxProgramDetails.Width = SetWidth
         'XtraTabControlMainNavigator.Top = ScaleUnits
@@ -2028,7 +2015,6 @@ Class ArrayTotalStorageContainer
         Public Sub AddRowTotal(RowHandle As Integer, TotalIndex As Integer, NewTotal As Double)
 
             'Deprecated
-            'SystemLog("Adding row total RH:" & RowHandle.ToString & " TI:" & TotalIndex.ToString & " " & NewTotal.ToString)
 
             Dim UseRecordIndex As Integer = 0
             Dim Found As Boolean = False
@@ -2080,7 +2066,6 @@ Class ArrayTotalStorageContainer
 
             Next i
 
-            'SystemLog("row total found:" & Found.ToString & " " & RowHandle.ToString & " " & TotalIndex.ToString & " " & i.ToString & " " & RowCustomTotals(i).RowTotals(TotalIndex).ToString)
 
             If Not Found Then
                 Return -1

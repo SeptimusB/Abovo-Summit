@@ -390,12 +390,10 @@ Public Class DataInterfaceTemplateOld
         'AccordionControlM.Elements.Clear()
         'Formatter.FormatAccordianControl(AcControl)
 
-        'SystemLog("Starting")
         'AccordionControlM.BeginUpdate()
         'AddHandler AccordionControlM.CustomDrawElement, AddressOf acCustomDrawAcElement
 
 
-        'SystemLog("Presentation object: " & DataPres.Name & " with section count " & DataPres.Sections.Length.ToString)
         'ParentGroupForm.ShowInterface(ModelID, CSID, True, "WrkSheet", DataPres.DefaultWorksheet)
 
         'SheetIInitialised = True
@@ -412,7 +410,6 @@ Public Class DataInterfaceTemplateOld
         Formatter.FormatAccordianControl(AcControl)
         WindowsFormsSettings.SmartMouseWheelProcessing = False
         Application.AddMessageFilter(New ScrollRediverter(AccordionControlM))
-        SystemLog("Starting")
         AccordionControlM.BeginUpdate()
 
         AddHandler AccordionControlM.CustomDrawElement, AddressOf acCustomDrawAcElement
@@ -433,7 +430,6 @@ Public Class DataInterfaceTemplateOld
 
         Dim SectionControlsCumlHeight As Integer = 0
 
-        SystemLog("Presentation object: " & DataPres.Name & " with section count " & DataPres.Sections.Length.ToString)
 
         For Each Section In DataPres.Sections
 
@@ -443,7 +439,6 @@ Public Class DataInterfaceTemplateOld
 
             TPRowCount = -1
 
-            SystemLog("Adding presentation section: " & Section.Name)
 
 
             AcElementCount += 1
@@ -469,7 +464,6 @@ Public Class DataInterfaceTemplateOld
             'DataSourceCount += 1
             AcContainersCount += 1
 
-            SystemLog("Adding acccordion element: " & AcElements(AcElementCount).Name)
 
             ReDim Preserve AcContainers(AcContainersCount)
             AcContainers(AcContainersCount) = New AccordionContentContainer()
@@ -491,7 +485,6 @@ Public Class DataInterfaceTemplateOld
             TPs(TPCount).Dock = DockStyle.Fill
             GetSectionControlCollection(Section, Me, SettingSectionID, TPs(TPCount))
             AcContainers(AcContainersCount).Height = TPs(TPCount).Height
-            SystemLog("ReturnedTPHeight =" & TPs(TPCount).Height.ToString)
 
 
 
@@ -517,7 +510,6 @@ Public Class DataInterfaceTemplateOld
 
         EndTimer()
 
-        'SystemLog(FileManager.ExcelModels(ModelID).WBData.GetStatus())
 
     End Sub
     Sub GetSectionControlCollection(Section As PresentationSection, Parent As Object, SetSectionID As Integer, TP As TablePanel)
@@ -578,9 +570,6 @@ Public Class DataInterfaceTemplateOld
                 ReDim Preserve RangeDataSources(RangeDataSourceCount)
                 RangeDataSources(RangeDataSourceCount) = AbovoRDS.GetRangeDS(SetTag)
 
-                SystemLog("Adding data from: " & ActiveDataSet.Name)
-                SystemLog("Col count: " & ActiveDataSet.ColCount)
-                SystemLog("Row count: " & ActiveDataSet.RowCount)
 
                 GridCount += 1
                 ReDim Preserve GridControls(GridCount)
@@ -608,7 +597,6 @@ Public Class DataInterfaceTemplateOld
 
                 UsedGridVIEWS(GridViewCount).BeginUpdate()
 
-                SystemLog("Formatting Grid")
                 Formatter.FormatGridView(UsedGridVIEWS(GridViewCount), GridControls(GridCount))
 
                 UsedGridVIEWS(GridViewCount).ColumnPanelRowHeight += 2 * DefaultGridCellPadding
@@ -619,13 +607,11 @@ Public Class DataInterfaceTemplateOld
                 GridControls(GridCount).MainView = UsedGridVIEWS(GridViewCount)
                 ColCount = -1
 
-                SystemLog("Adding live grid control with datasource index ")
 
                 UsedGridVIEWS(GridViewCount).EndUpdate()
 
                 GridControls(GridCount).ForceInitialize()
 
-                SystemLog("GridHeight: " & GridControls(GridCount).Height.ToString)
 
                 Dim IdealGridHeight As Integer = 2 * (((UsedGridVIEWS(GridViewCount).RowHeight + (2 * DefaultGridCellPadding)) * RangeDataSources(RangeDataSourceCount).Count + 1))
                 GridControls(GridCount).Height = IdealGridHeight
@@ -652,7 +638,6 @@ Public Class DataInterfaceTemplateOld
 
                 ActiveDataSet = DataPres.DataSets(SectionElement.ControlSourceIndex)
 
-                SystemLog("Adding data from: " & ActiveDataSet.Name)
 
                 ColList = New List(Of String)
 
@@ -663,9 +648,6 @@ Public Class DataInterfaceTemplateOld
 
                 UnboundDataSources(UBSDataSourceCount) = New AbovoUnboundSource(UBSDataSourceCount, SetTag)
 
-                SystemLog("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
-                SystemLog("Adding New ubs with index " & UBSDataSourceCount.ToString & ", SectionElement.ControlSourceIndex: " & SectionElement.ControlSourceIndex)
-                SystemLog("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 
                 Dim IdealGridWidth As Double = 0
 
@@ -698,7 +680,6 @@ Public Class DataInterfaceTemplateOld
 
                     End Select
 
-                    SystemLog("Adding column: " & PresentedColumn.ColumnTag.ColumnHeading)
 
                     PropertyArray(PropertiesCount) = New UnboundSourceProperty With {
                         .UserTag = PresentedColumn.ColumnTag,
@@ -715,7 +696,6 @@ Public Class DataInterfaceTemplateOld
 
                 UnboundDataSources(UBSDataSourceCount).Properties.AddRange(PropertyList)
 
-                SystemLog("Adding handlers")
                 'Add dataaccess/push handlers
                 AddHandler UnboundDataSources(UBSDataSourceCount).ValueNeeded, AddressOf UnboundDS_ValueNeeded
                 AddHandler UnboundDataSources(UBSDataSourceCount).ValuePushed, AddressOf UnboundDS_ValuePushed
@@ -725,7 +705,6 @@ Public Class DataInterfaceTemplateOld
                 GridCount += 1
                 ReDim Preserve GridControls(GridCount)
 
-                SystemLog("Adding grid control with datasource index " & UBSDataSourceCount.ToString)
 
                 GridControls(GridCount) = New GridControl() With {
                     .Name = "GridControl_" & GridCount.ToString,
@@ -734,12 +713,10 @@ Public Class DataInterfaceTemplateOld
                     .DataSource = UnboundDataSources(UBSDataSourceCount)
                 }
 
-                SystemLog("Initialising Grid")
 
                 'GridControls(GridCount).ForceInitialize()
 
                 Formatter.FormatGridControl(GridControls(GridCount))
-                SystemLog("Grid C formatted")
 
                 'Initialise new grid view for defaultdata
 
@@ -769,7 +746,6 @@ Public Class DataInterfaceTemplateOld
 
                 If ActiveDataSet.HasValidations Then
 
-                    SystemLog("Adding validations")
 
                     For Each ValList In ActiveDataSet.ValidationLists
 
@@ -790,12 +766,10 @@ Public Class DataInterfaceTemplateOld
                 GridControls(GridCount).ViewCollection.Add(UsedGridVIEWS(GridViewCount))
                 GridControls(GridCount).MainView = UsedGridVIEWS(GridViewCount)
 
-                SystemLog("Adding grid control with datasource index " & UBSDataSourceCount.ToString)
 
                 Dim FillSize As Integer = ActiveDataSet.RowCount
                 UnboundDataSources(UBSDataSourceCount).SetRowCount(FillSize)
 
-                SystemLog("Assigning columns grid control with datasource " & UBSDataSourceCount.ToString)
 
                 For Each ColCheck As UnboundSourceProperty In PropertyArray
 
@@ -1040,7 +1014,6 @@ Public Class DataInterfaceTemplateOld
                 If UnboundDataSources(UBSDataSourceCount).UBSTag.RO Then UsedGridVIEWS(GridViewCount).OptionsBehavior.Editable = False
 
                 LastBottom = GridControls(GridCount).Bottom
-                SystemLog("Ending grid update")
                 UsedGridVIEWS(GridViewCount).EndUpdate()
                 GridControls(GridCount).Height += 100
 
@@ -1050,7 +1023,6 @@ Public Class DataInterfaceTemplateOld
 
                     Dim BandedFooterDone As Boolean = False
 
-                    SystemLog("Starting bands")
 
                     Dim LastBand As String = ""
                     Dim LastBandTitle As String = "StartingBandDummyName"
@@ -1313,11 +1285,9 @@ Public Class DataInterfaceTemplateOld
 
                     UsedBANDedGridVIEWS(BandGridViewsCount).OptionsView.BestFitMaxRowCount = ActiveDataSet.UsedRows
 
-                    SystemLog("GridHeightPre: " & GridControls(GridCount).Height.ToString)
 
                 Else
 
-                    SystemLog("GridHeightPre: " & GridControls(GridCount).Height.ToString)
 
                     If Not DontAddCDHDef Then AddHandler UsedGridVIEWS(GridViewCount).CustomDrawColumnHeader, AddressOf DefaultCustomDrawColumnHeader
 
@@ -1343,7 +1313,6 @@ Public Class DataInterfaceTemplateOld
 #End Region
 
                 AddHandler GridControls(GridCount).DoubleClick, AddressOf VerifyDoubleClick
-                SystemLog("GridHeight: " & GridControls(GridCount).Height.ToString)
 
                 Dim IdealGridHeight As Integer
 
@@ -1970,7 +1939,6 @@ Public Class DataInterfaceTemplateOld
                     If Not IsNothing(CMTColDef.RepeatsBy) Then CMTColDef.ElementRepeats = True
 
 
-                    Debug.Print(TotalColumnCount.ToString)
 
                 Next
 
@@ -2507,7 +2475,6 @@ NextCell:
 
             End If
 
-            SystemLog("CumulativeControlHeight: " & SectionControlsCumlHeight)
             AcContainers(AcContainersCount).Height = SectionControlsCumlHeight
             AcContainers(AcContainersCount).Width = Me.Width
             AcContainers(AcContainersCount).Appearance.BackColor = AbovoBlue
@@ -2532,7 +2499,6 @@ NextCell:
         TP.EndInit()
 
         Formatter.FormatTablePanel(TP)
-        Debug.Print("Final TP Height: " & TP.Height.ToString & " SCUMH: " & SectionControlsCumlHeight.ToString)
 
     End Sub
 
@@ -2557,7 +2523,6 @@ NextCell:
 
         'er?
         'AcContainers(AcContainersCount).Height = TPs(SectionIndex).Height
-        SystemLog("ReturnedTPHeight =" & TPs(SectionIndex).Height.ToString)
 
     End Sub
 
@@ -2581,7 +2546,6 @@ NextCell:
 
             Catch ex As Exception
 
-                SystemLog("Error refreshing control: " & ex.Message)
 
             End Try
 
@@ -3144,7 +3108,6 @@ SectionSelect:
     End Sub
     Private Function GetDSData(ByVal UBSIndex As Integer, SetDSIndex As Integer, ByVal rowIndex As Integer, ByVal PropertyIndex As Integer) As Object
 
-        'If DoDataLog Then SystemLog("Value requested from dataset: " & SetDSIndex.ToString & " Row: " & rowIndex.ToString & " Column: " & PropertyIndex.ToString)
 
         Dim DP As CellDataPoint = DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(PropertyIndex)
         Dim DPC As DevExpress.Spreadsheet.Cell = ExcelModels(ModelID).WB.Worksheets(DP.SourceSheet).Cells(DP.SourceAddress)
@@ -3164,7 +3127,6 @@ SectionSelect:
             Case "S"
 
                 DP.StringValue = DPC.DisplayText
-                'SystemLog("DSIndex " & SetDSIndex.ToString & " returning string " & DPC.Value.TextValue & " From " & DP.SourceAddress & " of " & DP.SourceSheet)
                 Return DPC.DisplayText
                 Exit Function
 
@@ -3175,15 +3137,12 @@ SectionSelect:
                 Exit Function
 
             Case "N", "P", "C", "M"
-                SystemLog("UBS Index " & UBSIndex.ToString & " with DSIndex " & SetDSIndex.ToString & " returning " & DPC.Value.NumericValue.ToString & " From " & DP.SourceAddress & " of " & DP.SourceSheet)
                 DP.RealValue = DPC.Value.NumericValue
                 Return DPC.Value.NumericValue
                 Exit Function
 
             Case "I", "Y"
 
-                'If DoDataLog Then SystemLog("Returning Integer " & DP.IntValue)
-                'SystemLog("UBS Index " & UBSIndex.ToString & " with DSIndex " & SetDSIndex.ToString & " returning " & DPC.Value.NumericValue & " From " & DP.SourceAddress & " of " & DP.SourceSheet)
                 DP.IntValue = DPC.Value.NumericValue
                 Return CInt(DPC.Value.NumericValue)
                 Exit Function
@@ -3197,7 +3156,6 @@ SectionSelect:
     End Function
     Private Sub UnboundDS_ValuePushed(ByVal sender As Object, ByVal e As DevExpress.Data.UnboundSourceValuePushedEventArgs)
 
-        'SystemLog("Data push - " & Me.Text, Me, "Start")
 
         Me.Cursor = Cursors.WaitCursor
 
@@ -3226,7 +3184,6 @@ SectionSelect:
 
         Else
 
-            SystemLog("Value sent to dataset index: " & SetDSIndex.ToString & " Row: " & rowIndex.ToString & " Column: " & PropertyName)
 
             DataPres.DataSets(SetDSIndex).IsDirty = True
 
@@ -3281,12 +3238,10 @@ SectionSelect:
 
         Me.Cursor = Cursors.WaitCursor
 
-        'SystemLog("SDP Update called")
         Dim DataTag As SingleCellDataTag = sender.tag
         Dim OldValue As DevExpress.Spreadsheet.CellValue = DataTag.TargetWorksheet.Cells(DataTag.TargetCell).Value
         Dim OldValueString As String = OldValue.ToString
 
-        'SystemLog("Fill=" & GetWorkBook(ModelID).Worksheets(SourceDataPoint.SourceSheet).Cells(SourceDataPoint.SourceAddress).Fill.ToString)
 
         Dim DCM As New DataChangeEvent With {
                         .ModelID = ModelID,
@@ -3335,7 +3290,6 @@ SectionSelect:
 
         Dim view As GridView = TryCast(sender, GridView)
         'MsgBox("Paste failed")
-        'SystemLog(e.GetInvalidValues.ToString)
 
     End Sub
 
@@ -3693,7 +3647,6 @@ SectionSelect:
 
             If m.Msg = DevExpress.Utils.Drawing.Helpers.MSG.WM_MOUSEWHEEL Then
 
-                'SystemLog("TargetHandle: " & RecipientControl.Handle.ToString & " (" & RecipientControl.Name & ") SourceHandle: " & m.HWnd.ToString & ", Msg: " & m.Msg.ToString & ", WParam: " & m.WParam.ToString & ", LParam: " & m.LParam.ToString)
 
                 If RecipientControl.FindForm().RectangleToScreen(RecipientControl.Bounds).Contains(Form.MousePosition) Then
 
@@ -3956,7 +3909,6 @@ HLinks:
         'RepositoryItemIntegerEdit.Appearance.Font = GetFont("Small", Me.Scalefactor, True)
         'RepositoryItemComboBoxSOCIStockType.Appearance.Font = GetFont("Small", Me.Scalefactor, True)
 
-        'SystemLog("SF=" & Scalefactor)
 
         'colPropertyStockDescription1.Width = GridControlStockGrid.Width * 0.25
         'colPropertyOwnedManaged1.Width = GridControlStockGrid.Width * 0.125
@@ -4013,7 +3965,6 @@ HLinks:
         'WindowsUIButtonPanelSaveClose.AppearanceButton.Pressed.Font = GetFont("Small", Me.ScaleFactor)
         'Me.GroupBoxFileActions.Font = GetFont("Small", Me.ScaleFactor)
         'Me.WindowsUIButtonPanelBPActions.ButtonBackgroundImages
-        'SystemLog("Small font size:" & Me.XtraTabControlMainNavigator.AppearancePage.HeaderHotTracked.Font.SizeInPoints.ToString)
 
     End Sub
     Sub ResizeControls()
@@ -4027,9 +3978,6 @@ HLinks:
         'PictureBoxAbovoLogo.Height = CInt(PictureBoxAbovoLogo.Width * 0.483)
 
         'DockPanelSettings.Width = SetWidth
-        'SystemLog("GBPDHe:" & GroupBoxProgramDetails.Height)
-        'SystemLog("WUIBTop:" & WindowsUIButtonPanelExitHelp.Top)
-        'SystemLog("ABLBot:" & PictureBoxAbovoLogo.Bottom)
         'WindowsUIButtonPanelExitHelp.Left = ScaleUnits
         'GroupBoxProgramDetails.Width = SetWidth
         'XtraTabControlMainNavigator.Top = ScaleUnits

@@ -156,7 +156,6 @@ Namespace Abovo
         Public Shared Sub WriteLog(strEntry As String, Optional ByVal strSource As String = "")
 
             SystemLogText += strEntry & ", " & strSource & ", " & Now().ToString & vbLf
-            SystemLog(strEntry & ", " & strSource & ", " & Now().ToString)
 
         End Sub
         Public Shared Function ConvertToStringNum(stPassed As String) As String

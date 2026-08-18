@@ -295,7 +295,6 @@ DefaultDraw:
             bounds.X += buttonSize.Width + 3
             bounds.Width -= buttonSize.Width
 
-            If e.Column.AbsoluteIndex = 0 Then SystemLog("defdrawDraw Index 0 - " & e.Column.AbsoluteIndex)
             e.Appearance.FillRectangle(e.Cache, e.Bounds)
             e.Cache.DrawString(Trim(e.Info.Caption), e.Appearance.GetFont(), e.Appearance.GetForeBrush(e.Cache), e.Bounds, e.Appearance.GetStringFormat())
             e.Handled = True
@@ -314,9 +313,7 @@ DefaultDraw:
             If e.Column.Tag.WidthSet = False Then
 
                 e.Column.Tag.DefaultColumnWidth = e.Column.Width
-                SystemLog("DefaultColumnWidth: " & e.Column.Tag.DefaultColumnWidth)
                 e.Column.Tag.ExtendedColumnWidth = e.Column.Width + CellPadding + 15
-                SystemLog("ExtendedColumnWidth: " & e.Column.Tag.ExtendedColumnWidth)
                 e.Column.Tag.WidthSet = True
                 view.InvalidateColumnHeader(e.Column)
                 e.Handled = True
@@ -496,8 +493,6 @@ DefaultDraw:
 
 
 
-            SystemLog("WBDraw Index - " & e.Column.AbsoluteIndex)
-            'SystemLog(e.Column.Caption)
 
             WithButtonDrawColumnHeader(e)
             DrawCustomButton(e)
@@ -550,9 +545,7 @@ DefaultDraw:
             'If e.Column.Tag.WidthSet = False Then
 
             '    e.Column.Tag.DefaultColumnWidth = e.Column.Width
-            '    SystemLog("DefaultColumnWidth: " & e.Column.Tag.DefaultColumnWidth)
             '    e.Column.Tag.ExtendedColumnWidth = e.Column.Width + 15
-            '    SystemLog("ExtendedColumnWidth: " & e.Column.Tag.ExtendedColumnWidth)
             '    e.Column.Tag.WidthSet = True
             '    
             '    e.Handled = False
@@ -565,7 +558,6 @@ DefaultDraw:
                 Return
             End If
 
-            If e.Column.AbsoluteIndex = 0 Then SystemLog("defdrawDraw Index 0 - " & e.Column.AbsoluteIndex)
             e.Appearance.FillRectangle(e.Cache, e.Bounds)
             e.Cache.DrawString(Trim(e.Info.Caption), e.Appearance.GetFont(), e.Appearance.GetForeBrush(e.Cache), e.Bounds, e.Appearance.GetStringFormat())
             e.Handled = True
@@ -891,9 +883,7 @@ DefaultDraw:
             'If e.Column.Tag.WidthSet = False Then
 
             '    e.Column.Tag.DefaultColumnWidth = e.Column.Width
-            '    SystemLog("DefaultColumnWidth: " & e.Column.Tag.DefaultColumnWidth)
             '    e.Column.Tag.ExtendedColumnWidth = e.Column.Width + 15
-            '    SystemLog("ExtendedColumnWidth: " & e.Column.Tag.ExtendedColumnWidth)
             '    e.Column.Tag.WidthSet = True
             '    
             '    e.Handled = False

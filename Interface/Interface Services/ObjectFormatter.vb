@@ -126,7 +126,6 @@ Namespace Abovo
         End Sub
         Public Sub FormatGridView(ObjGridView As GridView, ParentGrid As DevExpress.XtraGrid.GridControl, Optional ByVal SetFontSize As String = "Normal")
 
-            SystemLog("Grid V Format called")
 
             Dim DoBandedExtras As Boolean
 
@@ -167,7 +166,6 @@ Namespace Abovo
                     FontToUse = DefaultFont
             End Select
 
-            SystemLog("Setting objects")
 
             With ObjGridView
 
@@ -297,7 +295,6 @@ Namespace Abovo
 
             End With
 
-            SystemLog("Setting skins")
 
             Dim element As SkinElement = SkinManager.GetSkinElement(SkinProductId.Grid, DevExpress.LookAndFeel.UserLookAndFeel.Default, "Header")
             element.Border.Thin.Bottom = -1
@@ -330,7 +327,6 @@ Namespace Abovo
 
             If DoBandedExtras Then
 
-                SystemLog("Doing banded extras")
 
                 Dim GVBandedGridView As BandedGridView = ObjGridView
                 Dim g As Graphics = ParentGrid.CreateGraphics()
@@ -382,13 +378,11 @@ Namespace Abovo
             End Try
 
 
-            SystemLog("Completes")
 
         End Sub
 
         Public Sub ProcessGVColumWidths(ObjGridView As GridView, sender As Form)
 
-            Debug.Print("XXXXXXXXXX - process gv columns start - XXXXXXXXXXXX")
 
             Dim ColTag As DataColumnTag
             Dim GC As GridControl = ObjGridView.GridControl
@@ -455,7 +449,6 @@ SkipCols:
             '                                     ObjGridView.Invalidate()
             '                                 End Sub))
 
-            Debug.Print("XXXXXXXXXX - process gv columns complete - XXXXXXXXXXXX")
         End Sub
 
         Public Sub FormatAccordianControl(ObjAC As AccordionControl)
