@@ -56,8 +56,12 @@ Namespace Abovo
 
             ElseIf EventType = "Code" Then
 
-                Dim BPE As BPCodeEvent = New BPCodeEvent(EventParams, EventTransaction, ActioningForm)
-                Return EventTransaction
+                Dim BPE As New BPCodeEvent(
+                    ModelID,
+                    EventParams,
+                    EventTransaction,
+                    ActioningForm)
+                Return BPE.EventTransaction
 
             ElseIf EventType = "RowColEvent" Then
 
@@ -91,10 +95,14 @@ Namespace Abovo
             Public EventTransaction As AbovoTransaction
 
 
-            Public Sub New(SetEventParams As Object, SetTransaction As AbovoTransaction, ActioningForm As Form)
+            Public Sub New(SetModelID As Integer,
+                           SetEventParams As Object,
+                           SetTransaction As AbovoTransaction,
+                           ActioningForm As Form)
 
-                ProcessEvent(SetEventParams, ActioningForm)
+                ModelID = SetModelID
                 EventTransaction = SetTransaction
+                ProcessEvent(SetEventParams, ActioningForm)
 
             End Sub
             Public Sub ProcessEvent(SetEventParams As Object, ActioningForm As Form)
@@ -105,22 +113,25 @@ Namespace Abovo
                         ExecuteFormulaGeneration(ModelID, True, EventTransaction)
 
                     Case "ImportSingleDSA_File"
-                        DSAImport.ImportSingleDSA_File(ModelID)
+                        EventTransaction = DSAImport.ImportSingleDSA_File(ModelID)
 
                     Case "ImportConsolDSA_File"
-                        DSAImport.ImportConsolDSA_File(ModelID)
+                        EventTransaction = DSAImport.ImportConsolDSA_File(ModelID)
 
                     Case "ImportMultiDSA_Files"
-                        DSAImport.DSA_Folder(ModelID)
+                        EventTransaction = DSAImport.DSA_Folder(ModelID)
+
+                    Case "ImportDSA_Template"
+                        EventTransaction = DSAImport.ImportDSA_Template(ModelID)
 
                     Case "ImportStockRentModel"
-                        ImportModels.ImportStockRentModel(ModelID)
+                        EventTransaction = ImportModels.ImportStockRentModel(ModelID)
 
                     Case "ImportStockConditionSurvey"
                         ImportModels.ImportStockConditionSurvey(ModelID)
 
                     Case "ImportManagementServiceCosts"
-                        ImportModels.ImportManagementServiceCosts(ModelID)
+                        EventTransaction = ImportModels.ImportManagementServiceCosts(ModelID)
 
                 End Select
 

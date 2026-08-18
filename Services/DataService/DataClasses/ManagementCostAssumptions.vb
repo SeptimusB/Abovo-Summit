@@ -36,7 +36,6 @@ Namespace Abovo
             Dim MergeList As New List(Of Integer)
 
             ObjData = New DataObject("ManagementCosts")
-            ' SystemLog("Created object - index is " & ObjData.Presentation.DSIndex)
 
             '''''''''''''''''''''''''''
 

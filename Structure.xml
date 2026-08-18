@@ -4516,7 +4516,7 @@
             <ItemTxt>Import vblf Template</ItemTxt>
             <ItemTip>Click to import vblf a Template</ItemTip>
             <ItemType>Button</ItemType>
-            <ItemData>ImportConsolDSA_File</ItemData>
+            <ItemData>ImportDSA_Template</ItemData>
           </InterfaceControlObject>
         </IElement>
 

@@ -358,7 +358,6 @@ Namespace Abovo
             Dim WB As IWorkbook = GetWorkbook()
 
             If WB Is Nothing Then
-                Debug.Print("DEVELOPMENT MATERIALISER WRITE BENCHMARK: workbook is not available.")
                 Return
             End If
 
@@ -370,15 +369,8 @@ Namespace Abovo
                 SourceWS = Nothing
             End Try
 
-            Debug.Print("")
-            Debug.Print("================================================================")
-            Debug.Print("DEVELOPMENT IDENTIFIED MATERIALISER WRITE BENCHMARK START")
-            Debug.Print("================================================================")
 
             If SourceWS Is Nothing Then
-                Debug.Print("Transactional DB worksheet was not found.")
-                Debug.Print("DEVELOPMENT IDENTIFIED MATERIALISER WRITE BENCHMARK END")
-                Debug.Print("================================================================")
                 Return
             End If
 
@@ -471,7 +463,6 @@ Namespace Abovo
                     End Try
 
                     If DN Is Nothing OrElse DN.Range Is Nothing Then
-                        Debug.Print("BLOCK " & TargetName & ": NOT FOUND")
                         Continue For
                     End If
 
@@ -531,25 +522,11 @@ Namespace Abovo
 
                     Next
 
-                    Debug.Print("PREPARED " &
-                                TargetName &
-                                ": rows=" &
-                                MaterialisedRowCount.ToString &
-                                ", cells=" &
-                                (MaterialisedRowCount * Block.ColumnCount).ToString &
-                                ", temp rows " &
-                                (DestinationTop + 1).ToString &
-                                ":" &
-                                (DestinationTop + MaterialisedRowCount).ToString)
 
                     DestinationTop += MaterialisedRowCount + 1
 
                 Next
 
-                Debug.Print("Candidate evaluation/preparation: " &
-                            EvaluateTimer.ElapsedMilliseconds.ToString &
-                            "ms; cells=" &
-                            Writes.Count.ToString)
 
                 Dim WriteTimer As Stopwatch = Stopwatch.StartNew()
 
@@ -560,10 +537,6 @@ Namespace Abovo
 
                 Next
 
-                Debug.Print("Value-only temp-sheet writes: " &
-                            WriteTimer.ElapsedMilliseconds.ToString &
-                            "ms; cells=" &
-                            Writes.Count.ToString)
 
                 Dim VerifyTimer As Stopwatch = Stopwatch.StartNew()
                 Dim VerifyMismatchCount As Integer = 0
@@ -587,12 +560,6 @@ Namespace Abovo
 
                         If VerifyExamples < MaximumVerifyExamples Then
 
-                            Debug.Print("WRITE VERIFY MISMATCH " &
-                                        TempWS.Name & "!" &
-                                        TempWS.Cells(Item.RowIndex,
-                                                     Item.ColumnIndex).GetReferenceA1() &
-                                        ": " &
-                                        Reason)
 
                             VerifyExamples += 1
 
@@ -602,28 +569,18 @@ Namespace Abovo
 
                 Next
 
-                Debug.Print("Value-only write verification: " &
-                            VerifyTimer.ElapsedMilliseconds.ToString &
-                            "ms; mismatches=" &
-                            VerifyMismatchCount.ToString)
 
-                Debug.Print("")
-                Debug.Print("--- Write benchmark conclusion ---")
 
                 If VerifyMismatchCount = 0 Then
 
-                    Debug.Print("WRITE MATERIALISATION INDICATOR: PASS - all prepared Development Identified values were written and read back successfully.")
 
                 Else
 
-                    Debug.Print("WRITE MATERIALISATION INDICATOR: ANALYSE - temp-sheet write/read mismatches exist.")
 
                 End If
 
             Catch ex As Exception
 
-                Debug.Print("DEVELOPMENT MATERIALISER WRITE BENCHMARK ERROR: " &
-                            ex.ToString)
 
             Finally
 
@@ -636,8 +593,6 @@ Namespace Abovo
 
                 Catch ex As Exception
 
-                    Debug.Print("Temporary materialisation worksheet cleanup failed: " &
-                                ex.Message)
 
                 End Try
 
@@ -646,8 +601,6 @@ Namespace Abovo
                     Try
                         WB.EndUpdate()
                     Catch ex As Exception
-                        Debug.Print("Benchmark EndUpdate failed: " &
-                                    ex.Message)
                     End Try
 
                 End If
@@ -679,12 +632,7 @@ Namespace Abovo
 
             End Try
 
-            Debug.Print("Write benchmark total elapsed: " &
-                        TotalTimer.ElapsedMilliseconds.ToString &
-                        "ms")
 
-            Debug.Print("DEVELOPMENT IDENTIFIED MATERIALISER WRITE BENCHMARK END")
-            Debug.Print("================================================================")
 
         End Sub
 
@@ -843,7 +791,6 @@ Namespace Abovo
             Dim WB As IWorkbook = GetWorkbook()
 
             If WB Is Nothing Then
-                Debug.Print("DEVELOPMENT MATERIALISER: workbook is not available.")
                 Return
             End If
 
@@ -855,15 +802,8 @@ Namespace Abovo
                 WS = Nothing
             End Try
 
-            Debug.Print("")
-            Debug.Print("================================================================")
-            Debug.Print("DEVELOPMENT IDENTIFIED MATERIALISER PROTOTYPE START")
-            Debug.Print("================================================================")
 
             If WS Is Nothing Then
-                Debug.Print("Transactional DB worksheet was not found.")
-                Debug.Print("DEVELOPMENT IDENTIFIED MATERIALISER PROTOTYPE END")
-                Debug.Print("================================================================")
                 Return
             End If
 
@@ -912,7 +852,6 @@ Namespace Abovo
 
                 If DN Is Nothing OrElse DN.Range Is Nothing Then
 
-                    Debug.Print("BLOCK " & TargetName & ": NOT FOUND")
                     Continue For
 
                 End If
@@ -931,9 +870,6 @@ Namespace Abovo
 
                 If LastMaterialisedRow < Block.TopRowIndex Then
 
-                    Debug.Print("BLOCK " & TargetName &
-                                ": no materialisable rows; range=" &
-                                Block.GetReferenceA1())
                     Continue For
 
                 End If
@@ -985,13 +921,6 @@ Namespace Abovo
 
                                 If ExamplesPrinted < MaximumExamples Then
 
-                                    Debug.Print("MISMATCH " &
-                                                TargetName & " " &
-                                                Cell.GetReferenceA1() &
-                                                ": " &
-                                                Reason &
-                                                "; formula=" &
-                                                Formula)
 
                                     ExamplesPrinted += 1
 
@@ -1006,13 +935,6 @@ Namespace Abovo
 
                             If ExamplesPrinted < MaximumExamples Then
 
-                                Debug.Print("EVALUATION ERROR " &
-                                            TargetName & " " &
-                                            Cell.GetReferenceA1() &
-                                            ": " &
-                                            ex.Message &
-                                            "; formula=" &
-                                            Formula)
 
                                 ExamplesPrinted += 1
 
@@ -1066,42 +988,10 @@ Namespace Abovo
 
                 Next
 
-                Debug.Print("BLOCK " &
-                            TargetName &
-                            " " &
-                            Block.GetReferenceA1() &
-                            ": materialised rows=" &
-                            (LastMaterialisedRow - Block.TopRowIndex + 1).ToString &
-                            ", formulas=" &
-                            BlockFormulaCells.ToString &
-                            ", constants=" &
-                            BlockConstantCells.ToString &
-                            ", matches=" &
-                            BlockMatches.ToString &
-                            ", mismatches=" &
-                            BlockMismatches.ToString &
-                            ", eval errors=" &
-                            BlockErrors.ToString &
-                            ", elapsed=" &
-                            BlockTimer.ElapsedMilliseconds.ToString &
-                            "ms")
 
             Next
 
-            Debug.Print("")
-            Debug.Print("--- Materialisation parity summary ---")
-            Debug.Print("Formula cells evaluated: " & FormulaCells.ToString)
-            Debug.Print("Non-formula/constant cells encountered: " & ConstantCells.ToString)
-            Debug.Print("Formula cells matching current TransactionDB value: " &
-                        MatchedFormulaCells.ToString)
-            Debug.Print("Formula value mismatches: " & MismatchFormulaCells.ToString)
-            Debug.Print("Formula evaluation errors: " & EvaluationErrors.ToString)
-            Debug.Print("Formula pattern-normalisation errors: " & PatternErrors.ToString)
-            Debug.Print("Unique normalised R1C1 formula patterns: " &
-                        PatternCounts.Count.ToString)
 
-            Debug.Print("")
-            Debug.Print("--- Most common normalised formula patterns ---")
 
             Dim Patterns As New List(Of KeyValuePair(Of String, Integer))(PatternCounts)
 
@@ -1125,42 +1015,24 @@ Namespace Abovo
 
                 Dim Signature As String = Patterns(Index).Key
 
-                Debug.Print("PATTERN " &
-                            (Index + 1).ToString &
-                            ": count=" &
-                            Patterns(Index).Value.ToString &
-                            ", example=" &
-                            PatternExampleCells(Signature) &
-                            " -> " &
-                            Signature)
 
             Next
 
-            Debug.Print("")
-            Debug.Print("--- Prototype conclusion ---")
 
             If EvaluationErrors = 0 AndAlso MismatchFormulaCells = 0 Then
 
-                Debug.Print("MATERIALISATION INDICATOR: PASS - on-demand FormulaEngine evaluation reproduced every tested Development Identified TransactionDB formula value.")
 
             ElseIf EvaluationErrors = 0 AndAlso
                    FormulaCells > 0 AndAlso
                    CDbl(MismatchFormulaCells) / CDbl(FormulaCells) < 0.001 Then
 
-                Debug.Print("MATERIALISATION INDICATOR: NEAR PASS - less than 0.1% of evaluated formula cells differ; inspect mismatch examples before conversion.")
 
             Else
 
-                Debug.Print("MATERIALISATION INDICATOR: ANALYSE - mismatches/evaluation errors must be resolved before replacing live TransactionDB formulas.")
 
             End If
 
-            Debug.Print("Diagnostic elapsed: " &
-                        TotalTimer.ElapsedMilliseconds.ToString &
-                        "ms")
 
-            Debug.Print("DEVELOPMENT IDENTIFIED MATERIALISER PROTOTYPE END")
-            Debug.Print("================================================================")
 
         End Sub
 
@@ -1290,7 +1162,6 @@ Namespace Abovo
             Dim WB As IWorkbook = GetWorkbook()
 
             If WB Is Nothing Then
-                Debug.Print("TRANSACTIONDB INTERNAL DIAGNOSTIC: workbook is not available.")
                 Return
             End If
 
@@ -1307,30 +1178,13 @@ Namespace Abovo
 
             Dim DiagnosticTimer As Stopwatch = Stopwatch.StartNew()
 
-            Debug.Print("")
-            Debug.Print("================================================================")
-            Debug.Print("TRANSACTIONDB INTERNAL DIAGNOSTIC START")
-            Debug.Print("================================================================")
 
             If WS Is Nothing Then
-                Debug.Print("Worksheet '" & SheetName & "' was not found.")
-                Debug.Print("TRANSACTIONDB INTERNAL DIAGNOSTIC END")
-                Debug.Print("================================================================")
                 Return
             End If
 
             Dim UsedRange As CellRange = WS.GetUsedRange()
 
-            Debug.Print("Used range: " &
-                        UsedRange.GetReferenceA1() &
-                        " [rows " &
-                        UsedRange.TopRowIndex.ToString & ":" &
-                        UsedRange.BottomRowIndex.ToString &
-                        " (" & UsedRange.RowCount.ToString & ")" &
-                        ", cols " &
-                        UsedRange.LeftColumnIndex.ToString & ":" &
-                        UsedRange.RightColumnIndex.ToString &
-                        " (" & UsedRange.ColumnCount.ToString & ")]")
 
             Dim DevelopmentTop As Integer = Integer.MaxValue
             Dim DevelopmentBottom As Integer = -1
@@ -1368,15 +1222,9 @@ Namespace Abovo
 
                 DevelopmentTop = -1
                 DevelopmentBottom = -1
-                Debug.Print("Development TransactionDB mirror region could not be resolved.")
 
             Else
 
-                Debug.Print("Development mirror envelope: rows " &
-                            DevelopmentTop.ToString & ":" &
-                            DevelopmentBottom.ToString &
-                            ", mirror names=" &
-                            DevelopmentNameCount.ToString)
 
             End If
 
@@ -1437,10 +1285,6 @@ Namespace Abovo
 
                     If SelfExamples < MaximumExamples Then
 
-                        Debug.Print("SELF REF: " &
-                                    Cell.GetReferenceA1() &
-                                    " -> " &
-                                    Formula)
 
                         SelfExamples += 1
 
@@ -1475,10 +1319,6 @@ Namespace Abovo
 
                     If DevelopmentExamples < MaximumExamples Then
 
-                        Debug.Print("DEVELOPMENT SOURCE REF: " &
-                                    Cell.GetReferenceA1() &
-                                    " -> " &
-                                    Formula)
 
                         DevelopmentExamples += 1
 
@@ -1488,22 +1328,7 @@ Namespace Abovo
 
             Next
 
-            Debug.Print("")
-            Debug.Print("--- Formula totals ---")
-            Debug.Print("Formula cells: " & FormulaCount.ToString)
-            Debug.Print("Other existing/value/format cells: " &
-                        ValueOnlyExistingCells.ToString)
-            Debug.Print("Formula cells inside Development mirror envelope: " &
-                        DevelopmentRegionFormulaCount.ToString)
-            Debug.Print("Formulas with explicit Transactional DB self-reference: " &
-                        SelfReferenceFormulaCount.ToString)
-            Debug.Print("Formulas containing TransCopy_ token: " &
-                        TransCopyTokenFormulaCount.ToString)
-            Debug.Print("Formulas directly referencing Development source sheets: " &
-                        DevelopmentSheetReferenceCount.ToString)
 
-            Debug.Print("")
-            Debug.Print("--- Formula row hotspots (top 25 rows) ---")
 
             Dim HotRows As New List(Of KeyValuePair(Of Integer, Integer))(FormulaCountByRow)
 
@@ -1523,15 +1348,9 @@ Namespace Abovo
 
             For Index As Integer = 0 To HotRowLimit - 1
 
-                Debug.Print("ROW " &
-                            (HotRows(Index).Key + 1).ToString &
-                            ": formula cells=" &
-                            HotRows(Index).Value.ToString)
 
             Next
 
-            Debug.Print("")
-            Debug.Print("--- Defined-name overlap with Development envelope ---")
 
             Dim NamesOnTransDB As Integer = 0
             Dim NamesTouchingDevelopmentEnvelope As Integer = 0
@@ -1564,62 +1383,32 @@ Namespace Abovo
                             NamesSpanningDevelopmentEnvelope += 1
                         End If
 
-                        Debug.Print("NAME OVERLAP" &
-                                    If(SpansEnvelope, " [SPANS ENVELOPE]", "") &
-                                    ": " &
-                                    DN.Name &
-                                    " = " &
-                                    DN.Range.GetReferenceA1())
 
                     End If
 
                 Catch ex As Exception
 
-                    Debug.Print("NAME OVERLAP INSPECTION ERROR: " &
-                                If(DN Is Nothing, "<Nothing>", DN.Name) &
-                                " - " & ex.Message)
 
                 End Try
 
             Next
 
-            Debug.Print("Global names physically on Transactional DB: " &
-                        NamesOnTransDB.ToString)
-            Debug.Print("Names touching Development envelope: " &
-                        NamesTouchingDevelopmentEnvelope.ToString)
-            Debug.Print("Names spanning complete Development envelope: " &
-                        NamesSpanningDevelopmentEnvelope.ToString)
 
-            Debug.Print("")
-            Debug.Print("--- Worksheet structural objects ---")
-            Debug.Print("Data validations: " & WS.DataValidations.Count.ToString)
-            Debug.Print("Conditional formats: " & WS.ConditionalFormattings.Count.ToString)
-            Debug.Print("Tables: " & WS.Tables.Count.ToString)
-            Debug.Print("Shapes/drawings: " & WS.Shapes.Count.ToString)
 
-            Debug.Print("")
-            Debug.Print("--- Architectural indicators ---")
 
             If FormulaCount = 0 Then
 
-                Debug.Print("CACHE CONVERSION INDICATOR: STRONG - Transactional DB contains no formulas.")
 
             ElseIf SelfReferenceFormulaCount = 0 AndAlso
                    DevelopmentSheetReferenceCount = 0 Then
 
-                Debug.Print("CACHE CONVERSION INDICATOR: PROMISING - formulas exist, but no explicit self or Development-sheet references were found.")
 
             Else
 
-                Debug.Print("CACHE CONVERSION INDICATOR: ANALYSE - live formula dependencies exist inside Transactional DB and need classification before cache conversion.")
 
             End If
 
-            Debug.Print("Diagnostic elapsed: " &
-                        DiagnosticTimer.ElapsedMilliseconds.ToString & "ms")
 
-            Debug.Print("TRANSACTIONDB INTERNAL DIAGNOSTIC END")
-            Debug.Print("================================================================")
 
         End Sub
 
@@ -1628,7 +1417,6 @@ Namespace Abovo
             Dim WB As IWorkbook = GetWorkbook()
 
             If WB Is Nothing Then
-                Debug.Print("TRANSACTIONDB DEPENDENCY DIAGNOSTIC: workbook is not available.")
                 Return
             End If
 
@@ -1637,10 +1425,6 @@ Namespace Abovo
 
             Dim DiagnosticTimer As Stopwatch = Stopwatch.StartNew()
 
-            Debug.Print("")
-            Debug.Print("================================================================")
-            Debug.Print("TRANSACTIONDB DEPENDENCY DIAGNOSTIC START")
-            Debug.Print("================================================================")
 
             Dim TransactionDBSheet As Worksheet = Nothing
 
@@ -1651,25 +1435,12 @@ Namespace Abovo
             End Try
 
             If TransactionDBSheet Is Nothing Then
-                Debug.Print("Worksheet '" & TransactionDBSheetName & "' was not found.")
-                Debug.Print("TRANSACTIONDB DEPENDENCY DIAGNOSTIC END")
-                Debug.Print("================================================================")
                 Return
             End If
 
             Dim TransUsedRange As CellRange = TransactionDBSheet.GetUsedRange()
 
-            Debug.Print("Transactional DB used range: " &
-                        TransUsedRange.GetReferenceA1() &
-                        " [rows " &
-                        TransUsedRange.TopRowIndex.ToString & ":" &
-                        TransUsedRange.BottomRowIndex.ToString &
-                        ", columns " &
-                        TransUsedRange.LeftColumnIndex.ToString & ":" &
-                        TransUsedRange.RightColumnIndex.ToString & "]")
 
-            Debug.Print("")
-            Debug.Print("--- Defined names physically located on Transactional DB ---")
 
             Dim GlobalNamesOnTransDB As Integer = 0
 
@@ -1686,24 +1457,11 @@ Namespace Abovo
 
                         GlobalNamesOnTransDB += 1
 
-                        Debug.Print("GLOBAL NAME: " &
-                                    DN.Name &
-                                    " = " &
-                                    DN.Range.GetReferenceA1() &
-                                    " [rows " &
-                                    DN.Range.TopRowIndex.ToString & ":" &
-                                    DN.Range.BottomRowIndex.ToString &
-                                    ", cols " &
-                                    DN.Range.LeftColumnIndex.ToString & ":" &
-                                    DN.Range.RightColumnIndex.ToString & "]")
 
                     End If
 
                 Catch ex As Exception
 
-                    Debug.Print("GLOBAL NAME INSPECTION ERROR: " &
-                                If(DN Is Nothing, "<Nothing>", DN.Name) &
-                                " - " & ex.Message)
 
                 End Try
 
@@ -1726,28 +1484,11 @@ Namespace Abovo
 
                             LocalNamesOnTransDB += 1
 
-                            Debug.Print("LOCAL NAME [" &
-                                        ScopeWS.Name &
-                                        "]: " &
-                                        DN.Name &
-                                        " = " &
-                                        DN.Range.GetReferenceA1() &
-                                        " [rows " &
-                                        DN.Range.TopRowIndex.ToString & ":" &
-                                        DN.Range.BottomRowIndex.ToString &
-                                        ", cols " &
-                                        DN.Range.LeftColumnIndex.ToString & ":" &
-                                        DN.Range.RightColumnIndex.ToString & "]")
 
                         End If
 
                     Catch ex As Exception
 
-                        Debug.Print("LOCAL NAME INSPECTION ERROR [" &
-                                    ScopeWS.Name &
-                                    "]: " &
-                                    If(DN Is Nothing, "<Nothing>", DN.Name) &
-                                    " - " & ex.Message)
 
                     End Try
 
@@ -1755,13 +1496,7 @@ Namespace Abovo
 
             Next
 
-            Debug.Print("Defined-name totals on Transactional DB: global=" &
-                        GlobalNamesOnTransDB.ToString &
-                        ", local=" &
-                        LocalNamesOnTransDB.ToString)
 
-            Debug.Print("")
-            Debug.Print("--- Formula dependency scan ---")
 
             Dim FormulaCellsScanned As Long = 0
             Dim DirectTransactionDBReferences As Long = 0
@@ -1823,12 +1558,6 @@ Namespace Abovo
 
                                 DirectExamplesPrinted += 1
 
-                                Debug.Print("DIRECT REF: " &
-                                            WS.Name &
-                                            "!" &
-                                            Cell.GetReferenceA1() &
-                                            " -> " &
-                                            FormulaText)
 
                             End If
 
@@ -1843,12 +1572,6 @@ Namespace Abovo
 
                                 NamedExamplesPrinted += 1
 
-                                Debug.Print("NAMED REF:  " &
-                                            WS.Name &
-                                            "!" &
-                                            Cell.GetReferenceA1() &
-                                            " -> " &
-                                            FormulaText)
 
                             End If
 
@@ -1866,52 +1589,20 @@ Namespace Abovo
                    SheetDirectCount > 0 OrElse
                    SheetNamedCount > 0 Then
 
-                    Debug.Print("SHEET SUMMARY [" &
-                                WS.Name &
-                                "]: formulas=" &
-                                SheetFormulaCount.ToString &
-                                ", direct TransactionDB refs=" &
-                                SheetDirectCount.ToString &
-                                ", TransCopy_ refs=" &
-                                SheetNamedCount.ToString &
-                                ", scan=" &
-                                SheetTimer.ElapsedMilliseconds.ToString &
-                                "ms")
 
                 End If
 
             Next
 
-            Debug.Print("")
-            Debug.Print("--- Diagnostic summary ---")
-            Debug.Print("Formula cells scanned: " &
-                        FormulaCellsScanned.ToString)
-            Debug.Print("External formulas with direct Transactional DB sheet references: " &
-                        DirectTransactionDBReferences.ToString)
-            Debug.Print("External formulas containing TransCopy_ defined-name references: " &
-                        TransCopyNameReferences.ToString)
-            Debug.Print("External formulas containing BOTH forms: " &
-                        FormulasContainingBoth.ToString)
 
             If DirectTransactionDBReferences = 0 Then
 
-                Debug.Print("BLOCK-REBUILD INDICATOR: PROMISING - no direct external " &
-                            "Transactional DB sheet references were found by the formula-text scan.")
 
             Else
 
-                Debug.Print("BLOCK-REBUILD INDICATOR: CAUTION - direct external " &
-                            "Transactional DB sheet references exist and must be preserved " &
-                            "or explicitly remapped before a manual block rebuild.")
 
             End If
 
-            Debug.Print("Diagnostic elapsed: " &
-                        DiagnosticTimer.ElapsedMilliseconds.ToString &
-                        "ms")
-            Debug.Print("TRANSACTIONDB DEPENDENCY DIAGNOSTIC END")
-            Debug.Print("================================================================")
-            Debug.Print("")
 
         End Sub
 
@@ -1981,13 +1672,10 @@ Namespace Abovo
 
                 Dim MaterialiserTimer As Stopwatch = Stopwatch.StartNew()
 
-                Debug.Print("TransactionalDBSynchroniser: using Development Identified production mirror fast path.")
 
                 Dim MaterialiseResult As AbovoTransaction =
                     ExcelModels(ModelID).TransDBMaterialiser.RefreshDevelopmentIdentified()
 
-                Debug.Print("TransactionalDBSynchroniser Development Identified formula-capacity refresh: " &
-                            MaterialiserTimer.ElapsedMilliseconds.ToString & "ms")
 
                 If MaterialiseResult.BError Then
                     Return MaterialiseResult
@@ -1995,10 +1683,6 @@ Namespace Abovo
 
             End If
 
-            Debug.Print("TransactionalDBSynchroniser requests: " &
-                        Requests.Count.ToString &
-                        ", incoming calculation=" &
-                        WB.Options.CalculationMode.ToString)
 
             If Requests.Count = 0 Then
 
@@ -2062,19 +1746,9 @@ Namespace Abovo
 
                 End Function)
 
-            Debug.Print("TransactionalDBSynchroniser actual resize work items: " &
-                        WorkItems.Count.ToString)
 
             For Each Item As MirrorResizeWorkItem In WorkItems
 
-                Debug.Print("  Pending '" & Item.Request.TargetNamedRange &
-                            "' " & Item.WorksheetName &
-                            "!" & Item.TopRowIndex.ToString &
-                            ":" & Item.BottomRowIndex.ToString &
-                            ", cols " & Item.LeftColumnIndex.ToString &
-                            ":" & Item.RightColumnIndex.ToString &
-                            ", rows " & Item.CurrentRows.ToString &
-                            " -> " & Item.Request.RequiredRows.ToString)
 
             Next
 
@@ -2103,9 +1777,6 @@ Namespace Abovo
                     HistoryChanged = True
                 End If
 
-                Debug.Print("TransactionalDBSynchroniser disable history (was " &
-                            PreviousHistoryEnabled.ToString & "): " &
-                            HistoryTimer.ElapsedMilliseconds.ToString & "ms")
 
                 Dim EngineTimer As Stopwatch = Stopwatch.StartNew()
 
@@ -2114,9 +1785,6 @@ Namespace Abovo
                     CalculationEngineChanged = True
                 End If
 
-                Debug.Print("TransactionalDBSynchroniser set calculation engine Recursive (was " &
-                            PreviousCalculationEngineType.ToString & "): " &
-                            EngineTimer.ElapsedMilliseconds.ToString & "ms")
 
                 If WB.Options.CalculationMode <> WorkbookCalculationMode.Manual Then
                     WB.Options.CalculationMode = WorkbookCalculationMode.Manual
@@ -2132,8 +1800,6 @@ Namespace Abovo
                     ExcelModels(ModelID).ExpendAnalyser.DisconectRDS()
                     RDSDisconnected = True
 
-                    Debug.Print("TransactionalDBSynchroniser disconnect RDS: " &
-                                DisconnectTimer.ElapsedMilliseconds.ToString & "ms")
 
                 End If
 
@@ -2146,11 +1812,6 @@ Namespace Abovo
                                                  Item.Request.TargetNamedRange,
                                                  Item.Request.RequiredRows)
 
-                    Debug.Print("  TransDB '" &
-                                Item.Request.TargetNamedRange & "': " &
-                                Item.CurrentRows.ToString & " -> " &
-                                Item.Request.RequiredRows.ToString & " rows, " &
-                                MirrorTimer.ElapsedMilliseconds.ToString & "ms")
 
                     If ResizeResult.BError Then
                         Result.BError = True
@@ -2165,7 +1826,6 @@ Namespace Abovo
 
                 Result.BError = True
                 Result.StringReturn &= ex.Message
-                Debug.Print("TransactionalDBSynchroniser ERROR: " & ex.ToString)
 
             Finally
 
@@ -2174,26 +1834,18 @@ Namespace Abovo
                     Dim EndUpdateTimer As Stopwatch = Stopwatch.StartNew()
                     WB.EndUpdate()
 
-                    Debug.Print("TransactionalDBSynchroniser EndUpdate: " &
-                                EndUpdateTimer.ElapsedMilliseconds.ToString & "ms")
 
                 End If
 
                 Dim RestoreCalcTimer As Stopwatch = Stopwatch.StartNew()
                 WB.Options.CalculationMode = PreviousCalculationMode
 
-                Debug.Print("TransactionalDBSynchroniser restore calculation to " &
-                            PreviousCalculationMode.ToString & ": " &
-                            RestoreCalcTimer.ElapsedMilliseconds.ToString & "ms")
 
                 If CalculationEngineChanged Then
 
                     Dim RestoreEngineTimer As Stopwatch = Stopwatch.StartNew()
                     WB.Options.CalculationEngineType = PreviousCalculationEngineType
 
-                    Debug.Print("TransactionalDBSynchroniser restore calculation engine to " &
-                                PreviousCalculationEngineType.ToString & ": " &
-                                RestoreEngineTimer.ElapsedMilliseconds.ToString & "ms")
 
                 End If
 
@@ -2202,9 +1854,6 @@ Namespace Abovo
                     Dim RestoreHistoryTimer As Stopwatch = Stopwatch.StartNew()
                     WB.History.IsEnabled = PreviousHistoryEnabled
 
-                    Debug.Print("TransactionalDBSynchroniser restore history to " &
-                                PreviousHistoryEnabled.ToString & ": " &
-                                RestoreHistoryTimer.ElapsedMilliseconds.ToString & "ms")
 
                 End If
 
@@ -2213,13 +1862,9 @@ Namespace Abovo
                     Dim ReconnectTimer As Stopwatch = Stopwatch.StartNew()
                     ExcelModels(ModelID).ExpendAnalyser.ReconnectRDS()
 
-                    Debug.Print("TransactionalDBSynchroniser reconnect RDS: " &
-                                ReconnectTimer.ElapsedMilliseconds.ToString & "ms")
 
                 End If
 
-                Debug.Print("TransactionalDBSynchroniser total: " &
-                            SyncTimer.ElapsedMilliseconds.ToString & "ms")
 
                 IsSynchronising = False
 
@@ -2247,25 +1892,12 @@ Namespace Abovo
             ShiftLeft = Math.Min(UsedRange.LeftColumnIndex, RangeLeft)
             ShiftRight = Math.Max(UsedRange.RightColumnIndex, RangeRight)
 
-            Debug.Print("    TransactionDB used columns: " &
-                        UsedRange.LeftColumnIndex.ToString & ":" &
-                        UsedRange.RightColumnIndex.ToString &
-                        "; mirror columns: " &
-                        RangeLeft.ToString & ":" &
-                        RangeRight.ToString &
-                        "; structural shift columns: " &
-                        ShiftLeft.ToString & ":" &
-                        ShiftRight.ToString &
-                        "; GetUsedRange=" &
-                        UsedRangeTimer.ElapsedMilliseconds.ToString & "ms")
 
             Dim CanUseFastPath As Boolean =
                 ShiftLeft >= 0 AndAlso
                 ShiftRight >= ShiftLeft AndAlso
                 ShiftRight <= 16383
 
-            Debug.Print("    TransactionDB used-width cell-shift path: " &
-                        CanUseFastPath.ToString.ToUpperInvariant())
 
             Return CanUseFastPath
 
@@ -2380,15 +2012,6 @@ Namespace Abovo
                         WS.DefinedNames.GetDefinedName(TargetNamedRange).Range = ExpandedRange
                     End If
 
-                    Debug.Print("    mirror insert '" &
-                                TargetNamedRange &
-                                "': " &
-                                If(UseFastPath,
-                                   "InsertCells(used-width ShiftCellsDown)=",
-                                   "Rows.Insert=") &
-                                InsertElapsed.ToString &
-                                "ms, mirror-width fill=" &
-                                FillElapsed.ToString & "ms")
 
                 Else
 
@@ -2446,13 +2069,6 @@ Namespace Abovo
                         WS.DefinedNames.GetDefinedName(TargetNamedRange).Range = ContractedRange
                     End If
 
-                    Debug.Print("    mirror delete '" &
-                                TargetNamedRange &
-                                "': " &
-                                If(UseFastPath,
-                                   "DeleteCells(used-width ShiftCellsUp)=",
-                                   "Rows.Remove=") &
-                                DeleteElapsed.ToString & "ms")
 
                 End If
 

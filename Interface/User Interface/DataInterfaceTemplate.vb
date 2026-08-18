@@ -539,11 +539,9 @@ Public Class DataInterfaceTemplate
 
         ControlsInitialised = True
 
-        Debug.Print("XXXXXXXXXX - Resize call -XXXXXXXXXXXX")
 
         ResizeFonts()
 
-        Debug.Print("XXXXXXXXXX - Resize call complete - XXXXXXXXXXXX")
 
         Exit Sub
 
@@ -1060,15 +1058,6 @@ SkipRefresh:
             End If
 
 #If DEBUG Then
-            Debug.Print("POST-BUILD SIZE: DataInterfaceTemplate Client=" &
-                        Me.ClientSize.Width.ToString & "x" &
-                        Me.ClientSize.Height.ToString &
-                        ", XtraTabControl Client=" &
-                        XtraTabControlNewGIT.ClientSize.Width.ToString & "x" &
-                        XtraTabControlNewGIT.ClientSize.Height.ToString &
-                        ", XtraTabPage Client=" &
-                        XTP.ClientSize.Width.ToString & "x" &
-                        XTP.ClientSize.Height.ToString)
 #End If
 
         End Try
@@ -1097,73 +1086,17 @@ SkipRefresh:
 
             End If
 
-            Debug.Print("")
-            Debug.Print("============================================================")
-            Debug.Print("LAYOUT DIAGNOSTIC - SECTION " &
-                        SectionIndex.ToString &
-                        " '" &
-                        If(XTP Is Nothing, "?", XTP.Text.Trim) &
-                        "'")
-            Debug.Print("Form: Client=" &
-                        Me.ClientSize.Width.ToString & "x" &
-                        Me.ClientSize.Height.ToString &
-                        ", Bounds=" &
-                        Me.Bounds.ToString)
 
             If ParentGroupForm IsNot Nothing Then
-                Debug.Print("ParentGroupForm: Client=" &
-                            ParentGroupForm.ClientSize.Width.ToString & "x" &
-                            ParentGroupForm.ClientSize.Height.ToString &
-                            ", Bounds=" &
-                            ParentGroupForm.Bounds.ToString)
             End If
 
-            Debug.Print("XtraTabControlNewGIT: Client=" &
-                        XtraTabControlNewGIT.ClientSize.Width.ToString & "x" &
-                        XtraTabControlNewGIT.ClientSize.Height.ToString &
-                        ", Bounds=" &
-                        XtraTabControlNewGIT.Bounds.ToString &
-                        ", ClientRectangle=" &
-                        XtraTabControlNewGIT.ClientRectangle.ToString)
 
             If XTP IsNot Nothing Then
-                Debug.Print("XtraTabPage: Client=" &
-                            XTP.ClientSize.Width.ToString & "x" &
-                            XTP.ClientSize.Height.ToString &
-                            ", Bounds=" &
-                            XTP.Bounds.ToString &
-                            ", AutoScroll=" &
-                            XTP.AutoScroll.ToString &
-                            ", AutoScrollMinSize=" &
-                            XTP.AutoScrollMinSize.ToString &
-                            ", DisplayRectangle=" &
-                            XTP.DisplayRectangle.ToString)
             End If
 
             If TP IsNot Nothing Then
-                Debug.Print("TablePanel: Client=" &
-                            TP.ClientSize.Width.ToString & "x" &
-                            TP.ClientSize.Height.ToString &
-                            ", Bounds=" &
-                            TP.Bounds.ToString &
-                            ", AutoSize=" &
-                            TP.AutoSize.ToString &
-                            ", AutoScroll=" &
-                            TP.AutoScroll.ToString &
-                            ", Dock=" &
-                            TP.Dock.ToString &
-                            ", DisplayRectangle=" &
-                            TP.DisplayRectangle.ToString &
-                            ", Rows=" &
-                            TP.Rows.Count.ToString)
 
                 For RowIndex As Integer = 0 To TP.Rows.Count - 1
-                    Debug.Print("  TP Row " &
-                                RowIndex.ToString &
-                                ": Style=" &
-                                TP.Rows(RowIndex).Style.ToString &
-                                ", Height=" &
-                                TP.Rows(RowIndex).Height.ToString)
                 Next
             End If
 
@@ -1191,12 +1124,9 @@ SkipRefresh:
 
             End If
 
-            Debug.Print("============================================================")
-            Debug.Print("")
 
         Catch ex As Exception
 
-            Debug.Print("LAYOUT DIAGNOSTIC ERROR: " & ex.ToString)
 
         End Try
 #End If
@@ -1249,43 +1179,6 @@ SkipRefresh:
 
         End If
 
-        Debug.Print("VGRID '" & VG.Name & "'")
-        Debug.Print("  Bounds=" & VG.Bounds.ToString &
-                    ", Client=" &
-                    VG.ClientSize.Width.ToString & "x" &
-                    VG.ClientSize.Height.ToString &
-                    ", MinimumSize=" &
-                    VG.MinimumSize.ToString)
-        Debug.Print("  TabTop=" &
-                    GridTopInTab.ToString &
-                    ", TabBottom=" &
-                    GridBottomInTab.ToString &
-                    ", TabClientHeight=" &
-                    If(XTP Is Nothing,
-                       "?",
-                       XTP.ClientSize.Height.ToString) &
-                    ", RemainingFromTop=" &
-                    RemainingTabHeight.ToString)
-        Debug.Print("  TPRow=" &
-                    TableRowIndex.ToString &
-                    ", TPRowStyle=" &
-                    TableRowStyle &
-                    ", TPRowHeight=" &
-                    TableRowHeight.ToString)
-        Debug.Print("  Records=" &
-                    VG.RecordCount.ToString &
-                    ", RowHeaderWidth=" &
-                    VG.RowHeaderWidth.ToString &
-                    ", RecordWidth=" &
-                    VG.RecordWidth.ToString)
-        Debug.Print("  Dock=" &
-                    VG.Dock.ToString &
-                    ", Anchor=" &
-                    VG.Anchor.ToString &
-                    ", Parent=" &
-                    If(VG.Parent Is Nothing,
-                       "Nothing",
-                       VG.Parent.GetType().FullName))
 
         DumpControlParentChain(VG)
 
@@ -1315,20 +1208,6 @@ SkipRefresh:
         Catch
         End Try
 
-        Debug.Print("XTRAGRID '" & GC.Name & "'")
-        Debug.Print("  Bounds=" &
-                    GC.Bounds.ToString &
-                    ", Client=" &
-                    GC.ClientSize.Width.ToString & "x" &
-                    GC.ClientSize.Height.ToString &
-                    ", DataRows=" &
-                    If(GC.MainView Is Nothing,
-                       "?",
-                       GC.MainView.DataRowCount.ToString))
-        Debug.Print("  TabTop=" &
-                    GridTopInTab.ToString &
-                    ", RemainingFromTop=" &
-                    RemainingTabHeight.ToString)
 
 #End If
 
@@ -1345,21 +1224,6 @@ SkipRefresh:
 
         While CurrentControl IsNot Nothing AndAlso Level < 12
 
-            Debug.Print("    Parent[" &
-                        Level.ToString &
-                        "] " &
-                        CurrentControl.GetType().FullName &
-                        ": Name='" &
-                        CurrentControl.Name &
-                        "', Bounds=" &
-                        CurrentControl.Bounds.ToString &
-                        ", Client=" &
-                        CurrentControl.ClientSize.Width.ToString & "x" &
-                        CurrentControl.ClientSize.Height.ToString &
-                        ", Dock=" &
-                        CurrentControl.Dock.ToString &
-                        ", AutoSize=" &
-                        CurrentControl.AutoSize.ToString)
 
             CurrentControl =
                 CurrentControl.Parent
@@ -1482,18 +1346,6 @@ SkipRefresh:
             End If
 
 #If DEBUG Then
-            Debug.Print("GRID VIEWPORT SIZE '" &
-                        GC.Name &
-                        "': rows=" &
-                        If(GC.MainView Is Nothing,
-                           "?",
-                           GC.MainView.DataRowCount.ToString) &
-                        ", availableHeight=" &
-                        AvailableGridHeight.ToString &
-                        ", bestHeight=" &
-                        BestGridSize.Height.ToString &
-                        ", appliedHeight=" &
-                        GC.Height.ToString)
 #End If
 
         Next
@@ -1680,55 +1532,11 @@ SkipRefresh:
                 Next
 
 #If DEBUG Then
-                Debug.Print("VGRID COMMAND HOST '" &
-                            VG.Name &
-                            "': hostWidth=" &
-                            CommandHost.Width.ToString &
-                            ", vgridWidth=" &
-                            PreferredVGridWidth.ToString &
-                            ", buttons=" &
-                            CommandHost.Controls.Count.ToString)
 #End If
 
             Next
 
 #If DEBUG Then
-            Debug.Print("VGRID CONTENT SIZE '" &
-                        VG.Name &
-                        "': records=" &
-                        VG.RecordCount.ToString &
-                        ", rowHeaderWidth=" &
-                        VG.RowHeaderWidth.ToString &
-                        ", recordWidth=" &
-                        VG.RecordWidth.ToString &
-                        ", preferredWidth=" &
-                        PreferredVGridWidth.ToString &
-                        ", availableWidth=" &
-                        AvailableVGridWidth.ToString &
-                        ", contentHeight=" &
-                        PreferredVGridHeight.ToString &
-                        ", viewportHeight=" &
-                        AvailableVGridHeight.ToString &
-                        ", appliedHeight=" &
-                        VG.Height.ToString &
-                        ", heightPolicy=max(viewport,content)" &
-                        ", verticalSafetyReserve=" &
-                        VGridVerticalSafetyReserve.ToString &
-                        ", scrollVisibility=" &
-                        VG.ScrollVisibility.ToString &
-                        ", minimumHeight=" &
-                        VG.MinimumSize.Height.ToString &
-                        ", tableRow=" &
-                        If(TryCast(VG.Tag, VGridLayoutTag) Is Nothing,
-                           "?",
-                           TryCast(VG.Tag, VGridLayoutTag).TableRowIndex.ToString) &
-                        ", tableRowHeight=" &
-                        If(TryCast(VG.Parent, TablePanel) Is Nothing OrElse
-                           TryCast(VG.Tag, VGridLayoutTag) Is Nothing,
-                           "?",
-                           TryCast(VG.Parent, TablePanel).
-                               Rows(TryCast(VG.Tag, VGridLayoutTag).TableRowIndex).
-                               Height.ToString))
 #End If
 
         Next
@@ -1914,13 +1722,6 @@ SkipRefresh:
 
             If FamilyCounts(FamilyKey) > 1 Then
 
-                Debug.Print(
-                    "GRID REPEATING FAMILY WIDTH '" &
-                    FamilyKey &
-                    "': columns=" &
-                    FamilyCounts(FamilyKey).ToString &
-                    ", width=" &
-                    FamilyWidths(FamilyKey).ToString)
 
             End If
 
@@ -2111,17 +1912,6 @@ SkipRefresh:
         End If
 
 #If DEBUG Then
-        Debug.Print(
-            "GRID CONTENT WIDTH '" &
-            GC.Name &
-            "': natural=" &
-            NaturalContentWidth.ToString &
-            ", available=" &
-            AvailableWidth.ToString &
-            ", applied=" &
-            GC.Width.ToString &
-            ", growOnly=" &
-            GrowOnly.ToString)
 #End If
 
     End Sub
@@ -2771,9 +2561,6 @@ SkipRefresh:
                 ReDim Preserve RangeDataSources(RangeDataSourceCount)
                 RangeDataSources(RangeDataSourceCount) = AbovoRDS.GetRangeDS(SetTag)
 
-                SystemLog("Adding data from: " & ActiveDataSet.Name)
-                SystemLog("Col count: " & ActiveDataSet.ColCount)
-                SystemLog("Row count: " & ActiveDataSet.RowCount)
 
                 GridCount += 1
                 ReDim Preserve GridControls(GridCount)
@@ -2806,7 +2593,6 @@ SkipRefresh:
 
                 UsedGridVIEWS(GridViewCount).BeginUpdate()
 
-                SystemLog("Formatting Grid")
 
                 UsedGridVIEWS(GridViewCount).ColumnPanelRowHeight += 2 * DefaultGridCellPadding
 
@@ -2845,7 +2631,6 @@ SkipRefresh:
 
                 ActiveDataSet = DataPres.DataSets(SectionElement.ControlSourceIndex)
 
-                SystemLog("Adding data from: " & ActiveDataSet.Name)
 
                 ColList = New List(Of String)
 
@@ -2858,9 +2643,6 @@ SkipRefresh:
 
                 RegisterDataSetDependencies(SetSectionID, ActiveDataSet)
 
-                SystemLog("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
-                SystemLog("Adding New ubs with index " & UBSDataSourceCount.ToString & ", SectionElement.ControlSourceIndex: " & SectionElement.ControlSourceIndex)
-                SystemLog("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 
                 Dim IdealGridWidth As Double = 0
 
@@ -2893,7 +2675,6 @@ SkipRefresh:
 
                     End Select
 
-                    SystemLog("Adding column: " & PresentedColumn.ColumnTag.ColumnHeading)
 
                     PropertyArray(PropertiesCount) = New UnboundSourceProperty With {
                         .UserTag = PresentedColumn.ColumnTag,
@@ -2910,7 +2691,6 @@ SkipRefresh:
 
                 UnboundDataSources(UBSDataSourceCount).Properties.AddRange(PropertyList)
 
-                SystemLog("Adding handlers")
                 'Add dataaccess/push handlers
                 AddHandler UnboundDataSources(UBSDataSourceCount).ValueNeeded, AddressOf UnboundDS_ValueNeeded
                 AddHandler UnboundDataSources(UBSDataSourceCount).ValuePushed, AddressOf UnboundDS_ValuePushed
@@ -2920,7 +2700,6 @@ SkipRefresh:
                 GridCount += 1
                 ReDim Preserve GridControls(GridCount)
 
-                SystemLog("Adding grid control with datasource index " & UBSDataSourceCount.ToString)
 
                 GridControls(GridCount) = New GridControl() With {
                     .Name = "GridControl_" & GridCount.ToString,
@@ -2938,7 +2717,6 @@ SkipRefresh:
 
                 GridControls(GridCount).BeginUpdate()
 
-                SystemLog("Initialising Grid")
 
                 GridViewCount += 1
                 ReDim Preserve UsedGridVIEWS(GridViewCount)
@@ -2965,7 +2743,6 @@ SkipRefresh:
 
                 If ActiveDataSet.HasValidations Then
 
-                    SystemLog("Adding validations")
 
                     For Each ValList In ActiveDataSet.ValidationLists
 
@@ -2981,12 +2758,10 @@ SkipRefresh:
                 GridControls(GridCount).MainView = UsedGridVIEWS(GridViewCount)
                 UsedGridVIEWS(GridViewCount).GridControl = GridControls(GridCount)
 
-                SystemLog("Adding grid control with datasource index " & UBSDataSourceCount.ToString)
 
                 Dim FillSize As Integer = ActiveDataSet.RowCount
                 UnboundDataSources(UBSDataSourceCount).SetRowCount(FillSize)
 
-                SystemLog("Assigning columns grid control with datasource " & UBSDataSourceCount.ToString)
 
                 For Each ColCheck As UnboundSourceProperty In PropertyArray
 
@@ -3304,7 +3079,6 @@ SkipRefresh:
                 Formatter.FormatGridView(UsedGridVIEWS(GridViewCount), GridControls(GridCount))
 
                 LastBottom = GridControls(GridCount).Bottom
-                SystemLog("Ending grid update")
                 UsedGridVIEWS(GridViewCount).EndUpdate()
                 GridControls(GridCount).Height += 100
 
@@ -3314,7 +3088,6 @@ SkipRefresh:
 
 
 
-                    SystemLog("Starting bands")
 
                     Dim LastBand As String = ""
                     Dim LastBandTitle As String = "StartingBandDummyName"
@@ -3497,7 +3270,6 @@ SkipRefresh:
                         If GVcolumn.Fixed Then
 
                             UsedBANDedGridViewCOLS(BandGridViewColsCount).Fixed = DevExpress.XtraGrid.Columns.FixedStyle.Left
-                            Debug.Print("'''''''''''''FixdCol_" & GVcolumn.AbsoluteIndex)
 
                         End If
                         UsedBANDedGridViewCOLS(BandGridViewColsCount).AppearanceCell.TextOptions.HAlignment = GVcolumn.AppearanceCell.TextOptions.HAlignment
@@ -3717,7 +3489,6 @@ SkipRefresh:
                                     AddHandler RetComb.EditValueChanged, AddressOf ColumnHeaderEmbededComboChanged
                                     OriginColTag.InColumnEditorCombo = EditControl
                                     OriginColTag.HasIncolumnEditor = True
-                                    Debug.Print("Adding ICH to column " & BGC.AbsoluteIndex)
                                     Dim helper As ColumnInplaceEditorHelper = New ColumnInplaceEditorHelper(BGC, RetComb)
                                     InColumnEditorTag.InPlaceColumnHelper = helper
                                     EditControl.Tag = InColumnEditorTag
@@ -3812,7 +3583,6 @@ SkipRefresh:
                                     AddHandler RetComb.EditValueChanged, AddressOf ColumnHeaderEmbededDateEChanged
                                     OriginColTag.InColumnEditorDate = EditControl
                                     OriginColTag.HasIncolumnEditor = True
-                                    Debug.Print("Adding ICH to column " & BGC.AbsoluteIndex)
                                     Dim helper As ColumnInplaceEditorHelper = New ColumnInplaceEditorHelper(BGC, RetComb)
                                     InColumnEditorTag.InPlaceColumnHelper = helper
                                     EditControl.Tag = InColumnEditorTag
@@ -3909,18 +3679,6 @@ SkipRefresh:
                     }
 
 #If DEBUG Then
-                    Debug.Print(
-                        "GRID FOOTER ACTION: dataset='" &
-                        ActiveDataSet.Name &
-                        "', worksheet='" &
-                        Convert.ToString(ActiveDataSet.SourceWorksheet) &
-                        "', model='" &
-                        Convert.ToString(ActiveDataSet.RowExpandsByModel) &
-                        "', RowExpandByNR='" &
-                        Convert.ToString(ActiveDataSet.RowExpandByNR) &
-                        "', ActionData='" &
-                        Convert.ToString(FooterActionData) &
-                        "'")
 #End If
 
                     Dim itemCust As New GridColumnSummaryItem
@@ -3971,7 +3729,6 @@ SkipRefresh:
                 End If
 
                 AddHandler GridControls(GridCount).DoubleClick, AddressOf VerifyDoubleClick
-                SystemLog("GridHeight: " & GridControls(GridCount).Height.ToString)
 
                 Dim IdealGridHeight As Integer
 
@@ -4095,7 +3852,6 @@ SkipRefresh:
                 TP.AutoSize = True
                 TP.AutoSizeMode = AutoSizeMode.GrowAndShrink
 
-                Debug.Print("XXXXXXXXXXXXXX Grid process complete XXXXXXXXXXXXXXXXXX")
                 'GridControls(GridCount).Refresh()
 
 
@@ -4181,7 +3937,6 @@ SkipRefresh:
 
                 ActiveDataSet = DataPres.DataSets(SectionElement.ControlSourceIndex)
 
-                SystemLog("Adding data from: " & ActiveDataSet.Name)
 
                 ColList = New List(Of String)
 
@@ -4194,9 +3949,6 @@ SkipRefresh:
 
                 RegisterDataSetDependencies(SetSectionID, ActiveDataSet)
 
-                SystemLog("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
-                SystemLog("Adding New ubs with index " & UBSDataSourceCount.ToString & ", SectionElement.ControlSourceIndex: " & SectionElement.ControlSourceIndex)
-                SystemLog("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 
                 Dim IdealGridWidth As Double = 0
 
@@ -4234,7 +3986,6 @@ SkipRefresh:
 
                     End Select
 
-                    SystemLog("Adding column: " & ColTag.ColumnHeading)
 
                     PropertyArray(PropertiesCount) = New UnboundSourceProperty With {
                         .UserTag = PresentedColumn.ColumnTag,
@@ -4252,7 +4003,6 @@ SkipRefresh:
                 UnboundDataSources(UBSDataSourceCount).Properties.AddRange(PropertyList)
                 UnboundDataSources(UBSDataSourceCount).InVertMode = True
 
-                SystemLog("Adding handlers")
                 'Add dataaccess/push handlers
                 AddHandler UnboundDataSources(UBSDataSourceCount).ValueNeeded, AddressOf UnboundDS_ValueNeeded
                 AddHandler UnboundDataSources(UBSDataSourceCount).ValuePushed, AddressOf UnboundDS_ValuePushed
@@ -4263,7 +4013,6 @@ SkipRefresh:
                 ReDim Preserve VertGridControls(VertGridCount)
 
 
-                SystemLog("Adding grid control with datasource index " & UBSDataSourceCount.ToString)
 
                 VertGridControls(VertGridCount) = New VGridControl() With {
                     .Name = "VGridControl_" & VertGridCount.ToString,
@@ -4408,9 +4157,6 @@ SkipRefresh:
                            JVYearEditControl.RepType <> "CMB" OrElse
                            JVYearEditControl.RetCombo Is Nothing Then
 
-                            SystemLog(
-                                "Unable to create JV OrdinalYears combo for band: " &
-                                JVBandName)
 
                             Continue For
 
@@ -5155,7 +4901,6 @@ SkipRefresh:
 
                 If ActiveDataSet.HasValidations Then
 
-                    SystemLog("Adding validations")
 
                     For Each ValList In ActiveDataSet.ValidationLists
 
@@ -5882,7 +5627,6 @@ SkipRefresh:
                     If Not IsNothing(CMTColDef.RepeatsBy) Then CMTColDef.ElementRepeats = True
 
 
-                    Debug.Print(TotalColumnCount.ToString)
 
                 Next
 
@@ -6512,7 +6256,6 @@ NextCell:
 
             End If
 
-            SystemLog("CumulativeControlHeight: " & SectionControlsCumlHeight)
             'AcContainers(AcContainersCount).Height = SectionControlsCumlHeight
             'AcContainers(AcContainersCount).Width = Me.Width
             'AcContainers(AcContainersCount).Appearance.BackColor = AbovoBlue
@@ -6547,15 +6290,6 @@ NextCell:
         Formatter.FormatTablePanel(TP)
 
 #If DEBUG Then
-        Debug.Print("Final TP Height: " &
-                    TP.Height.ToString &
-                    " SCUMH: " &
-                    SectionControlsCumlHeight.ToString &
-                    " Preferred=" &
-                    TP.GetPreferredSize(
-                        New Size(
-                            Math.Max(1, TP.ClientSize.Width),
-                            0)).Height.ToString)
 #End If
 
     End Sub
@@ -6864,7 +6598,6 @@ NextCell:
 
             Catch ex As Exception
 
-                SystemLog("Error refreshing control: " & ex.Message)
 
             End Try
 
@@ -7043,7 +6776,6 @@ SectionSelect:
     End Sub
     Sub GVPasting(ByVal sender As Object, ByVal e As DevExpress.XtraGrid.Views.Grid.ClipboardRowPastingEventArgs)
 
-        Debug.Print("RC" & e.DataRowCount)
         Dim okays = e.GetValidValues
         Dim Errs = e.GetInvalidValues
 
@@ -7107,8 +6839,46 @@ SectionSelect:
     End Sub
     Private Sub Interface_ButtonClick(sender As Object, e As EventArgs)
 
+        Dim EventResult As AbovoTransaction =
+            ExcelModels(ModelID).EventCoordinator.TriggerEvent(
+                "Code",
+                sender.Tag,
+                ParentGroupForm)
 
-        ExcelModels(ModelID).EventCoordinator.TriggerEvent("Code", sender.Tag, ParentGroupForm)
+        If EventResult Is Nothing OrElse EventResult.EventCancelled Then Return
+
+        If EventResult.BError Then
+            MessageBox.Show(
+                Me,
+                EventResult.StrResponseMessage,
+                "Import Data",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error)
+            Return
+        End If
+
+        Dim ImportCommand As String = TryCast(sender.Tag, String)
+        Dim IsDevelopmentImport As Boolean =
+            String.Equals(ImportCommand, "ImportSingleDSA_File", StringComparison.Ordinal) OrElse
+            String.Equals(ImportCommand, "ImportMultiDSA_Files", StringComparison.Ordinal) OrElse
+            String.Equals(ImportCommand, "ImportConsolDSA_File", StringComparison.Ordinal) OrElse
+            String.Equals(ImportCommand, "ImportDSA_Template", StringComparison.Ordinal)
+
+        If String.Equals(ImportCommand, "ImportStockRentModel", StringComparison.Ordinal) OrElse
+           String.Equals(ImportCommand, "ImportManagementServiceCosts", StringComparison.Ordinal) OrElse
+           IsDevelopmentImport Then
+            RebuildAllSections()
+        End If
+
+        If String.Equals(ImportCommand, "ImportManagementServiceCosts", StringComparison.Ordinal) OrElse
+           IsDevelopmentImport Then
+            MessageBox.Show(
+                Me,
+                EventResult.StrResponseMessage,
+                "Import Data",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information)
+        End If
 
     End Sub
 
@@ -9370,7 +9140,6 @@ SectionSelect:
     End Sub
     Private Sub UnboundDS_ValueNeeded(ByVal sender As Object, ByVal e As DevExpress.Data.UnboundSourceValueNeededEventArgs)
         DataCallCount += 1
-        Debug.Print("XXXXXXXXX - Val Needed - count : " & DataCallCount & "XXXXXXX")
         Dim UDSSender As AbovoUnboundSource = sender
         e.Value = GetDSData(UDSSender.UBSIndex, UDSSender.UBSTag.DSIndex, e.RowIndex, e.PropertyIndex)
 
@@ -9412,7 +9181,6 @@ SectionSelect:
         '            Case "S"
 
         '                DP.StringValue = DPC.DisplayText
-        '                'SystemLog("DSIndex " & SetDSIndex.ToString & " returning string " & DPC.Value.TextValue & " From " & DP.SourceAddress & " of " & DP.SourceSheet)
         '                Return DPC.DisplayText
         '                Exit Function
 
@@ -9423,15 +9191,12 @@ SectionSelect:
         '                Exit Function
 
         '            Case "N", "P", "C", "M", "R", "SM"
-        '                'SystemLog("UBS Index " & UBSIndex.ToString & " with DSIndex " & SetDSIndex.ToString & " returning " & DPC.Value.NumericValue.ToString & " From " & DP.SourceAddress & " of " & DP.SourceSheet)
         '                DP.RealValue = DPC.Value.NumericValue
         '                Return DPC.Value.NumericValue
         '                Exit Function
 
         '            Case "I", "Y"
 
-        '                'If DoDataLog Then SystemLog("Returning Integer " & DP.IntValue)
-        '                'SystemLog("UBS Index " & UBSIndex.ToString & " with DSIndex " & SetDSIndex.ToString & " returning " & DPC.Value.NumericValue & " From " & DP.SourceAddress & " of " & DP.SourceSheet)
         '                DP.IntValue = DPC.Value.NumericValue
         '                Return CInt(DPC.Value.NumericValue)
         '                Exit Function
@@ -9462,7 +9227,6 @@ SectionSelect:
     End Sub
     Private Function GetDSData(ByVal UBSIndex As Integer, SetDSIndex As Integer, ByVal rowIndex As Integer, ByVal PropertyIndex As Integer) As Object
 
-        'If DoDataLog Then SystemLog("Value requested from dataset: " & SetDSIndex.ToString & " Row: " & rowIndex.ToString & " Column: " & PropertyIndex.ToString)
         'If DataPres.DataSets(SetDSIndex).DataRows(rowIndex).IsControlRow = True Then Return Nothing
         'If DataPres.DataSets(SetDSIndex).DataRows(rowIndex).IsSpacerRow = True Then Return Nothing
 
@@ -9495,7 +9259,6 @@ SectionSelect:
             Case "S"
 
                 DP.StringValue = DPC.DisplayText
-                'SystemLog("DSIndex " & SetDSIndex.ToString & " returning string " & DPC.Value.TextValue & " From " & DP.SourceAddress & " of " & DP.SourceSheet)
                 Return DPC.DisplayText
                 Exit Function
 
@@ -9506,15 +9269,12 @@ SectionSelect:
                 Exit Function
 
             Case "N", "P", "C", "M", "R", "SM"
-                'SystemLog("UBS Index " & UBSIndex.ToString & " with DSIndex " & SetDSIndex.ToString & " returning " & DPC.Value.NumericValue.ToString & " From " & DP.SourceAddress & " of " & DP.SourceSheet)
                 DP.RealValue = DPC.Value.NumericValue
                 Return DPC.Value.NumericValue
                 Exit Function
 
             Case "I", "Y"
 
-                'If DoDataLog Then SystemLog("Returning Integer " & DP.IntValue)
-                'SystemLog("UBS Index " & UBSIndex.ToString & " with DSIndex " & SetDSIndex.ToString & " returning " & DPC.Value.NumericValue & " From " & DP.SourceAddress & " of " & DP.SourceSheet)
                 DP.IntValue = DPC.Value.NumericValue
                 Return CInt(DPC.Value.NumericValue)
                 Exit Function
@@ -9528,7 +9288,6 @@ SectionSelect:
     End Function
     Private Sub UnboundDS_ValuePushed(ByVal sender As Object, ByVal e As DevExpress.Data.UnboundSourceValuePushedEventArgs)
 
-        'SystemLog("Data push - " & Me.Text, Me, "Start")
 
         Me.Cursor = Cursors.WaitCursor
 
@@ -9569,7 +9328,6 @@ SectionSelect:
         Dim SentRSDT As String = DataPres.DataSets(SetDSIndex).DataColumns(ColSent).ColumnTag.DataType
         Dim SourceDataPoint As CellDataPoint = DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(ColSent)
 
-        SystemLog("Value sent to dataset index: " & SetDSIndex.ToString & " Row: " & rowIndex.ToString & " Column: " & ColSent.ToString)
 
         Dim DCE As New DataChangeEvent With {
                     .ModelID = ModelID,
@@ -9639,7 +9397,6 @@ SectionSelect:
 
         Me.Cursor = Cursors.WaitCursor
 
-        'SystemLog("SDP Update called")
         Dim DataTag As SingleCellDataTag = sender.tag
         Dim OldValue As DevExpress.Spreadsheet.CellValue = DataTag.TargetWorksheet.Cells(DataTag.TargetCell).Value
         Dim OldValueString As String = OldValue.ToString
@@ -9676,7 +9433,6 @@ SectionSelect:
 
         End If
 
-        'SystemLog("Fill=" & GetWorkBook(ModelID).Worksheets(SourceDataPoint.SourceSheet).Cells(SourceDataPoint.SourceAddress).Fill.ToString)
 
         Dim DCM As New DataChangeEvent With {
                         .ModelID = ModelID,
@@ -9912,7 +9668,6 @@ SectionSelect:
     Sub GridView_CustomSummaryCalculate(ByVal sender As Object, ByVal e As CustomSummaryEventArgs)
 
         Dim view As GridView = TryCast(sender, GridView)
-        Debug.Print("Custom Summary Event Triggered for " & view.Name)
         If e.IsTotalSummary Then
             Select Case e.SummaryProcess
                     ' Start calculation
@@ -10056,7 +9811,6 @@ SectionSelect:
 
         If SourceDataPoint.IsLocked Then e.Cancel = True
 
-        'Debug.Print(view.FocusedColumn.ColumnEdit.GetType.ToString)
 
         'Select Case ColTag.DataType
 
@@ -10457,7 +10211,6 @@ SectionSelect:
 
                 If result = Nothing Then Return
 
-                Debug.Print("Result: " & result.ToString)
 
                 Dim NewRows As Integer = CInt(result)
 
@@ -10508,7 +10261,6 @@ SectionSelect:
 
                 If result = Nothing Then Return
 
-                Debug.Print("Result: " & result.ToString)
 
                 Dim NewCols As Integer = CInt(result)
 
@@ -11278,7 +11030,6 @@ TPans:
         'RepositoryItemIntegerEdit.Appearance.Font = GetFont("Small", Me.Scalefactor, True)
         'RepositoryItemComboBoxSOCIStockType.Appearance.Font = GetFont("Small", Me.Scalefactor, True)
 
-        'SystemLog("SF=" & Scalefactor)
 
         'colPropertyStockDescription1.Width = GridControlStockGrid.Width * 0.25
         'colPropertyOwnedManaged1.Width = GridControlStockGrid.Width * 0.125
@@ -11335,7 +11086,6 @@ TPans:
         'WindowsUIButtonPanelSaveClose.AppearanceButton.Pressed.Font = GetFont("Small", Me.ScaleFactor)
         'Me.GroupBoxFileActions.Font = GetFont("Small", Me.ScaleFactor)
         'Me.WindowsUIButtonPanelBPActions.ButtonBackgroundImages
-        'SystemLog("Small font size:" & Me.XtraTabControlMainNavigator.AppearancePage.HeaderHotTracked.Font.SizeInPoints.ToString)
 
     End Sub
     Sub ResizeControls()
@@ -11349,9 +11099,6 @@ TPans:
         'PictureBoxAbovoLogo.Height = CInt(PictureBoxAbovoLogo.Width * 0.483)
 
         'DockPanelSettings.Width = SetWidth
-        'SystemLog("GBPDHe:" & GroupBoxProgramDetails.Height)
-        'SystemLog("WUIBTop:" & WindowsUIButtonPanelExitHelp.Top)
-        'SystemLog("ABLBot:" & PictureBoxAbovoLogo.Bottom)
         'WindowsUIButtonPanelExitHelp.Left = ScaleUnits
         'GroupBoxProgramDetails.Width = SetWidth
         'XtraTabControlMainNavigator.Top = ScaleUnits
@@ -11746,14 +11493,6 @@ TPans:
         ResumeLazyTabTransitionRedraw()
 
 #If DEBUG Then
-        Debug.Print("SELECTED PAGE SIZE: index=" &
-                    SectionIndex.ToString &
-                    ", XtraTabControl=" &
-                    XtraTabControlNewGIT.ClientSize.Width.ToString & "x" &
-                    XtraTabControlNewGIT.ClientSize.Height.ToString &
-                    ", XtraTabPage=" &
-                    e.Page.ClientSize.Width.ToString & "x" &
-                    e.Page.ClientSize.Height.ToString)
 #End If
 
         If AbovoTabPages Is Nothing OrElse SectionIndex >= AbovoTabPages.Length Then Exit Sub
@@ -11786,7 +11525,6 @@ TPans:
 
     Private Sub DataInterfaceTemplate_Shown(sender As Object, e As EventArgs) Handles MyBase.Shown
 
-        Debug.Print("--------------")
 
         'The FIRST/initially-selected tab does not necessarily raise
         'SelectedPageChanged during constructor-driven population.  The full
@@ -11832,35 +11570,16 @@ TPans:
             End If
 
 #If DEBUG Then
-            Debug.Print("SHOWN PAGE SIZE: index=" &
-                        SelectedIndex.ToString &
-                        ", XtraTabControl=" &
-                        XtraTabControlNewGIT.ClientSize.Width.ToString & "x" &
-                        XtraTabControlNewGIT.ClientSize.Height.ToString &
-                        ", XtraTabPage=" &
-                        SelectedPage.ClientSize.Width.ToString & "x" &
-                        SelectedPage.ClientSize.Height.ToString)
 
             If SelectedTP IsNot Nothing Then
 
                 For RowIndex As Integer = 0 To SelectedTP.Rows.Count - 1
 
-                    Debug.Print("SHOWN TP Row " &
-                                RowIndex.ToString &
-                                " - " &
-                                SelectedTP.Rows(RowIndex).Height.ToString &
-                                " (" &
-                                SelectedTP.Rows(RowIndex).Style.ToString &
-                                ")")
 
                 Next
 
                 For Each ChildControl As Control In SelectedTP.Controls
 
-                    Debug.Print("SHOWN Control " &
-                                ChildControl.Name &
-                                " - " &
-                                ChildControl.Height.ToString)
 
                 Next
 

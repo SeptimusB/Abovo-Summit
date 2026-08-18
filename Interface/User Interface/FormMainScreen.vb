@@ -63,8 +63,6 @@ Public Class FormMainScreen
 
         Me.Text = ApplicationConfiguration.BaseApplicationTitle
 
-        SystemLog(Screen.PrimaryScreen.Bounds.Width.ToString)
-        SystemLog(Screen.PrimaryScreen.Bounds.Height.ToString)
 
         SetInitialSizes()
 
@@ -75,9 +73,6 @@ Public Class FormMainScreen
         MediumFontSize = DefaultMediumFontSize
         SmallFontSize = DefaultSmallFontSize
 
-        SystemLog("Scale= " & ScaleFactor)
-        SystemLog("MFS= " & MediumFontSize)
-        SystemLog("TabFS= " & XtraTabControlMainNavigator.Appearance.Font.Size)
 
         XtraTabControlMainNavigator.LookAndFeel.UseDefaultLookAndFeel = False
         XtraTabControlMainNavigator.LookAndFeel.Style = DevExpress.LookAndFeel.LookAndFeelStyle.UltraFlat
@@ -160,9 +155,6 @@ Public Class FormMainScreen
         PictureBoxAbovoLogo.Height = CInt(PictureBoxAbovoLogo.Width * 0.483)
 
         DockPanelSettings.Width = SetWidth
-        SystemLog("GBPDHe:" & GroupBoxProgramDetails.Height)
-        SystemLog("WUIBTop:" & WindowsUIButtonPanelExitHelp.Top)
-        SystemLog("ABLBot:" & PictureBoxAbovoLogo.Bottom)
         WindowsUIButtonPanelExitHelp.Left = ScaleUnits
         GroupBoxProgramDetails.Width = SetWidth
         XtraTabControlMainNavigator.Top = ScaleUnits
@@ -275,7 +267,6 @@ Public Class FormMainScreen
         Dim FileToOpen As String = AutoFileToOpen
         Dim OpenedModelID As Integer = -1
 
-        SystemLog("Starting model import")
         XtraOpenFileDialogMainScreen.Filter = "Abovo Models|*.xlsb;*.abp;*.adsa"
 
         If String.IsNullOrWhiteSpace(FileToOpen) OrElse
@@ -516,63 +507,7 @@ Public Class FormMainScreen
     End Sub
 
     Private Sub NewBP()
-
-        Dim TemplatePath As String = ApplicationConfiguration.DefaultTemplateFile
-        If Not IO.File.Exists(TemplatePath) Then
-            MessageBox.Show(Me,
-                            "No approved template was found at:" &
-                            Environment.NewLine & TemplatePath,
-                            "Create New BP",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Warning)
-            Return
-        End If
-
-        Me.Cursor = Cursors.WaitCursor
-        Dim NewModelID As Integer = -1
-
-        Try
-            MyFileInfos = New IO.FileInfo(TemplatePath)
-            ProgressPanel("Loading " & TemplatePath & "...", "Abovo BP", 0)
-
-            Dim FileOpenResult As AbovoTransaction =
-                FileManager.OpenModel(TemplatePath, MyFileInfos)
-
-            If FileOpenResult.BError Then
-                Throw New InvalidOperationException(FileOpenResult.StrResponseMessage)
-            End If
-
-            NewModelID = FileOpenResult.IntegerReturn
-            ActiveModel = NewModelID
-            Dim FileInstanceID As Integer = PopulateControlsFileBP(NewModelID)
-            PostLoadActionsBP(NewModelID)
-
-            If Not FileInstances(FileInstanceID).SaveFileAs() Then
-                FileManager.CloseModel(NewModelID)
-                RemoveModel(NewModelID)
-                NewModelID = -1
-                ProgressPanel("Creation cancelled.", "Abovo BP", 2)
-                Return
-            End If
-
-            ProgressPanel("Finished.", "Abovo BP", 2)
-
-        Catch ex As Exception
-            If NewModelID >= 0 Then
-                FileManager.CloseModel(NewModelID)
-                RemoveModel(NewModelID)
-            End If
-
-            ProgressPanel("Error creating file: " & ex.Message, "Abovo BP", 2)
-            MessageBox.Show(Me,
-                            ex.Message,
-                            "Create New BP",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error)
-        Finally
-            Me.Cursor = Cursors.Default
-        End Try
-
+        ' TODO: Revisit and redesign the Create New Business Plan workflow.
     End Sub
 
 
@@ -617,7 +552,6 @@ Public Class FormMainScreen
         PictureBoxAbovoLogo.Height = CInt(PictureBoxAbovoLogo.Width * 0.483)
         GroupBoxProgramDetails.Top = PictureBoxAbovoLogo.Bottom + ScaleUnits
 
-        'SystemLog(XtraTabPageMainHABP.Height)
 
     End Sub
     Private Sub FormMainScreen_Resize(sender As Object, e As EventArgs) Handles MyBase.Resize
