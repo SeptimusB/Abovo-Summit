@@ -51,7 +51,9 @@ Public Class StressTest
 
     Private STMode As String
     Private StandardPercentSpinEdit As RepositoryItemSpinEdit
-    Private StandardYesEmptyEdit As RepositoryItemComboBox
+    Private StandardYEmptyEdit As RepositoryItemComboBox
+    Private FirstTabOrdinalYearsEdit As RepositoryItemComboBox
+    Private FirstTabOrdinalYearsLess1Edit As RepositoryItemComboBox
     Private StandardIntegerTextBoxEdit As RepositoryItemTextEdit
     Private StandardPercentageTextBoxEdit As RepositoryItemTextEdit
     Private Standard2digitnumberTextBoxEdit As RepositoryItemTextEdit
@@ -219,15 +221,20 @@ Public Class StressTest
                                     .UseMaskAsDisplayFormat = True
                                     }
 
-        StandardYesEmptyEdit = New RepositoryItemComboBox
-        StandardYesEmptyEdit.Appearance.ForeColor = Color.White
-        StandardYesEmptyEdit.Appearance.Options.UseForeColor = True
-        StandardYesEmptyEdit.Appearance.BackColor = AbovoBlue
-        StandardYesEmptyEdit.Appearance.Options.UseBackColor = True
-        StandardYesEmptyEdit.Items.Add("Yes")
-        StandardYesEmptyEdit.Items.Add("")
-        StandardYesEmptyEdit.TextEditStyle =
+        StandardYEmptyEdit = New RepositoryItemComboBox
+        StandardYEmptyEdit.Appearance.ForeColor = Color.White
+        StandardYEmptyEdit.Appearance.Options.UseForeColor = True
+        StandardYEmptyEdit.Appearance.BackColor = AbovoBlue
+        StandardYEmptyEdit.Appearance.Options.UseBackColor = True
+        StandardYEmptyEdit.Items.Add("Y")
+        StandardYEmptyEdit.Items.Add("")
+        StandardYEmptyEdit.TextEditStyle =
             DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
+
+        FirstTabOrdinalYearsEdit =
+            RepositaryItems.GetEditor("Rep_OrdinalYears", ModelID).RetCombo
+        FirstTabOrdinalYearsLess1Edit =
+            RepositaryItems.GetEditor("Rep_OrdinalYearsLess1", ModelID).RetCombo
 
         StandardIntegerTextBoxEdit = New RepositoryItemTextEdit
         StandardIntegerTextBoxEdit.MaskSettings.Set("MaskManagerType", GetType(DevExpress.Data.Mask.NumericMaskManager))
@@ -329,9 +336,6 @@ Public Class StressTest
     Private Sub AddHandlers()
 
         AddHandler TextEditMultivariableName.Validated, AddressOf TextEditMultivariableName_EditValueChanged
-        AddHandler View_WrapCG_Stresses.CustomRowCellEdit, AddressOf GVStressesCustEditor
-        AddHandler View_WrapCG_Stresses.ShowingEditor, AddressOf GVStressesShowingEditor
-        AddHandler View_WrapCG_Stresses.CustomDrawCell, AddressOf CustomDrawStressesGrid
         AddHandler View_WrapTextGrid.CustomRowCellEdit, AddressOf GVTextGridCustEditor
 
 
@@ -382,7 +386,7 @@ Public Class StressTest
         End If
     End Sub
 
-    Sub CustomDrawStressesGrid(sender As Object, e As RowCellCustomDrawEventArgs)
+    Private Sub ObsoleteCustomDrawStressesGrid(sender As Object, e As RowCellCustomDrawEventArgs)
 
         Dim view As CustomGridView = TryCast(sender, CustomGridView)
         Dim TestVal As String = ""
@@ -465,14 +469,14 @@ Public Class StressTest
     End Sub
 
 
-    Sub GVStressesCustEditor(sender As Object, e As CustomRowCellEditEventArgs)
+    Private Sub ObsoleteGVStressesCustEditor(sender As Object, e As CustomRowCellEditEventArgs)
 
         Dim view As CustomGridView = TryCast(sender, CustomGridView)
 
         Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
         If TryGetFirstTabSourceCell(view, e.RowHandle, e.Column, SourceCell) AndAlso
            SourceCell.RowIndex = 34 AndAlso SourceCell.ColumnIndex = 3 Then
-            e.RepositoryItem = StandardYesEmptyEdit
+            e.RepositoryItem = StandardYEmptyEdit
             Return
         End If
 
@@ -480,7 +484,7 @@ Public Class StressTest
 
             Dim TestVal As String = view.GetRowCellValue(e.RowHandle, "Column 2")
             If TestVal = "delay by 1 year" Then
-                e.RepositoryItem = StandardYesEmptyEdit
+                e.RepositoryItem = StandardYEmptyEdit
             Else
                 e.RepositoryItem = StandardPercentSpinEdit
             End If
@@ -513,7 +517,7 @@ Public Class StressTest
 
     End Sub
 
-    Sub GVStressesShowingEditor(sender As Object, e As CancelEventArgs)
+    Private Sub ObsoleteGVStressesShowingEditor(sender As Object, e As CancelEventArgs)
 
         Dim view As GridView = DirectCast(sender, GridView)
 
@@ -594,7 +598,17 @@ Public Class StressTest
 
         Dim worksheet As DevExpress.Spreadsheet.Worksheet = ActiveWorkbook.Worksheets("Live Multivariable Planner")
 
-        Dim range As DevExpress.Spreadsheet.CellRange = worksheet.Range(ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestMitigationsRange)
+        Dim MitigationStart As DevExpress.Spreadsheet.CellRange =
+            worksheet.Range(
+                ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestMitigationsRange)
+        Dim MitigationEnd As DevExpress.Spreadsheet.CellRange =
+            worksheet.Range(
+                ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestMitigationsMoneyRange)
+        Dim range As DevExpress.Spreadsheet.CellRange = worksheet.Range.FromLTRB(
+            MitigationStart.LeftColumnIndex,
+            MitigationStart.TopRowIndex,
+            MitigationEnd.RightColumnIndex,
+            MitigationEnd.BottomRowIndex)
 
         Dim RDSOptions As New RangeDataSourceOptions With {
             .UseFirstRowAsHeader = False,
@@ -605,12 +619,6 @@ Public Class StressTest
         }
 
         DSMitDataRange = range.GetDataSource(RDSOptions)
-
-        range = worksheet.Range(ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestMitigationsDevRange)
-        DSMitDevDataRange = range.GetDataSource(RDSOptions)
-
-        range = worksheet.Range(ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestMitigationsMoneyRange)
-        DSMitMoneyDataRange = range.GetDataSource(RDSOptions)
 
         range = worksheet.Range(ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestStressesRange)
         DSStressesDataRange = range.GetDataSource(RDSOptions)
@@ -797,188 +805,58 @@ Public Class StressTest
     End Sub
     Public Sub ProcessMitigationsGrid()
 
-
+        XtraTabPageMitigations.Controls.Clear()
         WrapCG_Mits = New CustomGridWrapper
-
         WrapCG_Mits.WrappedCGC.DataSource = DSMitDataRange
-        WrapCG_Mits.Height = XtraTabPageMitigations.Height * 0.6
         View_WrapCG_Mits = WrapCG_Mits.WrappedGridView
+
+        Dim Sheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("Live Multivariable Planner")
+        Dim MitigationStart As DevExpress.Spreadsheet.CellRange =
+            Sheet.Range(
+                ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestMitigationsRange)
+        Dim MitigationEnd As DevExpress.Spreadsheet.CellRange =
+            Sheet.Range(
+                ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestMitigationsMoneyRange)
+        Dim SourceRange As DevExpress.Spreadsheet.CellRange = Sheet.Range.FromLTRB(
+            MitigationStart.LeftColumnIndex,
+            MitigationStart.TopRowIndex,
+            MitigationEnd.RightColumnIndex,
+            MitigationEnd.BottomRowIndex)
         RegisterFirstTabSourceGrid(
-            View_WrapCG_Mits,
-            ActiveWorkbook.Worksheets("Live Multivariable Planner").Range(
-                ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestMitigationsRange))
+            View_WrapCG_Mits, SourceRange)
 
-        WrapCG_Mits.Dock = DockStyle.None
-        WrapCG_Mits.Width = XtraTabPageMitigations.Width
-
-        'GridView_InitialisationProcess_AddHandlers(View_WrapCG_BS)
-
-
-
-
+        WrapCG_Mits.Dock = DockStyle.Fill
         Me.XtraTabPageMitigations.Controls.Add(WrapCG_Mits)
+
         View_WrapCG_Mits.Columns(0).Caption = "Class"
         View_WrapCG_Mits.Columns(0).OptionsColumn.ReadOnly = True
         View_WrapCG_Mits.Columns(1).Caption = "Mitigation"
         View_WrapCG_Mits.Columns(1).OptionsColumn.ReadOnly = True
         View_WrapCG_Mits.Columns(2).Caption = "Type"
         View_WrapCG_Mits.Columns(2).OptionsColumn.ReadOnly = True
-        View_WrapCG_Mits.Columns(3).Caption = "Change 1 %"
-
-        View_WrapCG_Mits.Columns(3).ColumnEdit = New RepositoryItemSpinEdit With {
-                                    .MinValue = -100,
-                                    .Increment = CDec(0.0025),
-                                    .MaxValue = 500,
-                                    .EditMask = "p2",
-                                    .UseMaskAsDisplayFormat = True
-                                    }
-
-        View_WrapCG_Mits.Columns(3).AppearanceHeader.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
-        View_WrapCG_Mits.Columns(3).AppearanceCell.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
-        View_WrapCG_Mits.Columns(3).DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric
-        View_WrapCG_Mits.Columns(3).DisplayFormat.FormatString = "p2"
-
-        View_WrapCG_Mits.Columns(4).Caption = "Change 2 %"
-
-        View_WrapCG_Mits.Columns(4).ColumnEdit = New RepositoryItemSpinEdit With {
-                                    .MinValue = -100,
-                                    .Increment = CDec(0.0025),
-                                    .MaxValue = 500,
-                                    .EditMask = "p2",
-                                    .UseMaskAsDisplayFormat = True
-                                    }
-
-        View_WrapCG_Mits.Columns(4).AppearanceHeader.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
-        View_WrapCG_Mits.Columns(4).AppearanceCell.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
-        View_WrapCG_Mits.Columns(4).DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric
-        View_WrapCG_Mits.Columns(4).DisplayFormat.FormatString = "p2"
-
+        View_WrapCG_Mits.Columns(3).Caption = "Change 1"
+        View_WrapCG_Mits.Columns(4).Caption = "Change 2"
         View_WrapCG_Mits.Columns(5).Caption = "Change 1" & vbLf & "from year"
-
-
-        Dim EditControl As RepositaryItems.AbovoRespositaryItem
-
-        EditControl = RepositaryItems.GetEditor("Rep_OrdinalYears", ModelID)
-        WrapCG_Mits.WrappedCGC.RepositoryItems.Add(EditControl.RetCombo)
-        View_WrapCG_Mits.Columns(5).ColumnEdit = EditControl.RetCombo
-
         View_WrapCG_Mits.Columns(6).Caption = "Change 2" & vbLf & "from year"
-        View_WrapCG_Mits.Columns(6).ColumnEdit = EditControl.RetCombo
+        View_WrapCG_Mits.Columns(7).Caption = "To year"
+        For ColumnIndex As Integer = 3 To 7
+            View_WrapCG_Mits.Columns(ColumnIndex).OptionsColumn.ReadOnly = False
+            View_WrapCG_Mits.Columns(ColumnIndex).OptionsColumn.AllowEdit = True
+            View_WrapCG_Mits.Columns(ColumnIndex).AppearanceHeader.TextOptions.HAlignment =
+                DevExpress.Utils.HorzAlignment.Far
+            View_WrapCG_Mits.Columns(ColumnIndex).AppearanceCell.TextOptions.HAlignment =
+                DevExpress.Utils.HorzAlignment.Far
+        Next
 
-        View_WrapCG_Mits.Columns(7).Caption = "to year"
-        View_WrapCG_Mits.Columns(7).ColumnEdit = EditControl.RetCombo
-
+        WrapCG_Mits.WrappedCGC.RepositoryItems.Add(StandardYEmptyEdit)
+        WrapCG_Mits.WrappedCGC.RepositoryItems.Add(FirstTabOrdinalYearsEdit)
+        WrapCG_Mits.WrappedCGC.RepositoryItems.Add(FirstTabOrdinalYearsLess1Edit)
+        WrapCG_Mits.WrappedCGC.RepositoryItems.Add(StandardPercentSpinEdit)
+        WrapCG_Mits.WrappedCGC.RepositoryItems.Add(StandardIntegerTextBoxEdit)
+        WrapCG_Mits.WrappedCGC.RepositoryItems.Add(Standard2digitnumberTextBoxEdit)
         Formatter.FormatGridView(View_WrapCG_Mits, WrapCG_Mits.WrappedCGC)
-
         View_WrapCG_Mits.BestFitColumns()
-
-        UpdateGridSize(View_WrapCG_Mits, WrapCG_Mits)
-
-        ' The Development bit
-
-        WrapCG_MitsDev = New CustomGridWrapper
-
-        WrapCG_MitsDev.WrappedCGC.DataSource = DSMitDevDataRange
-
-        Dim View_WrapCG_MitsDev As CustomGridView = WrapCG_MitsDev.WrappedGridView
-        RegisterFirstTabSourceGrid(
-            View_WrapCG_MitsDev,
-            ActiveWorkbook.Worksheets("Live Multivariable Planner").Range(
-                ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestMitigationsDevRange))
-
-        'Formatter.FormatGridView(View_WrapCG_MitsDev, WrapCG_MitsDev.WrappedCGC)
-
-        View_WrapCG_MitsDev.OptionsView.ShowColumnHeaders = False
-
-        WrapCG_MitsDev.Dock = DockStyle.None
-
-        WrapCG_MitsDev.Width = XtraTabPageMitigations.Width
-
-        WrapCG_MitsDev.Top = WrapCG_Mits.Bottom
-        WrapCG_MitsDev.Height = XtraTabPageMitigations.Height * 0.2
-        UpdateGridSize(View_WrapCG_MitsDev, WrapCG_MitsDev)
-
-
-        Me.XtraTabPageMitigations.Controls.Add(WrapCG_MitsDev)
-
-
-
-        View_WrapCG_MitsDev.Columns(0).OptionsColumn.ReadOnly = True
-        View_WrapCG_MitsDev.Columns(1).OptionsColumn.ReadOnly = True
-        View_WrapCG_MitsDev.Columns(2).OptionsColumn.ReadOnly = True
-        Formatter.FormatGridView(View_WrapCG_MitsDev, WrapCG_MitsDev.WrappedCGC)
-
-        EditControl = RepositaryItems.GetEditor("Rep_YesNo", ModelID)
-        WrapCG_MitsDev.WrappedCGC.RepositoryItems.Add(EditControl.RetCombo)
-        View_WrapCG_MitsDev.Columns(3).ColumnEdit = EditControl.RetCombo
-
-        View_WrapCG_MitsDev.Columns(4).OptionsColumn.ReadOnly = True
-        View_WrapCG_MitsDev.Columns(5).OptionsColumn.ReadOnly = True
-        View_WrapCG_MitsDev.Columns(6).OptionsColumn.ReadOnly = True
-        View_WrapCG_MitsDev.Columns(7).OptionsColumn.ReadOnly = True
-
-        View_WrapCG_MitsDev.Columns(0).Width = View_WrapCG_Mits.Columns(0).Width
-        View_WrapCG_MitsDev.Columns(1).Width = View_WrapCG_Mits.Columns(1).Width
-        View_WrapCG_MitsDev.Columns(2).Width = View_WrapCG_Mits.Columns(2).Width
-        View_WrapCG_MitsDev.Columns(3).Width = View_WrapCG_Mits.Columns(3).Width
-        View_WrapCG_MitsDev.Columns(4).Width = View_WrapCG_Mits.Columns(4).Width
-        View_WrapCG_MitsDev.Columns(5).Width = View_WrapCG_Mits.Columns(5).Width
-        View_WrapCG_MitsDev.Columns(6).Width = View_WrapCG_Mits.Columns(6).Width
-        View_WrapCG_MitsDev.Columns(7).Width = View_WrapCG_Mits.Columns(7).Width
-
-        UpdateGridSize(View_WrapCG_Mits, WrapCG_Mits)
-        ' The Moneyelopment bit
-
-        WrapCG_MitsMoney = New CustomGridWrapper
-
-        WrapCG_MitsMoney.WrappedCGC.DataSource = DSMitMoneyDataRange
-
-        Dim View_WrapCG_MitsMoney As CustomGridView = WrapCG_MitsMoney.WrappedGridView
-        RegisterFirstTabSourceGrid(
-            View_WrapCG_MitsMoney,
-            ActiveWorkbook.Worksheets("Live Multivariable Planner").Range(
-                ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestMitigationsMoneyRange))
-
-        'Formatter.FormatGridView(View_WrapCG_MitsMoney, WrapCG_MitsMoney.WrappedCGC)
-
-        View_WrapCG_MitsMoney.OptionsView.ShowColumnHeaders = False
-
-        WrapCG_MitsMoney.Dock = DockStyle.None
-
-        WrapCG_MitsMoney.Width = WrapCG_MitsDev.Width
-        WrapCG_MitsMoney.WrappedCGC.Width = WrapCG_MitsDev.Width
-
-        WrapCG_MitsMoney.Height = XtraTabPageMitigations.Height * 0.4
-        WrapCG_MitsMoney.Top = WrapCG_MitsDev.Bottom
-
-        Me.XtraTabPageMitigations.Controls.Add(WrapCG_MitsMoney)
-
-        WrapCG_MitsMoney.Width = WrapCG_MitsDev.Width
-        WrapCG_MitsMoney.WrappedCGC.Width = WrapCG_MitsDev.Width
-        WrapCG_MitsMoney.Height = XtraTabPageMitigations.Height * 0.4
-        WrapCG_MitsMoney.Top = WrapCG_MitsDev.Bottom
-
-
-        Formatter.FormatGridView(View_WrapCG_MitsMoney, WrapCG_MitsMoney.WrappedCGC)
-        UpdateGridSize(View_WrapCG_MitsMoney, WrapCG_MitsMoney)
-
-        View_WrapCG_MitsMoney.Columns(0).OptionsColumn.ReadOnly = True
-        View_WrapCG_MitsMoney.Columns(1).OptionsColumn.ReadOnly = True
-        View_WrapCG_MitsMoney.Columns(2).OptionsColumn.ReadOnly = True
-        View_WrapCG_MitsMoney.Columns(3).OptionsColumn.ReadOnly = True
-        View_WrapCG_MitsMoney.Columns(4).OptionsColumn.ReadOnly = False
-        View_WrapCG_MitsMoney.Columns(5).OptionsColumn.ReadOnly = False
-        View_WrapCG_MitsMoney.Columns(6).OptionsColumn.ReadOnly = False
-        View_WrapCG_MitsMoney.Columns(7).OptionsColumn.ReadOnly = False
-
-        View_WrapCG_MitsMoney.Columns(0).Width = View_WrapCG_Mits.Columns(0).Width
-        View_WrapCG_MitsMoney.Columns(1).Width = View_WrapCG_Mits.Columns(1).Width
-        View_WrapCG_MitsMoney.Columns(2).Width = View_WrapCG_Mits.Columns(2).Width
-        View_WrapCG_MitsMoney.Columns(3).Width = View_WrapCG_Mits.Columns(3).Width
-        View_WrapCG_MitsMoney.Columns(4).Width = View_WrapCG_Mits.Columns(4).Width
-        View_WrapCG_MitsMoney.Columns(5).Width = View_WrapCG_Mits.Columns(5).Width
-        View_WrapCG_MitsMoney.Columns(6).Width = View_WrapCG_Mits.Columns(6).Width
-        View_WrapCG_MitsMoney.Columns(7).Width = View_WrapCG_Mits.Columns(7).Width
 
     End Sub
     Sub ProcessStressesGrid()
@@ -1009,39 +887,26 @@ Public Class StressTest
         View_WrapCG_Stresses.Columns(1).OptionsColumn.ReadOnly = True
         View_WrapCG_Stresses.Columns(2).Caption = "Type"
         View_WrapCG_Stresses.Columns(2).OptionsColumn.ReadOnly = True
-        View_WrapCG_Stresses.Columns(3).Caption = "Change 1 %"
-
-        View_WrapCG_Stresses.Columns(3).ColumnEdit = StandardYesEmptyEdit
-
-
-        View_WrapCG_Stresses.Columns(3).AppearanceHeader.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
-        View_WrapCG_Stresses.Columns(3).AppearanceCell.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
-        View_WrapCG_Stresses.Columns(3).DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric
-        View_WrapCG_Stresses.Columns(3).DisplayFormat.FormatString = "p2"
-
-        View_WrapCG_Stresses.Columns(4).Caption = "Change 2 %"
-
-        View_WrapCG_Stresses.Columns(4).ColumnEdit = StandardYesEmptyEdit
-
-        View_WrapCG_Stresses.Columns(4).AppearanceHeader.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
-        View_WrapCG_Stresses.Columns(4).AppearanceCell.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
-        View_WrapCG_Stresses.Columns(4).DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric
-        View_WrapCG_Stresses.Columns(4).DisplayFormat.FormatString = "p2"
-
+        View_WrapCG_Stresses.Columns(3).Caption = "Change 1"
+        View_WrapCG_Stresses.Columns(4).Caption = "Change 2"
         View_WrapCG_Stresses.Columns(5).Caption = "Change 1" & vbLf & "from year"
-
-
-        Dim EditControl2 As RepositaryItems.AbovoRespositaryItem
-
-        EditControl2 = RepositaryItems.GetEditor("Rep_OrdinalYears", ModelID)
-        WrapCG_Stresses.WrappedCGC.RepositoryItems.Add(EditControl2.RetCombo)
-        View_WrapCG_Stresses.Columns(5).ColumnEdit = EditControl2.RetCombo
-
         View_WrapCG_Stresses.Columns(6).Caption = "Change 2" & vbLf & "from year"
-        View_WrapCG_Stresses.Columns(6).ColumnEdit = EditControl2.RetCombo
+        View_WrapCG_Stresses.Columns(7).Caption = "To year"
+        For ColumnIndex As Integer = 3 To 7
+            View_WrapCG_Stresses.Columns(ColumnIndex).OptionsColumn.ReadOnly = False
+            View_WrapCG_Stresses.Columns(ColumnIndex).OptionsColumn.AllowEdit = True
+            View_WrapCG_Stresses.Columns(ColumnIndex).AppearanceHeader.TextOptions.HAlignment =
+                DevExpress.Utils.HorzAlignment.Far
+            View_WrapCG_Stresses.Columns(ColumnIndex).AppearanceCell.TextOptions.HAlignment =
+                DevExpress.Utils.HorzAlignment.Far
+        Next
 
-        View_WrapCG_Stresses.Columns(7).Caption = "to year"
-        View_WrapCG_Stresses.Columns(7).ColumnEdit = EditControl2.RetCombo
+        WrapCG_Stresses.WrappedCGC.RepositoryItems.Add(StandardYEmptyEdit)
+        WrapCG_Stresses.WrappedCGC.RepositoryItems.Add(FirstTabOrdinalYearsEdit)
+        WrapCG_Stresses.WrappedCGC.RepositoryItems.Add(FirstTabOrdinalYearsLess1Edit)
+        WrapCG_Stresses.WrappedCGC.RepositoryItems.Add(StandardPercentSpinEdit)
+        WrapCG_Stresses.WrappedCGC.RepositoryItems.Add(StandardIntegerTextBoxEdit)
+        WrapCG_Stresses.WrappedCGC.RepositoryItems.Add(Standard2digitnumberTextBoxEdit)
 
         Formatter.FormatGridView(View_WrapCG_Stresses, WrapCG_Stresses.WrappedCGC)
         View_WrapCG_Stresses.BestFitColumns()
@@ -1528,10 +1393,16 @@ Public Class StressTest
         RemoveHandler View.ShownEditor, AddressOf FirstTabGridShownEditor
         RemoveHandler View.CellValueChanging, AddressOf FirstTabGridCellValueChanging
         RemoveHandler View.CellValueChanged, AddressOf FirstTabGridCellValueChanged
+        RemoveHandler View.CustomRowCellEdit, AddressOf FirstTabGridCustomRowCellEdit
+        RemoveHandler View.CustomDrawCell, AddressOf FirstTabGridCustomDrawCell
+        RemoveHandler View.CustomColumnDisplayText, AddressOf FirstTabGridCustomColumnDisplayText
         AddHandler View.ShowingEditor, AddressOf FirstTabGridShowingEditor
         AddHandler View.ShownEditor, AddressOf FirstTabGridShownEditor
         AddHandler View.CellValueChanging, AddressOf FirstTabGridCellValueChanging
         AddHandler View.CellValueChanged, AddressOf FirstTabGridCellValueChanged
+        AddHandler View.CustomRowCellEdit, AddressOf FirstTabGridCustomRowCellEdit
+        AddHandler View.CustomDrawCell, AddressOf FirstTabGridCustomDrawCell
+        AddHandler View.CustomColumnDisplayText, AddressOf FirstTabGridCustomColumnDisplayText
 
     End Sub
 
@@ -1556,6 +1427,106 @@ Public Class StressTest
         Return SourceCell IsNot Nothing
 
     End Function
+
+    Private Sub FirstTabGridCustomRowCellEdit(
+        sender As Object,
+        e As CustomRowCellEditEventArgs)
+
+        Dim View As GridView = TryCast(sender, GridView)
+        Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
+        If View Is Nothing OrElse
+           Not TryGetFirstTabSourceCell(View, e.RowHandle, e.Column, SourceCell) Then Return
+
+        Select Case SourceCell.ColumnIndex
+            Case 3, 4
+                If SourceCell.ColumnIndex = 3 AndAlso
+                   (SourceCell.RowIndex = 34 OrElse
+                    SourceCell.RowIndex = 64 OrElse
+                    SourceCell.RowIndex = 65) Then
+                    e.RepositoryItem = StandardYEmptyEdit
+                Else
+                    Dim Format As String = If(SourceCell.NumberFormat, String.Empty)
+                    If Format.Contains("%") Then
+                        e.RepositoryItem = StandardPercentSpinEdit
+                    ElseIf Format.Contains("#,##0") Then
+                        e.RepositoryItem = StandardIntegerTextBoxEdit
+                    Else
+                        e.RepositoryItem = Standard2digitnumberTextBoxEdit
+                    End If
+                End If
+            Case 5, 6, 7
+                If (SourceCell.RowIndex >= 9 AndAlso SourceCell.RowIndex <= 17) OrElse
+                   (SourceCell.RowIndex >= 51 AndAlso SourceCell.RowIndex <= 54) Then
+                    e.RepositoryItem = FirstTabOrdinalYearsLess1Edit
+                Else
+                    e.RepositoryItem = FirstTabOrdinalYearsEdit
+                End If
+        End Select
+
+    End Sub
+
+    Private Sub FirstTabGridCustomDrawCell(
+        sender As Object,
+        e As RowCellCustomDrawEventArgs)
+
+        Dim View As GridView = TryCast(sender, GridView)
+        Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
+        If View Is Nothing OrElse
+           Not TryGetFirstTabSourceCell(View, e.RowHandle, e.Column, SourceCell) Then Return
+
+        If e.Column.AbsoluteIndex >= 3 AndAlso
+           Not IsWorkbookLinkedGridCellEditable(SourceCell) Then
+            e.Appearance.BackColor = Color.Lavender
+            e.Appearance.ForeColor = Color.WhiteSmoke
+            e.Appearance.Options.UseBackColor = True
+            e.Appearance.Options.UseForeColor = True
+        Else
+            ApplyWorkbookCellAppearance(e.Appearance, SourceCell)
+        End If
+
+        If View.IsCellSelected(e.RowHandle, e.Column) Then
+            e.Appearance.BackColor = Color.Beige
+            e.Appearance.ForeColor = Color.Black
+        End If
+
+        e.DefaultDraw()
+        e.Handled = True
+
+    End Sub
+
+    Private Sub FirstTabGridCustomColumnDisplayText(
+        sender As Object,
+        e As DevExpress.XtraGrid.Views.Base.CustomColumnDisplayTextEventArgs)
+
+        If e.ListSourceRowIndex < 0 OrElse
+           e.Column Is Nothing OrElse
+           e.Column.AbsoluteIndex < 3 OrElse e.Column.AbsoluteIndex > 4 OrElse
+           e.Value Is Nothing OrElse e.Value Is DBNull.Value OrElse
+           TypeOf e.Value Is String Then Return
+
+        Dim View As GridView = TryCast(sender, GridView)
+        If View Is Nothing Then Return
+        Dim RowHandle As Integer = View.GetRowHandle(e.ListSourceRowIndex)
+        Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
+        If Not TryGetFirstTabSourceCell(View, RowHandle, e.Column, SourceCell) Then Return
+
+        Dim NumericValue As Double
+        If Not Double.TryParse(
+                Convert.ToString(e.Value, Globalization.CultureInfo.CurrentCulture),
+                Globalization.NumberStyles.Any,
+                Globalization.CultureInfo.CurrentCulture,
+                NumericValue) Then Return
+
+        Dim Format As String = If(SourceCell.NumberFormat, String.Empty)
+        If Format.Contains("%") Then
+            e.DisplayText = NumericValue.ToString("P2")
+        ElseIf Format.Contains("#,##0") Then
+            e.DisplayText = NumericValue.ToString("N0")
+        Else
+            e.DisplayText = NumericValue.ToString("N2")
+        End If
+
+    End Sub
 
     Private Sub FirstTabGridShowingEditor(sender As Object, e As CancelEventArgs)
 
@@ -2402,7 +2373,7 @@ Public Class StressTest
         NativeYearEditor.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
         NativePlannerGrid.RepositoryItems.Add(NativeYearEditor)
         NativePlannerGrid.RepositoryItems.Add(StandardPercentSpinEdit)
-        NativePlannerGrid.RepositoryItems.Add(StandardYesEmptyEdit)
+        NativePlannerGrid.RepositoryItems.Add(StandardYEmptyEdit)
         NativePlannerGrid.RepositoryItems.Add(Standard2digitnumberTextBoxEdit)
 
         Root.Controls.Add(Toolbar, 0, 0)
@@ -3162,7 +3133,7 @@ Public Class StressTest
                     e.RowHandle,
                     PlannerScenarioFormatFieldName(ScenarioIndex)))
         If SourceRow = 34 OrElse SourceRow = 64 OrElse SourceRow = 65 Then
-            e.RepositoryItem = StandardYesEmptyEdit
+            e.RepositoryItem = StandardYEmptyEdit
         ElseIf Format.Contains("%") Then
             e.RepositoryItem = StandardPercentSpinEdit
         Else
