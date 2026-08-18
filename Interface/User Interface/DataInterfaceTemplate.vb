@@ -7159,9 +7159,9 @@ SectionSelect:
 
         Dim DP As CellDataPoint = DataSet.DataRows(DataRowIndex).DataCells(DataColumnIndex)
         If DP Is Nothing Then Return False
+        If DP.IsLocked Then Return False
 
         If ColTag.HasRules Then
-            If DP.IsLocked Then Return False
             If ActiveSpreadsheet IsNot Nothing AndAlso
                ActiveSpreadsheet.Range(DP.SourceAddress).Fill.PatternType <> PatternType.Solid Then Return False
         End If
@@ -8624,12 +8624,6 @@ SectionSelect:
         End If
 
 
-        '----------------------------------------------------------
-        ' No rules means normal editing
-        '----------------------------------------------------------
-        If Not ColTag.HasRules Then Return
-
-
         Dim SourceDataPoint As CellDataPoint =
         SourceDataRow.DataCells(ColIndex)
 
@@ -8640,6 +8634,24 @@ SectionSelect:
             Return
 
         End If
+
+
+        '----------------------------------------------------------
+        ' Workbook protection always wins, whether or not this column also
+        ' carries presentation rules.
+        '----------------------------------------------------------
+        If SourceDataPoint.IsLocked Then
+
+            e.Cancel = True
+            Return
+
+        End If
+
+
+        '----------------------------------------------------------
+        ' No rules means normal editing after the protection check.
+        '----------------------------------------------------------
+        If Not ColTag.HasRules Then Return
 
 
         '----------------------------------------------------------
@@ -8654,16 +8666,6 @@ SectionSelect:
 
         End If
 
-
-        '----------------------------------------------------------
-        ' Locked by rule
-        '----------------------------------------------------------
-        If SourceDataPoint.IsLocked Then
-
-            e.Cancel = True
-            Return
-
-        End If
 
     End Sub
 
@@ -9792,8 +9794,6 @@ SectionSelect:
 
         End If
 
-        If Not ColTag.HasRules Then Return
-
         Dim SourceDataPoint As CellDataPoint = ViewTag.DataSet.DataRows(view.FocusedRowHandle).DataCells(view.FocusedColumn.AbsoluteIndex)
 
         If ViewTag.DataSet.DataRows(view.FocusedRowHandle).IsSpacerRow Then
@@ -9803,14 +9803,18 @@ SectionSelect:
             Return
 
         End If
+        If SourceDataPoint Is Nothing OrElse SourceDataPoint.IsLocked Then
+            e.Cancel = True
+            Return
+        End If
+
+        If Not ColTag.HasRules Then Return
+
         If Me.ActiveSpreadsheet.Range(SourceDataPoint.SourceAddress).Fill.PatternType <> PatternType.Solid Then
             e.Cancel = True
             Return
 
         End If
-
-        If SourceDataPoint.IsLocked Then e.Cancel = True
-
 
         'Select Case ColTag.DataType
 

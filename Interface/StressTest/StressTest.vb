@@ -107,6 +107,7 @@ Public Class StressTest
     Private Formatter As ObjectFormatter
     Private WrapCG_Mits As CustomGridWrapper
     Private View_WrapCG_Mits As CustomGridView
+    Private ReadOnly FirstTabGridSources As New Dictionary(Of GridView, DevExpress.Spreadsheet.CellRange)
     Private View_WrapTextGrid As GridView
     Private WrapCG_MitsDev As CustomGridWrapper
     Private WrapCG_MitsMoney As CustomGridWrapper
@@ -219,6 +220,8 @@ Public Class StressTest
         StandardYesEmptyEdit.Appearance.Options.UseBackColor = True
         StandardYesEmptyEdit.Items.Add("Yes")
         StandardYesEmptyEdit.Items.Add("")
+        StandardYesEmptyEdit.TextEditStyle =
+            DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
 
         StandardIntegerTextBoxEdit = New RepositoryItemTextEdit
         StandardIntegerTextBoxEdit.MaskSettings.Set("MaskManagerType", GetType(DevExpress.Data.Mask.NumericMaskManager))
@@ -460,6 +463,13 @@ Public Class StressTest
     Sub GVStressesCustEditor(sender As Object, e As CustomRowCellEditEventArgs)
 
         Dim view As CustomGridView = TryCast(sender, CustomGridView)
+
+        Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
+        If TryGetFirstTabSourceCell(view, e.RowHandle, e.Column, SourceCell) AndAlso
+           SourceCell.RowIndex = 34 AndAlso SourceCell.ColumnIndex = 3 Then
+            e.RepositoryItem = StandardYesEmptyEdit
+            Return
+        End If
 
         If e.Column.FieldName = "Column 3" Then
 
@@ -803,6 +813,10 @@ Public Class StressTest
         WrapCG_Mits.WrappedCGC.DataSource = DSMitDataRange
         WrapCG_Mits.Height = XtraTabPageMitigations.Height * 0.6
         View_WrapCG_Mits = WrapCG_Mits.WrappedGridView
+        RegisterFirstTabSourceGrid(
+            View_WrapCG_Mits,
+            ActiveWorkbook.Worksheets("Live Multivariable Planner").Range(
+                ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestMitigationsRange))
 
         WrapCG_Mits.Dock = DockStyle.None
         WrapCG_Mits.Width = XtraTabPageMitigations.Width
@@ -877,6 +891,10 @@ Public Class StressTest
         WrapCG_MitsDev.WrappedCGC.DataSource = DSMitDevDataRange
 
         Dim View_WrapCG_MitsDev As CustomGridView = WrapCG_MitsDev.WrappedGridView
+        RegisterFirstTabSourceGrid(
+            View_WrapCG_MitsDev,
+            ActiveWorkbook.Worksheets("Live Multivariable Planner").Range(
+                ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestMitigationsDevRange))
 
         'Formatter.FormatGridView(View_WrapCG_MitsDev, WrapCG_MitsDev.WrappedCGC)
 
@@ -926,6 +944,10 @@ Public Class StressTest
         WrapCG_MitsMoney.WrappedCGC.DataSource = DSMitMoneyDataRange
 
         Dim View_WrapCG_MitsMoney As CustomGridView = WrapCG_MitsMoney.WrappedGridView
+        RegisterFirstTabSourceGrid(
+            View_WrapCG_MitsMoney,
+            ActiveWorkbook.Worksheets("Live Multivariable Planner").Range(
+                ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestMitigationsMoneyRange))
 
         'Formatter.FormatGridView(View_WrapCG_MitsMoney, WrapCG_MitsMoney.WrappedCGC)
 
@@ -976,6 +998,10 @@ Public Class StressTest
         WrapCG_Stresses.WrappedCGC.DataSource = DSStressesDataRange
 
         View_WrapCG_Stresses = WrapCG_Stresses.WrappedGridView
+        RegisterFirstTabSourceGrid(
+            View_WrapCG_Stresses,
+            ActiveWorkbook.Worksheets("Live Multivariable Planner").Range(
+                ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestStressesRange))
 
 
 
@@ -1488,6 +1514,67 @@ Public Class StressTest
         ExcelModels(ModelID).WB.Worksheets("Live Multivariable Planner").Columns.Hide(
             BreachOutputFirstColumnIndex, BreachOutputColumnCount)
         ProcessBreachesGrid(False)
+
+    End Sub
+
+    Private Sub RegisterFirstTabSourceGrid(
+        View As GridView,
+        SourceRange As DevExpress.Spreadsheet.CellRange)
+
+        If View Is Nothing OrElse SourceRange Is Nothing Then Return
+
+        FirstTabGridSources(View) = SourceRange
+        RemoveHandler View.ShowingEditor, AddressOf FirstTabGridShowingEditor
+        RemoveHandler View.ShownEditor, AddressOf FirstTabGridShownEditor
+        AddHandler View.ShowingEditor, AddressOf FirstTabGridShowingEditor
+        AddHandler View.ShownEditor, AddressOf FirstTabGridShownEditor
+
+    End Sub
+
+    Private Function TryGetFirstTabSourceCell(
+        View As GridView,
+        RowHandle As Integer,
+        Column As DevExpress.XtraGrid.Columns.GridColumn,
+        ByRef SourceCell As DevExpress.Spreadsheet.Cell) As Boolean
+
+        SourceCell = Nothing
+        If View Is Nothing OrElse Column Is Nothing OrElse RowHandle < 0 Then Return False
+
+        Dim SourceRange As DevExpress.Spreadsheet.CellRange = Nothing
+        If Not FirstTabGridSources.TryGetValue(View, SourceRange) Then Return False
+
+        Dim SourceRowOffset As Integer = View.GetDataSourceRowIndex(RowHandle)
+        Dim SourceColumnOffset As Integer = Column.AbsoluteIndex
+        If SourceRowOffset < 0 OrElse SourceRowOffset >= SourceRange.RowCount OrElse
+           SourceColumnOffset < 0 OrElse SourceColumnOffset >= SourceRange.ColumnCount Then Return False
+
+        SourceCell = SourceRange(SourceRowOffset, SourceColumnOffset)
+        Return SourceCell IsNot Nothing
+
+    End Function
+
+    Private Sub FirstTabGridShowingEditor(sender As Object, e As CancelEventArgs)
+
+        Dim View As GridView = TryCast(sender, GridView)
+        If View Is Nothing Then Return
+
+        Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
+        If Not TryGetFirstTabSourceCell(
+                View, View.FocusedRowHandle, View.FocusedColumn, SourceCell) OrElse
+           SourceCell.Protection.Locked Then
+            e.Cancel = True
+        End If
+
+    End Sub
+
+    Private Sub FirstTabGridShownEditor(sender As Object, e As EventArgs)
+
+        Dim View As GridView = TryCast(sender, GridView)
+        If View Is Nothing Then Return
+
+        Dim ComboEditor As DevExpress.XtraEditors.ComboBoxEdit =
+            TryCast(View.ActiveEditor, DevExpress.XtraEditors.ComboBoxEdit)
+        If ComboEditor IsNot Nothing Then ComboEditor.ShowPopup()
 
     End Sub
 
@@ -2092,26 +2179,25 @@ Public Class StressTest
         Next
         Data.Columns.Add("Captured", GetType(String))
         Data.Columns.Add("File", GetType(String))
+        Data.Columns.Add("IsReferenceRow", GetType(Boolean))
+
+        'Worksheet rows 7 and 8 are the live, read-only reference rows shown
+        'above the captured sensitivity records in the original interface.
+        For RowIndex As Integer = 6 To 7
+            AddNativeSensitivityRow(Data, Sheet, RowIndex, True)
+        Next
 
         For RowIndex As Integer = DataRows.TopRowIndex To DataRows.BottomRowIndex
             If String.IsNullOrWhiteSpace(Sheet.Cells(RowIndex, 0).DisplayText) Then Continue For
-            Dim Row As System.Data.DataRow = Data.NewRow()
-            Row("SourceRow") = RowIndex
-            Row("Description") = Sheet.Cells(RowIndex, 0).DisplayText
-            Row("Peak Debt") = Sheet.Cells(RowIndex, 1).DisplayText
-            Row("Peak Debt Year") = Sheet.Cells(RowIndex, 2).DisplayText
-            Row("Repayment Year") = Sheet.Cells(RowIndex, 3).DisplayText
-            For ColumnIndex As Integer = 4 To 8
-                Row(ColumnIndex + 1) = Sheet.Cells(RowIndex, ColumnIndex).DisplayText
-            Next
-            Row("Captured") = Sheet.Cells(RowIndex, 59).DisplayText
-            Row("File") = Sheet.Cells(RowIndex, 60).DisplayText
-            Data.Rows.Add(Row)
+            AddNativeSensitivityRow(Data, Sheet, RowIndex, False)
         Next
 
         NativeSensitivityGrid.DataSource = Data
         If NativeSensitivityView.Columns("SourceRow") IsNot Nothing Then
             NativeSensitivityView.Columns("SourceRow").Visible = False
+        End If
+        If NativeSensitivityView.Columns("IsReferenceRow") IsNot Nothing Then
+            NativeSensitivityView.Columns("IsReferenceRow").Visible = False
         End If
         SetSensitivitySourceColumn("Description", 0)
         SetSensitivitySourceColumn("Peak Debt", 1)
@@ -2123,6 +2209,28 @@ Public Class StressTest
         SetSensitivitySourceColumn("Captured", 59)
         SetSensitivitySourceColumn("File", 60)
         NativeSensitivityView.BestFitColumns()
+
+    End Sub
+
+    Private Sub AddNativeSensitivityRow(
+        Data As System.Data.DataTable,
+        Sheet As DevExpress.Spreadsheet.Worksheet,
+        RowIndex As Integer,
+        IsReferenceRow As Boolean)
+
+        Dim Row As System.Data.DataRow = Data.NewRow()
+        Row("SourceRow") = RowIndex
+        Row("Description") = Sheet.Cells(RowIndex, 0).DisplayText
+        Row("Peak Debt") = Sheet.Cells(RowIndex, 1).DisplayText
+        Row("Peak Debt Year") = Sheet.Cells(RowIndex, 2).DisplayText
+        Row("Repayment Year") = Sheet.Cells(RowIndex, 3).DisplayText
+        For ColumnIndex As Integer = 4 To 8
+            Row(ColumnIndex + 1) = Sheet.Cells(RowIndex, ColumnIndex).DisplayText
+        Next
+        Row("Captured") = Sheet.Cells(RowIndex, 59).DisplayText
+        Row("File") = Sheet.Cells(RowIndex, 60).DisplayText
+        Row("IsReferenceRow") = IsReferenceRow
+        Data.Rows.Add(Row)
 
     End Sub
 
@@ -2151,11 +2259,6 @@ Public Class StressTest
 
         ApplyWorkbookCellAppearance(e.Appearance, SourceCell)
 
-        If NativeSensitivityView.IsCellSelected(e.RowHandle, e.Column) Then
-            e.Appearance.BackColor = Color.Beige
-            e.Appearance.ForeColor = Color.Black
-        End If
-
         e.DefaultDraw()
         e.Handled = True
 
@@ -2181,6 +2284,20 @@ Public Class StressTest
         If SelectedHandles.Length = 0 Then
             DevExpress.XtraEditors.XtraMessageBox.Show(
                 "Select one or more captured scenarios to delete.", "Delete captures")
+            Return
+        End If
+
+        SelectedHandles = SelectedHandles.Where(
+            Function(RowHandle)
+                Dim IsReference As Object =
+                    NativeSensitivityView.GetRowCellValue(RowHandle, "IsReferenceRow")
+                Return IsReference Is Nothing OrElse IsReference Is DBNull.Value OrElse
+                    Not Convert.ToBoolean(IsReference)
+            End Function).ToArray()
+        If SelectedHandles.Length = 0 Then
+            DevExpress.XtraEditors.XtraMessageBox.Show(
+                "Rows 7 and 8 are workbook reference rows and cannot be deleted.",
+                "Delete captures")
             Return
         End If
         If DevExpress.XtraEditors.XtraMessageBox.Show(
@@ -2697,7 +2814,7 @@ Public Class StressTest
 
         If SourceCell Is Nothing Then Return
 
-        Dim Background As Color = SourceCell.Fill.BackgroundColor
+        Dim Background As Color = SourceCell.FillColor
         If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
 
         Dim Foreground As Color = SourceCell.Font.Color
