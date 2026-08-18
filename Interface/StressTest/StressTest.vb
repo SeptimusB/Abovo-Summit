@@ -30,6 +30,7 @@ Imports DevExpress.XtraEditors.Repository
 Imports DevExpress.XtraGrid
 Imports DevExpress.XtraGrid.Scrolling
 Imports DevExpress.XtraGrid.Views.Base
+Imports DevExpress.XtraGrid.Views.BandedGrid
 Imports DevExpress.XtraGrid.Views.Grid
 Imports DevExpress.XtraGrid.Views.Grid.ViewInfo
 Imports DevExpress.XtraLayout.Customization.Templates
@@ -76,7 +77,7 @@ Public Class StressTest
     Private NativePlannerImportMode As DevExpress.XtraEditors.ComboBoxEdit
     Private NativePlannerInclude As DevExpress.XtraEditors.CheckEdit
     Private NativePlannerGrid As GridControl
-    Private NativePlannerView As GridView
+    Private NativePlannerView As BandedGridView
     Private NativePlannerData As System.Data.DataTable
     Private NativeYearEditor As RepositoryItemComboBox
     Private NativeDashboardScenario As DevExpress.XtraEditors.ComboBoxEdit
@@ -2371,9 +2372,9 @@ Public Class StressTest
             .Text = "Generate dashboard", .Width = 155, .Height = 36
         }
         Dim ClearButton As New DevExpress.XtraEditors.SimpleButton With {
-            .Text = "Clear scenario", .Width = 120, .Height = 36
+            .Text = "Clear selected scenario", .Width = 165, .Height = 36
         }
-        Toolbar.Controls.Add(CreateNativeLabel("Scenario"))
+        Toolbar.Controls.Add(CreateNativeLabel("Scenario settings"))
         Toolbar.Controls.Add(NativePlannerScenario)
         Toolbar.Controls.Add(CreateNativeLabel("Name"))
         Toolbar.Controls.Add(NativePlannerName)
@@ -2384,12 +2385,13 @@ Public Class StressTest
         Toolbar.Controls.Add(ClearButton)
 
         NativePlannerGrid = New GridControl With {.Dock = DockStyle.Fill}
-        NativePlannerView = New GridView(NativePlannerGrid)
+        NativePlannerView = New BandedGridView(NativePlannerGrid)
         NativePlannerGrid.MainView = NativePlannerView
         NativePlannerGrid.ViewCollection.Add(NativePlannerView)
         NativePlannerView.OptionsView.ShowGroupPanel = False
         NativePlannerView.OptionsView.ShowAutoFilterRow = True
         NativePlannerView.OptionsView.ColumnAutoWidth = False
+        NativePlannerView.OptionsView.ShowBands = True
         NativePlannerView.OptionsBehavior.EditorShowMode = DevExpress.Utils.EditorShowMode.MouseDownFocused
 
         NativeYearEditor = New RepositoryItemComboBox
@@ -2416,6 +2418,7 @@ Public Class StressTest
         AddHandler NativePlannerView.CustomDrawCell, AddressOf NativePlannerCustomDrawCell
         AddHandler NativePlannerView.ShowingEditor, AddressOf NativePlannerShowingEditor
         AddHandler NativePlannerView.CustomColumnDisplayText, AddressOf NativePlannerCustomColumnDisplayText
+        AddHandler NativePlannerView.FocusedColumnChanged, AddressOf NativePlannerFocusedColumnChanged
         AddHandler CalculateButton.Click, Sub() RecalculateAndRefreshNativeViews()
         AddHandler GenerateButton.Click, AddressOf GenerateMultivariableDashboard_Click
         AddHandler ClearButton.Click, AddressOf ClearNativeScenario_Click
@@ -2609,34 +2612,26 @@ Public Class StressTest
         LoadingNativeViews = True
         Try
             Dim ScenarioIndex As Integer = SelectedPlannerScenarioIndex()
-            Dim StartColumn As Integer = ScenarioStartColumn(ScenarioIndex)
             Dim Sheet As DevExpress.Spreadsheet.Worksheet = ActiveWorkbook.Worksheets("Multivariable Planner")
-            NativePlannerName.Properties.ReadOnly = Sheet.Cells(7, StartColumn).Protection.Locked
-            NativePlannerInclude.Properties.ReadOnly = Sheet.Cells(6, 3).Protection.Locked
-            NativePlannerImportMode.Properties.ReadOnly = Sheet.Cells(6, StartColumn).Protection.Locked
-            NativePlannerName.EditValue = Sheet.Cells(7, StartColumn).DisplayText
-            NativePlannerInclude.Visible = True
-            NativePlannerImportMode.Visible = True
-            NativePlannerInclude.Checked =
-                String.Equals(Sheet.Cells(6, 3).DisplayText, "Yes", StringComparison.OrdinalIgnoreCase)
-            NativePlannerImportMode.EditValue = Sheet.Cells(6, StartColumn).DisplayText
-            If String.IsNullOrWhiteSpace(Convert.ToString(NativePlannerImportMode.EditValue)) Then
-                NativePlannerImportMode.EditValue = "Use assumptions below"
-            End If
+            RefreshNativePlannerScenarioControls(Sheet, ScenarioIndex)
 
             Dim Data As New System.Data.DataTable
             Data.Columns.Add("SourceRow", GetType(Integer))
             Data.Columns.Add("Section", GetType(String))
             Data.Columns.Add("Assumption", GetType(String))
             Data.Columns.Add("ShortName", GetType(String))
-            Data.Columns.Add("Change1", GetType(Object))
-            Data.Columns.Add("Change2", GetType(Object))
-            Data.Columns.Add("Change1FromYear", GetType(Object))
-            Data.Columns.Add("Change2FromYear", GetType(Object))
-            Data.Columns.Add("ToYear", GetType(Object))
-            Data.Columns.Add("ValueFormat", GetType(String))
-            AddPlannerRows(Data, Sheet, StartColumn, 9, 47, "Stress")
-            AddPlannerRows(Data, Sheet, StartColumn, 51, 75, "Mitigation")
+            For PlannerScenarioIndex As Integer = 1 To 10
+                For ValueOffset As Integer = 0 To 4
+                    Data.Columns.Add(
+                        PlannerScenarioFieldName(PlannerScenarioIndex, ValueOffset),
+                        GetType(Object))
+                Next
+                Data.Columns.Add(
+                    PlannerScenarioFormatFieldName(PlannerScenarioIndex),
+                    GetType(String))
+            Next
+            AddPlannerRows(Data, Sheet, 9, 47, "Stress")
+            AddPlannerRows(Data, Sheet, 51, 75, "Mitigation")
             NativePlannerData = Data
             NativePlannerGrid.DataSource = Data
             ConfigureNativePlannerColumns()
@@ -2648,7 +2643,6 @@ Public Class StressTest
 
     Private Sub AddPlannerRows(Data As System.Data.DataTable,
                                Sheet As DevExpress.Spreadsheet.Worksheet,
-                               StartColumn As Integer,
                                FirstRow As Integer,
                                LastRow As Integer,
                                SectionName As String)
@@ -2659,20 +2653,92 @@ Public Class StressTest
             Row("Section") = SectionName
             Row("Assumption") = Sheet.Cells(RowIndex, 0).DisplayText
             Row("ShortName") = Sheet.Cells(RowIndex, 1).DisplayText
-            For ValueIndex As Integer = 0 To 4
-                Row(4 + ValueIndex) = CellToObject(Sheet.Cells(RowIndex, StartColumn + ValueIndex))
+            For ScenarioIndex As Integer = 1 To 10
+                Dim StartColumn As Integer = ScenarioStartColumn(ScenarioIndex)
+                For ValueOffset As Integer = 0 To 4
+                    Row(PlannerScenarioFieldName(ScenarioIndex, ValueOffset)) =
+                        CellToObject(Sheet.Cells(RowIndex, StartColumn + ValueOffset))
+                Next
+                Row(PlannerScenarioFormatFieldName(ScenarioIndex)) =
+                    Sheet.Cells(RowIndex, StartColumn).NumberFormat
             Next
-            Row("ValueFormat") = Sheet.Cells(RowIndex, StartColumn).NumberFormat
             Data.Rows.Add(Row)
         Next
 
     End Sub
 
+    Private Sub RefreshNativePlannerScenarioControls(
+        Sheet As DevExpress.Spreadsheet.Worksheet,
+        ScenarioIndex As Integer)
+
+        Dim StartColumn As Integer = ScenarioStartColumn(ScenarioIndex)
+        NativePlannerName.Properties.ReadOnly = Sheet.Cells(7, StartColumn).Protection.Locked
+        NativePlannerInclude.Properties.ReadOnly = Sheet.Cells(6, 3).Protection.Locked
+        NativePlannerImportMode.Properties.ReadOnly = Sheet.Cells(6, StartColumn).Protection.Locked
+        NativePlannerName.EditValue = Sheet.Cells(7, StartColumn).DisplayText
+        NativePlannerInclude.Visible = True
+        NativePlannerImportMode.Visible = True
+        NativePlannerInclude.Checked =
+            String.Equals(Sheet.Cells(6, 3).DisplayText, "Yes", StringComparison.OrdinalIgnoreCase)
+        NativePlannerImportMode.EditValue = Sheet.Cells(6, StartColumn).DisplayText
+        If String.IsNullOrWhiteSpace(Convert.ToString(NativePlannerImportMode.EditValue)) Then
+            NativePlannerImportMode.EditValue = "Use assumptions below"
+        End If
+
+    End Sub
+
+    Private Function PlannerScenarioFieldName(
+        ScenarioIndex As Integer,
+        ValueOffset As Integer) As String
+
+        Dim Suffix As String
+        Select Case ValueOffset
+            Case 0 : Suffix = "Change1"
+            Case 1 : Suffix = "Change2"
+            Case 2 : Suffix = "Change1FromYear"
+            Case 3 : Suffix = "Change2FromYear"
+            Case 4 : Suffix = "ToYear"
+            Case Else
+                Throw New ArgumentOutOfRangeException(NameOf(ValueOffset))
+        End Select
+        Return "S" & ScenarioIndex.ToString() & Suffix
+
+    End Function
+
+    Private Function PlannerScenarioFormatFieldName(ScenarioIndex As Integer) As String
+
+        Return "S" & ScenarioIndex.ToString() & "ValueFormat"
+
+    End Function
+
+    Private Function TryGetPlannerScenarioColumn(
+        Column As DevExpress.XtraGrid.Columns.GridColumn,
+        ByRef ScenarioIndex As Integer,
+        ByRef ValueOffset As Integer) As Boolean
+
+        If Column Is Nothing Then Return False
+        For CandidateScenario As Integer = 1 To 10
+            For CandidateOffset As Integer = 0 To 4
+                If String.Equals(
+                        Column.FieldName,
+                        PlannerScenarioFieldName(CandidateScenario, CandidateOffset),
+                        StringComparison.Ordinal) Then
+                    ScenarioIndex = CandidateScenario
+                    ValueOffset = CandidateOffset
+                    Return True
+                End If
+            Next
+        Next
+        Return False
+
+    End Function
+
     Private Sub ConfigureNativePlannerColumns()
 
+        NativePlannerView.PopulateColumns()
         If NativePlannerView.Columns.Count = 0 Then Return
+        NativePlannerView.Bands.Clear()
         NativePlannerView.Columns("SourceRow").Visible = False
-        NativePlannerView.Columns("ValueFormat").Visible = False
         NativePlannerView.Columns("Section").OptionsColumn.AllowEdit = False
         NativePlannerView.Columns("Assumption").OptionsColumn.AllowEdit = False
         NativePlannerView.Columns("ShortName").OptionsColumn.AllowEdit = True
@@ -2680,17 +2746,65 @@ Public Class StressTest
         NativePlannerView.Columns("Section").SortOrder = DevExpress.Data.ColumnSortOrder.Descending
         NativePlannerView.Columns("Assumption").Width = 330
         NativePlannerView.Columns("ShortName").Width = 180
-        NativePlannerView.Columns("Change1").Caption = "Change 1"
-        NativePlannerView.Columns("Change2").Caption = "Change 2"
-        NativePlannerView.Columns("Change1FromYear").Caption = "Change 1 from year"
-        NativePlannerView.Columns("Change2FromYear").Caption = "Change 2 from year"
-        NativePlannerView.Columns("ToYear").Caption = "To year"
-        For Each ColumnName As String In {"Change1FromYear", "Change2FromYear", "ToYear"}
-            NativePlannerView.Columns(ColumnName).ColumnEdit = NativeYearEditor
-            NativePlannerView.Columns(ColumnName).Width = 125
+
+        Dim DefinitionBand As New GridBand With {
+            .Caption = "Stress and mitigation definition",
+            .Fixed = DevExpress.XtraGrid.Columns.FixedStyle.Left
+        }
+        DefinitionBand.AppearanceHeader.TextOptions.HAlignment = HorzAlignment.Center
+        DefinitionBand.Columns.Add(NativePlannerView.Columns("Assumption"))
+        DefinitionBand.Columns.Add(NativePlannerView.Columns("ShortName"))
+        NativePlannerView.Bands.Add(DefinitionBand)
+
+        Dim Sheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("Multivariable Planner")
+        For ScenarioIndex As Integer = 1 To 10
+            Dim StartColumn As Integer = ScenarioStartColumn(ScenarioIndex)
+            Dim ScenarioName As String = Sheet.Cells(7, StartColumn).DisplayText.Trim()
+            If String.IsNullOrWhiteSpace(ScenarioName) Then
+                ScenarioName = "Scenario " & ScenarioIndex.ToString()
+            End If
+            Dim ImportMode As String = Sheet.Cells(6, StartColumn).DisplayText.Trim()
+            If String.IsNullOrWhiteSpace(ImportMode) Then ImportMode = "Use assumptions below"
+
+            Dim ScenarioBand As New GridBand With {
+                .Caption = "Test " & ScenarioIndex.ToString() & vbCrLf &
+                           ScenarioName & vbCrLf & ImportMode
+            }
+            ScenarioBand.AppearanceHeader.TextOptions.HAlignment = HorzAlignment.Center
+            ScenarioBand.AppearanceHeader.TextOptions.WordWrap = WordWrap.Wrap
+            NativePlannerView.Bands.Add(ScenarioBand)
+
+            For ValueOffset As Integer = 0 To 4
+                Dim Column = NativePlannerView.Columns(
+                    PlannerScenarioFieldName(ScenarioIndex, ValueOffset))
+                Select Case ValueOffset
+                    Case 0
+                        Column.Caption = "Change 1"
+                        Column.Width = 105
+                    Case 1
+                        Column.Caption = "Change 2"
+                        Column.Width = 105
+                    Case 2
+                        Column.Caption = "Change 1 from year"
+                        Column.Width = 120
+                        Column.ColumnEdit = NativeYearEditor
+                    Case 3
+                        Column.Caption = "Change 2 from year"
+                        Column.Width = 120
+                        Column.ColumnEdit = NativeYearEditor
+                    Case 4
+                        Column.Caption = "To year"
+                        Column.Width = 100
+                        Column.ColumnEdit = NativeYearEditor
+                End Select
+                Column.OptionsColumn.AllowEdit = True
+                ScenarioBand.Columns.Add(Column)
+            Next
+            NativePlannerView.Columns(
+                PlannerScenarioFormatFieldName(ScenarioIndex)).Visible = False
         Next
-        NativePlannerView.Columns("Change1").Width = 115
-        NativePlannerView.Columns("Change2").Width = 115
+        NativePlannerView.BandPanelRowHeight = 58
         NativePlannerView.ExpandAllGroups()
 
     End Sub
@@ -2707,7 +2821,37 @@ Public Class StressTest
 
     Private Sub NativePlannerScenarioChanged(sender As Object, e As EventArgs)
 
-        If Not LoadingNativeViews Then RefreshNativePlanner()
+        If LoadingNativeViews Then Return
+        LoadingNativeViews = True
+        Try
+            RefreshNativePlannerScenarioControls(
+                ActiveWorkbook.Worksheets("Multivariable Planner"),
+                SelectedPlannerScenarioIndex())
+        Finally
+            LoadingNativeViews = False
+        End Try
+
+    End Sub
+
+    Private Sub NativePlannerFocusedColumnChanged(
+        sender As Object,
+        e As DevExpress.XtraGrid.Views.Base.FocusedColumnChangedEventArgs)
+
+        If LoadingNativeViews Then Return
+        Dim ScenarioIndex As Integer
+        Dim ValueOffset As Integer
+        If Not TryGetPlannerScenarioColumn(
+                e.FocusedColumn, ScenarioIndex, ValueOffset) OrElse
+           NativePlannerScenario.SelectedIndex = ScenarioIndex - 1 Then Return
+
+        LoadingNativeViews = True
+        Try
+            NativePlannerScenario.SelectedIndex = ScenarioIndex - 1
+            RefreshNativePlannerScenarioControls(
+                ActiveWorkbook.Worksheets("Multivariable Planner"), ScenarioIndex)
+        Finally
+            LoadingNativeViews = False
+        End Try
 
     End Sub
 
@@ -2717,11 +2861,10 @@ Public Class StressTest
         Dim Sheet As DevExpress.Spreadsheet.Worksheet = ActiveWorkbook.Worksheets("Multivariable Planner")
         Dim Target As DevExpress.Spreadsheet.Cell =
             Sheet.Cells(7, ScenarioStartColumn(SelectedPlannerScenarioIndex()))
-        If Not ProcessStressTestCellChange(
-                Target, NativePlannerName.EditValue, "S",
-                "Stress-test scenario name updated") Then
-            RefreshNativePlanner()
-        End If
+        ProcessStressTestCellChange(
+            Target, NativePlannerName.EditValue, "S",
+            "Stress-test scenario name updated")
+        RefreshNativePlanner()
 
     End Sub
 
@@ -2793,11 +2936,10 @@ Public Class StressTest
         Dim Target As DevExpress.Spreadsheet.Cell =
             ActiveWorkbook.Worksheets("Multivariable Planner").
                 Cells(6, ScenarioStartColumn(SelectedPlannerScenarioIndex()))
-        If Not ProcessStressTestCellChange(
-                Target, NativePlannerImportMode.EditValue, "S",
-                "Stress-test scenario import mode updated") Then
-            RefreshNativePlanner()
-        End If
+        ProcessStressTestCellChange(
+            Target, NativePlannerImportMode.EditValue, "S",
+            "Stress-test scenario import mode updated")
+        RefreshNativePlanner()
 
     End Sub
 
@@ -2806,11 +2948,10 @@ Public Class StressTest
         If LoadingNativeViews Then Return
         Dim Target As DevExpress.Spreadsheet.Cell =
             ActiveWorkbook.Worksheets("Multivariable Planner").Cells(6, 3)
-        If Not ProcessStressTestCellChange(
-                Target, If(NativePlannerInclude.Checked, "Yes", Nothing), "S",
-                "Base scenario import setting updated") Then
-            RefreshNativePlanner()
-        End If
+        ProcessStressTestCellChange(
+            Target, If(NativePlannerInclude.Checked, "Yes", Nothing), "S",
+            "Base scenario import setting updated")
+        RefreshNativePlanner()
 
     End Sub
 
@@ -2834,31 +2975,29 @@ Public Class StressTest
             Return
         End If
 
+        Dim ScenarioIndex As Integer
         Dim ValueOffset As Integer
-        Select Case e.Column.FieldName
-            Case "Change1" : ValueOffset = 0
-            Case "Change2" : ValueOffset = 1
-            Case "Change1FromYear" : ValueOffset = 2
-            Case "Change2FromYear" : ValueOffset = 3
-            Case "ToYear" : ValueOffset = 4
-            Case Else : Return
-        End Select
+        If Not TryGetPlannerScenarioColumn(
+                e.Column, ScenarioIndex, ValueOffset) Then Return
         Dim Target As DevExpress.Spreadsheet.Cell =
             ActiveWorkbook.Worksheets("Multivariable Planner").
                 Cells(SourceRow,
-                      ScenarioStartColumn(SelectedPlannerScenarioIndex()) + ValueOffset)
+                      ScenarioStartColumn(ScenarioIndex) + ValueOffset)
         Dim DataFormat As String = "N"
         If ValueOffset >= 2 Then
             DataFormat = "I"
         ElseIf SourceRow = 34 OrElse SourceRow = 64 OrElse SourceRow = 65 Then
             DataFormat = "S"
         ElseIf Convert.ToString(
-                NativePlannerView.GetRowCellValue(e.RowHandle, "ValueFormat")).Contains("%") Then
+                NativePlannerView.GetRowCellValue(
+                    e.RowHandle,
+                    PlannerScenarioFormatFieldName(ScenarioIndex))).Contains("%") Then
             DataFormat = "P"
         End If
         If Not ProcessStressTestCellChange(
                 Target, NormalizeStressTestEditValue(e.Value), DataFormat,
-                "Stress-test planner assumption updated", True) Then
+                "Stress-test scenario " & ScenarioIndex.ToString() &
+                " planner assumption updated", True) Then
             RefreshNativePlanner()
         End If
 
@@ -2965,16 +3104,17 @@ Public Class StressTest
         If SourceRowValue Is Nothing OrElse SourceRowValue Is DBNull.Value Then Return False
 
         Dim SourceColumn As Integer
-        Select Case Column.FieldName
-            Case "Assumption" : SourceColumn = 0
-            Case "ShortName" : SourceColumn = 1
-            Case "Change1" : SourceColumn = ScenarioStartColumn(SelectedPlannerScenarioIndex())
-            Case "Change2" : SourceColumn = ScenarioStartColumn(SelectedPlannerScenarioIndex()) + 1
-            Case "Change1FromYear" : SourceColumn = ScenarioStartColumn(SelectedPlannerScenarioIndex()) + 2
-            Case "Change2FromYear" : SourceColumn = ScenarioStartColumn(SelectedPlannerScenarioIndex()) + 3
-            Case "ToYear" : SourceColumn = ScenarioStartColumn(SelectedPlannerScenarioIndex()) + 4
-            Case Else : Return False
-        End Select
+        If Column.FieldName = "Assumption" Then
+            SourceColumn = 0
+        ElseIf Column.FieldName = "ShortName" Then
+            SourceColumn = 1
+        Else
+            Dim ScenarioIndex As Integer
+            Dim ValueOffset As Integer
+            If Not TryGetPlannerScenarioColumn(
+                    Column, ScenarioIndex, ValueOffset) Then Return False
+            SourceColumn = ScenarioStartColumn(ScenarioIndex) + ValueOffset
+        End If
 
         SourceCell = ActiveWorkbook.Worksheets("Multivariable Planner").Cells(
             Convert.ToInt32(SourceRowValue), SourceColumn)
@@ -3006,16 +3146,21 @@ Public Class StressTest
     Private Sub NativePlannerCustomRowCellEdit(sender As Object, e As CustomRowCellEditEventArgs)
 
         If e.RowHandle < 0 Then Return
-        If e.Column.FieldName = "Change1FromYear" OrElse
-           e.Column.FieldName = "Change2FromYear" OrElse e.Column.FieldName = "ToYear" Then
+        Dim ScenarioIndex As Integer
+        Dim ValueOffset As Integer
+        If Not TryGetPlannerScenarioColumn(
+                e.Column, ScenarioIndex, ValueOffset) Then Return
+        If ValueOffset >= 2 Then
             e.RepositoryItem = NativeYearEditor
             Return
         End If
-        If e.Column.FieldName <> "Change1" AndAlso e.Column.FieldName <> "Change2" Then Return
         Dim SourceRow As Integer =
             Convert.ToInt32(NativePlannerView.GetRowCellValue(e.RowHandle, "SourceRow"))
         Dim Format As String =
-            Convert.ToString(NativePlannerView.GetRowCellValue(e.RowHandle, "ValueFormat"))
+            Convert.ToString(
+                NativePlannerView.GetRowCellValue(
+                    e.RowHandle,
+                    PlannerScenarioFormatFieldName(ScenarioIndex)))
         If SourceRow = 34 OrElse SourceRow = 64 OrElse SourceRow = 65 Then
             e.RepositoryItem = StandardYesEmptyEdit
         ElseIf Format.Contains("%") Then
@@ -3031,11 +3176,17 @@ Public Class StressTest
         e As DevExpress.XtraGrid.Views.Base.CustomColumnDisplayTextEventArgs)
 
         If e.ListSourceRowIndex < 0 OrElse
-           (e.Column.FieldName <> "Change1" AndAlso e.Column.FieldName <> "Change2") OrElse
            e.Value Is Nothing OrElse e.Value Is DBNull.Value Then Return
+        Dim ScenarioIndex As Integer
+        Dim ValueOffset As Integer
+        If Not TryGetPlannerScenarioColumn(
+                e.Column, ScenarioIndex, ValueOffset) OrElse ValueOffset > 1 Then Return
         Dim RowHandle As Integer = NativePlannerView.GetRowHandle(e.ListSourceRowIndex)
         Dim Format As String =
-            Convert.ToString(NativePlannerView.GetRowCellValue(RowHandle, "ValueFormat"))
+            Convert.ToString(
+                NativePlannerView.GetRowCellValue(
+                    RowHandle,
+                    PlannerScenarioFormatFieldName(ScenarioIndex)))
         Dim NumericValue As Double
         If Not Double.TryParse(Convert.ToString(e.Value), NumericValue) Then Return
         If Format.Contains("%") Then
