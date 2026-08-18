@@ -333,18 +333,17 @@ Namespace Abovo
                     HistoryManager.Hide()
 
                     If WorkbookMigrations IsNot Nothing Then
-#If DEBUG Then
-                        'Debug builds reconcile the workbook to the current
-                        'schema in memory. Persistence still requires an
-                        'explicit user save.
+                        'Every full-model load reconciles the workbook to the
+                        'current schema in memory. This must also run in Release
+                        'so an XLSB can round-trip through Summit and Excel
+                        'without leaving production users on an older schema.
+                        'Persistence still requires an explicit user save.
                         Dim MigrationResult As AbovoTransaction =
                             WorkbookMigrations.ApplyPendingMigrations()
 
                         If MigrationResult.BError Then
                             Return MigrationResult
                         End If
-
-#End If
                     End If
 
                     Result.BSuccess = True

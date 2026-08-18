@@ -105,9 +105,13 @@ Public Class StressTest
     Private ExportMode As String
     Private MyColourSwatch As Color
     Private Formatter As ObjectFormatter
+    Private ChangeMan As ModelChangeManager
     Private WrapCG_Mits As CustomGridWrapper
     Private View_WrapCG_Mits As CustomGridView
     Private ReadOnly FirstTabGridSources As New Dictionary(Of GridView, DevExpress.Spreadsheet.CellRange)
+    Private FirstTabPendingOriginalValue As CellValue = CellValue.Empty
+    Private FirstTabEditPending As Boolean
+    Private FirstTabChangeInProgress As Boolean
     Private View_WrapTextGrid As GridView
     Private WrapCG_MitsDev As CustomGridWrapper
     Private WrapCG_MitsMoney As CustomGridWrapper
@@ -135,6 +139,7 @@ Public Class StressTest
 
         Formatter = New ObjectFormatter
         ModelID = SetModelID
+        ChangeMan = ExcelModels(SetModelID).ChangeManager
 
         Me.WindowState = FormWindowState.Maximized
 
@@ -322,8 +327,7 @@ Public Class StressTest
 
     Private Sub AddHandlers()
 
-        AddHandler View_WrapCG_Stresses.CellValueChanged, AddressOf StressesGrid_EditingValueModified
-        AddHandler TextEditMultivariableName.EditValueChanged, AddressOf TextEditMultivariableName_EditValueChanged
+        AddHandler TextEditMultivariableName.Validated, AddressOf TextEditMultivariableName_EditValueChanged
         AddHandler View_WrapCG_Stresses.CustomRowCellEdit, AddressOf GVStressesCustEditor
         AddHandler View_WrapCG_Stresses.ShowingEditor, AddressOf GVStressesShowingEditor
         AddHandler View_WrapCG_Stresses.CustomDrawCell, AddressOf CustomDrawStressesGrid
@@ -535,7 +539,7 @@ Public Class StressTest
             End If
 
             If CDbl(TestVal) = 0 Then
-                e.Cancel = False
+                e.Cancel = True
                 Return
             End If
 
@@ -551,28 +555,12 @@ Public Class StressTest
             End If
 
             If CDbl(TestVal) = 0 Then
-                e.Cancel = False
+                e.Cancel = True
                 Return
             End If
 
         End If
     End Sub
-    Private Sub StressesGrid_EditingValueModified(sender As Object, e As EventArgs)
-
-        CalcChanges()
-
-    End Sub
-
-    Private Sub CalcChanges()
-
-        Me.Cursor = Cursors.WaitCursor
-
-        ActiveWorkbook.Calculate()
-
-        Me.Cursor = Cursors.Default
-
-    End Sub
-
     Sub RefreshDataSources()
 
         If STMode = "Y" Then
@@ -662,6 +650,7 @@ Public Class StressTest
         ModelPostingComboBoxSelectCovenant.SetModelID = ModelID
         ModelPostingComboBoxSelectCovenant.SetTargetWorksheet = "Live Multivariable Planner"
         ModelPostingComboBoxSelectCovenant.SetTargetCell = "AD3"
+        ModelPostingComboBoxSelectCovenant.SuppressAutomaticPosting = True
         ModelPostingComboBoxSelectCovenant.InitialiseFromNRP("CovenantSelect")
         ModelPostingComboBoxSelectCovenant.SetLimitToList = True
         ModelPostingComboBoxSelectCovenant.Properties.TextEditStyle =
@@ -1392,6 +1381,7 @@ Public Class StressTest
                 ActiveWorkbook.DefinedNames.GetDefinedName("Mode").RefersTo = """Stress Test"""
                 ModeCell(0, 0).Value = "Y"
                 StressTestModeAdjustments()
+                ExcelModels(ModelID).IsDirty = True
 
             End If
 
@@ -1409,6 +1399,7 @@ Public Class StressTest
 
                 ModeCell(0, 0).Value = "N"
                 DeStressAdjustments()
+                ExcelModels(ModelID).IsDirty = True
 
             End If
 
@@ -1418,7 +1409,7 @@ Public Class StressTest
 
         End If
 
-        ActiveWorkbook.Calculate()
+        CalculateStressWorkbook()
         ProcessBreachesGrid(STMode = "Y")
         RefreshCovenantSummary()
         BuildCovCharts()
@@ -1430,22 +1421,29 @@ Public Class StressTest
     Sub StressTestModeAdjustments()
 
         UnhideColumnsCommand()
-        UNProtectWS(ModelID, "OW - Live Stress Reporting")
+        Dim ReportingSheet As DevExpress.Spreadsheet.Worksheet =
+            ExcelModels(ModelID).WB.Worksheets("OW - Live Stress Reporting")
+        Dim WasProtected As Boolean = ReportingSheet.IsProtected
+        UNProtectWS(ModelID, ReportingSheet.Name)
 
-        Dim SourceRange As DevExpress.Spreadsheet.CellRange = ExcelModels(ModelID).WB.Range("StressSwitch")
-        Dim DestRange As DevExpress.Spreadsheet.CellRange = ExcelModels(ModelID).WB.Range("StressBase")
-        DestRange.CopyFrom(SourceRange, PasteSpecial.Values)
-
-        ProtectWS(ModelID, "OW - Live Stress Reporting")
+        Try
+            Dim SourceRange As DevExpress.Spreadsheet.CellRange = ExcelModels(ModelID).WB.Range("StressSwitch")
+            Dim DestRange As DevExpress.Spreadsheet.CellRange = ExcelModels(ModelID).WB.Range("StressBase")
+            DestRange.CopyFrom(SourceRange, PasteSpecial.Values)
+        Finally
+            If WasProtected Then ProtectWS(ModelID, ReportingSheet.Name)
+        End Try
 
 
     End Sub
 
     Sub Stress_Sensitivity_Capture()
 
-        UNProtectWS(ModelID, "Stress Sensitivity List")
-
         Dim WB As IWorkbook = ExcelModels(ModelID).WB
+        Dim SensitivitySheet As DevExpress.Spreadsheet.Worksheet =
+            WB.Worksheets("Stress Sensitivity List")
+        Dim WasProtected As Boolean = SensitivitySheet.IsProtected
+        UNProtectWS(ModelID, SensitivitySheet.Name)
         Try
             WB.DefinedNames.GetDefinedName("StressSensitivityDate").Range(0, 0).Value = Now()
 
@@ -1501,9 +1499,10 @@ Public Class StressTest
                 BottomRow(0, 0).Value = CellValue.FromObject(CaptureName)
             End If
 
-            WB.Calculate()
+            ExcelModels(ModelID).IsDirty = True
+            CalculateStressWorkbook()
         Finally
-            ProtectWS(ModelID, "Stress Sensitivity List")
+            If WasProtected Then ProtectWS(ModelID, SensitivitySheet.Name)
         End Try
 
     End Sub
@@ -1526,8 +1525,12 @@ Public Class StressTest
         FirstTabGridSources(View) = SourceRange
         RemoveHandler View.ShowingEditor, AddressOf FirstTabGridShowingEditor
         RemoveHandler View.ShownEditor, AddressOf FirstTabGridShownEditor
+        RemoveHandler View.CellValueChanging, AddressOf FirstTabGridCellValueChanging
+        RemoveHandler View.CellValueChanged, AddressOf FirstTabGridCellValueChanged
         AddHandler View.ShowingEditor, AddressOf FirstTabGridShowingEditor
         AddHandler View.ShownEditor, AddressOf FirstTabGridShownEditor
+        AddHandler View.CellValueChanging, AddressOf FirstTabGridCellValueChanging
+        AddHandler View.CellValueChanged, AddressOf FirstTabGridCellValueChanged
 
     End Sub
 
@@ -1557,6 +1560,9 @@ Public Class StressTest
 
         Dim View As GridView = TryCast(sender, GridView)
         If View Is Nothing Then Return
+
+        FirstTabEditPending = False
+        FirstTabPendingOriginalValue = CellValue.Empty
 
         Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
         If Not TryGetFirstTabSourceCell(
@@ -1917,9 +1923,14 @@ Public Class StressTest
         UpdatingCovenantSelection = True
         Me.Cursor = Cursors.WaitCursor
         Try
-            ActiveWorkbook.Worksheets("Live Multivariable Planner").
-                Range("AD3")(0, 0).Value = CellValue.FromObject(SelectedCovenant)
-            ActiveWorkbook.Calculate()
+            Dim Target As DevExpress.Spreadsheet.Cell =
+                ActiveWorkbook.Worksheets("Live Multivariable Planner").Range("AD3")(0, 0)
+            If Not ProcessStressTestCellChange(
+                    Target, SelectedCovenant, "S",
+                    "Stress-test covenant selection updated") Then
+                ModelPostingComboBoxSelectCovenant.EditValue = Target.DisplayText
+                Return
+            End If
             RefreshCovenantSummary()
             BuildCovCharts()
             ProcessBreachesGrid(STMode = "Y")
@@ -2065,7 +2076,10 @@ Public Class StressTest
         End If
 
         Me.Cursor = Cursors.WaitCursor
-        UNProtectWS(ModelID, "Stress Sensitivity List")
+        Dim SensitivitySheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("Stress Sensitivity List")
+        Dim WasProtected As Boolean = SensitivitySheet.IsProtected
+        UNProtectWS(ModelID, SensitivitySheet.Name)
 
         Try
             Dim SourceRow As DevExpress.Spreadsheet.CellRange =
@@ -2082,10 +2096,11 @@ Public Class StressTest
                     DataRows.BottomRowIndex)
 
             CaptureArea.ClearContents()
-            ActiveWorkbook.Calculate()
+            ExcelModels(ModelID).IsDirty = True
+            CalculateStressWorkbook()
             RenderStressHeaderHTMLData()
         Finally
-            ProtectWS(ModelID, "Stress Sensitivity List")
+            If WasProtected Then ProtectWS(ModelID, SensitivitySheet.Name)
             Me.Cursor = Cursors.Default
         End Try
 
@@ -2305,19 +2320,21 @@ Public Class StressTest
                 "Delete captures", MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning) <> DialogResult.Yes Then Return
 
-        UNProtectWS(ModelID, "Stress Sensitivity List")
+        Dim SensitivitySheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("Stress Sensitivity List")
+        Dim WasProtected As Boolean = SensitivitySheet.IsProtected
+        UNProtectWS(ModelID, SensitivitySheet.Name)
         Try
-            Dim Sheet As DevExpress.Spreadsheet.Worksheet =
-                ActiveWorkbook.Worksheets("Stress Sensitivity List")
             For Each RowHandle As Integer In SelectedHandles
                 Dim SourceRow As Integer =
                     Convert.ToInt32(NativeSensitivityView.GetRowCellValue(RowHandle, "SourceRow"))
-                Sheet.Range.FromLTRB(0, SourceRow, 60, SourceRow).ClearContents()
+                SensitivitySheet.Range.FromLTRB(0, SourceRow, 60, SourceRow).ClearContents()
             Next
-            ActiveWorkbook.Calculate()
+            ExcelModels(ModelID).IsDirty = True
+            CalculateStressWorkbook()
             RefreshNativeSensitivityList()
         Finally
-            ProtectWS(ModelID, "Stress Sensitivity List")
+            If WasProtected Then ProtectWS(ModelID, SensitivitySheet.Name)
         End Try
 
     End Sub
@@ -2390,7 +2407,7 @@ Public Class StressTest
         XtraTabPageMVP.Controls.Add(Root)
 
         AddHandler NativePlannerScenario.SelectedIndexChanged, AddressOf NativePlannerScenarioChanged
-        AddHandler NativePlannerName.EditValueChanged, AddressOf NativePlannerNameChanged
+        AddHandler NativePlannerName.Validated, AddressOf NativePlannerNameChanged
         AddHandler NativePlannerImportMode.SelectedIndexChanged, AddressOf NativePlannerImportModeChanged
         AddHandler NativePlannerInclude.CheckedChanged, AddressOf NativePlannerIncludeChanged
         AddHandler NativePlannerView.CellValueChanged, AddressOf NativePlannerCellValueChanged
@@ -2535,6 +2552,9 @@ Public Class StressTest
         Editor.Properties.IsFloatValue = False
         Editor.EditValue = GetNumericValue(
             ActiveWorkbook.Worksheets("OW - Covenant Calculation").Cells(WorkingRow - 1, 2))
+        Editor.Properties.ReadOnly =
+            ActiveWorkbook.Worksheets("OW - Covenant Calculation").
+                Cells(WorkingRow - 1, 2).Protection.Locked
         Toolbar.Controls.Add(CreateNativeLabel(Caption))
         Toolbar.Controls.Add(Editor)
         AddHandler Editor.EditValueChanged, AddressOf NativeComparisonYearChanged
@@ -2579,6 +2599,9 @@ Public Class StressTest
             Dim ScenarioIndex As Integer = Math.Max(0, NativePlannerScenario.SelectedIndex)
             Dim StartColumn As Integer = ScenarioStartColumn(ScenarioIndex)
             Dim Sheet As DevExpress.Spreadsheet.Worksheet = ActiveWorkbook.Worksheets("Multivariable Planner")
+            NativePlannerName.Properties.ReadOnly = Sheet.Cells(7, StartColumn).Protection.Locked
+            NativePlannerInclude.Properties.ReadOnly = Sheet.Cells(6, StartColumn).Protection.Locked
+            NativePlannerImportMode.Properties.ReadOnly = Sheet.Cells(6, StartColumn).Protection.Locked
             NativePlannerName.EditValue = Sheet.Cells(7, StartColumn).DisplayText
             NativePlannerInclude.Visible = ScenarioIndex = 0
             NativePlannerImportMode.Visible = ScenarioIndex > 0
@@ -2683,25 +2706,102 @@ Public Class StressTest
 
         If LoadingNativeViews Then Return
         Dim Sheet As DevExpress.Spreadsheet.Worksheet = ActiveWorkbook.Worksheets("Multivariable Planner")
-        Sheet.Cells(7, ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex))).Value =
-            CellValue.FromObject(Convert.ToString(NativePlannerName.EditValue))
+        Dim Target As DevExpress.Spreadsheet.Cell =
+            Sheet.Cells(7, ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex)))
+        If Not ProcessStressTestCellChange(
+                Target, NativePlannerName.EditValue, "S",
+                "Stress-test scenario name updated") Then
+            RefreshNativePlanner()
+        End If
 
     End Sub
+
+    Private Sub FirstTabGridCellValueChanging(
+        sender As Object,
+        e As DevExpress.XtraGrid.Views.Base.CellValueChangedEventArgs)
+
+        If FirstTabChangeInProgress Then Return
+
+        Dim View As GridView = TryCast(sender, GridView)
+        Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
+        If View Is Nothing OrElse
+           Not TryGetFirstTabSourceCell(View, e.RowHandle, e.Column, SourceCell) OrElse
+           SourceCell.Protection.Locked Then Return
+
+        If Not FirstTabEditPending Then
+            FirstTabPendingOriginalValue = SourceCell.Value
+            FirstTabEditPending = True
+        End If
+
+    End Sub
+
+    Private Sub FirstTabGridCellValueChanged(
+        sender As Object,
+        e As DevExpress.XtraGrid.Views.Base.CellValueChangedEventArgs)
+
+        If FirstTabChangeInProgress OrElse Not FirstTabEditPending Then Return
+
+        Dim View As GridView = TryCast(sender, GridView)
+        Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
+        If View Is Nothing OrElse
+           Not TryGetFirstTabSourceCell(View, e.RowHandle, e.Column, SourceCell) Then Return
+
+        FirstTabChangeInProgress = True
+        Try
+            SourceCell.Value = FirstTabPendingOriginalValue
+            Dim DataFormat As String = GetFirstTabDataFormat(SourceCell, e.Column, e.Value)
+            If Not ProcessStressTestCellChange(
+                    SourceCell, NormalizeStressTestEditValue(e.Value), DataFormat,
+                    "Live stress-test assumption updated") Then
+                View.RefreshData()
+            End If
+        Finally
+            FirstTabPendingOriginalValue = CellValue.Empty
+            FirstTabEditPending = False
+            FirstTabChangeInProgress = False
+        End Try
+
+    End Sub
+
+    Private Function GetFirstTabDataFormat(
+        SourceCell As DevExpress.Spreadsheet.Cell,
+        Column As DevExpress.XtraGrid.Columns.GridColumn,
+        Value As Object) As String
+
+        If Column IsNot Nothing AndAlso Column.AbsoluteIndex >= 5 Then Return "I"
+        If Value Is Nothing OrElse Value Is DBNull.Value Then Return "S"
+        If TypeOf Value Is String Then Return "S"
+        If SourceCell IsNot Nothing AndAlso
+           SourceCell.NumberFormat IsNot Nothing AndAlso
+           SourceCell.NumberFormat.Contains("%") Then Return "P"
+        Return "N"
+
+    End Function
 
     Private Sub NativePlannerImportModeChanged(sender As Object, e As EventArgs)
 
         If LoadingNativeViews OrElse NativePlannerScenario.SelectedIndex <= 0 Then Return
-        ActiveWorkbook.Worksheets("Multivariable Planner").
-            Cells(6, ScenarioStartColumn(NativePlannerScenario.SelectedIndex)).Value =
-            CellValue.FromObject(Convert.ToString(NativePlannerImportMode.EditValue))
+        Dim Target As DevExpress.Spreadsheet.Cell =
+            ActiveWorkbook.Worksheets("Multivariable Planner").
+                Cells(6, ScenarioStartColumn(NativePlannerScenario.SelectedIndex))
+        If Not ProcessStressTestCellChange(
+                Target, NativePlannerImportMode.EditValue, "S",
+                "Stress-test scenario import mode updated") Then
+            RefreshNativePlanner()
+        End If
 
     End Sub
 
     Private Sub NativePlannerIncludeChanged(sender As Object, e As EventArgs)
 
         If LoadingNativeViews OrElse NativePlannerScenario.SelectedIndex <> 0 Then Return
-        ActiveWorkbook.Worksheets("Multivariable Planner").Cells(6, 3).Value =
-            CellValue.FromObject(If(NativePlannerInclude.Checked, "Yes", ""))
+        Dim Target As DevExpress.Spreadsheet.Cell =
+            ActiveWorkbook.Worksheets("Multivariable Planner").Cells(6, 3)
+        If Not ProcessStressTestCellChange(
+                Target, If(NativePlannerInclude.Checked, "Yes", Nothing), "S",
+                "Base scenario import setting updated") Then
+            RefreshNativePlanner()
+        End If
 
     End Sub
 
@@ -2717,11 +2817,10 @@ Public Class StressTest
             Dim ShortNameCell As DevExpress.Spreadsheet.Cell =
                 ActiveWorkbook.Worksheets("Multivariable Planner").Cells(SourceRow, 1)
 
-            If e.Value Is Nothing OrElse e.Value Is DBNull.Value OrElse
-               String.IsNullOrWhiteSpace(Convert.ToString(e.Value)) Then
-                ShortNameCell.ClearContents()
-            Else
-                ShortNameCell.Value = CellValue.FromObject(Convert.ToString(e.Value))
+            If Not ProcessStressTestCellChange(
+                    ShortNameCell, NormalizeStressTestEditValue(e.Value), "S",
+                    "Stress-test assumption short name updated") Then
+                RefreshNativePlanner()
             End If
             Return
         End If
@@ -2739,14 +2838,55 @@ Public Class StressTest
             ActiveWorkbook.Worksheets("Multivariable Planner").
                 Cells(SourceRow,
                       ScenarioStartColumn(Math.Max(0, NativePlannerScenario.SelectedIndex)) + ValueOffset)
-        If e.Value Is Nothing OrElse e.Value Is DBNull.Value OrElse
-           String.IsNullOrWhiteSpace(Convert.ToString(e.Value)) Then
-            Target.ClearContents()
-        Else
-            Target.Value = CellValue.FromObject(e.Value)
+        Dim DataFormat As String = "N"
+        If ValueOffset >= 2 Then
+            DataFormat = "I"
+        ElseIf SourceRow = 34 OrElse SourceRow = 64 OrElse SourceRow = 65 Then
+            DataFormat = "S"
+        ElseIf Convert.ToString(
+                NativePlannerView.GetRowCellValue(e.RowHandle, "ValueFormat")).Contains("%") Then
+            DataFormat = "P"
+        End If
+        If Not ProcessStressTestCellChange(
+                Target, NormalizeStressTestEditValue(e.Value), DataFormat,
+                "Stress-test planner assumption updated") Then
+            RefreshNativePlanner()
         End If
 
     End Sub
+
+    Private Function NormalizeStressTestEditValue(Value As Object) As Object
+
+        If Value Is Nothing OrElse Value Is DBNull.Value OrElse
+           String.IsNullOrWhiteSpace(Convert.ToString(Value)) Then Return Nothing
+        Return Value
+
+    End Function
+
+    Private Function ProcessStressTestCellChange(
+        Target As DevExpress.Spreadsheet.Cell,
+        ChangedValue As Object,
+        DataFormat As String,
+        Description As String) As Boolean
+
+        If Target Is Nothing OrElse Target.Protection.Locked OrElse ChangeMan Is Nothing Then
+            Return False
+        End If
+
+        Dim ChangeEvent As New DataChangeEvent With {
+            .ModelID = ModelID,
+            .Description = Description,
+            .WSName = Target.Worksheet.Name,
+            .CellAddress = Target.GetReferenceA1(),
+            .OriginalValue = CellToObject(Target),
+            .ChangedValue = ChangedValue,
+            .DataFormat = DataFormat,
+            .TimeStamp = Now(),
+            .UserName = Environment.UserName
+        }
+        Return Not ChangeMan.ProcessChange(ChangeEvent).BError
+
+    End Function
 
     Private Sub NativePlannerCustomDrawCell(
         sender As Object,
@@ -2887,7 +3027,8 @@ Public Class StressTest
             ActiveWorkbook.DefinedNames.GetDefinedName(
                 "S" & ScenarioIndex.ToString() & "Data").Range.ClearContents()
         End If
-        ActiveWorkbook.Calculate()
+        ExcelModels(ModelID).IsDirty = True
+        CalculateStressWorkbook()
         RefreshNativePlanner()
 
     End Sub
@@ -2896,7 +3037,7 @@ Public Class StressTest
 
         Me.Cursor = Cursors.WaitCursor
         Try
-            ActiveWorkbook.Calculate()
+            CalculateStressWorkbook()
             RefreshNativeDashboard()
             RefreshNativeComparativeViews()
         Finally
@@ -2905,11 +3046,46 @@ Public Class StressTest
 
     End Sub
 
+    Private Sub CalculateStressWorkbook(Optional UseRecursiveEngine As Boolean = False)
+
+        Dim PreviousEngine As DevExpress.Spreadsheet.CalculationEngineType =
+            ActiveWorkbook.Options.CalculationEngineType
+
+        Try
+            If UseRecursiveEngine AndAlso
+               PreviousEngine <> DevExpress.Spreadsheet.CalculationEngineType.Recursive Then
+                ActiveWorkbook.Options.CalculationEngineType =
+                    DevExpress.Spreadsheet.CalculationEngineType.Recursive
+            End If
+
+            If ExcelModels(ModelID).WBCalcEngine IsNot Nothing Then
+                ExcelModels(ModelID).WBCalcEngine.CalcFile()
+            Else
+                ActiveWorkbook.Calculate()
+            End If
+        Finally
+            If ActiveWorkbook.Options.CalculationEngineType <> PreviousEngine Then
+                ActiveWorkbook.Options.CalculationEngineType = PreviousEngine
+            End If
+        End Try
+
+    End Sub
+
     Private Sub LiveScenarioNumberChanged(sender As Object, e As EventArgs)
 
-        If ComboBoxBreachMode.SelectedIndex >= 0 Then
-            ActiveWorkbook.DefinedNames.GetDefinedName("StressTestNumber").Range(0, 0).Value =
-                CellValue.FromObject(ComboBoxBreachMode.SelectedItem.ToString())
+        If LoadingNativeViews OrElse ComboBoxBreachMode.SelectedIndex < 0 Then Return
+
+        Dim Target As DevExpress.Spreadsheet.Cell =
+            ActiveWorkbook.DefinedNames.GetDefinedName("StressTestNumber").Range(0, 0)
+        If Not ProcessStressTestCellChange(
+                Target, ComboBoxBreachMode.SelectedItem.ToString(), "S",
+                "Live stress-test capture slot updated") Then
+            LoadingNativeViews = True
+            Try
+                ComboBoxBreachMode.EditValue = Target.DisplayText
+            Finally
+                LoadingNativeViews = False
+            End Try
         End If
 
     End Sub
@@ -2931,8 +3107,14 @@ Public Class StressTest
 
         Dim ScenarioIndex As Integer = ComboBoxBreachMode.SelectedIndex + 1
         Me.Cursor = Cursors.WaitCursor
-        UNProtectWS(ModelID, "Multivariable Planner")
-        UNProtectWS(ModelID, "OW - Captured Data")
+        Dim PlannerSheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("Multivariable Planner")
+        Dim CapturedDataSheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("OW - Captured Data")
+        Dim PlannerWasProtected As Boolean = PlannerSheet.IsProtected
+        Dim CapturedDataWasProtected As Boolean = CapturedDataSheet.IsProtected
+        UNProtectWS(ModelID, PlannerSheet.Name)
+        UNProtectWS(ModelID, CapturedDataSheet.Name)
         Try
             CopyRangeValues(
                 ActiveWorkbook.DefinedNames.GetDefinedName("LiveAssumptions").Range,
@@ -2948,18 +3130,19 @@ Public Class StressTest
             ActiveWorkbook.DefinedNames.GetDefinedName(
                 "ImportMode" & ScenarioIndex.ToString()).Range(0, 0).Value =
                 CellValue.FromObject("Use assumptions below")
+            CalculateStressWorkbook(True)
             CopyRangeValues(
                 ActiveWorkbook.DefinedNames.GetDefinedName("StressLiveInfo").Range,
                 ActiveWorkbook.DefinedNames.GetDefinedName(
                     "S" & ScenarioIndex.ToString() & "Data").Range)
-            ActiveWorkbook.Calculate()
+            ExcelModels(ModelID).IsDirty = True
             RefreshAllNativeScenarioSelectors()
             RefreshNativePlanner()
             RefreshNativeDashboard()
             RefreshNativeComparativeViews()
         Finally
-            ProtectWS(ModelID, "Multivariable Planner")
-            ProtectWS(ModelID, "OW - Captured Data")
+            If PlannerWasProtected Then ProtectWS(ModelID, PlannerSheet.Name)
+            If CapturedDataWasProtected Then ProtectWS(ModelID, CapturedDataSheet.Name)
             Me.Cursor = Cursors.Default
         End Try
         DevExpress.XtraEditors.XtraMessageBox.Show(
@@ -2989,14 +3172,23 @@ Public Class StressTest
         Dim OriginalTitle As String = Me.Text
 
         Me.Cursor = Cursors.WaitCursor
-        UNProtectWS(ModelID, "Multivariable Planner")
-        UNProtectWS(ModelID, "OW - Captured Data")
-        UNProtectWS(ModelID, "Live Multivariable Planner")
+        Dim PlannerSheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("Multivariable Planner")
+        Dim CapturedDataSheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("OW - Captured Data")
+        Dim LivePlannerSheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("Live Multivariable Planner")
+        Dim PlannerWasProtected As Boolean = PlannerSheet.IsProtected
+        Dim CapturedDataWasProtected As Boolean = CapturedDataSheet.IsProtected
+        Dim LivePlannerWasProtected As Boolean = LivePlannerSheet.IsProtected
+        UNProtectWS(ModelID, PlannerSheet.Name)
+        UNProtectWS(ModelID, CapturedDataSheet.Name)
+        UNProtectWS(ModelID, LivePlannerSheet.Name)
         Try
             SetWorkbookStressMode(False)
             LiveAssumptions.ClearContents()
             LiveAssumptionsA.ClearContents()
-            ActiveWorkbook.Calculate()
+            CalculateStressWorkbook(True)
             CopyRangeValues(
                 ActiveWorkbook.DefinedNames.GetDefinedName("StressLiveInfo").Range,
                 ActiveWorkbook.DefinedNames.GetDefinedName("S0Data").Range)
@@ -3030,7 +3222,7 @@ Public Class StressTest
                         ActiveWorkbook.DefinedNames.GetDefinedName(
                             "AssumptionsA" & ScenarioIndex.ToString()).Range,
                         LiveAssumptionsA)
-                    ActiveWorkbook.Calculate()
+                    CalculateStressWorkbook(True)
                     CopyRangeValues(
                         ActiveWorkbook.DefinedNames.GetDefinedName("StressLiveInfo").Range,
                         TargetData)
@@ -3042,17 +3234,21 @@ Public Class StressTest
                 "Dashboard generation stopped: " & ex.Message,
                 "Multivariable dashboard", MessageBoxButtons.OK, MessageBoxIcon.Error)
         Finally
-            RestoreRange(LiveAssumptions, SavedLive)
-            RestoreRange(LiveAssumptionsA, SavedLiveA)
-            ActiveWorkbook.DefinedNames.GetDefinedName(
-                "StressTestMode").Range(0, 0).Value = CellValue.FromObject(SavedMode)
-            ActiveWorkbook.DefinedNames.GetDefinedName("Mode").RefersTo = SavedModeReference
-            ActiveWorkbook.Calculate()
-            ProtectWS(ModelID, "Multivariable Planner")
-            ProtectWS(ModelID, "OW - Captured Data")
-            ProtectWS(ModelID, "Live Multivariable Planner")
-            Me.Text = OriginalTitle
-            Me.Cursor = Cursors.Default
+            Try
+                RestoreRange(LiveAssumptions, SavedLive)
+                RestoreRange(LiveAssumptionsA, SavedLiveA)
+                ActiveWorkbook.DefinedNames.GetDefinedName(
+                    "StressTestMode").Range(0, 0).Value = CellValue.FromObject(SavedMode)
+                ActiveWorkbook.DefinedNames.GetDefinedName("Mode").RefersTo = SavedModeReference
+                ExcelModels(ModelID).IsDirty = True
+                CalculateStressWorkbook(True)
+            Finally
+                If PlannerWasProtected Then ProtectWS(ModelID, PlannerSheet.Name)
+                If CapturedDataWasProtected Then ProtectWS(ModelID, CapturedDataSheet.Name)
+                If LivePlannerWasProtected Then ProtectWS(ModelID, LivePlannerSheet.Name)
+                Me.Text = OriginalTitle
+                Me.Cursor = Cursors.Default
+            End Try
         End Try
 
         RefreshAllNativeScenarioSelectors()
@@ -3182,14 +3378,36 @@ Public Class StressTest
         Dim Names As List(Of String) = WorkbookScenarioNames()
         LoadingNativeViews = True
         Try
-            Dim PreviousIndex As Integer = Math.Max(0, NativeDashboardScenario.SelectedIndex)
+            Dim DashboardSelectionCell As DevExpress.Spreadsheet.Cell =
+                ActiveWorkbook.Worksheets("Multivariable Dashboard").Range("E6")(0, 0)
+            Dim PreviousIndex As Integer = NativeDashboardScenario.SelectedIndex
+            If PreviousIndex < 0 Then
+                PreviousIndex = Names.FindIndex(
+                    Function(Item) String.Equals(
+                        Item, DashboardSelectionCell.DisplayText, StringComparison.OrdinalIgnoreCase))
+            End If
+            PreviousIndex = Math.Max(0, PreviousIndex)
             NativeDashboardScenario.Properties.Items.Clear()
             NativeDashboardScenario.Properties.Items.AddRange(Names.Cast(Of Object).ToArray())
             NativeDashboardScenario.SelectedIndex = Math.Min(PreviousIndex, Names.Count - 1)
+            NativeDashboardScenario.Properties.ReadOnly = DashboardSelectionCell.Protection.Locked
             Dim ScenarioIndex As Integer = Math.Max(0, NativeDashboardScenario.SelectedIndex)
-            ActiveWorkbook.Worksheets("Multivariable Dashboard").Range("E6")(0, 0).Value =
-                CellValue.FromObject(Names(ScenarioIndex))
-            ActiveWorkbook.Calculate()
+            Dim DesiredScenario As String = Names(ScenarioIndex)
+            If Not String.Equals(
+                    DashboardSelectionCell.DisplayText, DesiredScenario,
+                    StringComparison.OrdinalIgnoreCase) Then
+                If Not ProcessStressTestCellChange(
+                        DashboardSelectionCell, DesiredScenario, "S",
+                        "Stress-test dashboard scenario updated") Then
+                    Dim WorkbookIndex As Integer = Names.FindIndex(
+                        Function(Item) String.Equals(
+                            Item, DashboardSelectionCell.DisplayText, StringComparison.OrdinalIgnoreCase))
+                    NativeDashboardScenario.SelectedIndex = Math.Max(0, WorkbookIndex)
+                    ScenarioIndex = Math.Max(0, NativeDashboardScenario.SelectedIndex)
+                End If
+            Else
+                CalculateStressWorkbook()
+            End If
 
             Dim BaseData As DevExpress.Spreadsheet.CellRange =
                 ActiveWorkbook.DefinedNames.GetDefinedName("S0Data").Range
@@ -3319,9 +3537,14 @@ Public Class StressTest
             TryCast(sender, DevExpress.XtraEditors.ComboBoxEdit)
         If Selector Is Nothing Then Return
         Dim Slot As Integer = Convert.ToInt32(Selector.Tag)
-        ActiveWorkbook.Worksheets("Comparative").Cells(11 + (Slot * 2), 2).Value =
-            CellValue.FromObject(Convert.ToString(Selector.EditValue))
-        ActiveWorkbook.Calculate()
+        Dim Target As DevExpress.Spreadsheet.Cell =
+            ActiveWorkbook.Worksheets("Comparative").Cells(11 + (Slot * 2), 2)
+        If Not ProcessStressTestCellChange(
+                Target, Selector.EditValue, "S",
+                "Stress-test comparison scenario updated") Then
+            RefreshNativeComparativeViews()
+            Return
+        End If
         RefreshNativeComparativeViews()
 
     End Sub
@@ -3333,10 +3556,19 @@ Public Class StressTest
             TryCast(sender, DevExpress.XtraEditors.SpinEdit)
         If Editor Is Nothing Then Return
         Dim WorkingRow As Integer = Convert.ToInt32(Editor.Tag)
-        ActiveWorkbook.Worksheets("OW - Covenant Calculation").
-            Cells(WorkingRow - 1, 2).Value =
-            CellValue.FromObject(Convert.ToInt32(Editor.Value))
-        ActiveWorkbook.Calculate()
+        Dim Target As DevExpress.Spreadsheet.Cell =
+            ActiveWorkbook.Worksheets("OW - Covenant Calculation").Cells(WorkingRow - 1, 2)
+        If Not ProcessStressTestCellChange(
+                Target, Convert.ToInt32(Editor.Value), "I",
+                "Stress-test comparison start year updated") Then
+            LoadingNativeViews = True
+            Try
+                Editor.EditValue = GetNumericValue(Target)
+            Finally
+                LoadingNativeViews = False
+            End Try
+            Return
+        End If
         RefreshNativeComparativeViews()
 
     End Sub
@@ -3352,8 +3584,11 @@ Public Class StressTest
                 ActiveWorkbook.Worksheets("Comparative")
             For Each Selector As DevExpress.XtraEditors.ComboBoxEdit In NativeComparativeSelectors
                 Dim Slot As Integer = Convert.ToInt32(Selector.Tag)
+                Dim SourceCell As DevExpress.Spreadsheet.Cell =
+                    Sheet.Cells(11 + (Slot * 2), 2)
+                Selector.Properties.ReadOnly = SourceCell.Protection.Locked
                 Dim SelectedName As String =
-                    Sheet.Cells(11 + (Slot * 2), 2).DisplayText
+                    SourceCell.DisplayText
                 Selector.Properties.Items.Clear()
                 Selector.Properties.Items.AddRange(Names.Cast(Of Object).ToArray())
                 Dim Match As Integer = Names.FindIndex(
@@ -3363,7 +3598,7 @@ Public Class StressTest
                     If(Match >= 0, Match, Math.Min(Slot + 1, Names.Count - 1))
             Next
 
-            ActiveWorkbook.Calculate()
+            CalculateStressWorkbook()
             Dim Working As DevExpress.Spreadsheet.Worksheet =
                 ActiveWorkbook.Worksheets("OW - Covenant Calculation")
             NativeComparativeChartsA.SuspendLayout()
@@ -4100,7 +4335,20 @@ Public Class StressTest
 
     Private Sub TextEditMultivariableName_EditValueChanged(sender As Object, e As EventArgs)
 
-        ActiveWorkbook.DefinedNames.GetDefinedName("NewStressName").Range(0, 0).SetValueFromText(TextEditMultivariableName.EditValue)
+        Dim Target As DevExpress.Spreadsheet.Cell =
+            ActiveWorkbook.DefinedNames.GetDefinedName("NewStressName").Range(0, 0)
+        If Not ProcessStressTestCellChange(
+                Target, TextEditMultivariableName.EditValue, "S",
+                "Live stress-test scenario name updated") Then
+            RemoveHandler TextEditMultivariableName.Validated,
+                AddressOf TextEditMultivariableName_EditValueChanged
+            Try
+                TextEditMultivariableName.EditValue = Target.DisplayText
+            Finally
+                AddHandler TextEditMultivariableName.Validated,
+                    AddressOf TextEditMultivariableName_EditValueChanged
+            End Try
+        End If
 
     End Sub
 

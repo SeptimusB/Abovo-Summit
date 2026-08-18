@@ -12,6 +12,7 @@ Public Class ModelPostingComboBox
     Private TargetCell As String
     Private CurrList As List(Of String)
     Private LitmitToList As Boolean = True
+    Public Property SuppressAutomaticPosting As Boolean = False
 
     Public Property SetLimitToList As Boolean
         Get
@@ -91,6 +92,8 @@ Public Class ModelPostingComboBox
 
     End Sub
     Protected Sub ProcessChange(ByVal sender As Object, ByVal e As System.EventArgs)
+
+        If SuppressAutomaticPosting Then Return
 
         Dim NewVal As String = SelectedText
 

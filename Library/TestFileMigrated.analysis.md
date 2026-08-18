@@ -1,6 +1,6 @@
 # TestFileMigrated.xlsb analysis
 
-Analysis date: 2026-08-17
+Analysis date: 2026-08-17; full workbook/VBA refresh: 2026-08-18
 
 ## Provenance
 
@@ -15,11 +15,11 @@ Analysis date: 2026-08-17
 - Excel Binary Workbook (`.xlsb`, Excel file-format code 50)
 - 297 worksheets: 279 visible and 18 hidden/very hidden
 - 1,772 defined names; no defined name contains `#REF!`
-- Approximately 579,605 formula cells
+- 649,034 formula cells and 90,621 non-empty constant cells (bulk Excel-COM count; supersedes the earlier formula estimate)
 - No external workbook links
 - No data connections
 - Embedded `vbaProject.bin` present (1,335,296 bytes)
-- Excel reports a VBA project, but its components were not exposed through read-only automation; macro code was not audited or executed
+- Embedded VBA project audited without execution: 334 components, 18,226 extracted source lines, and 286 identified procedures
 
 Key workbook values:
 
@@ -41,7 +41,7 @@ The workbook satisfies the application's initial validity check:
 
 Comparison with `Structure.xml` found:
 
-- All 186 distinct worksheets referenced by the XML exist in the workbook
+- All 184 normalised distinct worksheet values found by the current parser exist in the workbook (the earlier 186-token result used a different tokenisation pass)
 - All genuine XML-referenced defined names exist (the XML token `CR` denotes direct cell-range addressing rather than a workbook name)
 - No broken workbook defined names
 
@@ -63,7 +63,7 @@ The first 466 are concentrated in covenant/chart-series ranges where `#N/A` is c
 1. `Application.vb` starts `FormMainScreen`.
 2. `FormMainScreen.OpenModelProceedureBP` selects an `.xlsb`, `.abp`, or `.adsa` file and calls `FileManager.OpenModel`.
 3. `FileManager.ExcelModel` owns the DevExpress `SpreadsheetControl` document plus structure, data, calculation, presentation, event, transactional-DB, migration, and interface services.
-4. After loading, Summit installs custom calculation services and, in Debug builds, applies/reconciles workbook migrations.
+4. After loading, Summit installs custom calculation services and applies/reconciles workbook migrations in both Debug and Release full-model loads.
 5. The initial workbook check requires `Global Assumptions!A8`; the UI contract is then deserialized from the deployed `Structure.xml`.
 6. The application reads company/start-date values, builds the model interface, switches calculation to manual/chain-based operation, and calculates through the custom engine.
 
@@ -80,6 +80,8 @@ Remaining risks:
 
 1. A worksheet-protection value is stored in source and `Structure.xml`; worksheet protection must not be treated as a security boundary.
 2. `ApplicationConfiguration.DefaultTemplateFile` points to `Templates\DefaultBPTemplate.xlsb`, but that template is not present in the repository.
-3. Pending workbook migrations are applied only in Debug builds. The baseline is already schema 10, but older production workbooks will not be upgraded by a Release build.
+3. Pending workbook migrations now run in both Debug and Release full-model loads. The baseline is already schema 10; migration errors fail the open rather than leaving a partially reconciled production model.
 4. The project has no automated test project, so workbook compatibility currently depends on manual/integration validation.
-5. The embedded VBA project was not readable through automation and therefore remains outside this review.
+5. VBA remains an operational compatibility layer. Its developer-only `CodeManagement` routines can rewrite VBProjects/files and should remain outside ordinary end-user runtime paths.
+
+The full workbook/VBA/VB.NET scope audit and source-free module/file index are in `Abovo_Summit_Project_Scope_Audit.md` and `Abovo_Summit_Project_Index.json`.
