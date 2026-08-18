@@ -1567,7 +1567,7 @@ Public Class StressTest
         Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
         If Not TryGetFirstTabSourceCell(
                 View, View.FocusedRowHandle, View.FocusedColumn, SourceCell) OrElse
-           SourceCell.Protection.Locked Then
+           Not IsWorkbookLinkedGridCellEditable(SourceCell) Then
             e.Cancel = True
         End If
 
@@ -2726,7 +2726,7 @@ Public Class StressTest
         Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
         If View Is Nothing OrElse
            Not TryGetFirstTabSourceCell(View, e.RowHandle, e.Column, SourceCell) OrElse
-           SourceCell.Protection.Locked Then Return
+           Not IsWorkbookLinkedGridCellEditable(SourceCell) Then Return
 
         If Not FirstTabEditPending Then
             FirstTabPendingOriginalValue = SourceCell.Value
@@ -2752,7 +2752,7 @@ Public Class StressTest
             Dim DataFormat As String = GetFirstTabDataFormat(SourceCell, e.Column, e.Value)
             If Not ProcessStressTestCellChange(
                     SourceCell, NormalizeStressTestEditValue(e.Value), DataFormat,
-                    "Live stress-test assumption updated") Then
+                    "Live stress-test assumption updated", True) Then
                 View.RefreshData()
             End If
         Finally
@@ -2819,7 +2819,7 @@ Public Class StressTest
 
             If Not ProcessStressTestCellChange(
                     ShortNameCell, NormalizeStressTestEditValue(e.Value), "S",
-                    "Stress-test assumption short name updated") Then
+                    "Stress-test assumption short name updated", True) Then
                 RefreshNativePlanner()
             End If
             Return
@@ -2849,7 +2849,7 @@ Public Class StressTest
         End If
         If Not ProcessStressTestCellChange(
                 Target, NormalizeStressTestEditValue(e.Value), DataFormat,
-                "Stress-test planner assumption updated") Then
+                "Stress-test planner assumption updated", True) Then
             RefreshNativePlanner()
         End If
 
@@ -2867,9 +2867,11 @@ Public Class StressTest
         Target As DevExpress.Spreadsheet.Cell,
         ChangedValue As Object,
         DataFormat As String,
-        Description As String) As Boolean
+        Description As String,
+        Optional RequireGridPattern As Boolean = False) As Boolean
 
-        If Target Is Nothing OrElse Target.Protection.Locked OrElse ChangeMan Is Nothing Then
+        If Target Is Nothing OrElse Target.Protection.Locked OrElse ChangeMan Is Nothing OrElse
+           (RequireGridPattern AndAlso Not IsWorkbookLinkedGridCellEditable(Target)) Then
             Return False
         End If
 
@@ -2913,11 +2915,23 @@ Public Class StressTest
         If Not TryGetNativePlannerSourceCell(
                 NativePlannerView.FocusedRowHandle,
                 NativePlannerView.FocusedColumn,
-                SourceCell) OrElse SourceCell.Protection.Locked Then
+                SourceCell) OrElse Not IsWorkbookLinkedGridCellEditable(SourceCell) Then
             e.Cancel = True
         End If
 
     End Sub
+
+    Private Function IsWorkbookLinkedGridCellEditable(
+        SourceCell As DevExpress.Spreadsheet.Cell) As Boolean
+
+        If SourceCell Is Nothing OrElse SourceCell.Protection.Locked Then Return False
+
+        'Keep the StressTest grids aligned with DataInterfaceTemplate. Workbook
+        'conditional-format rules change the linked cell's fill pattern; Solid
+        'means the input is active, while any other pattern makes it read-only.
+        Return SourceCell.Fill.PatternType = PatternType.Solid
+
+    End Function
 
     Private Function TryGetNativePlannerSourceCell(
         RowHandle As Integer,

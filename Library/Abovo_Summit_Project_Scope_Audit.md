@@ -170,6 +170,8 @@ Important follow-up checks are:
 - The native dashboard selector treats `Multivariable Dashboard!E6` as an authoritative workbook input, respects its lock state, and routes changed selections through `ModelChangeManager`.
 - Stress Test batch calculation now uses the existing workbook calculation service. Scenario capture and ten-scenario generation temporarily use DevExpress recursive calculation, restore the previous engine in `Finally`, and calculate before copying `StressLiveInfo` results.
 - Dependent stresses-grid cells whose controlling value is zero are now non-editable, matching their disabled visual treatment.
+- Stress Test grid editability now uses the same workbook signal as `DataInterfaceTemplate`: the linked cell must be unlocked and its current fill pattern must be `Solid`. This rule is enforced for the four first-tab input grids and the native Multivariable Planner both when an editor opens and again before a grid edit enters `ModelChangeManager`, so recalculated conditional-format state remains authoritative.
+- The remaining native Stress Test grids (Sensitivity, Dashboard summaries, and Comparative summaries/charts) are intentionally read-only. Their workbook-linked cell appearance remains presentation-only and does not create an edit path.
 - Debug and Release builds both completed successfully after these changes. Interactive workbook integration testing remains required because the repository has no automated UI/workbook test project.
 
 ## Current project risks and missing assets
