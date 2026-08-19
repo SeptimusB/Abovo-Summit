@@ -2738,8 +2738,8 @@ Public Class StressTest
             AddressOf NativeTargetsCustomRowCellEdit
         AddHandler NativeTargetsView.CustomColumnDisplayText,
             AddressOf NativeTargetsCustomColumnDisplayText
-        AddHandler NativeTargetsView.CustomDrawCell,
-            AddressOf NativeTargetsCustomDrawCell
+        AddHandler NativeTargetsView.RowCellStyle,
+            AddressOf NativeTargetsRowCellStyle
         AddHandler NativeTargetsView.ShowingEditor,
             AddressOf NativeTargetsShowingEditor
 
@@ -2803,6 +2803,7 @@ Public Class StressTest
 
         Dim YearColumn As BandedGridColumn =
             TryCast(NativeTargetsView.Columns("Year"), BandedGridColumn)
+        YearColumn.Visible = True
         YearColumn.Caption = Sheet.Cells(8, 59).DisplayText
         YearColumn.Width = 72
         YearColumn.OptionsColumn.AllowEdit = False
@@ -2829,6 +2830,7 @@ Public Class StressTest
 
         Dim SpacerColumn As BandedGridColumn =
             TryCast(NativeTargetsView.Columns("Spacer"), BandedGridColumn)
+        SpacerColumn.Visible = True
         SpacerColumn.Caption = String.Empty
         SpacerColumn.Width = 26
         SpacerColumn.OptionsColumn.AllowEdit = False
@@ -2864,6 +2866,7 @@ Public Class StressTest
 
         Dim Column As BandedGridColumn =
             TryCast(NativeTargetsView.Columns(FieldName), BandedGridColumn)
+        Column.Visible = True
         Column.Caption = String.Empty
         Column.Width = 126
         'Row 8 is editable on both sides; the locked Target result rows are
@@ -3011,17 +3014,14 @@ Public Class StressTest
 
     End Sub
 
-    Private Sub NativeTargetsCustomDrawCell(
+    Private Sub NativeTargetsRowCellStyle(
         sender As Object,
-        e As RowCellCustomDrawEventArgs)
+        e As RowCellStyleEventArgs)
 
         Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
         If TryGetNativeTargetSourceCell(e.RowHandle, e.Column, SourceCell) Then
             ApplyWorkbookResolvedCellAppearance(e.Appearance, SourceCell)
-            e.DisplayText = SourceCell.DisplayText
         End If
-        e.DefaultDraw()
-        e.Handled = True
 
     End Sub
 
