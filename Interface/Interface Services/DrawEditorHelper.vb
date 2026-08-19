@@ -13,9 +13,14 @@ Namespace Abovo
 	Public NotInheritable Class DrawEditorHelper
 		Private Sub New()
 		End Sub
-		Public Shared Sub DrawEdit(ByVal g As Graphics, ByVal edit As RepositoryItem, ByVal r As Rectangle, ByVal value As Object)
+		Public Shared Sub DrawEdit(ByVal g As Graphics, ByVal edit As RepositoryItem, ByVal r As Rectangle, ByVal value As Object,
+								   Optional ByVal forceItemAppearance As Boolean = False)
 
 			Dim info As BaseEditViewInfo = edit.CreateViewInfo()
+			If forceItemAppearance Then
+				info.Appearance.Assign(edit.Appearance)
+				info.AppearanceDisabled = edit.Appearance
+			End If
 			'info.Appearance.Options.UseBackColor = True
 			'edit.Appearance.Options.UseBackColor = True
 			'info.Appearance.BackColor = AbovoComboBGC

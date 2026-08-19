@@ -3063,7 +3063,7 @@ Public Class StressTest
             AddNativePlannerBandEditors(
                 ScenarioBand, Sheet, ScenarioIndex, ImportMode, ScenarioName)
         Next
-        NativePlannerView.BandPanelRowHeight = 126
+        NativePlannerView.BandPanelRowHeight = 164
         NativePlannerView.ExpandAllGroups()
 
     End Sub
@@ -3118,6 +3118,7 @@ Public Class StressTest
         Next
         CopyEditor.Appearance.Options.UseTextOptions = True
         CopyEditor.Appearance.TextOptions.HAlignment = HorzAlignment.Center
+        ConfigureStandaloneNativePlannerBandEditorAppearance(CopyEditor)
 
         Dim GoEditor As New RepositoryItemButtonEdit
         GoEditor.TextEditStyle =
@@ -3204,6 +3205,31 @@ Public Class StressTest
         Editor.AppearanceFocused.Assign(Editor.Appearance)
         Editor.AppearanceReadOnly.Assign(Editor.Appearance)
 
+        Dim ComboEditor As RepositoryItemComboBox =
+            TryCast(Editor, RepositoryItemComboBox)
+        If ComboEditor IsNot Nothing Then
+            ComboEditor.AppearanceDropDown.Assign(Editor.Appearance)
+        End If
+
+    End Sub
+
+    Private Sub ConfigureStandaloneNativePlannerBandEditorAppearance(
+        Editor As RepositoryItem)
+
+        Editor.Appearance.BackColor = AbovoBlue
+        Editor.Appearance.ForeColor = Color.White
+        Editor.Appearance.Options.UseBackColor = True
+        Editor.Appearance.Options.UseForeColor = True
+        Editor.AppearanceDisabled.Assign(Editor.Appearance)
+        Editor.AppearanceFocused.Assign(Editor.Appearance)
+        Editor.AppearanceReadOnly.Assign(Editor.Appearance)
+
+        Dim ComboEditor As RepositoryItemComboBox =
+            TryCast(Editor, RepositoryItemComboBox)
+        If ComboEditor IsNot Nothing Then
+            ComboEditor.AppearanceDropDown.Assign(Editor.Appearance)
+        End If
+
     End Sub
 
     Private Sub NativePlannerCustomDrawBandHeader(
@@ -3239,10 +3265,10 @@ Public Class StressTest
         CalculateNativePlannerBandEditorBounds(State, e.Bounds)
         DrawEditorHelper.DrawEdit(
             e.Graphics, State.ImportModeEditor,
-            State.ImportModeBounds, State.ImportModeValue)
+            State.ImportModeBounds, State.ImportModeValue, True)
         DrawEditorHelper.DrawEdit(
             e.Graphics, State.ScenarioNameEditor,
-            State.ScenarioNameBounds, State.ScenarioNameValue)
+            State.ScenarioNameBounds, State.ScenarioNameValue, True)
         Using CopyLabelFormat As New StringFormat With {
             .Alignment = StringAlignment.Near,
             .LineAlignment = StringAlignment.Center
@@ -3256,7 +3282,7 @@ Public Class StressTest
         End Using
         DrawEditorHelper.DrawEdit(
             e.Graphics, State.CopySourceEditor,
-            State.CopySourceBounds, State.CopySourceValue)
+            State.CopySourceBounds, State.CopySourceValue, True)
         DrawEditorHelper.DrawEdit(
             e.Graphics, State.GoButtonEditor,
             State.GoButtonBounds, Nothing)
