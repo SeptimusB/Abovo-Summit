@@ -113,7 +113,7 @@ Public Class StressTest
     Private NativeComparativeSelectors As New List(Of DevExpress.XtraEditors.ComboBoxEdit)
     Private ReadOnly NativeComparativeSeriesChecks As New List(Of DevExpress.XtraEditors.CheckEdit)
     Private ReadOnly NativeComparativeCharts As New Dictionary(Of Integer, ChartControl)
-    Private ReadOnly NativeComparativeYearEditors As New Dictionary(Of Integer, DevExpress.XtraEditors.SpinEdit)
+    Private ReadOnly NativeComparativeYearEditors As New Dictionary(Of Integer, DevExpress.XtraEditors.TrackBarControl)
     Private NativeComparativeSummaryA As GridControl
     Private NativeComparativeSummaryB As GridControl
     Private LoadingNativeViews As Boolean
@@ -3531,7 +3531,7 @@ Public Class StressTest
             .ColumnCount = 1,
             .RowCount = 2
         }
-        Layout.RowStyles.Add(New RowStyle(SizeType.Absolute, 38))
+        Layout.RowStyles.Add(New RowStyle(SizeType.Absolute, 44))
         Layout.RowStyles.Add(New RowStyle(SizeType.Percent, 100))
         Dim Controls As New FlowLayoutPanel With {
             .Dock = DockStyle.Fill,
@@ -3606,19 +3606,25 @@ Public Class StressTest
 
     Private Sub AddComparisonYearSelector(Toolbar As FlowLayoutPanel, Caption As String, WorkingRow As Integer)
 
-        Dim Editor As New DevExpress.XtraEditors.SpinEdit With {.Width = 70, .Tag = WorkingRow}
-        Editor.Properties.MinValue = 0
-        Editor.Properties.MaxValue = 20
-        Editor.Properties.IsFloatValue = False
-        Editor.EditValue = GetNumericValue(
-            ActiveWorkbook.Worksheets("OW - Covenant Calculation").Cells(WorkingRow - 1, 2))
+        Dim Editor As New DevExpress.XtraEditors.TrackBarControl With {
+            .Width = 240,
+            .Height = 34,
+            .Tag = WorkingRow
+        }
+        Editor.Properties.Minimum = 0
+        Editor.Properties.Maximum = 20
+        Editor.Properties.TickFrequency = 1
+        Editor.Properties.ShowValueToolTip = True
+        Editor.Value = Convert.ToInt32(GetNumericValue(
+            ActiveWorkbook.Worksheets("OW - Covenant Calculation").Cells(WorkingRow - 1, 2)))
         Editor.Properties.ReadOnly =
             ActiveWorkbook.Worksheets("OW - Covenant Calculation").
                 Cells(WorkingRow - 1, 2).Protection.Locked
         NativeComparativeYearEditors(WorkingRow) = Editor
         Toolbar.Controls.Add(CreateNativeLabel(Caption))
         Toolbar.Controls.Add(Editor)
-        AddHandler Editor.EditValueChanged, AddressOf NativeComparisonYearChanged
+        AddHandler Editor.MouseUp, AddressOf NativeComparisonYearChanged
+        AddHandler Editor.KeyUp, AddressOf NativeComparisonYearChanged
 
     End Sub
 
@@ -5724,8 +5730,8 @@ Public Class StressTest
     Private Sub NativeComparisonYearChanged(sender As Object, e As EventArgs)
 
         If LoadingNativeViews Then Return
-        Dim Editor As DevExpress.XtraEditors.SpinEdit =
-            TryCast(sender, DevExpress.XtraEditors.SpinEdit)
+        Dim Editor As DevExpress.XtraEditors.TrackBarControl =
+            TryCast(sender, DevExpress.XtraEditors.TrackBarControl)
         If Editor Is Nothing Then Return
         Dim WorkingRow As Integer = Convert.ToInt32(Editor.Tag)
         Dim Target As DevExpress.Spreadsheet.Cell =
@@ -5735,7 +5741,7 @@ Public Class StressTest
                 "Stress-test comparison start year updated") Then
             LoadingNativeViews = True
             Try
-                Editor.EditValue = GetNumericValue(Target)
+                Editor.Value = Convert.ToInt32(GetNumericValue(Target))
             Finally
                 LoadingNativeViews = False
             End Try
@@ -5790,12 +5796,12 @@ Public Class StressTest
                        SourceCell.Value.BooleanValue,
                        GetNumericValue(SourceCell) <> 0)
             Next
-            For Each Pair As KeyValuePair(Of Integer, DevExpress.XtraEditors.SpinEdit) In
+            For Each Pair As KeyValuePair(Of Integer, DevExpress.XtraEditors.TrackBarControl) In
                 NativeComparativeYearEditors
                 Dim SourceCell As DevExpress.Spreadsheet.Cell =
                     Working.Cells(Pair.Key - 1, 2)
                 Pair.Value.Properties.ReadOnly = SourceCell.Protection.Locked
-                Pair.Value.EditValue = Convert.ToInt32(GetNumericValue(SourceCell))
+                Pair.Value.Value = Convert.ToInt32(GetNumericValue(SourceCell))
             Next
 
             CalculateStressWorkbook()
