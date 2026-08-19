@@ -1,626 +1,253 @@
-﻿Imports System.IO
-Imports System.Linq
+Imports System.IO
+Imports System.Windows.Forms
 Imports Abovo
-Imports Abovo.AbovoAppCls
-Imports Abovo.CustomGrid
 Imports Abovo.ExportServices
 Imports Abovo.FileManager
 Imports Abovo.GeneralFunctions
-Imports Abovo.LogDebugDev
-Imports Abovo.RepositaryItems
-Imports DevExpress.CodeParser
-Imports DevExpress.Skins
-Imports DevExpress.Skins.XtraForm
 Imports DevExpress.Spreadsheet
-Imports DevExpress.Utils
-Imports DevExpress.Utils.Drawing
-Imports DevExpress.XtraBars.Docking2010
-Imports DevExpress.XtraGrid
-Imports DevExpress.XtraGrid.Extensions
-Imports DevExpress.XtraGrid.Views.Base
-Imports DevExpress.XtraGrid.Views.Grid
-Imports DevExpress.XtraLayout.Customization.Templates
-Imports DevExpress.XtraPrinting
-Imports DevExpress.XtraSpreadsheet
-Imports DevExpress.XtraSpreadsheet.Model
-Imports DevExpress.XtraSpreadsheet.PrintLayoutEngine
-Imports DevExpress.XtraTreeList.Features.OfficeScrolling
-Imports StressTest
-
+Imports DevExpress.XtraEditors
+Imports DevExpress.XtraTab
 
 Public Class FFRForm
+    Private Shared ReadOnly FFRSheetNames As String() = {
+        "FFR Validation Summary",
+        "Front Sheet",
+        "FFR Inputs Adj Stmt",
+        "FFR Workings",
+        "Statements",
+        "Assumptions & tenure inputs",
+        "Compliance Questions",
+        "FFR Key Defn"
+    }
 
-    Inherits DevExpress.XtraEditors.XtraForm
+    Private ReadOnly ModelID As Integer
+    Private ReadOnly SheetViews As New Dictionary(Of XtraTabPage, Control)()
+    Private ClosingForDisposal As Boolean
 
-    Private KeyDefRDS As RangeDataSource
-    Private KeyValidationRDS As RangeDataSource
-    Private RegSubsRDS As RangeDataSource
-    Private UnRegSubsRDS As RangeDataSource
-    Private KeyDefAfterTextRDS As RangeDataSource
-    Private FFRInpuAdjStatements1 As RangeDataSource
-    Private FFRInpuAdjStatements2 As RangeDataSource
+    Public Sub New(SetModelID As Integer)
+        InitializeComponent()
+        ModelID = SetModelID
+        Text = "Financial Forecast Return for " & ExcelModels(ModelID).WBStructure.CompanyName
+        SheetCaption.Text = Text
+        BuildSheetTabs()
+        EnsureSelectedSheetBuilt()
+    End Sub
 
-    Private TabFFRKeyInitialise As Boolean = False
-    Private TabFFRValInitialise As Boolean = False
-    Private TabFFRFronSInitialise As Boolean = False
-    Private TabFFRIASInitialise As Boolean = False
-    Private TabFFRValidInitialise As Boolean = False
-
-    Private TabFFRWorkInitialise As Boolean = False
-
-    Private Formatter As New ObjectFormatter
-
-    Private ModelID As Integer
-
-    Private ExportPackageCount As Integer = 0
-    Private ExportPackagesIndex As Integer = -1
-    Private ExportPackages(-1) As GridExportPackage
-
-    Private ExWorkbook As IWorkbook
-    Private ScaleUnits As Integer
-    Private ExportMode As String
-    Private MyColourSwatch As Color
+    'Retained for callers compiled against the former form API.
+    Public Sub Initialise()
+        EnsureSelectedSheetBuilt()
+    End Sub
 
     Public Sub SetMode(ExMode As String)
-
-        ExportMode = ExMode
-
+        'The native FFR surface is always workbook-driven; there is no separate
+        'preview/export mode to maintain outside the model.
     End Sub
 
-    Public Sub Initialise()
-
-
-    End Sub
-    Public Sub New(SetModelID As Integer)
-        MyColourSwatch = ExcelModels(SetModelID).ColourSwatch
-        InitializeComponent()
-
-        ModelID = SetModelID
-        Me.Width = Screen.PrimaryScreen.Bounds.Width * 0.8
-        Me.Height = Screen.PrimaryScreen.Bounds.Height * 0.8
-
-        AddHandler Me.WindowsUIButtonPanelSave.ButtonClick, AddressOf WindowsUIButtonPanelActions_ButtonClick
-        Me.Text = "Complete the NROSH+ Financial Forecast Return for " + ExcelModels(SetModelID).WBStructure.CompanyName
-        ScaleUnits = Me.Width * 0.007
-        Form_InitilisationProcess_SetDataSources()
-        BuildTab2()
-    End Sub
-    Sub Form_InitilisationProcess_SetDataSources()
-
-
-        'Tab #1 - FFR Key Definitions
-
-        Dim worksheet As DevExpress.Spreadsheet.Worksheet = ExcelModels(ModelID).WB.Worksheets("FFR Key Defn")
-
-        Dim range As DevExpress.Spreadsheet.CellRange = worksheet.Range(ExcelModels(ModelID).WBStructure.FFRDefinition.FFRKeys)
-
-        Dim RDSOptions As New RangeDataSourceOptions With {
-            .UseFirstRowAsHeader = False,
-            .PreserveFormulas = False,
-            .SkipHiddenRows = True,
-            .SkipHiddenColumns = True,
-            .EditingOptions = DataSourceEditingOptions.AllowEdit
-        }
-
-        Dim ColList As New List(Of String) From {
-            "Description",
-            "Category",
-            "SelectCode ",
-            "Activity ",
-            "Housing Basis",
-            "Detail"
-        }
-
-        Dim ColMap As String = "TTTTTT"
-
-        Dim ColNames As New SourceColumnDetector(ColList, ColMap)
-
-        RDSOptions.DataSourceColumnTypeDetector = ColNames
-
-        KeyDefRDS = range.GetDataSource(RDSOptions)
-
-        ColList = New List(Of String) From {
-            "Entry1",
-            "Entry2",
-            "Entry3",
-            "Entry4",
-            "Entry5",
-            "Entry6",
-            "Entry7",
-            "Entry8",
-            "Entry9",
-            "Entry10"
-        }
-
-        ColMap = "TTTTTTTTTT"
-
-        ColNames = New SourceColumnDetector(ColList, ColMap)
-
-        RDSOptions.DataSourceColumnTypeDetector = ColNames
-
-        range = worksheet.Range(ExcelModels(ModelID).WBStructure.FFRDefinition.FFRKeyAfterRange)
-
-        KeyDefAfterTextRDS = range.GetDataSource(RDSOptions)
-
-        '''''''''''''''''''''''''''''''''''''''''''''
-
-        'Tab #2 - FFR  Validation
-
-        worksheet = ExcelModels(ModelID).WB.Worksheets("Front Sheet")
-
-        range = worksheet.Range(ExcelModels(ModelID).WBStructure.FFRDefinition.FFRRegSubsRange)
-        ColList = New List(Of String) From {
-            "Entry",
-            "RP Code and name"
-        }
-
-        ColMap = "IT"
-
-        ColNames = New SourceColumnDetector(ColList, ColMap)
-
-        RDSOptions.DataSourceColumnTypeDetector = ColNames
-
-        RegSubsRDS = range.GetDataSource(RDSOptions)
-
-
-        range = worksheet.Range(ExcelModels(ModelID).WBStructure.FFRDefinition.FFRUnRegSubsRange)
-
-        ColList = New List(Of String) From {
-            "Entry",
-            "Name of unregistered entity or joint venture"
-        }
-
-        ColMap = "IT"
-
-        ColNames = New SourceColumnDetector(ColList, ColMap)
-
-        RDSOptions.DataSourceColumnTypeDetector = ColNames
-
-        UnRegSubsRDS = range.GetDataSource(RDSOptions)
-
-
-
-
-    End Sub
-    Sub Form_InitilisationProcess_BuildTabs()
-
+    Private Sub BuildSheetTabs()
+        FFRTabs.BeginUpdate()
+        Try
+            FFRTabs.TabPages.Clear()
+            For Each SheetName As String In FFRSheetNames
+                Dim Page As New XtraTabPage With {
+                    .Name = "FFR_" & SheetName.Replace(" ", "_").Replace("&", "And"),
+                    .Text = SheetName,
+                    .Tag = SheetName
+                }
+                FFRTabs.TabPages.Add(Page)
+            Next
+            If FFRTabs.TabPages.Count > 0 Then FFRTabs.SelectedTabPageIndex = 0
+        Finally
+            FFRTabs.EndUpdate()
+        End Try
     End Sub
 
-    Sub BuildTab1()
-
-        'Header HML
-        Dim worksheet As DevExpress.Spreadsheet.Worksheet = ExcelModels(ModelID).WB.Worksheets("FFR Key Defn")
-
-        Dim range As DevExpress.Spreadsheet.CellRange = worksheet.Range(ExcelModels(ModelID).WBStructure.FFRDefinition.FFRKeyPrecursorRange)
-
-
-        Dim RangeList As New List(Of DevExpress.Spreadsheet.CellRange)
-
-        RangeList.Add(range)
-
-        WebBrowserKeyDefHeader.DocumentText = RenderRangeCells(RangeList)
-
-        'GC FFR Key Definitions
-
-
-        Me.GridControlKeyDef.DataSource = KeyDefRDS
-
-        Me.GridControlKeyDef.MainView.PopulateColumns()
-        Dim GV As GridView = CType(Me.GridControlKeyDef.MainView, GridView)
-
-        GV.Columns(0).OptionsColumn.ReadOnly = True
-        GV.Columns(1).OptionsColumn.ReadOnly = True
-        GV.Columns(3).OptionsColumn.ReadOnly = True
-        GV.Columns(4).OptionsColumn.ReadOnly = True
-        GV.Columns(5).OptionsColumn.ReadOnly = True
-        GV.BestFitColumns()
-
-        Formatter.FormatGridView(GV, GridControlKeyDef)
-
-
-
-
-
-        GridControAfterText.DataSource = KeyDefAfterTextRDS
-
-        Me.GridControAfterText.MainView.PopulateColumns()
-
-        GV = CType(Me.GridControAfterText.MainView, GridView)
-        Formatter.FormatGridView(GV, GridControAfterText)
-
-    End Sub
-    Sub BuildTab2()
-
-        Dim worksheet As DevExpress.Spreadsheet.Worksheet = ExcelModels(ModelID).WB.Worksheets("FFR Validation Summary")
-
-        Dim range As DevExpress.Spreadsheet.CellRange = worksheet.Range(ExcelModels(ModelID).WBStructure.FFRDefinition.FFRKeyValidationRange)
-        Dim RangeList As New List(Of DevExpress.Spreadsheet.CellRange)
-        RangeList = New List(Of DevExpress.Spreadsheet.CellRange)
-
-        RangeList.Add(range)
-        WebBrowserFFRValidation.DocumentText = RenderRangeCells(RangeList)
-
-    End Sub
-    Sub BuildTab3()
-
-        ModelPostingTextBox1.Initialise(ModelID, "Front Sheet", "B5")
-        ModelPostingDateBox1.Initialise(ModelID, "Front Sheet", "B6")
-
-        ModelPostingComboBoxAgreeInclusion.SetModelID = ModelID
-        ModelPostingComboBoxAgreeInclusion.SetTargetWorksheet = "Front Sheet"
-        ModelPostingComboBoxAgreeInclusion.SetTargetCell = "B7"
-        ModelPostingComboBoxAgreeInclusion.InitialiseStandard("Rep_YesNo")
-        ModelPostingComboBoxAgreeInclusion.SetLimitToList = True
-        ModelPostingComboBoxAgreeInclusion.ProcesDefValue()
-
-        ModelPostingComboBoxConfirmListed.SetModelID = ModelID
-        ModelPostingComboBoxConfirmListed.SetTargetWorksheet = "Front Sheet"
-        ModelPostingComboBoxConfirmListed.SetTargetCell = "B36"
-        ModelPostingComboBoxConfirmListed.InitialiseStandard("Rep_YesNo")
-        ModelPostingComboBoxConfirmListed.SetLimitToList = True
-        ModelPostingComboBoxConfirmListed.ProcesDefValue()
-
-
-        Dim EditControl As AbovoRespositaryItem
-
-        EditControl = RepositaryItems.GetNumericDropEditor(1, 25)
-
-
-
-
-
-
-        GridControlRegSubs.DataSource = RegSubsRDS
-
-        Dim GV As GridView = CType(Me.GridControlRegSubs.MainView, GridView)
-
-        GridControlRegSubs.RepositoryItems.Add(EditControl.RetCombo)
-        GV.Columns(0).ColumnEdit = EditControl.RetCombo
-
-        GV.BestFitColumns()
-
-        Formatter.FormatGridView(GV, GridControlRegSubs)
-
-        GridControlNonRegEnts.DataSource = RegSubsRDS
-
-        GV = CType(Me.GridControlNonRegEnts.MainView, GridView)
-        GV.Columns(0).ColumnEdit = EditControl.RetCombo
-        GV.BestFitColumns()
-
-        Formatter.FormatGridView(GV, GridControlNonRegEnts)
-
-    End Sub
-    Sub BuildTab4()
-
-        Dim FFRAdjInputs As New DataInterfaceTemplate(ModelID, 3, 0)
-
-        FFRAdjInputs.Dock = DockStyle.Fill
-
-        Me.TablePanelFFRInputs.Controls.Add(FFRAdjInputs)
-
-    End Sub
-    Sub BuildTab5()
-
-        Dim FFRWorkings As New DataInterfaceTemplate(ModelID, 3, 1)
-
-        FFRWorkings.Dock = DockStyle.Fill
-
-        Me.XtraTabPageFFRWorkings.Controls.Add(FFRWorkings)
-
-    End Sub
-    Public Property FormBorderColor() As Color
-        Get
-            Return MyColourSwatch
-        End Get
-        Set(ByVal value As Color)
-            MyColourSwatch = value
-        End Set
-    End Property
-    Protected Overrides Function CreateFormBorderPainter() As DevExpress.Skins.XtraForm.FormPainter
-        Return New CustomFormPainterFFR(Me, LookAndFeel)
-    End Function
-
-
-    Sub FFR_New_Extraction()
-
-
-        Dim BusPlanFile As IWorkbook = FileManager.GetWorkBook(ModelID)
-        Dim NumRanges As Integer
-
-
-
-        NumRanges = BusPlanFile.Range("FFRRangeNames").RowCount
-
-
-        Dim openFileDialog As New OpenFileDialog() With {
-                                                        .Filter = "Excel Files|*.xlsm;*.xlsb",
-                                                        .Title = "Select FFR Template"
-                                                        }
-
-        If Not openFileDialog.ShowDialog() = DialogResult.OK Then Exit Sub
-
-        Dim FFRFile As New Workbook
-        FFRFile.Options.CalculationMode = WorkbookCalculationMode.Manual
-        FFRFile.Options.CalculationEngineType = CalculationEngineType.ChainBased
-
-        FFRFile.DocumentSettings.Calculation.EnableMultiThreading = False
-        FFRFile.LoadDocument(openFileDialog.FileName, DocumentFormat.Xlsm)
-
-        If FFRFile.Worksheets("Cover Sheet").Range("$B$4").Value.TextValue <> "Spreadsheet Import Template - Financial Forecast Return (FFR)" Then
-
-            MsgBox("Sorry, the file selected does not appear to be a correct FFR template which must be downloaded as a provider-specific template from NROSH+." + vbCr + "See https://nroshplus.regulatorofsocialhousing.org.uk/")
-
-            FFRFile.Dispose()
-            FFRFile = Nothing
-
+    Private Sub EnsureSelectedSheetBuilt()
+        Dim Page As XtraTabPage = FFRTabs.SelectedTabPage
+        If Page Is Nothing Then Return
+
+        Dim SheetName As String = Convert.ToString(Page.Tag)
+        If String.IsNullOrWhiteSpace(SheetName) Then Return
+        SheetCaption.Text = "Financial Forecast Return  •  " & SheetName
+
+        Dim ExistingView As Control = Nothing
+        If SheetViews.TryGetValue(Page, ExistingView) Then
+            If TypeOf ExistingView Is FFRFrontSheetView Then
+                DirectCast(ExistingView, FFRFrontSheetView).RefreshFromWorkbook()
+            Else
+                DirectCast(ExistingView, FFRWorkbookSheetView).RefreshFromWorkbook()
+            End If
             Return
-
         End If
 
-        FFRFile.BeginUpdate()
-
-        Dim AddressCell As DevExpress.Spreadsheet.Cell
-        Dim SourceRange As DevExpress.Spreadsheet.CellRange
-        Dim DestRange As DevExpress.Spreadsheet.CellRange
-
-        For i = 1 To NumRanges - 1
-
-            AddressCell = BusPlanFile.Range("FFRListHeading")(i, 8)
-            SourceRange = BusPlanFile.Range(AddressCell.Value.TextValue)
-            AddressCell = BusPlanFile.Range("FFRListHeading")(i, 3)
-            DestRange = FFRFile.Range(AddressCell.Value.TextValue)
-            DestRange.CopyFrom(SourceRange, PasteSpecial.Values)
-
-        Next i
-
-        FFRFile.EndUpdate()
-
-        'FFRFile.CalculateFull()
-
-
-        Dim saveFileDialog As New SaveFileDialog()
-        saveFileDialog.Filter = "Excel Files|*.xlsm|All Files|*.*"
-        saveFileDialog.Title = "Save FFR Document"
-        Dim FilePath As String
-
-        If saveFileDialog.ShowDialog() = DialogResult.OK Then FFRFile.SaveDocument(saveFileDialog.FileName, DocumentFormat.Xlsm)
-        FilePath = saveFileDialog.FileName
-        'Dim stream As New MemoryStream
-        'FFRFile.SaveDocument(stream, DevExpress.Spreadsheet.DocumentFormat.Xlsm)
-        'stream.Position = 0
-        'SpreadsheetControlExport.LoadDocument(stream, DevExpress.Spreadsheet.DocumentFormat.Xlsm)
-        'SpreadsheetControlExport.Enabled = True
-        'Me.XtraTabControlExport.SelectedTabPage = Me.XtraTabPageExportXLS
-
-        FFRFile.Dispose()
-        FFRFile = Nothing
-
-        If MsgBox("FFR File saved as " & FilePath & ". Do you want to open it in Excel?", MsgBoxStyle.YesNo, "Open FFR File") = MsgBoxResult.Yes Then
-            OpenFileInExcel(FilePath)
+        If Not FileManager.GetWorkBook(ModelID).Worksheets.Contains(SheetName) Then
+            Dim Missing As New LabelControl With {
+                .Dock = DockStyle.Fill,
+                .AutoSizeMode = LabelAutoSizeMode.None,
+                .Text = "The workbook does not contain the required sheet '" & SheetName & "'."
+            }
+            Missing.Appearance.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Center
+            Missing.Appearance.TextOptions.VAlignment = DevExpress.Utils.VertAlignment.Center
+            Page.Controls.Add(Missing)
+            Return
         End If
 
-
-
+        Cursor = Cursors.WaitCursor
+        Page.SuspendLayout()
+        Try
+            Dim View As Control
+            If String.Equals(SheetName, "Front Sheet", StringComparison.Ordinal) Then
+                Dim FrontSheetView As New FFRFrontSheetView(ModelID) With {.Dock = DockStyle.Fill}
+                AddHandler FrontSheetView.WorkbookCellChanged, AddressOf WorkbookCellChanged
+                View = FrontSheetView
+            Else
+                Dim WorkbookView As New FFRWorkbookSheetView(ModelID, SheetName) With {.Dock = DockStyle.Fill}
+                AddHandler WorkbookView.WorkbookCellChanged, AddressOf WorkbookCellChanged
+                View = WorkbookView
+            End If
+            SheetViews.Add(Page, View)
+            Page.Controls.Add(View)
+        Catch ex As Exception
+            Page.Controls.Clear()
+            Dim Failure As New MemoEdit With {
+                .Dock = DockStyle.Fill,
+                .Text = "The FFR sheet could not be loaded." & Environment.NewLine & Environment.NewLine & ex.Message
+            }
+            Failure.Properties.ReadOnly = True
+            Page.Controls.Add(Failure)
+        Finally
+            Page.ResumeLayout()
+            Cursor = Cursors.Default
+        End Try
     End Sub
 
+    Private Sub WorkbookCellChanged(sender As Object, e As EventArgs)
+        'Inactive views deliberately remain snapshots.  They reload from the
+        'calculated workbook when selected, avoiding eight full redraws per edit.
+        Dim ChangedSheetName As String
+        If TypeOf sender Is FFRFrontSheetView Then
+            ChangedSheetName = DirectCast(sender, FFRFrontSheetView).WorksheetName
+        Else
+            ChangedSheetName = DirectCast(sender, FFRWorkbookSheetView).WorksheetName
+        End If
+        SheetCaption.Text = "Financial Forecast Return  •  " & ChangedSheetName
+    End Sub
 
-    Public Sub SaveNewWorkbook()
+    Private Sub FFRTabsSelectedPageChanged(sender As Object, e As TabPageChangedEventArgs) Handles FFRTabs.SelectedPageChanged
+        EnsureSelectedSheetBuilt()
+    End Sub
 
+    Private Sub RefreshButtonClick(sender As Object, e As EventArgs) Handles RefreshButton.Click
+        EnsureSelectedSheetBuilt()
+    End Sub
 
-        Dim saveFileDialog As New SaveFileDialog()
-        saveFileDialog.Filter = "Excel Files|*.xlsm|All Files|*.*"
-        saveFileDialog.Title = "Save Spreadsheet Document"
+    Private Sub CloseButtonClick(sender As Object, e As EventArgs) Handles CloseButton.Click
+        Hide()
+    End Sub
 
-        ' Show the SaveFileDialog and check if the user clicked the Save button
-        If saveFileDialog.ShowDialog() = DialogResult.OK Then
-            ' Check if the file already exists
-            If File.Exists(saveFileDialog.FileName) Then
-                ' Optionally, prompt the user to confirm overwriting the file
-                Dim result As DialogResult = MessageBox.Show("The file already exists. Do you want to overwrite it?", "Confirm Overwrite", MessageBoxButtons.YesNo, MessageBoxIcon.Warning)
-                If result = DialogResult.No Then
-                    ' If the user chooses not to overwrite, exit the method
+    Private Sub CreateReturnButtonClick(sender As Object, e As EventArgs) Handles CreateReturnButton.Click
+        CreateFFRReturn()
+    End Sub
+
+    Private Sub CreateFFRReturn()
+        Dim SourceWorkbook As IWorkbook = FileManager.GetWorkBook(ModelID)
+        If SourceWorkbook Is Nothing Then Return
+
+        Using OpenDialog As New OpenFileDialog With {
+            .Filter = "FFR macro-enabled workbooks|*.xlsm;*.xlsb|Excel workbooks|*.xlsx;*.xls",
+            .Title = "Select the provider-specific FFR template"
+        }
+            If OpenDialog.ShowDialog(Me) <> DialogResult.OK Then Return
+
+            Dim ReturnWorkbook As New Workbook()
+            Try
+                Cursor = Cursors.WaitCursor
+                ReturnWorkbook.Options.CalculationMode = WorkbookCalculationMode.Manual
+                ReturnWorkbook.Options.CalculationEngineType = CalculationEngineType.ChainBased
+                ReturnWorkbook.DocumentSettings.Calculation.EnableMultiThreading = False
+                ReturnWorkbook.LoadDocument(OpenDialog.FileName)
+
+                If Not ReturnWorkbook.Worksheets.Contains("Cover Sheet") OrElse
+                   Not String.Equals(
+                       ReturnWorkbook.Worksheets("Cover Sheet").Cells("B4").DisplayText,
+                       "Spreadsheet Import Template - Financial Forecast Return (FFR)",
+                       StringComparison.Ordinal) Then
+                    XtraMessageBox.Show(
+                        Me,
+                        "The selected file is not a provider-specific Financial Forecast Return template.",
+                        "Create FFR return",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning)
                     Return
                 End If
-            End If
 
-            ' Save the document to the specified file path
-            SpreadsheetControlExport.SaveDocument(saveFileDialog.FileName, DocumentFormat.Xlsm)
-            OpenFileInExcel(saveFileDialog.FileName)
+                Dim MappingCount As Integer = SourceWorkbook.Range("FFRRangeNames").RowCount
+                ReturnWorkbook.BeginUpdate()
+                Try
+                    For MappingIndex As Integer = 1 To MappingCount - 1
+                        Dim SourceName As String =
+                            SourceWorkbook.Range("FFRListHeading")(MappingIndex, 8).DisplayText.Trim()
+                        Dim DestinationName As String =
+                            SourceWorkbook.Range("FFRListHeading")(MappingIndex, 3).DisplayText.Trim()
+                        If SourceName.Length = 0 OrElse DestinationName.Length = 0 Then Continue For
 
-        End If
+                        ReturnWorkbook.Range(DestinationName).CopyFrom(
+                            SourceWorkbook.Range(SourceName), PasteSpecial.Values)
+                    Next
+                Finally
+                    ReturnWorkbook.EndUpdate()
+                End Try
 
+                Using SaveDialog As New SaveFileDialog With {
+                    .Filter = "Excel macro-enabled workbook|*.xlsm",
+                    .DefaultExt = "xlsm",
+                    .AddExtension = True,
+                    .OverwritePrompt = True,
+                    .Title = "Save the completed FFR return"
+                }
+                    If SaveDialog.ShowDialog(Me) <> DialogResult.OK Then Return
+                    ReturnWorkbook.SaveDocument(SaveDialog.FileName, DocumentFormat.Xlsm)
 
+                    If XtraMessageBox.Show(
+                            Me,
+                            "The FFR return was saved successfully. Open it in Microsoft Excel?",
+                            "Create FFR return",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Information) = DialogResult.Yes Then
+                        OpenFileInExcel(SaveDialog.FileName)
+                    End If
+                End Using
+            Catch ex As Exception
+                XtraMessageBox.Show(
+                    Me,
+                    "The FFR return could not be created: " & ex.Message,
+                    "Create FFR return",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error)
+            Finally
+                Cursor = Cursors.Default
+                ReturnWorkbook.Dispose()
+            End Try
+        End Using
     End Sub
 
-
-    Sub ClearWorkbook()
-
-        ExWorkbook = SpreadsheetControlExport.Document
-
-        ExWorkbook.BeginUpdate()
-
-        Dim worksheetsToRemove As New List(Of DevExpress.Spreadsheet.Worksheet)
-        For Each ws As DevExpress.Spreadsheet.Worksheet In ExWorkbook.Worksheets
-            worksheetsToRemove.Add(ws)
-        Next
-
-        For Each ws As DevExpress.Spreadsheet.Worksheet In worksheetsToRemove
-            ExWorkbook.Worksheets.Remove(ws)
-        Next
-
-        ExWorkbook.EndUpdate()
-
-    End Sub
-
-
-
-
-    Private Sub WindowsUIButtonPanelActions_ButtonClick(sender As Object, e As DevExpress.XtraBars.Docking2010.ButtonEventArgs)
-
-        Dim tag As String = CType(e.Button, WindowsUIButton).Tag.ToString()
-        Select Case tag
-
-            Case "Clear"
-
-                ClearWorkbook()
-
-
-            Case "SaveNew"
-
-                SaveNewWorkbook()
-
-            Case "Preview"
-
-                If Me.XtraTabControlFFR.SelectedTabPage.Name = "XtraTabPageExportXLS" Then
-
-
-
-                Else
-
-                    'ProcessPDFExports()
-
-                End If
-
-            Case "Close"
-
-                Me.Hide()
-
-            Case "ExpandAll"
-
-                'GridView_Process_ExpandAll(ActiveGridView)
-
-            Case "CollapseAll"
-
-                ' ActiveGridView.CollapseAllGroups()
-                'ActiveGridView.ExpandGroupLevel(0)
-                ' Gr 'idView_Process_SetExpandedLevels(ActiveGridView)
-
-        End Select
-
-    End Sub
-
-    Private Sub SimpleButton1_Click(sender As Object, e As EventArgs) Handles SimpleButton1.Click
-        FFR_New_Extraction()
-    End Sub
-
-    Friend Class SourceColumnDetector
-
-        Implements IDataSourceColumnTypeDetector
-
-        Private ColNames As List(Of String)
-        Private ColMap As String
-
-        Public Sub New(SentColNames As List(Of String), SentColMap As String)
-
-            ColNames = SentColNames
-            ColMap = SentColMap
-
-        End Sub
-        Public Function GetColumnName(ByVal index As Integer, ByVal offset As Integer, ByVal range As DevExpress.Spreadsheet.CellRange) As String Implements IDataSourceColumnTypeDetector.GetColumnName
-            If index < 0 OrElse index >= ColNames.Count Then
-                Throw New ArgumentOutOfRangeException("index", "Index is out of range.")
-            End If
-            If ColNames(index) = "Blank" Then
-                Return String.Empty
-            Else
-                Return ColNames(index)
-            End If
-
-        End Function
-
-        Public Function GetColumnType(ByVal index As Integer, ByVal offset As Integer, ByVal range As DevExpress.Spreadsheet.CellRange) As Type Implements IDataSourceColumnTypeDetector.GetColumnType
-
-            Dim defaultType As Type = GetType(String)
-            Select Case Mid(ColMap, index + 1, 1)
-                Case "T"
-                    Return GetType(String)
-                Case "B"
-                    Return GetType(Boolean)
-                Case "D"
-                    Return GetType(Date)
-                Case "N"
-                    Return GetType(Double)
-                Case "I"
-                    Return GetType(Integer)
-                Case Else
-                    Return defaultType
-            End Select
-
-        End Function
-    End Class
     Public Sub ManualDispose()
-        If Not IsNothing(KeyDefRDS) Then
-            KeyDefRDS.Dispose()
-            KeyDefRDS = Nothing
-        End If
-        If Not IsNothing(KeyValidationRDS) Then
-            KeyValidationRDS.Dispose()
-            KeyValidationRDS = Nothing
-        End If
-        If Not IsNothing(ExWorkbook) Then
-            ExWorkbook.Dispose()
-            ExWorkbook = Nothing
-        End If
-        Me.Dispose()
+        ClosingForDisposal = True
+        For Each View As Control In SheetViews.Values
+            If TypeOf View Is FFRFrontSheetView Then
+                RemoveHandler DirectCast(View, FFRFrontSheetView).WorkbookCellChanged, AddressOf WorkbookCellChanged
+            Else
+                RemoveHandler DirectCast(View, FFRWorkbookSheetView).WorkbookCellChanged, AddressOf WorkbookCellChanged
+            End If
+            View.Dispose()
+        Next
+        SheetViews.Clear()
+        Close()
+        Dispose()
     End Sub
-    Private Sub FFRForm_FormClosing(sender As Object, e As FormClosingEventArgs) Handles MyBase.FormClosing
 
+    Private Sub FFRFormFormClosing(sender As Object, e As FormClosingEventArgs) Handles MyBase.FormClosing
+        If ClosingForDisposal Then Return
         e.Cancel = True
-        Me.Hide()
-
-    End Sub
-
-
-    Private Sub ModelPostingDateBox1_EditValueChanged(sender As Object, e As EventArgs) Handles ModelPostingDateBox1.EditValueChanged
-
-    End Sub
-    Private Sub ProcessTabChange(sender As Object, e As DevExpress.XtraTab.TabPageChangedEventArgs) Handles XtraTabControlFFR.SelectedPageChanged
-
-        If e.Page.Name = "XtraTabPageFrontSheet" Then
-            If Not TabFFRFronSInitialise Then
-
-                BuildTab3()
-                TabFFRFronSInitialise = True
-
-            End If
-        ElseIf e.Page.Name = "XtraTabPageInputAdjustments" Then
-            If Not TabFFRIASInitialise Then
-                BuildTab4()
-                TabFFRIASInitialise = True
-            End If
-        ElseIf e.Page.Name = "XtraTabPageFFRWorkings" Then
-            If Not TabFFRWorkInitialise Then
-                BuildTab5()
-                TabFFRWorkInitialise = True
-            End If
-        ElseIf e.Page.Name = "XtraTabPageFFRKey" Then
-            If Not TabFFRKeyInitialise Then
-                BuildTab1()
-                TabFFRKeyInitialise = True
-            End If
-        End If
-
-    End Sub
-
-End Class
-
-Public Class CustomFormPainterFFR
-    Inherits FormPainter
-    Public Sub New(ByVal owner As System.Windows.Forms.Control, ByVal provider As DevExpress.Skins.ISkinProvider)
-        MyBase.New(owner, provider)
-    End Sub
-    Private Function GetFormBorderColor() As Color
-        Dim formBorderColor = (TryCast(Owner, FFRForm)).FormBorderColor
-        Return formBorderColor
-    End Function
-    Protected Overrides Sub DrawBackground(ByVal cache As GraphicsCache)
-        Dim info = GetCaptionInfo()
-        Dim ee = TryCast(info, ObjectInfoArgs)
-        Dim formBorderColor = GetFormBorderColor()
-        cache.FillRectangle(New SolidBrush(formBorderColor), ee.Bounds)
-    End Sub
-    Protected Overrides Sub DrawFrameCore(ByVal cache As GraphicsCache, ByVal info As SkinElementInfo, ByVal kind As FrameKind)
-        Dim formBorderColor = GetFormBorderColor()
-        cache.FillRectangle(formBorderColor, info.Bounds)
+        Hide()
     End Sub
 End Class

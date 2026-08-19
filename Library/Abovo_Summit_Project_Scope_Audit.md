@@ -193,6 +193,18 @@ Important follow-up checks are:
 - The remaining native Stress Test grids (Sensitivity, Dashboard summaries, and Comparative summaries/charts) are intentionally read-only. Their workbook-linked cell appearance remains presentation-only and does not create an edit path.
 - Debug and Release builds both completed successfully after these changes. Interactive workbook integration testing remains required because the repository has no automated UI/workbook test project.
 
+## FFR-specific conclusions
+
+Version 6.71 replaces the disposable legacy `FFRForm` implementation with lazy native DevExpress presentations of the authoritative `FFR Validation Summary`, `Front Sheet`, `FFR Inputs Adj Stmt`, `FFR Workings`, `Statements`, `Assumptions & tenure inputs`, `Compliance Questions`, and `FFR Key Defn` worksheets. No `SpreadsheetControl` is hosted or exposed.
+
+- Every tab uses an in-memory snapshot rather than an editable workbook `RangeDataSource`. The live workbook remains the source of displayed values, resolved colours, font emphasis, alignment, row heights, column widths, cell notes, protection, and validation lists.
+- Interactive editing requires an unlocked workbook cell with a `Solid` fill pattern. Accepted text, date, list, percentage, and numeric edits travel once through `ModelChangeManager`; the calculated workbook is then reloaded into the active view. `Statements` and `Assumptions & tenure inputs` are read-only because the audited workbook contains no unlocked cells on those sheets.
+- The native `Create FFR return` command retains the `FFR_New_Extraction` mapping contract through `FFRRangeNames` and `FFRListHeading`, copies values into a separate provider-specific macro-enabled template, and never modifies the active XLSB.
+- Exact ranges, workbook counts, edit rules, extraction boundaries, and required client round-trip checks are recorded in `FFR_Interfaces_Technical_Audit.md`.
+- `Front Sheet` is now a purpose-built native form rather than a literal worksheet grid: return details remain linked to `B5:B7`, the second confirmation remains linked to `B36`, and the registered/non-registered 25-row entity lists remain linked to `B10:C34` and `B39:C63`. The two lists are presented side by side while retaining workbook validation, colours, locks and change management.
+- Debug startup auto-opens `Z:\Sandbox\TestFileMigrated.xlsb` when present by passing it to the existing `FormMainScreen.OpenModelProceedureBP` routine. The hook is compile-time excluded from Release.
+- Version 6.71 passed Debug and Release builds on 19 August 2026 with zero warnings and zero errors. Interactive eight-tab and provider-template validation remains required in the normally started application.
+
 ## Current project risks and missing assets
 
 1. Workbook/VBA behavior remains part of the product contract; a purely VB.NET review cannot establish compatibility.

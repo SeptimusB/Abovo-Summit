@@ -20,6 +20,10 @@ Imports DevExpress.XtraSpreadsheet.Forms
 
 Public Class FormMainScreen
 
+#If DEBUG Then
+    Private Const DebugAutoOpenModelPath As String = "Z:\Sandbox\TestFileMigrated.xlsb"
+#End If
+
     Dim rs As New Resizer
 
     Private LrgFontSize As Integer
@@ -186,9 +190,12 @@ Public Class FormMainScreen
 
     End Sub
     Private Sub FormMainScreen_Load(sender As Object, e As EventArgs) Handles MyBase.Load
-
-
-
+#If DEBUG Then
+        If Not DesignMode AndAlso IO.File.Exists(DebugAutoOpenModelPath) Then
+            BeginInvoke(New MethodInvoker(
+                Sub() OpenModelProceedureBP(DebugAutoOpenModelPath)))
+        End If
+#End If
     End Sub
     Private Sub SetBrowserText()
 
