@@ -78,25 +78,28 @@ the functional contract; shape selection/recolouring is Excel presentation.
 No dashboard macro writes scenario result data directly. Scenario capture and
 dashboard presentation must therefore remain separate operations.
 
-## Tab #4 implementation (version 6.65)
+## Tab #4 implementation (version 6.66)
 
-The version 6.64 reinterpretation was rejected because it retained the former
-grid-plus-chart-wall concept. It has been removed, including the invented
-toolbar, five detached charts, lower summary grid, and their dead construction
-helpers.
+The live `SpreadsheetControl` presentation introduced in version 6.65 was
+rejected because the Summit interface must reproduce workbook behaviour with
+native VB/DevExpress controls and must not look like Excel. It has been removed
+from Tab #4; the model viewer's spreadsheet control is no longer reparented.
 
-Tab #4 now hosts the model's existing live `SpreadsheetControl` and activates
-`Multivariable Dashboard` directly. This presents the workbook's actual
-ten-year matrix, embedded mini-plots, legend, Debt Information panel, selector
-shapes, selected covenant graph, outcome cards, validation, conditional
-formatting, and layout without a second presentation model.
+Tab #4 is now a native dashboard whose contract remains the existing workbook.
+It presents the selected scenario, sort metric/order, ten displayed years and
+five covenant metrics in a `BandedGridView`. Each metric includes its workbook
+value, signal and a custom-drawn target/breach indicator sourced from the
+calculated dashboard support ranges (`AL:AZ`). The lower interface contains
+the workbook's Debt Information outputs (`K30`, `K33`), one selected covenant
+status chart sourced from `AA:AB`, and the four workbook result cards
+(`AB60:AB63`). The workbook legend and explanatory note are reproduced as
+native labels.
 
-The live control is temporarily reparented from the standard model viewer and
-is restored when Stress Test closes or returns Home. The dashboard view uses
-150% zoom with worksheet headings and gridlines hidden. Unlocked dashboard
-cell edits are reverted and replayed through `ModelChangeManager`, after
-which the established Stress Test calculation path is invoked. This preserves
-the workbook-first round trip while avoiding a second workbook copy.
+Scenario and dashboard selectors continue to write their existing linked
+cells (`E6`, `C6`, `C8`, `C9`, and `C15`). Those changes pass through
+`ModelChangeManager`, invoke the established Stress Test calculation service,
+and then reload every control from the authoritative workbook. No scenario
+calculation or covenant rule is duplicated in the interface.
 
 The global Stress Test grid policy remains unchanged: sorting, filtering, and
 grouping are disabled, and editor buttons are shown only on the focused row.
@@ -104,9 +107,8 @@ grouping are disabled, and editor buttons are shown only on the focused row.
 ## Validation still required with client data
 
 The demonstration workbook has predominantly zero scenario values. Client
-testing should therefore confirm the imported worksheet controls behave as
-expected in DevExpress, especially the linked year scrollbar, sort option
-buttons, sort-order spin button, and five VBA-backed graph selector shapes.
-Where DevExpress imports a form control as presentation only, a future native
-overlay should write its existing linked workbook cell rather than duplicate
-the workbook calculation.
+testing should therefore confirm the native year selector, sort controls,
+metric selector, custom target/breach indicators and selected covenant chart
+against a populated client model. The implementation intentionally consumes
+the linked cells and calculated ranges used by the worksheet/VBA rather than
+porting those rules into presentation code.
