@@ -112,8 +112,7 @@ Public Class StressTest
     Private WrapCG_Mits As CustomGridWrapper
     Private View_WrapCG_Mits As CustomGridView
     Private ReadOnly FirstTabGridSources As New Dictionary(Of GridView, DevExpress.Spreadsheet.CellRange)
-    Private FirstTabPendingOriginalValue As CellValue = CellValue.Empty
-    Private FirstTabEditPending As Boolean
+    Private ReadOnly FirstTabGridData As New Dictionary(Of GridView, System.Data.DataTable)
     Private FirstTabChangeInProgress As Boolean
     Private View_WrapTextGrid As GridView
     Private WrapCG_MitsDev As CustomGridWrapper
@@ -807,7 +806,6 @@ Public Class StressTest
 
         XtraTabPageMitigations.Controls.Clear()
         WrapCG_Mits = New CustomGridWrapper
-        WrapCG_Mits.WrappedCGC.DataSource = DSMitDataRange
         View_WrapCG_Mits = WrapCG_Mits.WrappedGridView
 
         Dim Sheet As DevExpress.Spreadsheet.Worksheet =
@@ -823,6 +821,9 @@ Public Class StressTest
             MitigationStart.TopRowIndex,
             MitigationEnd.RightColumnIndex,
             MitigationEnd.BottomRowIndex)
+        Dim GridData As System.Data.DataTable = BuildFirstTabGridData(SourceRange)
+        FirstTabGridData(View_WrapCG_Mits) = GridData
+        WrapCG_Mits.WrappedCGC.DataSource = GridData
         RegisterFirstTabSourceGrid(
             View_WrapCG_Mits, SourceRange)
 
@@ -863,13 +864,16 @@ Public Class StressTest
 
         Dim WrapCG_Stresses = New CustomGridWrapper
 
-        WrapCG_Stresses.WrappedCGC.DataSource = DSStressesDataRange
-
         View_WrapCG_Stresses = WrapCG_Stresses.WrappedGridView
+        Dim SourceRange As DevExpress.Spreadsheet.CellRange =
+            ActiveWorkbook.Worksheets("Live Multivariable Planner").Range(
+                ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestStressesRange)
+        Dim GridData As System.Data.DataTable = BuildFirstTabGridData(SourceRange)
+        FirstTabGridData(View_WrapCG_Stresses) = GridData
+        WrapCG_Stresses.WrappedCGC.DataSource = GridData
         RegisterFirstTabSourceGrid(
             View_WrapCG_Stresses,
-            ActiveWorkbook.Worksheets("Live Multivariable Planner").Range(
-                ExcelModels(ModelID).WBStructure.StressTestDefinition.StresstestStressesRange))
+            SourceRange)
 
 
 
@@ -1382,6 +1386,59 @@ Public Class StressTest
 
     End Sub
 
+    Private Function BuildFirstTabGridData(
+        SourceRange As DevExpress.Spreadsheet.CellRange) As System.Data.DataTable
+
+        Dim Data As New System.Data.DataTable
+        For ColumnIndex As Integer = 0 To SourceRange.ColumnCount - 1
+            Data.Columns.Add(
+                "Column " & ColumnIndex.ToString(),
+                If(ColumnIndex <= 2, GetType(String), GetType(Object)))
+        Next
+
+        For RowIndex As Integer = 0 To SourceRange.RowCount - 1
+            Dim Row As System.Data.DataRow = Data.NewRow()
+            For ColumnIndex As Integer = 0 To SourceRange.ColumnCount - 1
+                Dim Value As Object = CellToObject(SourceRange(RowIndex, ColumnIndex))
+                Row(ColumnIndex) = If(Value Is Nothing OrElse Value Is DBNull.Value,
+                                      DBNull.Value, Value)
+            Next
+            Data.Rows.Add(Row)
+        Next
+        Data.AcceptChanges()
+        Return Data
+
+    End Function
+
+    Private Sub RefreshFirstTabGridData(View As GridView)
+
+        Dim SourceRange As DevExpress.Spreadsheet.CellRange = Nothing
+        Dim Data As System.Data.DataTable = Nothing
+        If View Is Nothing OrElse
+           Not FirstTabGridSources.TryGetValue(View, SourceRange) OrElse
+           Not FirstTabGridData.TryGetValue(View, Data) Then Return
+
+        Data.BeginLoadData()
+        Try
+            For RowIndex As Integer = 0 To Math.Min(
+                    SourceRange.RowCount, Data.Rows.Count) - 1
+                For ColumnIndex As Integer = 0 To Math.Min(
+                        SourceRange.ColumnCount, Data.Columns.Count) - 1
+                    Dim Value As Object =
+                        CellToObject(SourceRange(RowIndex, ColumnIndex))
+                    Data.Rows(RowIndex)(ColumnIndex) =
+                        If(Value Is Nothing OrElse Value Is DBNull.Value,
+                           DBNull.Value, Value)
+                Next
+            Next
+            Data.AcceptChanges()
+        Finally
+            Data.EndLoadData()
+        End Try
+        View.RefreshData()
+
+    End Sub
+
     Private Sub RegisterFirstTabSourceGrid(
         View As GridView,
         SourceRange As DevExpress.Spreadsheet.CellRange)
@@ -1391,14 +1448,12 @@ Public Class StressTest
         FirstTabGridSources(View) = SourceRange
         RemoveHandler View.ShowingEditor, AddressOf FirstTabGridShowingEditor
         RemoveHandler View.ShownEditor, AddressOf FirstTabGridShownEditor
-        RemoveHandler View.CellValueChanging, AddressOf FirstTabGridCellValueChanging
         RemoveHandler View.CellValueChanged, AddressOf FirstTabGridCellValueChanged
         RemoveHandler View.CustomRowCellEdit, AddressOf FirstTabGridCustomRowCellEdit
         RemoveHandler View.CustomDrawCell, AddressOf FirstTabGridCustomDrawCell
         RemoveHandler View.CustomColumnDisplayText, AddressOf FirstTabGridCustomColumnDisplayText
         AddHandler View.ShowingEditor, AddressOf FirstTabGridShowingEditor
         AddHandler View.ShownEditor, AddressOf FirstTabGridShownEditor
-        AddHandler View.CellValueChanging, AddressOf FirstTabGridCellValueChanging
         AddHandler View.CellValueChanged, AddressOf FirstTabGridCellValueChanged
         AddHandler View.CustomRowCellEdit, AddressOf FirstTabGridCustomRowCellEdit
         AddHandler View.CustomDrawCell, AddressOf FirstTabGridCustomDrawCell
@@ -1532,9 +1587,6 @@ Public Class StressTest
 
         Dim View As GridView = TryCast(sender, GridView)
         If View Is Nothing Then Return
-
-        FirstTabEditPending = False
-        FirstTabPendingOriginalValue = CellValue.Empty
 
         Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
         If Not TryGetFirstTabSourceCell(
@@ -2965,7 +3017,7 @@ Public Class StressTest
 
     End Sub
 
-    Private Sub FirstTabGridCellValueChanging(
+    Private Sub FirstTabGridCellValueChanged(
         sender As Object,
         e As DevExpress.XtraGrid.Views.Base.CellValueChangedEventArgs)
 
@@ -2975,38 +3027,19 @@ Public Class StressTest
         Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
         If View Is Nothing OrElse
            Not TryGetFirstTabSourceCell(View, e.RowHandle, e.Column, SourceCell) OrElse
-           Not IsWorkbookLinkedGridCellEditable(SourceCell) Then Return
-
-        If Not FirstTabEditPending Then
-            FirstTabPendingOriginalValue = SourceCell.Value
-            FirstTabEditPending = True
+           Not IsWorkbookLinkedGridCellEditable(SourceCell) Then
+            RefreshFirstTabGridData(View)
+            Return
         End If
-
-    End Sub
-
-    Private Sub FirstTabGridCellValueChanged(
-        sender As Object,
-        e As DevExpress.XtraGrid.Views.Base.CellValueChangedEventArgs)
-
-        If FirstTabChangeInProgress OrElse Not FirstTabEditPending Then Return
-
-        Dim View As GridView = TryCast(sender, GridView)
-        Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
-        If View Is Nothing OrElse
-           Not TryGetFirstTabSourceCell(View, e.RowHandle, e.Column, SourceCell) Then Return
 
         FirstTabChangeInProgress = True
         Try
-            SourceCell.Value = FirstTabPendingOriginalValue
             Dim DataFormat As String = GetFirstTabDataFormat(SourceCell, e.Column, e.Value)
-            If Not ProcessStressTestCellChange(
-                    SourceCell, NormalizeStressTestEditValue(e.Value), DataFormat,
-                    "Live stress-test assumption updated", True) Then
-                View.RefreshData()
-            End If
+            ProcessStressTestCellChange(
+                SourceCell, NormalizeStressTestEditValue(e.Value), DataFormat,
+                "Live stress-test assumption updated", True)
+            RefreshFirstTabGridData(View)
         Finally
-            FirstTabPendingOriginalValue = CellValue.Empty
-            FirstTabEditPending = False
             FirstTabChangeInProgress = False
         End Try
 
