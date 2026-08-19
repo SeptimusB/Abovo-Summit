@@ -78,35 +78,35 @@ the functional contract; shape selection/recolouring is Excel presentation.
 No dashboard macro writes scenario result data directly. Scenario capture and
 dashboard presentation must therefore remain separate operations.
 
-## Native Tab #4 prototype (version 6.64)
+## Tab #4 implementation (version 6.65)
 
-The previous Tab #4 chart wall has been replaced by a workbook-driven
-prototype:
+The version 6.64 reinterpretation was rejected because it retained the former
+grid-plus-chart-wall concept. It has been removed, including the invented
+toolbar, five detached charts, lower summary grid, and their dead construction
+helpers.
 
-- Scenario, first displayed year, sort metric/order, and breach-graph metric
-  controls map to `E6`, `C6`, `C8`, `C9`, and `C15`.
-- Control changes use the standard `ModelChangeManager` path and then invoke
-  the Stress Test calculation strategy.
-- The main banded grid reads the calculated ten-row dashboard cells, including
-  the workbook percentile signals and resolved conditional formatting.
-- Five compact plots read the workbook black/red/target source blocks.
-- The lower breach timeline reads `AA:AB`; the summary reads scenario,
-  displayed-year window, Maximum Unfunded, its year, and the workbook note.
-- All Stress Test grids disable sorting/filtering/grouping and show editor
-  buttons only on the focused row.
+Tab #4 now hosts the model's existing live `SpreadsheetControl` and activates
+`Multivariable Dashboard` directly. This presents the workbook's actual
+ten-year matrix, embedded mini-plots, legend, Debt Information panel, selector
+shapes, selected covenant graph, outcome cards, validation, conditional
+formatting, and layout without a second presentation model.
 
-## Construction plan after client prototype review
+The live control is temporarily reparented from the standard model viewer and
+is restored when Stress Test closes or returns Home. The dashboard view uses
+150% zoom with worksheet headings and gridlines hidden. Unlocked dashboard
+cell edits are reverted and replayed through `ModelChangeManager`, after
+which the established Stress Test calculation path is invoked. This preserves
+the workbook-first round trip while avoiding a second workbook copy.
 
-1. Match the five embedded Excel combo charts precisely (bar orientation,
-   series overlap, target marker geometry, axes, legend, and spacing).
-2. Reproduce the row-22 legend and the five selected-metric button states,
-   using `R_GraphOffset` as state rather than duplicating the VBA shape logic.
-3. Refine scaling for common Summit window sizes and high-DPI displays.
-4. Validate sort direction, year-window scrolling, percentile signals,
-   target breaches, Maximum Unfunded, and scenario switching against a
-   populated client workbook rather than the zero-value demonstration model.
-5. Only after parity evidence, decide whether any remaining worksheet shapes
-   add functional value that warrants a native equivalent.
+The global Stress Test grid policy remains unchanged: sorting, filtering, and
+grouping are disabled, and editor buttons are shown only on the focused row.
 
-The workbook calculation ranges, names, formats, and protection state remain
-the source of truth throughout this plan.
+## Validation still required with client data
+
+The demonstration workbook has predominantly zero scenario values. Client
+testing should therefore confirm the imported worksheet controls behave as
+expected in DevExpress, especially the linked year scrollbar, sort option
+buttons, sort-order spin button, and five VBA-backed graph selector shapes.
+Where DevExpress imports a form control as presentation only, a future native
+overlay should write its existing linked workbook cell rather than duplicate
+the workbook calculation.

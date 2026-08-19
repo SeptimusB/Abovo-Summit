@@ -92,17 +92,13 @@ Public Class StressTest
     Private NativeTargetsView As BandedGridView
     Private NativeTargetsData As System.Data.DataTable
     Private ReadOnly NativeTargetRowEditors As New Dictionary(Of Integer, RepositoryItem)
-    Private NativeDashboardScenario As DevExpress.XtraEditors.ComboBoxEdit
-    Private NativeDashboardYearStart As DevExpress.XtraEditors.SpinEdit
-    Private NativeDashboardSortMetric As DevExpress.XtraEditors.ComboBoxEdit
-    Private NativeDashboardSortOrder As DevExpress.XtraEditors.ComboBoxEdit
-    Private NativeDashboardGraphMetric As DevExpress.XtraEditors.ComboBoxEdit
-    Private NativeDashboardGrid As GridControl
-    Private NativeDashboardView As BandedGridView
-    Private NativeDashboardData As System.Data.DataTable
-    Private NativeDashboardCharts As TableLayoutPanel
-    Private NativeDashboardSummary As GridControl
-    Private NativeDashboardBreachChart As ChartControl
+    Private NativeDashboardHost As Panel
+    Private NativeDashboardSpreadsheet As SpreadsheetControl
+    Private NativeDashboardSpreadsheetOriginalParent As Control
+    Private NativeDashboardSpreadsheetOriginalDock As DockStyle
+    Private NativeDashboardSpreadsheetOriginalIndex As Integer = -1
+    Private NativeDashboardSpreadsheetChangeHandlerAttached As Boolean
+    Private ReplayingNativeDashboardCellChange As Boolean
     Private NativeSensitivityGrid As GridControl
     Private NativeSensitivityView As BandedGridView
     Private CovenantSummaryPanel As TableLayoutPanel
@@ -396,6 +392,8 @@ Public Class StressTest
     End Sub
 
     Public Sub SetDeactivated()
+
+        RestoreNativeDashboardSpreadsheet()
 
     End Sub
 
@@ -3067,107 +3065,12 @@ Public Class StressTest
     Private Sub BuildNativeDashboardPage()
 
         XtraTabPageDashboard.Controls.Clear()
-        Dim Root As New TableLayoutPanel With {
-            .Dock = DockStyle.Fill, .BackColor = Color.White,
-            .ColumnCount = 1, .RowCount = 4
+        NativeDashboardHost = New Panel With {
+            .Dock = DockStyle.Fill,
+            .BackColor = Color.White,
+            .Padding = New Padding(8)
         }
-        Root.RowStyles.Add(New RowStyle(SizeType.Absolute, 64))
-        Root.RowStyles.Add(New RowStyle(SizeType.Percent, 38))
-        Root.RowStyles.Add(New RowStyle(SizeType.Percent, 32))
-        Root.RowStyles.Add(New RowStyle(SizeType.Percent, 30))
-        Dim Toolbar As New FlowLayoutPanel With {
-            .Dock = DockStyle.Fill, .BackColor = Color.White,
-            .Padding = New Padding(12, 10, 12, 4), .WrapContents = False,
-            .AutoScroll = True
-        }
-        NativeDashboardScenario = CreateNativeCombo(190)
-        NativeDashboardYearStart = New DevExpress.XtraEditors.SpinEdit With {.Width = 68}
-        NativeDashboardYearStart.Properties.MinValue = 1
-        NativeDashboardYearStart.Properties.MaxValue = 31
-        NativeDashboardYearStart.Properties.IsFloatValue = False
-        NativeDashboardSortMetric = CreateNativeCombo(140)
-        NativeDashboardSortMetric.Properties.Items.AddRange(
-            New Object() {"Gearing", "Operating Margin", "EBITDA MRI",
-                          "Debt / Unit", "Debt", "Year"})
-        NativeDashboardSortOrder = CreateNativeCombo(112)
-        NativeDashboardSortOrder.Properties.Items.AddRange(
-            New Object() {"Highest first", "Lowest first"})
-        NativeDashboardGraphMetric = CreateNativeCombo(140)
-        NativeDashboardGraphMetric.Properties.Items.AddRange(
-            New Object() {"Gearing", "Operating Margin", "EBITDA MRI",
-                          "Debt / Unit", "Debt"})
-
-        ConfigureStandaloneNativePlannerBandEditorAppearance(
-            NativeDashboardYearStart.Properties)
-        ConfigureStandaloneNativePlannerBandEditorAppearance(
-            NativeDashboardSortMetric.Properties)
-        ConfigureStandaloneNativePlannerBandEditorAppearance(
-            NativeDashboardSortOrder.Properties)
-        ConfigureStandaloneNativePlannerBandEditorAppearance(
-            NativeDashboardGraphMetric.Properties)
-
-        Toolbar.Controls.Add(CreateNativeLabel("Scenario"))
-        Toolbar.Controls.Add(NativeDashboardScenario)
-        Toolbar.Controls.Add(CreateNativeLabel("First displayed year"))
-        Toolbar.Controls.Add(NativeDashboardYearStart)
-        Toolbar.Controls.Add(CreateNativeLabel("Sort by"))
-        Toolbar.Controls.Add(NativeDashboardSortMetric)
-        Toolbar.Controls.Add(CreateNativeLabel("Order"))
-        Toolbar.Controls.Add(NativeDashboardSortOrder)
-        Toolbar.Controls.Add(CreateNativeLabel("Breach graph"))
-        Toolbar.Controls.Add(NativeDashboardGraphMetric)
-
-        NativeDashboardGrid = New GridControl With {.Dock = DockStyle.Fill}
-        NativeDashboardView = New BandedGridView(NativeDashboardGrid)
-        NativeDashboardGrid.MainView = NativeDashboardView
-        NativeDashboardGrid.ViewCollection.Add(NativeDashboardView)
-        NativeDashboardView.OptionsBehavior.Editable = False
-        NativeDashboardView.OptionsView.ShowBands = True
-        NativeDashboardView.OptionsView.ShowColumnHeaders = False
-        NativeDashboardView.OptionsView.ShowGroupPanel = False
-        NativeDashboardView.OptionsView.ColumnAutoWidth = True
-        NativeDashboardView.OptionsView.ShowIndicator = False
-        NativeDashboardView.RowHeight = 26
-        NativeDashboardView.BandPanelRowHeight = 34
-
-        NativeDashboardCharts = New TableLayoutPanel With {
-            .Dock = DockStyle.Fill, .BackColor = Color.White,
-            .ColumnCount = 5, .RowCount = 1, .Padding = New Padding(6)
-        }
-        For Index As Integer = 1 To 5
-            NativeDashboardCharts.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 20.0F))
-        Next
-        NativeDashboardCharts.RowStyles.Add(New RowStyle(SizeType.Percent, 100))
-
-        Dim Detail As New TableLayoutPanel With {
-            .Dock = DockStyle.Fill, .BackColor = Color.White,
-            .ColumnCount = 2, .RowCount = 1, .Padding = New Padding(6)
-        }
-        Detail.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 76))
-        Detail.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 24))
-        NativeDashboardBreachChart = New ChartControl With {
-            .Dock = DockStyle.Fill, .BackColor = Color.White
-        }
-        NativeDashboardSummary = CreateReadOnlyGrid()
-        Detail.Controls.Add(NativeDashboardBreachChart, 0, 0)
-        Detail.Controls.Add(NativeDashboardSummary, 1, 0)
-
-        Root.Controls.Add(Toolbar, 0, 0)
-        Root.Controls.Add(NativeDashboardGrid, 0, 1)
-        Root.Controls.Add(NativeDashboardCharts, 0, 2)
-        Root.Controls.Add(Detail, 0, 3)
-        XtraTabPageDashboard.Controls.Add(Root)
-        AddHandler NativeDashboardScenario.SelectedIndexChanged, AddressOf NativeDashboardScenarioChanged
-        AddHandler NativeDashboardYearStart.EditValueChanged,
-            AddressOf NativeDashboardControlChanged
-        AddHandler NativeDashboardSortMetric.SelectedIndexChanged,
-            AddressOf NativeDashboardControlChanged
-        AddHandler NativeDashboardSortOrder.SelectedIndexChanged,
-            AddressOf NativeDashboardControlChanged
-        AddHandler NativeDashboardGraphMetric.SelectedIndexChanged,
-            AddressOf NativeDashboardControlChanged
-        AddHandler NativeDashboardView.RowCellStyle,
-            AddressOf NativeDashboardRowCellStyle
+        XtraTabPageDashboard.Controls.Add(NativeDashboardHost)
 
     End Sub
 
@@ -4840,12 +4743,6 @@ Public Class StressTest
                 NativePlannerScenario.SelectedIndex =
                     Math.Min(Selected, NativePlannerScenario.Properties.Items.Count - 1)
             End If
-            If NativeDashboardScenario IsNot Nothing Then
-                Dim Selected As Integer = Math.Max(0, NativeDashboardScenario.SelectedIndex)
-                NativeDashboardScenario.Properties.Items.Clear()
-                NativeDashboardScenario.Properties.Items.AddRange(Names.Cast(Of Object).ToArray())
-                NativeDashboardScenario.SelectedIndex = Math.Min(Selected, Names.Count - 1)
-            End If
             For Each Selector As DevExpress.XtraEditors.ComboBoxEdit In NativeComparativeSelectors
                 Dim SelectedText As String = Convert.ToString(Selector.EditValue)
                 Selector.Properties.Items.Clear()
@@ -4863,173 +4760,118 @@ Public Class StressTest
 
     End Sub
 
-    Private Sub NativeDashboardScenarioChanged(sender As Object, e As EventArgs)
-
-        If Not LoadingNativeViews Then RefreshNativeDashboard()
-
-    End Sub
-
-    Private Sub NativeDashboardControlChanged(sender As Object, e As EventArgs)
-
-        If LoadingNativeViews Then Return
-        Dim ControlSheet As DevExpress.Spreadsheet.Worksheet =
-            ActiveWorkbook.Worksheets("OW - Covenant Calculation")
-        Dim Target As DevExpress.Spreadsheet.Cell = Nothing
-        Dim Value As Object = Nothing
-        Dim Description As String = String.Empty
-
-        If sender Is NativeDashboardYearStart Then
-            Target = ControlSheet.Range("C6")(0, 0)
-            Value = Convert.ToInt32(NativeDashboardYearStart.EditValue)
-            Description = "Stress-test dashboard first displayed year updated"
-        ElseIf sender Is NativeDashboardSortMetric Then
-            Target = ControlSheet.Range("C8")(0, 0)
-            Value = NativeDashboardSortMetric.SelectedIndex + 1
-            Description = "Stress-test dashboard sort metric updated"
-        ElseIf sender Is NativeDashboardSortOrder Then
-            Target = ControlSheet.Range("C9")(0, 0)
-            Value = NativeDashboardSortOrder.SelectedIndex + 1
-            Description = "Stress-test dashboard sort order updated"
-        ElseIf sender Is NativeDashboardGraphMetric Then
-            Target = ControlSheet.Range("C15")(0, 0)
-            Value = NativeDashboardGraphMetric.SelectedIndex + 1
-            Description = "Stress-test dashboard breach graph updated"
-        End If
-
-        If Target IsNot Nothing AndAlso
-           ProcessStressTestCellChange(Target, Value, "N", Description) Then
-            CalculateStressWorkbook()
-        End If
-        RefreshNativeDashboard()
-
-    End Sub
-
     Private Sub RefreshNativeDashboard()
 
-        If NativeDashboardScenario Is Nothing OrElse
-           NativeDashboardView Is Nothing Then Return
-        Dim Names As List(Of String) = WorkbookScenarioNames()
-        LoadingNativeViews = True
-        Try
-            Dim DashboardSheet As DevExpress.Spreadsheet.Worksheet =
-                ActiveWorkbook.Worksheets("Multivariable Dashboard")
-            Dim ControlSheet As DevExpress.Spreadsheet.Worksheet =
-                ActiveWorkbook.Worksheets("OW - Covenant Calculation")
-            Dim DashboardSelectionCell As DevExpress.Spreadsheet.Cell =
-                DashboardSheet.Range("E6")(0, 0)
-            Dim PreviousIndex As Integer = NativeDashboardScenario.SelectedIndex
-            If PreviousIndex < 0 Then
-                PreviousIndex = Names.FindIndex(
-                    Function(Item) String.Equals(
-                        Item, DashboardSelectionCell.DisplayText, StringComparison.OrdinalIgnoreCase))
-            End If
-            PreviousIndex = Math.Max(0, PreviousIndex)
-            NativeDashboardScenario.Properties.Items.Clear()
-            NativeDashboardScenario.Properties.Items.AddRange(Names.Cast(Of Object).ToArray())
-            NativeDashboardScenario.SelectedIndex = Math.Min(PreviousIndex, Names.Count - 1)
-            NativeDashboardScenario.Properties.ReadOnly = DashboardSelectionCell.Protection.Locked
-            Dim ScenarioIndex As Integer = Math.Max(0, NativeDashboardScenario.SelectedIndex)
-            Dim DesiredScenario As String = Names(ScenarioIndex)
-            If Not String.Equals(
-                    DashboardSelectionCell.DisplayText, DesiredScenario,
-                    StringComparison.OrdinalIgnoreCase) Then
-                If Not ProcessStressTestCellChange(
-                        DashboardSelectionCell, DesiredScenario, "S",
-                        "Stress-test dashboard scenario updated") Then
-                    Dim WorkbookIndex As Integer = Names.FindIndex(
-                        Function(Item) String.Equals(
-                            Item, DashboardSelectionCell.DisplayText, StringComparison.OrdinalIgnoreCase))
-                    NativeDashboardScenario.SelectedIndex = Math.Max(0, WorkbookIndex)
-                    ScenarioIndex = Math.Max(0, NativeDashboardScenario.SelectedIndex)
+        If NativeDashboardHost Is Nothing OrElse ActiveWorkbook Is Nothing OrElse
+           Not ActiveWorkbook.Worksheets.Contains("Multivariable Dashboard") Then Return
+
+        AttachNativeDashboardSpreadsheet()
+        ActiveWorkbook.Worksheets.ActiveWorksheet =
+            ActiveWorkbook.Worksheets("Multivariable Dashboard")
+        ActiveWorkbook.Worksheets.ActiveWorksheet.ActiveView.ShowGridlines = False
+        ActiveWorkbook.Worksheets.ActiveWorksheet.ActiveView.ShowHeadings = False
+        ActiveWorkbook.Worksheets.ActiveWorksheet.ActiveView.Zoom = 150
+        CalculateStressWorkbook()
+        If NativeDashboardSpreadsheet IsNot Nothing Then
+            NativeDashboardSpreadsheet.Refresh()
+            NativeDashboardSpreadsheet.Focus()
+        End If
+
+    End Sub
+
+    Private Sub AttachNativeDashboardSpreadsheet()
+
+        NativeDashboardSpreadsheet = ExcelModels(ModelID).ModelSpreadsheetControl
+        If NativeDashboardSpreadsheet Is Nothing OrElse NativeDashboardHost Is Nothing Then Return
+
+        If NativeDashboardSpreadsheet.Parent IsNot NativeDashboardHost Then
+            If NativeDashboardSpreadsheetOriginalParent Is Nothing Then
+                NativeDashboardSpreadsheetOriginalParent = NativeDashboardSpreadsheet.Parent
+                NativeDashboardSpreadsheetOriginalDock = NativeDashboardSpreadsheet.Dock
+                If NativeDashboardSpreadsheetOriginalParent IsNot Nothing Then
+                    NativeDashboardSpreadsheetOriginalIndex =
+                        NativeDashboardSpreadsheetOriginalParent.Controls.GetChildIndex(
+                            NativeDashboardSpreadsheet)
                 End If
-            Else
+            End If
+            If NativeDashboardSpreadsheet.Parent IsNot Nothing Then
+                NativeDashboardSpreadsheet.Parent.Controls.Remove(NativeDashboardSpreadsheet)
+            End If
+            NativeDashboardHost.Controls.Add(NativeDashboardSpreadsheet)
+            NativeDashboardSpreadsheet.Dock = DockStyle.Fill
+        End If
+
+        If Not NativeDashboardSpreadsheetChangeHandlerAttached Then
+            AddHandler NativeDashboardSpreadsheet.CellValueChanged,
+                AddressOf NativeDashboardSpreadsheetCellValueChanged
+            NativeDashboardSpreadsheetChangeHandlerAttached = True
+        End If
+
+    End Sub
+
+    Private Sub RestoreNativeDashboardSpreadsheet()
+
+        If NativeDashboardSpreadsheet Is Nothing Then Return
+        If NativeDashboardSpreadsheetChangeHandlerAttached Then
+            RemoveHandler NativeDashboardSpreadsheet.CellValueChanged,
+                AddressOf NativeDashboardSpreadsheetCellValueChanged
+            NativeDashboardSpreadsheetChangeHandlerAttached = False
+        End If
+        If NativeDashboardSpreadsheet.Parent IsNot Nothing Then
+            NativeDashboardSpreadsheet.Parent.Controls.Remove(NativeDashboardSpreadsheet)
+        End If
+        If NativeDashboardSpreadsheetOriginalParent IsNot Nothing Then
+            NativeDashboardSpreadsheetOriginalParent.Controls.Add(NativeDashboardSpreadsheet)
+            NativeDashboardSpreadsheet.Dock = NativeDashboardSpreadsheetOriginalDock
+            If NativeDashboardSpreadsheetOriginalIndex >= 0 Then
+                NativeDashboardSpreadsheetOriginalParent.Controls.SetChildIndex(
+                    NativeDashboardSpreadsheet,
+                    Math.Min(NativeDashboardSpreadsheetOriginalIndex,
+                             NativeDashboardSpreadsheetOriginalParent.Controls.Count - 1))
+            End If
+        End If
+        NativeDashboardSpreadsheetOriginalParent = Nothing
+        NativeDashboardSpreadsheetOriginalIndex = -1
+
+    End Sub
+
+    Private Sub NativeDashboardSpreadsheetCellValueChanged(
+        sender As Object,
+        e As SpreadsheetCellEventArgs)
+
+        If ReplayingNativeDashboardCellChange OrElse e.Cell Is Nothing OrElse
+           Not String.Equals(
+               e.Cell.Worksheet.Name,
+               "Multivariable Dashboard",
+               StringComparison.OrdinalIgnoreCase) Then Return
+
+        Dim ChangedValue As Object
+        If e.Value.IsNumeric Then
+            ChangedValue = e.Value.NumericValue
+        ElseIf e.Value.IsBoolean Then
+            ChangedValue = e.Value.BooleanValue
+        ElseIf e.Value.IsDateTime Then
+            ChangedValue = e.Value.DateTimeValue
+        Else
+            ChangedValue = e.Value.TextValue
+        End If
+        Dim DataFormat As String =
+            If(e.Cell.NumberFormat IsNot Nothing AndAlso
+               e.Cell.NumberFormat.Contains("%"), "P",
+               If(e.Value.IsNumeric, "N", "S"))
+
+        ReplayingNativeDashboardCellChange = True
+        Try
+            e.Cell.Value = e.OldValue
+            If ProcessStressTestCellChange(
+                    e.Cell,
+                    ChangedValue,
+                    DataFormat,
+                    "Multivariable dashboard cell updated") Then
                 CalculateStressWorkbook()
             End If
-
-            ApplyWorkbookResolvedCellAppearance(
-                NativeDashboardScenario.Properties.Appearance,
-                DashboardSelectionCell)
-            ApplyWorkbookResolvedCellAppearance(
-                NativeDashboardScenario.Properties.AppearanceDropDown,
-                DashboardSelectionCell)
-
-            Dim MaximumStart As Integer =
-                Math.Max(1, Convert.ToInt32(GetNumericValue(ControlSheet.Range("C7")(0, 0))))
-            NativeDashboardYearStart.Properties.MaxValue = MaximumStart
-            NativeDashboardYearStart.EditValue =
-                Math.Max(1, Convert.ToInt32(GetNumericValue(ControlSheet.Range("C6")(0, 0))))
-            NativeDashboardSortMetric.SelectedIndex =
-                Math.Max(0, Math.Min(5,
-                    Convert.ToInt32(GetNumericValue(ControlSheet.Range("C8")(0, 0))) - 1))
-            NativeDashboardSortOrder.SelectedIndex =
-                Math.Max(0, Math.Min(1,
-                    Convert.ToInt32(GetNumericValue(ControlSheet.Range("C9")(0, 0))) - 1))
-            NativeDashboardGraphMetric.SelectedIndex =
-                Math.Max(0, Math.Min(4,
-                    Convert.ToInt32(GetNumericValue(ControlSheet.Range("C15")(0, 0))) - 1))
-
-            NativeDashboardData = New System.Data.DataTable
-            NativeDashboardData.Columns.Add("SourceRow", GetType(Integer))
-            NativeDashboardData.Columns.Add("Year", GetType(String))
-            For Each FieldName As String In {
-                    "Gearing", "OperatingMargin", "EbitdaMri", "DebtPerUnit", "Debt"}
-                NativeDashboardData.Columns.Add(FieldName, GetType(String))
-                NativeDashboardData.Columns.Add(FieldName & "Signal", GetType(String))
-            Next
-
-            Dim MetricSourceColumns As Integer() = {5, 8, 11, 14, 17}
-            For SourceRow As Integer = 11 To 20
-                Dim Row As System.Data.DataRow = NativeDashboardData.NewRow()
-                Row("SourceRow") = SourceRow
-                Row("Year") = DashboardSheet.Cells(SourceRow, 4).DisplayText
-                Dim FieldNames As String() = {
-                    "Gearing", "OperatingMargin", "EbitdaMri", "DebtPerUnit", "Debt"}
-                For MetricIndex As Integer = 0 To 4
-                    Dim SourceColumn As Integer = MetricSourceColumns(MetricIndex)
-                    Row(FieldNames(MetricIndex)) =
-                        DashboardSheet.Cells(SourceRow, SourceColumn).DisplayText
-                    Row(FieldNames(MetricIndex) & "Signal") =
-                        DashboardSheet.Cells(SourceRow, SourceColumn + 1).DisplayText
-                Next
-                NativeDashboardData.Rows.Add(Row)
-            Next
-
-            NativeDashboardGrid.DataSource = NativeDashboardData
-            ConfigureNativeDashboardColumns(DashboardSheet)
-
-            NativeDashboardCharts.SuspendLayout()
-            NativeDashboardCharts.Controls.Clear()
-            For MetricIndex As Integer = 0 To 4
-                NativeDashboardCharts.Controls.Add(
-                    BuildNativeDashboardMetricChart(
-                        ControlSheet, DashboardSheet, MetricIndex),
-                    MetricIndex, 0)
-            Next
-            NativeDashboardCharts.ResumeLayout()
-
-            RefreshNativeDashboardBreachChart(ControlSheet)
-
-            Dim Summary As New System.Data.DataTable
-            Summary.Columns.Add("Dashboard item", GetType(String))
-            Summary.Columns.Add("Workbook value", GetType(String))
-            Summary.Rows.Add("Scenario", DashboardSelectionCell.DisplayText)
-            Summary.Rows.Add("Displayed years",
-                DashboardSheet.Range("E12")(0, 0).DisplayText & " to " &
-                DashboardSheet.Range("E21")(0, 0).DisplayText)
-            Summary.Rows.Add("Maximum unfunded",
-                DashboardSheet.Range("K29")(0, 0).DisplayText & " " &
-                DashboardSheet.Range("K30")(0, 0).DisplayText)
-            Summary.Rows.Add("Maximum unfunded year",
-                DashboardSheet.Range("K33")(0, 0).DisplayText)
-            If Not String.IsNullOrWhiteSpace(
-                    DashboardSheet.Range("B40")(0, 0).DisplayText) Then
-                Summary.Rows.Add("Scenario note",
-                    DashboardSheet.Range("B40")(0, 0).DisplayText)
-            End If
-            NativeDashboardSummary.DataSource = Summary
-            CType(NativeDashboardSummary.MainView, GridView).BestFitColumns()
         Finally
-            LoadingNativeViews = False
+            ReplayingNativeDashboardCellChange = False
         End Try
 
     End Sub
@@ -5914,172 +5756,6 @@ Public Class StressTest
                     AddressOf TextEditMultivariableName_EditValueChanged
             End Try
         End If
-
-    End Sub
-
-    Private Sub ConfigureNativeDashboardColumns(
-        DashboardSheet As DevExpress.Spreadsheet.Worksheet)
-
-        NativeDashboardView.PopulateColumns()
-        NativeDashboardView.Bands.Clear()
-        NativeDashboardView.Columns("SourceRow").Visible = False
-
-        Dim YearBand As New GridBand With {
-            .Caption = DashboardSheet.Range("E9")(0, 0).DisplayText
-        }
-        ApplyWorkbookResolvedCellAppearance(
-            YearBand.AppearanceHeader, DashboardSheet.Range("E9")(0, 0))
-        Dim YearColumn As BandedGridColumn =
-            TryCast(NativeDashboardView.Columns("Year"), BandedGridColumn)
-        YearColumn.Visible = True
-        YearColumn.Width = 180
-        YearBand.Columns.Add(YearColumn)
-        NativeDashboardView.Bands.Add(YearBand)
-
-        Dim FieldNames As String() = {
-            "Gearing", "OperatingMargin", "EbitdaMri", "DebtPerUnit", "Debt"}
-        Dim HeaderColumns As Integer() = {5, 8, 11, 14, 17}
-        For MetricIndex As Integer = 0 To 4
-            Dim HeaderCell As DevExpress.Spreadsheet.Cell =
-                DashboardSheet.Cells(8, HeaderColumns(MetricIndex))
-            Dim Band As New GridBand With {.Caption = HeaderCell.DisplayText}
-            ApplyWorkbookResolvedCellAppearance(Band.AppearanceHeader, HeaderCell)
-            Band.AppearanceHeader.TextOptions.HAlignment = HorzAlignment.Center
-
-            Dim ValueColumn As BandedGridColumn =
-                TryCast(NativeDashboardView.Columns(FieldNames(MetricIndex)),
-                        BandedGridColumn)
-            Dim SignalColumn As BandedGridColumn =
-                TryCast(NativeDashboardView.Columns(
-                    FieldNames(MetricIndex) & "Signal"), BandedGridColumn)
-            ValueColumn.Visible = True
-            ValueColumn.Width = 118
-            ValueColumn.AppearanceCell.TextOptions.HAlignment = HorzAlignment.Far
-            SignalColumn.Visible = True
-            SignalColumn.Width = 34
-            SignalColumn.AppearanceCell.TextOptions.HAlignment = HorzAlignment.Center
-            Band.Columns.Add(ValueColumn)
-            Band.Columns.Add(SignalColumn)
-            NativeDashboardView.Bands.Add(Band)
-        Next
-
-        DisableStressTestGridFilteringAndSorting()
-
-    End Sub
-
-    Private Sub NativeDashboardRowCellStyle(
-        sender As Object,
-        e As DevExpress.XtraGrid.Views.Grid.RowCellStyleEventArgs)
-
-        If e.RowHandle < 0 Then Return
-        Dim SourceRow As Integer =
-            Convert.ToInt32(
-                NativeDashboardView.GetRowCellValue(e.RowHandle, "SourceRow"))
-        Dim SourceColumn As Integer
-        Select Case e.Column.FieldName
-            Case "Year" : SourceColumn = 4
-            Case "Gearing" : SourceColumn = 5
-            Case "GearingSignal" : SourceColumn = 6
-            Case "OperatingMargin" : SourceColumn = 8
-            Case "OperatingMarginSignal" : SourceColumn = 9
-            Case "EbitdaMri" : SourceColumn = 11
-            Case "EbitdaMriSignal" : SourceColumn = 12
-            Case "DebtPerUnit" : SourceColumn = 14
-            Case "DebtPerUnitSignal" : SourceColumn = 15
-            Case "Debt" : SourceColumn = 17
-            Case "DebtSignal" : SourceColumn = 18
-            Case Else : Return
-        End Select
-        ApplyWorkbookResolvedCellAppearance(
-            e.Appearance,
-            ActiveWorkbook.Worksheets("Multivariable Dashboard").
-                Cells(SourceRow, SourceColumn))
-
-    End Sub
-
-    Private Function BuildNativeDashboardMetricChart(
-        ControlSheet As DevExpress.Spreadsheet.Worksheet,
-        DashboardSheet As DevExpress.Spreadsheet.Worksheet,
-        MetricIndex As Integer) As ChartControl
-
-        Dim MetricNames As String() = {
-            "Gearing", "Operating Margin", "EBITDA MRI", "Debt / Unit", "Debt"}
-        Dim Chart As New ChartControl With {
-            .Dock = DockStyle.Fill, .BackColor = Color.White
-        }
-        Dim WithinTarget As New DevExpress.XtraCharts.Series(
-            "Within target", ViewType.Point)
-        Dim Breach As New DevExpress.XtraCharts.Series(
-            "Breach", ViewType.Point)
-        Dim Target As New DevExpress.XtraCharts.Series(
-            "Target", ViewType.Line)
-        WithinTarget.View.Color = Color.FromArgb(50, 50, 50)
-        Breach.View.Color = Color.Firebrick
-        Target.View.Color = AbovoBlue
-
-        Dim SourceColumn As Integer = 37 + (MetricIndex * 3) 'AL plus metric block
-        For RowIndex As Integer = 0 To 9
-            Dim Argument As String =
-                DashboardSheet.Cells(11 + RowIndex, 4).DisplayText
-            AddSeriesPoint(
-                WithinTarget, Argument,
-                ControlSheet.Cells(18 + RowIndex, SourceColumn))
-            AddSeriesPoint(
-                Breach, Argument,
-                ControlSheet.Cells(18 + RowIndex, SourceColumn + 1))
-            AddSeriesPoint(
-                Target, Argument,
-                ControlSheet.Cells(18 + RowIndex, SourceColumn + 2))
-        Next
-        Chart.Series.Add(WithinTarget)
-        Chart.Series.Add(Breach)
-        Chart.Series.Add(Target)
-        Chart.Titles.Add(New DevExpress.XtraCharts.ChartTitle With {
-            .Text = MetricNames(MetricIndex)
-        })
-        Chart.Legend.Visibility = DevExpress.Utils.DefaultBoolean.False
-        Dim Diagram As XYDiagram = TryCast(Chart.Diagram, XYDiagram)
-        If Diagram IsNot Nothing Then
-            Diagram.AxisX.Label.Angle = -45
-            Diagram.AxisX.Label.ResolveOverlappingOptions.AllowRotate = True
-        End If
-        Return Chart
-
-    End Function
-
-    Private Sub RefreshNativeDashboardBreachChart(
-        ControlSheet As DevExpress.Spreadsheet.Worksheet)
-
-        NativeDashboardBreachChart.Series.Clear()
-        NativeDashboardBreachChart.Titles.Clear()
-        Dim WithinTarget As New DevExpress.XtraCharts.Series(
-            "Within target", ViewType.Point)
-        Dim Breach As New DevExpress.XtraCharts.Series(
-            "Breach", ViewType.Point)
-        WithinTarget.View.Color = Color.SeaGreen
-        Breach.View.Color = Color.Firebrick
-        For RowIndex As Integer = 0 To 39
-            Dim Argument As String = (RowIndex + 1).ToString()
-            AddSeriesPoint(
-                WithinTarget, Argument,
-                ControlSheet.Cells(18 + RowIndex, 26))
-            AddSeriesPoint(
-                Breach, Argument,
-                ControlSheet.Cells(18 + RowIndex, 27))
-        Next
-        NativeDashboardBreachChart.Series.Add(WithinTarget)
-        NativeDashboardBreachChart.Series.Add(Breach)
-        Dim MetricCaption As String =
-            Convert.ToString(NativeDashboardGraphMetric.EditValue)
-        NativeDashboardBreachChart.Titles.Add(
-            New DevExpress.XtraCharts.ChartTitle With {
-                .Text = MetricCaption & " covenant status by year"
-            })
-        NativeDashboardBreachChart.Legend.Visibility =
-            DevExpress.Utils.DefaultBoolean.True
-        Dim Diagram As XYDiagram =
-            TryCast(NativeDashboardBreachChart.Diagram, XYDiagram)
-        If Diagram IsNot Nothing Then Diagram.AxisY.Label.TextPattern = String.Empty
 
     End Sub
 
