@@ -3502,6 +3502,7 @@ Public Class StressTest
             Dim Selector As New DevExpress.XtraEditors.CheckEdit With {
                 .Text = SeriesCaptions(SeriesIndex),
                 .Tag = SeriesIndex,
+                .Width = If(SeriesIndex < 2, 105, 125),
                 .Margin = New Padding(10, 5, 8, 0)
             }
             NativeComparativeSeriesChecks.Add(Selector)
@@ -5828,13 +5829,6 @@ Public Class StressTest
 
         Chart.Series.Clear()
         Chart.Titles.Clear()
-        Dim SeriesColours As Color() = {
-            Color.FromArgb(0, 161, 193),
-            Color.FromArgb(0, 91, 130),
-            Color.FromArgb(255, 88, 0),
-            Color.FromArgb(122, 184, 0),
-            Color.FromArgb(202, 0, 93),
-            Color.FromArgb(240, 171, 0)}
         For SeriesColumn As Integer = FirstSeriesColumn To LastSeriesColumn
             Dim SeriesName As String = Sheet.Cells(17, SeriesColumn).DisplayText
             If String.IsNullOrWhiteSpace(SeriesName) Then
@@ -5847,15 +5841,10 @@ Public Class StressTest
                     Sheet.Cells(RowIndex, SeriesColumn))
             Next
             NewSeries.View.Color =
-                SeriesColours(Math.Min(
-                    SeriesColours.Length - 1,
-                    SeriesColumn - FirstSeriesColumn))
+                ComparativeSeriesColour(SeriesColumn - FirstSeriesColumn)
             Chart.Series.Add(NewSeries)
         Next
-        Chart.Legend.Visibility = DevExpress.Utils.DefaultBoolean.True
-        Chart.Legend.AlignmentHorizontal = LegendAlignmentHorizontal.Center
-        Chart.Legend.AlignmentVertical = LegendAlignmentVertical.BottomOutside
-        Chart.Legend.Direction = LegendDirection.LeftToRight
+        Chart.Legend.Visibility = DevExpress.Utils.DefaultBoolean.False
         Dim Diagram As XYDiagram = TryCast(Chart.Diagram, XYDiagram)
         If Diagram IsNot Nothing Then
             Diagram.AxisX.Label.Angle = -45
@@ -5910,8 +5899,30 @@ Public Class StressTest
             e.Appearance.BackColor = Color.FromArgb(235, 244, 252)
             e.Appearance.Options.UseBackColor = True
         End If
+        If String.Equals(
+                e.Column.FieldName,
+                "Scenario",
+                StringComparison.Ordinal) Then
+            e.Appearance.ForeColor = ComparativeSeriesColour(e.RowHandle)
+            e.Appearance.Font = New Font(e.Appearance.Font, FontStyle.Bold)
+            e.Appearance.Options.UseForeColor = True
+        End If
 
     End Sub
+
+    Private Function ComparativeSeriesColour(SeriesIndex As Integer) As Color
+
+        Dim SeriesColours As Color() = {
+            Color.FromArgb(0, 161, 193),
+            Color.FromArgb(0, 91, 130),
+            Color.FromArgb(255, 88, 0),
+            Color.FromArgb(122, 184, 0),
+            Color.FromArgb(202, 0, 93),
+            Color.FromArgb(240, 171, 0)}
+        Return SeriesColours(
+            Math.Max(0, Math.Min(SeriesColours.Length - 1, SeriesIndex)))
+
+    End Function
 
     Private Function BuildComparativeSummaryA() As System.Data.DataTable
 

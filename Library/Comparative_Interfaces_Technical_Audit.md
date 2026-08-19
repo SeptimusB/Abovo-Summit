@@ -52,7 +52,7 @@ The combined extrema table is exposed in rows 35-45 (`P:Y`) and reports
 maximum gearing, minimum operating margin, maximum debt per unit, and their
 years for Target, Base Case and Comparison 1-4.
 
-## Native implementation (version 6.68)
+## Native implementation (versions 6.68-6.69)
 
 Tabs #5 and #6 do not host a spreadsheet control. Each uses a native scenario
 selection area and a shared set of `CheckEdit` series selectors. Every metric
@@ -67,6 +67,11 @@ Target `RGB(0,161,193)`, Base Case `RGB(0,91,130)`, followed by
 `RGB(255,88,0)`, `RGB(122,184,0)`, `RGB(202,0,93)`, and
 `RGB(240,171,0)` for Comparison 1-4. Summary text remains the workbook's
 `DisplayText`, preserving its percentage, currency and year formats.
+
+Version 6.69 gives each series selector an explicit caption width, removes the
+duplicated legends beneath every chart, and uses the Scenario text in the first
+summary column as the legend. Those labels use the same exact six-colour palette
+as the chart series, so Tabs #5 and #6 retain a compact and consistent key.
 
 Scenario, visibility, and window changes use the existing
 `ModelChangeManager` route, calculate through the established Stress Test
