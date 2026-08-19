@@ -204,6 +204,19 @@ Public Class StressTest
         PanelControlCovSel.Appearance.BackColor = Color.White
 
         WindowsUIButtonPanelStressNavigator.ForeColor = AbovoBlue
+        For Each Button As DevExpress.XtraEditors.ButtonPanel.IBaseButton In
+            WindowsUIButtonPanelStressNavigator.Buttons
+            If TypeOf Button Is DevExpress.XtraBars.Docking2010.WindowsUIButton Then
+                DirectCast(
+                    Button,
+                    DevExpress.XtraBars.Docking2010.WindowsUIButton).IsLeft = False
+            ElseIf TypeOf Button Is
+                DevExpress.XtraBars.Docking2010.WindowsUISeparator Then
+                DirectCast(
+                    Button,
+                    DevExpress.XtraBars.Docking2010.WindowsUISeparator).IsLeft = False
+            End If
+        Next
         WindowsUIButtonPanelStressNavigator.ContentAlignment =
             ContentAlignment.MiddleCenter
 
@@ -2191,6 +2204,9 @@ Public Class StressTest
         NativeSensitivityView.OptionsView.ShowBands = True
         NativeSensitivityView.Appearance.HeaderPanel.TextOptions.WordWrap =
             WordWrap.Wrap
+        NativeSensitivityView.Appearance.HeaderPanel.Options.UseTextOptions = True
+        NativeSensitivityView.OptionsView.ColumnHeaderAutoHeight =
+            DevExpress.Utils.DefaultBoolean.True
         NativeSensitivityView.ColumnPanelRowHeight = 46
         NativeSensitivityView.OptionsSelection.MultiSelect = True
         NativeSensitivityView.OptionsSelection.MultiSelectMode =
@@ -2342,6 +2358,7 @@ Public Class StressTest
             Column.AppearanceHeader.TextOptions.HAlignment = HorzAlignment.Center
         End If
         Column.AppearanceHeader.TextOptions.WordWrap = WordWrap.Wrap
+        Column.AppearanceHeader.Options.UseTextOptions = True
         Band.Columns.Add(Column)
 
     End Sub
@@ -2457,6 +2474,7 @@ Public Class StressTest
         e.Appearance.Options.UseFont = True
         e.Appearance.TextOptions.HAlignment = HorzAlignment.Center
         e.Appearance.TextOptions.WordWrap = WordWrap.Wrap
+        e.Appearance.Options.UseTextOptions = True
         e.DefaultDraw()
         e.Handled = True
 
