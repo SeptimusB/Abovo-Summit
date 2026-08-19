@@ -111,8 +111,9 @@ Public Class StressTest
     Private NativeSensitivityView As BandedGridView
     Private CovenantSummaryPanel As TableLayoutPanel
     Private NativeComparativeSelectors As New List(Of DevExpress.XtraEditors.ComboBoxEdit)
-    Private NativeComparativeChartsA As TableLayoutPanel
-    Private NativeComparativeChartsB As TableLayoutPanel
+    Private ReadOnly NativeComparativeSeriesChecks As New List(Of DevExpress.XtraEditors.CheckEdit)
+    Private ReadOnly NativeComparativeCharts As New Dictionary(Of Integer, ChartControl)
+    Private ReadOnly NativeComparativeYearEditors As New Dictionary(Of Integer, DevExpress.XtraEditors.SpinEdit)
     Private NativeComparativeSummaryA As GridControl
     Private NativeComparativeSummaryB As GridControl
     Private LoadingNativeViews As Boolean
@@ -3389,54 +3390,180 @@ Public Class StressTest
     Private Sub BuildNativeComparativePage(Page As DevExpress.XtraTab.XtraTabPage, IsSecondPage As Boolean)
 
         Page.Controls.Clear()
+        If Not IsSecondPage Then
+            NativeComparativeSelectors.Clear()
+            NativeComparativeSeriesChecks.Clear()
+            NativeComparativeCharts.Clear()
+            NativeComparativeYearEditors.Clear()
+        End If
         Dim Root As New TableLayoutPanel With {
-            .Dock = DockStyle.Fill, .BackColor = Color.White, .ColumnCount = 1, .RowCount = 3
+            .Dock = DockStyle.Fill,
+            .BackColor = Color.White,
+            .Padding = New Padding(12, 8, 12, 10),
+            .ColumnCount = 1,
+            .RowCount = If(IsSecondPage, 2, 3)
         }
-        Root.RowStyles.Add(New RowStyle(SizeType.Absolute, 62))
-        Root.RowStyles.Add(New RowStyle(SizeType.Percent, 68))
-        Root.RowStyles.Add(New RowStyle(SizeType.Percent, 32))
-        Dim Toolbar As New FlowLayoutPanel With {
-            .Dock = DockStyle.Fill, .BackColor = Color.White,
-            .Padding = New Padding(10, 10, 10, 4), .WrapContents = False
-        }
-        For ScenarioSlot As Integer = 0 To 3
-            Dim Selector As DevExpress.XtraEditors.ComboBoxEdit = CreateNativeCombo(145)
-            Selector.Tag = ScenarioSlot
-            NativeComparativeSelectors.Add(Selector)
-            Toolbar.Controls.Add(CreateNativeLabel("Comparison " & (ScenarioSlot + 1).ToString()))
-            Toolbar.Controls.Add(Selector)
-            AddHandler Selector.SelectedIndexChanged, AddressOf NativeComparativeScenarioChanged
-        Next
-        If IsSecondPage Then
-            AddComparisonYearSelector(Toolbar, "Gearing start", 12)
-            AddComparisonYearSelector(Toolbar, "Op margin start", 14)
-            AddComparisonYearSelector(Toolbar, "Debt/unit start", 13)
-        Else
-            AddComparisonYearSelector(Toolbar, "Debt start", 10)
-            AddComparisonYearSelector(Toolbar, "EBITDA start", 11)
+        Root.RowStyles.Add(New RowStyle(SizeType.Absolute, 104))
+        Root.RowStyles.Add(New RowStyle(SizeType.Percent, If(IsSecondPage, 100, 68)))
+        If Not IsSecondPage Then
+            Root.RowStyles.Add(New RowStyle(SizeType.Percent, 32))
         End If
+        Root.Controls.Add(BuildComparativeControlPanel(), 0, 0)
 
-        Dim Charts As New TableLayoutPanel With {
-            .Dock = DockStyle.Fill, .BackColor = Color.White,
-            .ColumnCount = If(IsSecondPage, 3, 2), .RowCount = 1, .Padding = New Padding(6)
-        }
-        For Index As Integer = 1 To Charts.ColumnCount
-            Charts.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, CSng(100.0 / Charts.ColumnCount)))
-        Next
-        Dim Summary As GridControl = CreateReadOnlyGrid()
         If IsSecondPage Then
-            NativeComparativeChartsB = Charts
-            NativeComparativeSummaryB = Summary
+            Dim Dashboard As New TableLayoutPanel With {
+                .Dock = DockStyle.Fill,
+                .BackColor = Color.White,
+                .ColumnCount = 2,
+                .RowCount = 2,
+                .Padding = New Padding(0, 6, 0, 0)
+            }
+            Dashboard.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 50))
+            Dashboard.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 50))
+            Dashboard.RowStyles.Add(New RowStyle(SizeType.Percent, 50))
+            Dashboard.RowStyles.Add(New RowStyle(SizeType.Percent, 50))
+            Dashboard.Controls.Add(CreateComparativeMetricPanel("Gearing", 12), 0, 0)
+            Dashboard.Controls.Add(CreateComparativeMetricPanel("Op Margin", 14), 1, 0)
+            Dashboard.Controls.Add(CreateComparativeMetricPanel("Debt / Unit", 13), 0, 1)
+            NativeComparativeSummaryB = CreateReadOnlyGrid()
+            NativeComparativeSummaryB.Tag = "Comparative 2"
+            Dashboard.Controls.Add(
+                CreateComparativeSummaryPanel("Scenario extrema", NativeComparativeSummaryB),
+                1,
+                1)
+            Root.Controls.Add(Dashboard, 0, 1)
         Else
-            NativeComparativeChartsA = Charts
-            NativeComparativeSummaryA = Summary
+            Dim Charts As New TableLayoutPanel With {
+                .Dock = DockStyle.Fill,
+                .BackColor = Color.White,
+                .ColumnCount = 2,
+                .RowCount = 1,
+                .Padding = New Padding(0, 6, 0, 6)
+            }
+            Charts.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 50))
+            Charts.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 50))
+            Charts.Controls.Add(CreateComparativeMetricPanel("Debt", 10), 0, 0)
+            Charts.Controls.Add(CreateComparativeMetricPanel("EBITDA MRI", 11), 1, 0)
+            NativeComparativeSummaryA = CreateReadOnlyGrid()
+            NativeComparativeSummaryA.Tag = "Comparative"
+            Root.Controls.Add(Charts, 0, 1)
+            Root.Controls.Add(
+                CreateComparativeSummaryPanel("Scenario extrema", NativeComparativeSummaryA),
+                0,
+                2)
         End If
-        Root.Controls.Add(Toolbar, 0, 0)
-        Root.Controls.Add(Charts, 0, 1)
-        Root.Controls.Add(Summary, 0, 2)
         Page.Controls.Add(Root)
 
     End Sub
+
+    Private Function BuildComparativeControlPanel() As Control
+
+        Dim Panel As New TableLayoutPanel With {
+            .Dock = DockStyle.Fill,
+            .BackColor = Color.FromArgb(244, 246, 248),
+            .ColumnCount = 1,
+            .RowCount = 2,
+            .Padding = New Padding(10, 5, 10, 5)
+        }
+        Panel.RowStyles.Add(New RowStyle(SizeType.Percent, 50))
+        Panel.RowStyles.Add(New RowStyle(SizeType.Percent, 50))
+        Dim ScenarioRow As New FlowLayoutPanel With {
+            .Dock = DockStyle.Fill,
+            .BackColor = Color.Transparent,
+            .WrapContents = False
+        }
+        Dim ScenarioHeading As DevExpress.XtraEditors.LabelControl =
+            CreateNativeLabel("Compare scenarios")
+        ScenarioHeading.Appearance.Font =
+            New Font(ScenarioHeading.Font, FontStyle.Bold)
+        ScenarioRow.Controls.Add(ScenarioHeading)
+        For ScenarioSlot As Integer = 0 To 3
+            Dim Selector As DevExpress.XtraEditors.ComboBoxEdit = CreateNativeCombo(155)
+            Selector.Tag = ScenarioSlot
+            NativeComparativeSelectors.Add(Selector)
+            ScenarioRow.Controls.Add(
+                CreateNativeLabel("Comparison " & (ScenarioSlot + 1).ToString()))
+            ScenarioRow.Controls.Add(Selector)
+            AddHandler Selector.SelectedIndexChanged, AddressOf NativeComparativeScenarioChanged
+        Next
+        Dim SeriesRow As New FlowLayoutPanel With {
+            .Dock = DockStyle.Fill,
+            .BackColor = Color.Transparent,
+            .WrapContents = False
+        }
+        Dim SeriesHeading As DevExpress.XtraEditors.LabelControl =
+            CreateNativeLabel("Show series")
+        SeriesHeading.Appearance.Font =
+            New Font(SeriesHeading.Font, FontStyle.Bold)
+        SeriesRow.Controls.Add(SeriesHeading)
+        Dim SeriesCaptions As String() = {
+            "Target", "Base Case", "Comparison 1", "Comparison 2", "Comparison 3", "Comparison 4"}
+        For SeriesIndex As Integer = 0 To 5
+            Dim Selector As New DevExpress.XtraEditors.CheckEdit With {
+                .Text = SeriesCaptions(SeriesIndex),
+                .Tag = SeriesIndex,
+                .Margin = New Padding(10, 5, 8, 0)
+            }
+            NativeComparativeSeriesChecks.Add(Selector)
+            SeriesRow.Controls.Add(Selector)
+            AddHandler Selector.CheckedChanged,
+                AddressOf NativeComparativeSeriesCheckedChanged
+        Next
+        Panel.Controls.Add(ScenarioRow, 0, 0)
+        Panel.Controls.Add(SeriesRow, 0, 1)
+        Return Panel
+
+    End Function
+
+    Private Function CreateComparativeMetricPanel(
+        Caption As String,
+        WorkingRow As Integer) As Control
+
+        Dim Group As New DevExpress.XtraEditors.GroupControl With {
+            .Text = Caption,
+            .Dock = DockStyle.Fill,
+            .Margin = New Padding(5)
+        }
+        Dim Layout As New TableLayoutPanel With {
+            .Dock = DockStyle.Fill,
+            .BackColor = Color.White,
+            .ColumnCount = 1,
+            .RowCount = 2
+        }
+        Layout.RowStyles.Add(New RowStyle(SizeType.Absolute, 38))
+        Layout.RowStyles.Add(New RowStyle(SizeType.Percent, 100))
+        Dim Controls As New FlowLayoutPanel With {
+            .Dock = DockStyle.Fill,
+            .BackColor = Color.White,
+            .Padding = New Padding(6, 2, 0, 0),
+            .WrapContents = False
+        }
+        AddComparisonYearSelector(Controls, "Start-year offset", WorkingRow)
+        Dim Chart As New ChartControl With {
+            .Dock = DockStyle.Fill,
+            .BackColor = Color.White
+        }
+        NativeComparativeCharts(WorkingRow) = Chart
+        Layout.Controls.Add(Controls, 0, 0)
+        Layout.Controls.Add(Chart, 0, 1)
+        Group.Controls.Add(Layout)
+        Return Group
+
+    End Function
+
+    Private Function CreateComparativeSummaryPanel(
+        Caption As String,
+        Grid As GridControl) As Control
+
+        Dim Group As New DevExpress.XtraEditors.GroupControl With {
+            .Text = Caption,
+            .Dock = DockStyle.Fill,
+            .Margin = New Padding(5)
+        }
+        Group.Controls.Add(Grid)
+        Return Group
+
+    End Function
 
     Private Function CreateReadOnlyGrid() As GridControl
 
@@ -3447,6 +3574,14 @@ Public Class StressTest
         View.OptionsBehavior.Editable = False
         View.OptionsView.ShowGroupPanel = False
         View.OptionsView.ColumnAutoWidth = True
+        View.OptionsView.ShowIndicator = False
+        View.RowHeight = 28
+        View.Appearance.HeaderPanel.Font =
+            New Font(View.Appearance.HeaderPanel.Font, FontStyle.Bold)
+        View.Appearance.HeaderPanel.ForeColor = AbovoBlue
+        View.Appearance.HeaderPanel.TextOptions.HAlignment = HorzAlignment.Center
+        AddHandler View.RowCellStyle,
+            AddressOf NativeComparativeSummaryRowCellStyle
         Return Grid
 
     End Function
@@ -3479,6 +3614,7 @@ Public Class StressTest
         Editor.Properties.ReadOnly =
             ActiveWorkbook.Worksheets("OW - Covenant Calculation").
                 Cells(WorkingRow - 1, 2).Protection.Locked
+        NativeComparativeYearEditors(WorkingRow) = Editor
         Toolbar.Controls.Add(CreateNativeLabel(Caption))
         Toolbar.Controls.Add(Editor)
         AddHandler Editor.EditValueChanged, AddressOf NativeComparisonYearChanged
@@ -5610,8 +5746,9 @@ Public Class StressTest
 
     Private Sub RefreshNativeComparativeViews()
 
-        If NativeComparativeChartsA Is Nothing OrElse
-           NativeComparativeChartsB Is Nothing Then Return
+        If NativeComparativeCharts.Count < 5 OrElse
+           NativeComparativeSummaryA Is Nothing OrElse
+           NativeComparativeSummaryB Is Nothing Then Return
         Dim Names As List(Of String) = WorkbookScenarioNames()
         LoadingNativeViews = True
         Try
@@ -5631,47 +5768,73 @@ Public Class StressTest
                         Item, SelectedName, StringComparison.OrdinalIgnoreCase))
                 Selector.SelectedIndex =
                     If(Match >= 0, Match, Math.Min(Slot + 1, Names.Count - 1))
+                ApplyWorkbookResolvedCellAppearance(
+                    Selector.Properties.Appearance,
+                    SourceCell)
+                ApplyWorkbookResolvedCellAppearance(
+                    Selector.Properties.AppearanceDropDown,
+                    SourceCell)
+            Next
+
+            Dim Working As DevExpress.Spreadsheet.Worksheet =
+                ActiveWorkbook.Worksheets("OW - Covenant Calculation")
+            For Each Selector As DevExpress.XtraEditors.CheckEdit In
+                NativeComparativeSeriesChecks
+                Dim SeriesIndex As Integer = Convert.ToInt32(Selector.Tag)
+                Dim SourceCell As DevExpress.Spreadsheet.Cell =
+                    Working.Cells(16, 63 + SeriesIndex)
+                Selector.Properties.ReadOnly = SourceCell.Protection.Locked
+                Selector.Checked =
+                    If(SourceCell.Value.IsBoolean,
+                       SourceCell.Value.BooleanValue,
+                       GetNumericValue(SourceCell) <> 0)
+            Next
+            For Each Pair As KeyValuePair(Of Integer, DevExpress.XtraEditors.SpinEdit) In
+                NativeComparativeYearEditors
+                Dim SourceCell As DevExpress.Spreadsheet.Cell =
+                    Working.Cells(Pair.Key - 1, 2)
+                Pair.Value.Properties.ReadOnly = SourceCell.Protection.Locked
+                Pair.Value.EditValue = Convert.ToInt32(GetNumericValue(SourceCell))
             Next
 
             CalculateStressWorkbook()
-            Dim Working As DevExpress.Spreadsheet.Worksheet =
-                ActiveWorkbook.Worksheets("OW - Covenant Calculation")
-            NativeComparativeChartsA.SuspendLayout()
-            NativeComparativeChartsA.Controls.Clear()
-            NativeComparativeChartsA.Controls.Add(
-                BuildComparisonChart("Debt", Working, 62, 63, 68), 0, 0)
-            NativeComparativeChartsA.Controls.Add(
-                BuildComparisonChart("EBITDA MRI", Working, 70, 71, 76), 1, 0)
-            NativeComparativeChartsA.ResumeLayout()
-
-            NativeComparativeChartsB.SuspendLayout()
-            NativeComparativeChartsB.Controls.Clear()
-            NativeComparativeChartsB.Controls.Add(
-                BuildComparisonChart("Gearing", Working, 82, 83, 88), 0, 0)
-            NativeComparativeChartsB.Controls.Add(
-                BuildComparisonChart("Operating Margin", Working, 98, 99, 104), 1, 0)
-            NativeComparativeChartsB.Controls.Add(
-                BuildComparisonChart("Debt / Unit", Working, 90, 91, 96), 2, 0)
-            NativeComparativeChartsB.ResumeLayout()
+            PopulateComparisonChart(
+                NativeComparativeCharts(10), Working, 62, 63, 68)
+            PopulateComparisonChart(
+                NativeComparativeCharts(11), Working, 70, 71, 76)
+            PopulateComparisonChart(
+                NativeComparativeCharts(12), Working, 82, 83, 88)
+            PopulateComparisonChart(
+                NativeComparativeCharts(14), Working, 98, 99, 104)
+            PopulateComparisonChart(
+                NativeComparativeCharts(13), Working, 90, 91, 96)
 
             NativeComparativeSummaryA.DataSource = BuildComparativeSummaryA()
-            CType(NativeComparativeSummaryA.MainView, GridView).BestFitColumns()
+            ConfigureComparativeSummaryGrid(NativeComparativeSummaryA)
             NativeComparativeSummaryB.DataSource = BuildComparativeSummaryB()
-            CType(NativeComparativeSummaryB.MainView, GridView).BestFitColumns()
+            ConfigureComparativeSummaryGrid(NativeComparativeSummaryB)
         Finally
             LoadingNativeViews = False
         End Try
 
     End Sub
 
-    Private Function BuildComparisonChart(
-        Title As String,
+    Private Sub PopulateComparisonChart(
+        Chart As ChartControl,
         Sheet As DevExpress.Spreadsheet.Worksheet,
         ArgumentColumn As Integer,
         FirstSeriesColumn As Integer,
-        LastSeriesColumn As Integer) As ChartControl
+        LastSeriesColumn As Integer)
 
-        Dim Chart As New ChartControl With {.Dock = DockStyle.Fill, .BackColor = Color.White}
+        Chart.Series.Clear()
+        Chart.Titles.Clear()
+        Dim SeriesColours As Color() = {
+            Color.FromArgb(0, 161, 193),
+            Color.FromArgb(0, 91, 130),
+            Color.FromArgb(255, 88, 0),
+            Color.FromArgb(122, 184, 0),
+            Color.FromArgb(202, 0, 93),
+            Color.FromArgb(240, 171, 0)}
         For SeriesColumn As Integer = FirstSeriesColumn To LastSeriesColumn
             Dim SeriesName As String = Sheet.Cells(17, SeriesColumn).DisplayText
             If String.IsNullOrWhiteSpace(SeriesName) Then
@@ -5683,22 +5846,77 @@ Public Class StressTest
                     NewSeries, Sheet.Cells(RowIndex, ArgumentColumn).DisplayText,
                     Sheet.Cells(RowIndex, SeriesColumn))
             Next
+            NewSeries.View.Color =
+                SeriesColours(Math.Min(
+                    SeriesColours.Length - 1,
+                    SeriesColumn - FirstSeriesColumn))
             Chart.Series.Add(NewSeries)
         Next
-        Chart.Titles.Add(New DevExpress.XtraCharts.ChartTitle With {.Text = Title})
         Chart.Legend.Visibility = DevExpress.Utils.DefaultBoolean.True
+        Chart.Legend.AlignmentHorizontal = LegendAlignmentHorizontal.Center
+        Chart.Legend.AlignmentVertical = LegendAlignmentVertical.BottomOutside
+        Chart.Legend.Direction = LegendDirection.LeftToRight
         Dim Diagram As XYDiagram = TryCast(Chart.Diagram, XYDiagram)
         If Diagram IsNot Nothing Then
             Diagram.AxisX.Label.Angle = -45
             Diagram.AxisX.Label.ResolveOverlappingOptions.AllowRotate = True
+            Diagram.AxisX.GridLines.Visible = False
+            Diagram.AxisY.GridLines.Color = Color.Gainsboro
         End If
-        Return Chart
 
-    End Function
+    End Sub
+
+    Private Sub ConfigureComparativeSummaryGrid(Grid As GridControl)
+
+        Dim View As GridView = TryCast(Grid.MainView, GridView)
+        If View Is Nothing Then Return
+        View.PopulateColumns()
+        If View.Columns.ColumnByFieldName("SourceRow") IsNot Nothing Then
+            View.Columns("SourceRow").Visible = False
+        End If
+        DisableStressTestGridFilteringAndSorting()
+        View.BestFitColumns()
+        If View.Columns.Count > 0 Then
+            View.Columns(0).Width = Math.Max(View.Columns(0).Width, 135)
+        End If
+
+    End Sub
+
+    Private Sub NativeComparativeSummaryRowCellStyle(
+        sender As Object,
+        e As DevExpress.XtraGrid.Views.Grid.RowCellStyleEventArgs)
+
+        If e.RowHandle < 0 Then Return
+        Dim View As GridView = TryCast(sender, GridView)
+        If View Is Nothing Then Return
+        Dim SourceRowValue As Object =
+            View.GetRowCellValue(e.RowHandle, "SourceRow")
+        If SourceRowValue Is Nothing OrElse SourceRowValue Is DBNull.Value Then Return
+        Dim SourceSheetName As String = Convert.ToString(View.GridControl.Tag)
+        If String.IsNullOrWhiteSpace(SourceSheetName) OrElse
+           Not ActiveWorkbook.Worksheets.Contains(SourceSheetName) Then Return
+        Dim SourceColumn As Integer =
+            If(String.Equals(SourceSheetName, "Comparative", StringComparison.Ordinal),
+               6,
+               15)
+        ApplyWorkbookResolvedCellAppearance(
+            e.Appearance,
+            ActiveWorkbook.Worksheets(SourceSheetName).
+                Cells(Convert.ToInt32(SourceRowValue), SourceColumn))
+        If e.RowHandle = 0 Then
+            e.Appearance.Font = New Font(e.Appearance.Font, FontStyle.Bold)
+        ElseIf e.RowHandle = 1 Then
+            e.Appearance.Font = New Font(e.Appearance.Font, FontStyle.Bold)
+            e.Appearance.BackColor = Color.FromArgb(235, 244, 252)
+            e.Appearance.Options.UseBackColor = True
+        End If
+
+    End Sub
 
     Private Function BuildComparativeSummaryA() As System.Data.DataTable
 
         Dim Table As New System.Data.DataTable
+        Table.Columns.Add("SourceRow", GetType(Integer))
         Table.Columns.Add("Scenario", GetType(String))
         Table.Columns.Add("Peak Debt", GetType(String))
         Table.Columns.Add("Peak Debt Year", GetType(String))
@@ -5712,6 +5930,7 @@ Public Class StressTest
             Dim SourceRow As Integer = 7 + (ResultIndex * 2)
             Dim EbitdaRow As Integer = 35 + (ResultIndex * 2)
             Table.Rows.Add(
+                SourceRow,
                 Sheet.Cells(SourceRow, 6).DisplayText,
                 Sheet.Cells(SourceRow, 8).DisplayText,
                 Sheet.Cells(SourceRow, 9).DisplayText,
@@ -5727,6 +5946,7 @@ Public Class StressTest
     Private Function BuildComparativeSummaryB() As System.Data.DataTable
 
         Dim Table As New System.Data.DataTable
+        Table.Columns.Add("SourceRow", GetType(Integer))
         Table.Columns.Add("Scenario", GetType(String))
         Table.Columns.Add("Max Gearing", GetType(String))
         Table.Columns.Add("Gearing Year", GetType(String))
@@ -5739,6 +5959,7 @@ Public Class StressTest
         For ResultIndex As Integer = 0 To 5
             Dim SourceRow As Integer = 34 + (ResultIndex * 2)
             Table.Rows.Add(
+                SourceRow,
                 Sheet.Cells(SourceRow, 15).DisplayText,
                 Sheet.Cells(SourceRow, 17).DisplayText,
                 Sheet.Cells(SourceRow, 18).DisplayText,
@@ -6384,6 +6605,28 @@ Public Class StressTest
                     AddressOf TextEditMultivariableName_EditValueChanged
             End Try
         End If
+
+    End Sub
+
+    Private Sub NativeComparativeSeriesCheckedChanged(sender As Object, e As EventArgs)
+
+        If LoadingNativeViews Then Return
+        Dim Selector As DevExpress.XtraEditors.CheckEdit =
+            TryCast(sender, DevExpress.XtraEditors.CheckEdit)
+        If Selector Is Nothing Then Return
+        Dim SeriesIndex As Integer = Convert.ToInt32(Selector.Tag)
+        Dim Target As DevExpress.Spreadsheet.Cell =
+            ActiveWorkbook.Worksheets("OW - Covenant Calculation").
+                Cells(16, 63 + SeriesIndex)
+        If Not ProcessStressTestCellChange(
+                Target,
+                Selector.Checked,
+                "B",
+                "Stress-test comparison series visibility updated") Then
+            RefreshNativeComparativeViews()
+            Return
+        End If
+        RefreshNativeComparativeViews()
 
     End Sub
 
