@@ -16,7 +16,7 @@ Namespace Abovo
         Public Shared WorkMode As String = "INTERFACE"
         Public Shared ReadOnly Property IsDev As Boolean = True
         Public Shared ReadOnly Property MaxGridHeight As Integer = CInt(Screen.PrimaryScreen.Bounds.Height * 0.7)
-        Public Shared ReadOnly Property DecVersionNumber As Decimal = 6.55D
+        Public Shared ReadOnly Property DecVersionNumber As Decimal = 6.56D
         Public Shared ReadOnly Property AppTitle As String = "abovo summit"
         Public Shared Property DefaultLrgFontSize As Integer = 12
         Public Shared Property DefaultMediumFontSize As Integer = 10

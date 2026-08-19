@@ -217,6 +217,13 @@ Public Class StressTest
                     DevExpress.XtraBars.Docking2010.WindowsUISeparator).IsLeft = False
             End If
         Next
+        Dim CentredButtons As DevExpress.XtraEditors.ButtonPanel.IBaseButton() =
+            WindowsUIButtonPanelStressNavigator.Buttons.
+                Cast(Of DevExpress.XtraEditors.ButtonPanel.IBaseButton)().
+                Reverse().
+                ToArray()
+        WindowsUIButtonPanelStressNavigator.Buttons.Clear()
+        WindowsUIButtonPanelStressNavigator.Buttons.AddRange(CentredButtons)
         WindowsUIButtonPanelStressNavigator.ContentAlignment =
             ContentAlignment.MiddleCenter
 
@@ -2303,7 +2310,9 @@ Public Class StressTest
             ConfigureNativeSensitivityColumn(
                 SummaryBand, Sheet, ColumnIndex,
                 Sheet.Cells(4, ColumnIndex).DisplayText,
-                If(ColumnIndex = 0, 180, If(ColumnIndex = 1, 90, 78)),
+                If(ColumnIndex = 0, 200,
+                   If(ColumnIndex = 1, 105,
+                      If(ColumnIndex <= 3, 95, 115))),
                 ColumnIndex <= 3)
         Next
 
@@ -2358,6 +2367,7 @@ Public Class StressTest
             Column.AppearanceHeader.TextOptions.HAlignment = HorzAlignment.Center
         End If
         Column.AppearanceHeader.TextOptions.WordWrap = WordWrap.Wrap
+        Column.AppearanceHeader.TextOptions.VAlignment = VertAlignment.Bottom
         Column.AppearanceHeader.Options.UseTextOptions = True
         Band.Columns.Add(Column)
 
@@ -2473,6 +2483,7 @@ Public Class StressTest
             e.Appearance.Font, e.Appearance.Font.Style Or FontStyle.Bold)
         e.Appearance.Options.UseFont = True
         e.Appearance.TextOptions.HAlignment = HorzAlignment.Center
+        e.Appearance.TextOptions.VAlignment = VertAlignment.Bottom
         e.Appearance.TextOptions.WordWrap = WordWrap.Wrap
         e.Appearance.Options.UseTextOptions = True
         e.DefaultDraw()
