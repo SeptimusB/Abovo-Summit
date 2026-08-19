@@ -41,6 +41,24 @@ Namespace Abovo
 			Dim args As New ControlGraphicsInfoArgs(info, New GraphicsCache(g), r)
 
 			edit.CreatePainter().Draw(args)
+			If forceItemAppearance Then
+				Dim contentBounds As Rectangle = Rectangle.Inflate(r, -2, -2)
+				If TypeOf edit Is RepositoryItemButtonEdit Then
+					contentBounds.Width = Math.Max(1, contentBounds.Width - 20)
+				End If
+				Using backgroundBrush As New SolidBrush(edit.Appearance.BackColor),
+					  foregroundBrush As New SolidBrush(edit.Appearance.ForeColor),
+					  textFormat As New StringFormat With {
+						  .Alignment = StringAlignment.Center,
+						  .LineAlignment = StringAlignment.Center,
+						  .Trimming = StringTrimming.EllipsisCharacter,
+						  .FormatFlags = StringFormatFlags.NoWrap
+					  }
+					g.FillRectangle(backgroundBrush, contentBounds)
+					g.DrawString(Convert.ToString(value), edit.Appearance.Font,
+							 foregroundBrush, contentBounds, textFormat)
+				End Using
+			End If
 			args.Cache.Dispose()
 
 		End Sub

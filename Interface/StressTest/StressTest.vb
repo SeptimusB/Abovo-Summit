@@ -3007,7 +3007,8 @@ Public Class StressTest
 
         Dim DefinitionBand As New GridBand With {
             .Caption = "Stress and mitigation definition",
-            .Fixed = DevExpress.XtraGrid.Columns.FixedStyle.Left
+            .Fixed = DevExpress.XtraGrid.Columns.FixedStyle.Left,
+            .RowCount = 5
         }
         DefinitionBand.AppearanceHeader.TextOptions.HAlignment = HorzAlignment.Center
         DefinitionBand.Columns.Add(NativePlannerView.Columns("Assumption"))
@@ -3026,7 +3027,8 @@ Public Class StressTest
             If String.IsNullOrWhiteSpace(ImportMode) Then ImportMode = "Use assumptions below"
 
             Dim ScenarioBand As New GridBand With {
-                .Caption = "Test " & ScenarioIndex.ToString()
+                .Caption = "Test " & ScenarioIndex.ToString(),
+                .RowCount = 5
             }
             ScenarioBand.AppearanceHeader.TextOptions.HAlignment = HorzAlignment.Center
             ScenarioBand.AppearanceHeader.TextOptions.WordWrap = WordWrap.Wrap
@@ -3063,7 +3065,8 @@ Public Class StressTest
             AddNativePlannerBandEditors(
                 ScenarioBand, Sheet, ScenarioIndex, ImportMode, ScenarioName)
         Next
-        NativePlannerView.BandPanelRowHeight = 164
+        NativePlannerView.MinBandPanelRowCount = 5
+        NativePlannerView.BandPanelRowHeight = 28
         NativePlannerView.ExpandAllGroups()
 
     End Sub
@@ -3406,6 +3409,8 @@ Public Class StressTest
         NativePlannerBandActiveEditor = Template.CreateEditor()
         NativePlannerBandActiveEditor.Properties.LockEvents()
         NativePlannerBandActiveEditor.Properties.Assign(Template)
+        NativePlannerBandActiveEditor.BackColor = Template.Appearance.BackColor
+        NativePlannerBandActiveEditor.ForeColor = Template.Appearance.ForeColor
         NativePlannerBandActiveEditor.Properties.AutoHeight = False
         NativePlannerBandActiveEditor.Parent = NativePlannerGrid
         NativePlannerBandActiveEditor.Bounds = Bounds
