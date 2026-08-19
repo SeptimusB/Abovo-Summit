@@ -96,10 +96,10 @@ Public Class StressTest
     Private NativeDashboardGrid As GridControl
     Private NativeDashboardView As BandedGridView
     Private NativeDashboardData As System.Data.DataTable
-    Private NativeDashboardYearScroll As System.Windows.Forms.VScrollBar
-    Private NativeDashboardSortOrder As DevExpress.XtraEditors.SimpleButton
-    Private ReadOnly NativeDashboardSortButtons As New List(Of DevExpress.XtraEditors.SimpleButton)
-    Private ReadOnly NativeDashboardMetricButtons As New List(Of DevExpress.XtraEditors.SimpleButton)
+    Private NativeDashboardFirstYear As DevExpress.XtraEditors.SpinEdit
+    Private NativeDashboardSortMetric As DevExpress.XtraEditors.RadioGroup
+    Private NativeDashboardSortOrder As DevExpress.XtraEditors.ToggleSwitch
+    Private NativeDashboardMetricSelector As DevExpress.XtraEditors.RadioGroup
     Private NativeDashboardBreachChart As ChartControl
     Private NativeDashboardDebtValue As DevExpress.XtraEditors.LabelControl
     Private NativeDashboardDebtYear As DevExpress.XtraEditors.LabelControl
@@ -3071,8 +3071,6 @@ Public Class StressTest
     Private Sub BuildNativeDashboardPage()
 
         XtraTabPageDashboard.Controls.Clear()
-        NativeDashboardSortButtons.Clear()
-        NativeDashboardMetricButtons.Clear()
         NativeDashboardCardValues.Clear()
 
         Dim Root As New TableLayoutPanel With {
@@ -3103,6 +3101,20 @@ Public Class StressTest
         NativeDashboardScenario.Margin = New Padding(8, 4, 0, 0)
         ScenarioPanel.Controls.Add(ScenarioLabel)
         ScenarioPanel.Controls.Add(NativeDashboardScenario)
+        Dim FirstYearLabel As DevExpress.XtraEditors.LabelControl =
+            CreateNativeLabel("First displayed year")
+        FirstYearLabel.Margin = New Padding(28, 4, 0, 0)
+        NativeDashboardFirstYear = New DevExpress.XtraEditors.SpinEdit With {
+            .Width = 82,
+            .Height = 28,
+            .Margin = New Padding(8, 2, 0, 0)
+        }
+        NativeDashboardFirstYear.Properties.IsFloatValue = False
+        NativeDashboardFirstYear.Properties.Mask.EditMask = "N0"
+        NativeDashboardFirstYear.Properties.MinValue = 1D
+        NativeDashboardFirstYear.Properties.MaxValue = 31D
+        ScenarioPanel.Controls.Add(FirstYearLabel)
+        ScenarioPanel.Controls.Add(NativeDashboardFirstYear)
 
         Dim SortPanel As New FlowLayoutPanel With {
             .Dock = DockStyle.Fill,
@@ -3110,40 +3122,45 @@ Public Class StressTest
             .Padding = New Padding(8, 6, 8, 4),
             .WrapContents = False
         }
-        SortPanel.Controls.Add(CreateNativeLabel("Sort by"))
+        Dim SortLabel As DevExpress.XtraEditors.LabelControl =
+            CreateNativeLabel("Sort displayed years by")
+        SortLabel.Margin = New Padding(0, 4, 6, 0)
+        SortPanel.Controls.Add(SortLabel)
         Dim SortCaptions As String() = {
             "Year", "Gearing", "Op Margin", "EBITDA MRI", "Debt / Unit", "Debt"}
         Dim SortValues As Integer() = {6, 1, 2, 3, 4, 5}
-        For Index As Integer = 0 To SortCaptions.Length - 1
-            Dim Button As New DevExpress.XtraEditors.SimpleButton With {
-                .Text = SortCaptions(Index),
-                .Tag = SortValues(Index),
-                .Width = If(Index = 0, 72, 108),
-                .Height = 28,
-                .Margin = New Padding(4, 1, 0, 0)
-            }
-            NativeDashboardSortButtons.Add(Button)
-            SortPanel.Controls.Add(Button)
-            AddHandler Button.Click, AddressOf NativeDashboardSortButtonClick
-        Next
-        NativeDashboardSortOrder = New DevExpress.XtraEditors.SimpleButton With {
-            .Width = 118,
-            .Height = 28,
-            .Margin = New Padding(14, 1, 0, 0)
+        NativeDashboardSortMetric = New DevExpress.XtraEditors.RadioGroup With {
+            .Width = 720,
+            .Height = 32,
+            .Margin = New Padding(0)
         }
+        NativeDashboardSortMetric.Properties.BorderStyle =
+            DevExpress.XtraEditors.Controls.BorderStyles.NoBorder
+        NativeDashboardSortMetric.Properties.Columns = 6
+        For Index As Integer = 0 To SortCaptions.Length - 1
+            NativeDashboardSortMetric.Properties.Items.Add(
+                New DevExpress.XtraEditors.Controls.RadioGroupItem(
+                    SortValues(Index),
+                    SortCaptions(Index)))
+        Next
+        SortPanel.Controls.Add(NativeDashboardSortMetric)
+        NativeDashboardSortOrder = New DevExpress.XtraEditors.ToggleSwitch With {
+            .Width = 180,
+            .Height = 30,
+            .Margin = New Padding(18, 1, 0, 0)
+        }
+        NativeDashboardSortOrder.Properties.OnText = "Highest first"
+        NativeDashboardSortOrder.Properties.OffText = "Lowest first"
         SortPanel.Controls.Add(NativeDashboardSortOrder)
-        AddHandler NativeDashboardSortOrder.Click,
-            AddressOf NativeDashboardSortOrderClick
 
         Dim MatrixHost As New TableLayoutPanel With {
             .Dock = DockStyle.Fill,
             .BackColor = Color.White,
             .Padding = New Padding(0, 4, 0, 4),
-            .ColumnCount = 2,
+            .ColumnCount = 1,
             .RowCount = 1
         }
         MatrixHost.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100))
-        MatrixHost.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 24))
         NativeDashboardGrid = New GridControl With {.Dock = DockStyle.Fill}
         NativeDashboardView = New BandedGridView(NativeDashboardGrid)
         NativeDashboardGrid.MainView = NativeDashboardView
@@ -3156,15 +3173,7 @@ Public Class StressTest
         NativeDashboardView.OptionsView.ColumnAutoWidth = True
         NativeDashboardView.RowHeight = 30
         NativeDashboardView.BandPanelRowHeight = 38
-        NativeDashboardYearScroll = New System.Windows.Forms.VScrollBar With {
-            .Dock = DockStyle.Fill,
-            .Minimum = 1,
-            .Maximum = 31,
-            .SmallChange = 1,
-            .LargeChange = 1
-        }
         MatrixHost.Controls.Add(NativeDashboardGrid, 0, 0)
-        MatrixHost.Controls.Add(NativeDashboardYearScroll, 1, 0)
 
         Dim Legend As New FlowLayoutPanel With {
             .Dock = DockStyle.Fill,
@@ -3226,26 +3235,33 @@ Public Class StressTest
         CovenantPanel.RowStyles.Add(New RowStyle(SizeType.Absolute, 40))
         CovenantPanel.RowStyles.Add(New RowStyle(SizeType.Percent, 100))
         CovenantPanel.RowStyles.Add(New RowStyle(SizeType.Absolute, 116))
-        Dim MetricButtons As New FlowLayoutPanel With {
+        Dim MetricSelectorHost As New FlowLayoutPanel With {
             .Dock = DockStyle.Fill,
             .BackColor = Color.White,
             .Padding = New Padding(0, 4, 0, 0),
             .WrapContents = False
         }
+        Dim MetricLabel As DevExpress.XtraEditors.LabelControl =
+            CreateNativeLabel("Covenant chart")
+        MetricLabel.Margin = New Padding(0, 4, 8, 0)
+        MetricSelectorHost.Controls.Add(MetricLabel)
         Dim MetricCaptions As String() = {
             "Gearing", "Op Margin", "EBITDA MRI", "Debt / Unit", "Debt"}
+        NativeDashboardMetricSelector = New DevExpress.XtraEditors.RadioGroup With {
+            .Width = 640,
+            .Height = 32,
+            .Margin = New Padding(0)
+        }
+        NativeDashboardMetricSelector.Properties.BorderStyle =
+            DevExpress.XtraEditors.Controls.BorderStyles.NoBorder
+        NativeDashboardMetricSelector.Properties.Columns = 5
         For MetricIndex As Integer = 0 To 4
-            Dim Button As New DevExpress.XtraEditors.SimpleButton With {
-                .Text = MetricCaptions(MetricIndex),
-                .Tag = MetricIndex + 1,
-                .Width = 112,
-                .Height = 30,
-                .Margin = New Padding(0, 0, 8, 0)
-            }
-            NativeDashboardMetricButtons.Add(Button)
-            MetricButtons.Controls.Add(Button)
-            AddHandler Button.Click, AddressOf NativeDashboardMetricButtonClick
+            NativeDashboardMetricSelector.Properties.Items.Add(
+                New DevExpress.XtraEditors.Controls.RadioGroupItem(
+                    MetricIndex + 1,
+                    MetricCaptions(MetricIndex)))
         Next
+        MetricSelectorHost.Controls.Add(NativeDashboardMetricSelector)
         NativeDashboardBreachChart = New ChartControl With {
             .Dock = DockStyle.Fill,
             .BackColor = Color.White
@@ -3265,7 +3281,7 @@ Public Class StressTest
         For Index As Integer = 0 To 3
             Cards.Controls.Add(CreateNativeDashboardCard(CardCaptions(Index)), Index, 0)
         Next
-        CovenantPanel.Controls.Add(MetricButtons, 0, 0)
+        CovenantPanel.Controls.Add(MetricSelectorHost, 0, 0)
         CovenantPanel.Controls.Add(NativeDashboardBreachChart, 0, 1)
         CovenantPanel.Controls.Add(Cards, 0, 2)
         Detail.Controls.Add(DebtPanel, 0, 0)
@@ -3288,8 +3304,14 @@ Public Class StressTest
 
         AddHandler NativeDashboardScenario.SelectedIndexChanged,
             AddressOf NativeDashboardScenarioChanged
-        AddHandler NativeDashboardYearScroll.ValueChanged,
-            AddressOf NativeDashboardYearScrollChanged
+        AddHandler NativeDashboardFirstYear.EditValueChanged,
+            AddressOf NativeDashboardFirstYearChanged
+        AddHandler NativeDashboardSortMetric.SelectedIndexChanged,
+            AddressOf NativeDashboardSortMetricChanged
+        AddHandler NativeDashboardSortOrder.Toggled,
+            AddressOf NativeDashboardSortOrderChanged
+        AddHandler NativeDashboardMetricSelector.SelectedIndexChanged,
+            AddressOf NativeDashboardMetricChanged
         AddHandler NativeDashboardView.RowCellStyle,
             AddressOf NativeDashboardRowCellStyle
         AddHandler NativeDashboardView.CustomDrawCell,
@@ -5099,8 +5121,8 @@ Public Class StressTest
         Dim FirstYear As Integer = Math.Max(
             1,
             Convert.ToInt32(GetNumericValue(ControlSheet.Range("C6")(0, 0))))
-        NativeDashboardYearScroll.Maximum = MaximumStart
-        NativeDashboardYearScroll.Value =
+        NativeDashboardFirstYear.Properties.MaxValue = MaximumStart
+        NativeDashboardFirstYear.EditValue =
             Math.Min(MaximumStart, Math.Max(1, FirstYear))
 
         NativeDashboardData = New System.Data.DataTable
@@ -5265,53 +5287,42 @@ Public Class StressTest
 
     End Sub
 
-    Private Sub NativeDashboardYearScrollChanged(sender As Object, e As EventArgs)
+    Private Sub NativeDashboardFirstYearChanged(sender As Object, e As EventArgs)
 
         If LoadingNativeViews Then Return
         ApplyNativeDashboardControlChange(
             "C6",
-            NativeDashboardYearScroll.Value,
+            Convert.ToInt32(NativeDashboardFirstYear.Value),
             "Stress-test dashboard first displayed year updated")
 
     End Sub
 
-    Private Sub NativeDashboardSortButtonClick(sender As Object, e As EventArgs)
+    Private Sub NativeDashboardSortMetricChanged(sender As Object, e As EventArgs)
 
-        If LoadingNativeViews Then Return
-        Dim Button As DevExpress.XtraEditors.SimpleButton =
-            TryCast(sender, DevExpress.XtraEditors.SimpleButton)
-        If Button Is Nothing Then Return
+        If LoadingNativeViews OrElse NativeDashboardSortMetric.EditValue Is Nothing Then Return
         ApplyNativeDashboardControlChange(
             "C8",
-            Convert.ToInt32(Button.Tag),
+            Convert.ToInt32(NativeDashboardSortMetric.EditValue),
             "Stress-test dashboard sort metric updated")
 
     End Sub
 
-    Private Sub NativeDashboardSortOrderClick(sender As Object, e As EventArgs)
+    Private Sub NativeDashboardSortOrderChanged(sender As Object, e As EventArgs)
 
         If LoadingNativeViews Then Return
-        Dim ControlSheet As DevExpress.Spreadsheet.Worksheet =
-            ActiveWorkbook.Worksheets("OW - Covenant Calculation")
-        Dim CurrentValue As Integer = Math.Max(
-            1,
-            Convert.ToInt32(GetNumericValue(ControlSheet.Range("C9")(0, 0))))
         ApplyNativeDashboardControlChange(
             "C9",
-            If(CurrentValue = 1, 2, 1),
+            If(NativeDashboardSortOrder.IsOn, 1, 2),
             "Stress-test dashboard sort order updated")
 
     End Sub
 
-    Private Sub NativeDashboardMetricButtonClick(sender As Object, e As EventArgs)
+    Private Sub NativeDashboardMetricChanged(sender As Object, e As EventArgs)
 
-        If LoadingNativeViews Then Return
-        Dim Button As DevExpress.XtraEditors.SimpleButton =
-            TryCast(sender, DevExpress.XtraEditors.SimpleButton)
-        If Button Is Nothing Then Return
+        If LoadingNativeViews OrElse NativeDashboardMetricSelector.EditValue Is Nothing Then Return
         ApplyNativeDashboardControlChange(
             "C15",
-            Convert.ToInt32(Button.Tag),
+            Convert.ToInt32(NativeDashboardMetricSelector.EditValue),
             "Stress-test dashboard covenant graph updated")
 
     End Sub
@@ -5339,38 +5350,14 @@ Public Class StressTest
 
         Dim SelectedSort As Integer = Convert.ToInt32(
             GetNumericValue(ControlSheet.Range("C8")(0, 0)))
-        For Each Button As DevExpress.XtraEditors.SimpleButton In
-            NativeDashboardSortButtons
-            ApplyNativeDashboardButtonState(
-                Button,
-                Convert.ToInt32(Button.Tag) = SelectedSort)
-        Next
+        NativeDashboardSortMetric.EditValue = SelectedSort
         Dim SortOrder As Integer = Convert.ToInt32(
             GetNumericValue(ControlSheet.Range("C9")(0, 0)))
-        NativeDashboardSortOrder.Text =
-            If(SortOrder = 1, "Highest first", "Lowest first")
-        ApplyNativeDashboardButtonState(NativeDashboardSortOrder, True)
+        NativeDashboardSortOrder.IsOn = SortOrder = 1
 
         Dim SelectedMetric As Integer = Convert.ToInt32(
             GetNumericValue(ControlSheet.Range("C15")(0, 0)))
-        For Each Button As DevExpress.XtraEditors.SimpleButton In
-            NativeDashboardMetricButtons
-            ApplyNativeDashboardButtonState(
-                Button,
-                Convert.ToInt32(Button.Tag) = SelectedMetric)
-        Next
-
-    End Sub
-
-    Private Sub ApplyNativeDashboardButtonState(
-        Button As DevExpress.XtraEditors.SimpleButton,
-        Selected As Boolean)
-
-        Button.Appearance.BackColor =
-            If(Selected, AbovoBlue, Color.FromArgb(70, 70, 70))
-        Button.Appearance.ForeColor = Color.White
-        Button.Appearance.Options.UseBackColor = True
-        Button.Appearance.Options.UseForeColor = True
+        NativeDashboardMetricSelector.EditValue = SelectedMetric
 
     End Sub
 

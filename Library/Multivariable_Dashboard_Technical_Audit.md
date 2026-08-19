@@ -78,7 +78,7 @@ the functional contract; shape selection/recolouring is Excel presentation.
 No dashboard macro writes scenario result data directly. Scenario capture and
 dashboard presentation must therefore remain separate operations.
 
-## Tab #4 implementation (version 6.66)
+## Tab #4 implementation (version 6.67)
 
 The live `SpreadsheetControl` presentation introduced in version 6.65 was
 rejected because the Summit interface must reproduce workbook behaviour with
@@ -100,6 +100,12 @@ cells (`E6`, `C6`, `C8`, `C9`, and `C15`). Those changes pass through
 `ModelChangeManager`, invoke the established Stress Test calculation service,
 and then reload every control from the authoritative workbook. No scenario
 calculation or covenant rule is duplicated in the interface.
+
+Version 6.67 replaces the worksheet-style year scrollbar and repeated button
+strips with controls suited to the operation: an exact-year `SpinEdit`, a
+six-option sort `RadioGroup`, a sort-order `ToggleSwitch`, and a five-option
+covenant-chart `RadioGroup`. This is a presentation refinement only; the same
+linked workbook cells remain authoritative.
 
 The global Stress Test grid policy remains unchanged: sorting, filtering, and
 grouping are disabled, and editor buttons are shown only on the focused row.
