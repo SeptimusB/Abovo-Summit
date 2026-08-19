@@ -374,8 +374,12 @@
     <Compile Include="Interface\FFR\FFRForm.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Interface\FFR\FFRFrontSheetView.vb" />
-    <Compile Include="Interface\FFR\FFRWorkbookSheetView.vb" />
+    <Compile Include="Interface\FFR\FFRFrontSheetView.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Interface\FFR\FFRWorkbookSheetView.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Interface\User Interface\FormMainScreen.Designer.vb">
       <DependentUpon>FormMainScreen.vb</DependentUpon>
     </Compile>
