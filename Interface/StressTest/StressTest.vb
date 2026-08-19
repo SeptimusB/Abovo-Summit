@@ -204,6 +204,8 @@ Public Class StressTest
         PanelControlCovSel.Appearance.BackColor = Color.White
 
         WindowsUIButtonPanelStressNavigator.ForeColor = AbovoBlue
+        WindowsUIButtonPanelStressNavigator.ContentAlignment =
+            ContentAlignment.MiddleCenter
 
         ConfigureResponsiveFirstTab()
         AddHandlers()
@@ -2438,6 +2440,18 @@ Public Class StressTest
             ActiveWorkbook.Worksheets("Stress Sensitivity List").Cells(
                 HeaderRow, SourceColumn)
         ApplySensitivityCellAppearance(e.Appearance, HeaderCell)
+        'Workbook year headings resolve to a very pale foreground. Use a stable
+        'high-contrast presentation for column headers; data-cell colours remain
+        'entirely workbook-driven.
+        e.Appearance.BackColor = Color.FromArgb(235, 235, 235)
+        e.Appearance.BackColor2 = e.Appearance.BackColor
+        e.Appearance.Options.UseBackColor = True
+        e.Appearance.ForeColor = AbovoBlue
+        e.Appearance.Options.UseForeColor = True
+        e.Appearance.Font = New Font(
+            e.Appearance.Font, e.Appearance.Font.Style Or FontStyle.Bold)
+        e.Appearance.Options.UseFont = True
+        e.Appearance.TextOptions.HAlignment = HorzAlignment.Center
         e.DefaultDraw()
         e.Handled = True
 
