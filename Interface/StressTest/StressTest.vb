@@ -2189,6 +2189,9 @@ Public Class StressTest
         NativeSensitivityView.OptionsView.ShowGroupPanel = False
         NativeSensitivityView.OptionsView.ColumnAutoWidth = False
         NativeSensitivityView.OptionsView.ShowBands = True
+        NativeSensitivityView.Appearance.HeaderPanel.TextOptions.WordWrap =
+            WordWrap.Wrap
+        NativeSensitivityView.ColumnPanelRowHeight = 46
         NativeSensitivityView.OptionsSelection.MultiSelect = True
         NativeSensitivityView.OptionsSelection.MultiSelectMode =
             DevExpress.XtraGrid.Views.Grid.GridMultiSelectMode.RowSelect
@@ -2328,7 +2331,7 @@ Public Class StressTest
             TryCast(NativeSensitivityView.Columns("C" & SourceColumn.ToString()),
                     BandedGridColumn)
         If Column Is Nothing Then Return
-        Column.Caption = Caption.Replace(Environment.NewLine, " ")
+        Column.Caption = Caption.Trim()
         Column.Tag = SourceColumn
         Column.Width = Width
         Column.MinWidth = Math.Min(Width, 50)
@@ -2338,6 +2341,7 @@ Public Class StressTest
             Column.AppearanceCell.TextOptions.HAlignment = HorzAlignment.Far
             Column.AppearanceHeader.TextOptions.HAlignment = HorzAlignment.Center
         End If
+        Column.AppearanceHeader.TextOptions.WordWrap = WordWrap.Wrap
         Band.Columns.Add(Column)
 
     End Sub
@@ -2452,6 +2456,7 @@ Public Class StressTest
             e.Appearance.Font, e.Appearance.Font.Style Or FontStyle.Bold)
         e.Appearance.Options.UseFont = True
         e.Appearance.TextOptions.HAlignment = HorzAlignment.Center
+        e.Appearance.TextOptions.WordWrap = WordWrap.Wrap
         e.DefaultDraw()
         e.Handled = True
 
