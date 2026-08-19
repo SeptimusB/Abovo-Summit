@@ -91,7 +91,7 @@ Public Class StressTest
     Private NativeTargetsGrid As GridControl
     Private NativeTargetsView As BandedGridView
     Private NativeTargetsData As System.Data.DataTable
-    Private ReadOnly NativeTargetHeaderEditors As New List(Of NativeTargetHeaderEditorState)
+    Private ReadOnly NativeTargetRowEditors As New Dictionary(Of Integer, RepositoryItem)
     Private NativeDashboardScenario As DevExpress.XtraEditors.ComboBoxEdit
     Private NativeDashboardCharts As TableLayoutPanel
     Private NativeDashboardSummary As GridControl
@@ -135,16 +135,6 @@ Public Class StressTest
         Public CopySourceLabelBounds As Rectangle = Rectangle.Empty
         Public CopySourceBounds As Rectangle = Rectangle.Empty
         Public GoButtonBounds As Rectangle = Rectangle.Empty
-    End Class
-
-    Private Class NativeTargetHeaderTag
-        Public RowIndex As Integer
-        Public ColumnIndex As Integer
-    End Class
-
-    Private Class NativeTargetHeaderEditorState
-        Public Helper As Abovo.ColumnInplaceEditorHelper
-        Public Editor As RepositoryItem
     End Class
 
     Private ModelID As Integer
@@ -2719,16 +2709,18 @@ Public Class StressTest
         NativeTargetsGrid.MainView = NativeTargetsView
         NativeTargetsGrid.ViewCollection.Add(NativeTargetsView)
         NativeTargetsView.OptionsView.ShowBands = True
+        NativeTargetsView.OptionsView.ShowColumnHeaders = False
         NativeTargetsView.OptionsView.ShowGroupPanel = False
         NativeTargetsView.OptionsView.ShowAutoFilterRow = False
         NativeTargetsView.OptionsView.ColumnAutoWidth = False
         NativeTargetsView.OptionsView.ColumnHeaderAutoHeight =
             DevExpress.Utils.DefaultBoolean.False
-        'The workbook uses three distinct header rows here: group, metric/unit,
-        'and the row-8 editor. Give the nested metric band enough room to keep
-        'its wrapped label and unit clear of the editor row below it.
-        NativeTargetsView.ColumnPanelRowHeight = 32
+        'Rows 6/7/9 form the two band levels; workbook row 8 is represented by
+        'the first real grid row so its text and list editors remain interactive.
         NativeTargetsView.BandPanelRowHeight = 40
+        NativeTargetsView.RowHeight = 30
+        NativeTargetsView.OptionsView.ShowButtonMode =
+            DevExpress.XtraGrid.Views.Base.ShowButtonModeEnum.ShowAlways
         NativeTargetsView.OptionsBehavior.EditorShowMode =
             DevExpress.Utils.EditorShowMode.MouseDownFocused
         NativeTargetsView.OptionsCustomization.AllowFilter = False
@@ -2763,6 +2755,7 @@ Public Class StressTest
                 ActiveWorkbook.Worksheets("Multivariable Planner")
             Dim Data As New System.Data.DataTable
             Data.Columns.Add("SourceRow", GetType(Integer))
+            Data.Columns.Add("RowKind", GetType(String))
             Data.Columns.Add("Year", GetType(Object))
             For Offset As Integer = 0 To 4
                 Data.Columns.Add("Target" & Offset.ToString(), GetType(Object))
@@ -2772,9 +2765,11 @@ Public Class StressTest
                 Data.Columns.Add("Golden" & Offset.ToString(), GetType(Object))
             Next
 
-            For RowIndex As Integer = 9 To 47
+            For Each RowIndex As Integer In
+                Enumerable.Repeat(7, 1).Concat(Enumerable.Range(9, 39))
                 Dim Row As System.Data.DataRow = Data.NewRow()
                 Row("SourceRow") = RowIndex
+                Row("RowKind") = If(RowIndex = 7, "Editor", "Data")
                 Row("Year") = CellToObject(Sheet.Cells(RowIndex, 59))
                 For Offset As Integer = 0 To 4
                     Row("Target" & Offset.ToString()) =
@@ -2785,6 +2780,7 @@ Public Class StressTest
                 Row("Spacer") = DBNull.Value
                 Data.Rows.Add(Row)
             Next
+            Data.AcceptChanges()
 
             NativeTargetsData = Data
             NativeTargetsGrid.DataSource = Data
@@ -2799,10 +2795,11 @@ Public Class StressTest
     Private Sub ConfigureNativeTargetColumns(
         Sheet As DevExpress.Spreadsheet.Worksheet)
 
-        ResetNativeTargetHeaderEditors()
+        ResetNativeTargetRowEditors()
         NativeTargetsView.PopulateColumns()
         NativeTargetsView.Bands.Clear()
         NativeTargetsView.Columns("SourceRow").Visible = False
+        NativeTargetsView.Columns("RowKind").Visible = False
 
         Dim YearColumn As BandedGridColumn =
             TryCast(NativeTargetsView.Columns("Year"), BandedGridColumn)
@@ -2869,7 +2866,9 @@ Public Class StressTest
             TryCast(NativeTargetsView.Columns(FieldName), BandedGridColumn)
         Column.Caption = String.Empty
         Column.Width = 126
-        Column.OptionsColumn.AllowEdit = IsGoldenRule
+        'Row 8 is editable on both sides; the locked Target result rows are
+        'rejected individually by NativeTargetsShowingEditor.
+        Column.OptionsColumn.AllowEdit = True
         Column.OptionsColumn.AllowSort = DevExpress.Utils.DefaultBoolean.False
         Column.OptionsFilter.AllowFilter = False
 
@@ -2907,78 +2906,17 @@ Public Class StressTest
         ConfigureNativePlannerBandEditorAppearance(Editor, SourceCell)
         NativeTargetsGrid.RepositoryItems.Add(Editor)
 
-        Dim Helper As New Abovo.ColumnInplaceEditorHelper(Column, Editor) With {
-            .EditValue = SourceCell.DisplayText,
-            .Tag = New NativeTargetHeaderTag With {
-                .RowIndex = 7,
-                .ColumnIndex = SourceColumn
-            },
-            .ForceItemAppearance = True
-        }
-        AddHandler Helper.EditValueCommitted,
-            AddressOf NativeTargetHeaderEditorCommitted
-        NativeTargetHeaderEditors.Add(
-            New NativeTargetHeaderEditorState With {
-                .Helper = Helper,
-                .Editor = Editor
-            })
+        NativeTargetRowEditors(SourceColumn) = Editor
 
     End Sub
 
-    Private Sub ResetNativeTargetHeaderEditors()
+    Private Sub ResetNativeTargetRowEditors()
 
-        For Each State As NativeTargetHeaderEditorState In
-            NativeTargetHeaderEditors
-            RemoveHandler State.Helper.EditValueCommitted,
-                AddressOf NativeTargetHeaderEditorCommitted
-            State.Helper.DetachForDisposal()
-            NativeTargetsGrid.RepositoryItems.Remove(State.Editor)
-            State.Editor.Dispose()
+        For Each Editor As RepositoryItem In NativeTargetRowEditors.Values
+            NativeTargetsGrid.RepositoryItems.Remove(Editor)
+            Editor.Dispose()
         Next
-        NativeTargetHeaderEditors.Clear()
-
-    End Sub
-
-    Private Sub NativeTargetHeaderEditorCommitted(
-        sender As Object,
-        e As EventArgs)
-
-        If LoadingNativeViews Then Return
-        Dim Helper As Abovo.ColumnInplaceEditorHelper =
-            TryCast(sender, Abovo.ColumnInplaceEditorHelper)
-        Dim Tag As NativeTargetHeaderTag =
-            If(Helper Is Nothing, Nothing,
-               TryCast(Helper.Tag, NativeTargetHeaderTag))
-        If Tag Is Nothing Then Return
-
-        Dim TargetRow As Integer = Tag.RowIndex
-        Dim TargetColumn As Integer = Tag.ColumnIndex
-        Dim ChangedValue As Object =
-            NormalizeStressTestEditValue(Helper.EditValue)
-        BeginInvoke(
-            New MethodInvoker(
-                Sub()
-                    CommitNativeTargetHeaderEditor(
-                        TargetRow, TargetColumn, ChangedValue)
-                End Sub))
-
-    End Sub
-
-    Private Sub CommitNativeTargetHeaderEditor(
-        TargetRow As Integer,
-        TargetColumn As Integer,
-        ChangedValue As Object)
-
-        Dim Target As DevExpress.Spreadsheet.Cell =
-            ActiveWorkbook.Worksheets("Multivariable Planner").
-                Cells(TargetRow, TargetColumn)
-        ProcessStressTestCellChange(
-            Target,
-            ChangedValue,
-            "S",
-            "Stress-test covenant header setting updated",
-            True)
-        RefreshNativeTargets()
+        NativeTargetRowEditors.Clear()
 
     End Sub
 
@@ -3043,6 +2981,14 @@ Public Class StressTest
         If Not TryGetNativeTargetSourceCell(
                 e.RowHandle, e.Column, SourceCell) OrElse
            Not IsWorkbookLinkedGridCellEditable(SourceCell) Then Return
+        If SourceCell.RowIndex = 7 Then
+            Dim SourceColumn As Integer
+            If TryGetNativeTargetSourceColumn(e.Column, SourceColumn) AndAlso
+               NativeTargetRowEditors.ContainsKey(SourceColumn) Then
+                e.RepositoryItem = NativeTargetRowEditors(SourceColumn)
+            End If
+            Return
+        End If
         If SourceCell.NumberFormat.Contains("%") Then
             e.RepositoryItem = StandardPercentSpinEdit
         Else
@@ -3071,7 +3017,8 @@ Public Class StressTest
 
         Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
         If TryGetNativeTargetSourceCell(e.RowHandle, e.Column, SourceCell) Then
-            ApplyWorkbookCellAppearance(e.Appearance, SourceCell)
+            ApplyWorkbookResolvedCellAppearance(e.Appearance, SourceCell)
+            e.DisplayText = SourceCell.DisplayText
         End If
         e.DefaultDraw()
         e.Handled = True
@@ -3091,13 +3038,17 @@ Public Class StressTest
             Return
         End If
 
+        Dim IsHeaderEditor As Boolean = SourceCell.RowIndex = 7
         Dim DataFormat As String =
-            If(SourceCell.NumberFormat.Contains("%"), "P", "N")
+            If(IsHeaderEditor, "S",
+               If(SourceCell.NumberFormat.Contains("%"), "P", "N"))
         ProcessStressTestCellChange(
             SourceCell,
             NormalizeStressTestEditValue(e.Value),
             DataFormat,
-            "Stress-test golden rule updated",
+            If(IsHeaderEditor,
+               "Stress-test covenant header setting updated",
+               "Stress-test golden rule updated"),
             True)
         RefreshNativeTargets()
 
@@ -4390,6 +4341,27 @@ Public Class StressTest
         'DataInterfaceTemplate stores the workbook background separately from
         'its pattern-based rule lock. Keep those responsibilities separate here.
         Dim Background As Color = SourceCell.Fill.BackgroundColor
+        If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
+
+        Dim Foreground As Color = SourceCell.Font.Color
+        If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = AbovoBlue
+
+        Appearance.BackColor = Background
+        Appearance.ForeColor = Foreground
+        Appearance.Options.UseBackColor = True
+        Appearance.Options.UseForeColor = True
+
+    End Sub
+
+    Private Sub ApplyWorkbookResolvedCellAppearance(
+        Appearance As DevExpress.Utils.AppearanceObject,
+        SourceCell As DevExpress.Spreadsheet.Cell)
+
+        If SourceCell Is Nothing Then Return
+
+        'This range is a direct visual reproduction rather than a DIT rule
+        'surface, so use the resolved fill (including conditional formatting).
+        Dim Background As Color = SourceCell.FillColor
         If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
 
         Dim Foreground As Color = SourceCell.Font.Color
