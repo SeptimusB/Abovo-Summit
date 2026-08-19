@@ -82,6 +82,11 @@ Public Class StressTest
     Private NativePlannerView As BandedGridView
     Private NativePlannerData As System.Data.DataTable
     Private NativeYearEditor As RepositoryItemComboBox
+    Private ReadOnly NativePlannerBandEditors As New List(Of NativePlannerBandEditorState)
+    Private NativePlannerBandActiveEditor As DevExpress.XtraEditors.BaseEdit
+    Private NativePlannerBandActiveState As NativePlannerBandEditorState
+    Private NativePlannerBandActiveKind As NativePlannerBandEditorKind
+    Private ClosingNativePlannerBandEditor As Boolean
     Private NativeDashboardScenario As DevExpress.XtraEditors.ComboBoxEdit
     Private NativeDashboardCharts As TableLayoutPanel
     Private NativeDashboardSummary As GridControl
@@ -94,6 +99,22 @@ Public Class StressTest
     Private NativeComparativeSummaryA As GridControl
     Private NativeComparativeSummaryB As GridControl
     Private LoadingNativeViews As Boolean
+
+    Private Enum NativePlannerBandEditorKind
+        ImportMode
+        ScenarioName
+    End Enum
+
+    Private Class NativePlannerBandEditorState
+        Public Band As GridBand
+        Public ScenarioIndex As Integer
+        Public ImportModeEditor As RepositoryItemComboBox
+        Public ScenarioNameEditor As RepositoryItemTextEdit
+        Public ImportModeValue As Object
+        Public ScenarioNameValue As Object
+        Public ImportModeBounds As Rectangle = Rectangle.Empty
+        Public ScenarioNameBounds As Rectangle = Rectangle.Empty
+    End Class
 
     Private ModelID As Integer
     Private ExportPackageCount As Integer = 0
@@ -2303,7 +2324,6 @@ Public Class StressTest
         NativeSensitivityView.Bands.Clear()
 
         Dim SummaryBand As New GridBand With {.Caption = "Summary"}
-        SummaryBand.Fixed = DevExpress.XtraGrid.Columns.FixedStyle.Left
         NativeSensitivityView.Bands.Add(SummaryBand)
         ApplyWorkbookCellAppearance(SummaryBand.AppearanceHeader, Sheet.Cells(4, 0))
         For ColumnIndex As Integer = 0 To 8
@@ -2613,9 +2633,13 @@ Public Class StressTest
         AddHandler NativePlannerView.CellValueChanged, AddressOf NativePlannerCellValueChanged
         AddHandler NativePlannerView.CustomRowCellEdit, AddressOf NativePlannerCustomRowCellEdit
         AddHandler NativePlannerView.CustomDrawCell, AddressOf NativePlannerCustomDrawCell
+        AddHandler NativePlannerView.CustomDrawBandHeader,
+            AddressOf NativePlannerCustomDrawBandHeader
         AddHandler NativePlannerView.ShowingEditor, AddressOf NativePlannerShowingEditor
         AddHandler NativePlannerView.CustomColumnDisplayText, AddressOf NativePlannerCustomColumnDisplayText
         AddHandler NativePlannerView.FocusedColumnChanged, AddressOf NativePlannerFocusedColumnChanged
+        AddHandler NativePlannerView.MouseDown, AddressOf NativePlannerBandMouseDown
+        AddHandler NativePlannerView.Layout, AddressOf NativePlannerBandLayout
         AddHandler CalculateButton.Click, Sub() RecalculateAndRefreshNativeViews()
         AddHandler GenerateButton.Click, AddressOf GenerateMultivariableDashboard_Click
         AddHandler ClearButton.Click, AddressOf ClearNativeScenario_Click
@@ -2934,6 +2958,7 @@ Public Class StressTest
 
         NativePlannerView.PopulateColumns()
         If NativePlannerView.Columns.Count = 0 Then Return
+        ResetNativePlannerBandEditors()
         NativePlannerView.Bands.Clear()
         NativePlannerView.Columns("SourceRow").Visible = False
         NativePlannerView.Columns("Section").OptionsColumn.AllowEdit = False
@@ -2965,8 +2990,7 @@ Public Class StressTest
             If String.IsNullOrWhiteSpace(ImportMode) Then ImportMode = "Use assumptions below"
 
             Dim ScenarioBand As New GridBand With {
-                .Caption = "Test " & ScenarioIndex.ToString() & vbCrLf &
-                           ScenarioName & vbCrLf & ImportMode
+                .Caption = "Test " & ScenarioIndex.ToString()
             }
             ScenarioBand.AppearanceHeader.TextOptions.HAlignment = HorzAlignment.Center
             ScenarioBand.AppearanceHeader.TextOptions.WordWrap = WordWrap.Wrap
@@ -3000,9 +3024,408 @@ Public Class StressTest
             Next
             NativePlannerView.Columns(
                 PlannerScenarioFormatFieldName(ScenarioIndex)).Visible = False
+            AddNativePlannerBandEditors(
+                ScenarioBand, Sheet, ScenarioIndex, ImportMode, ScenarioName)
         Next
-        NativePlannerView.BandPanelRowHeight = 58
+        NativePlannerView.BandPanelRowHeight = 86
         NativePlannerView.ExpandAllGroups()
+
+    End Sub
+
+    Private Sub AddNativePlannerBandEditors(
+        Band As GridBand,
+        Sheet As DevExpress.Spreadsheet.Worksheet,
+        ScenarioIndex As Integer,
+        ImportMode As String,
+        ScenarioName As String)
+
+        Dim StartColumn As Integer = ScenarioStartColumn(ScenarioIndex)
+        Dim ImportCell As DevExpress.Spreadsheet.Cell =
+            Sheet.Cells(6, StartColumn)
+        Dim NameCell As DevExpress.Spreadsheet.Cell =
+            Sheet.Cells(7, StartColumn)
+
+        Dim ImportEditor As New RepositoryItemComboBox
+        ImportEditor.TextEditStyle =
+            DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
+        For Each Item As Object In WorkbookValidationListItems(ImportCell)
+            ImportEditor.Items.Add(Item)
+        Next
+        If ImportEditor.Items.Count = 0 AndAlso
+           Not String.IsNullOrWhiteSpace(ImportMode) Then
+            ImportEditor.Items.Add(ImportMode)
+        End If
+        ConfigureNativePlannerBandEditorAppearance(
+            ImportEditor, ImportCell)
+
+        Dim NameEditor As New RepositoryItemTextEdit
+        ConfigureNativePlannerBandEditorAppearance(
+            NameEditor, NameCell)
+
+        NativePlannerBandEditors.Add(
+            New NativePlannerBandEditorState With {
+                .Band = Band,
+                .ScenarioIndex = ScenarioIndex,
+                .ImportModeEditor = ImportEditor,
+                .ScenarioNameEditor = NameEditor,
+                .ImportModeValue = ImportMode,
+                .ScenarioNameValue = ScenarioName
+            })
+
+    End Sub
+
+    Private Function WorkbookValidationListItems(
+        SourceCell As DevExpress.Spreadsheet.Cell) As List(Of Object)
+
+        Dim Result As New List(Of Object)
+        If SourceCell Is Nothing Then Return Result
+
+        Dim Validation As DevExpress.Spreadsheet.DataValidation =
+            SourceCell.Worksheet.DataValidations.GetDataValidation(SourceCell)
+        If Validation Is Nothing Then Return Result
+
+        Dim Criteria As DevExpress.Spreadsheet.ValueObject =
+            Validation.Criteria
+        If Criteria Is Nothing Then Return Result
+
+        If Criteria.IsText Then
+            For Each Item As String In Criteria.TextValue.Split(
+                    New Char() {","c, ";"c},
+                    StringSplitOptions.RemoveEmptyEntries)
+                Dim CleanItem As String = Item.Trim()
+                If Not String.IsNullOrWhiteSpace(CleanItem) Then
+                    Result.Add(CleanItem)
+                End If
+            Next
+        ElseIf Criteria.IsRange Then
+            Dim ValidationRange As DevExpress.Spreadsheet.CellRange =
+                Criteria.RangeValue
+            For RowIndex As Integer =
+                    ValidationRange.TopRowIndex To ValidationRange.BottomRowIndex
+                For ColumnIndex As Integer =
+                        ValidationRange.LeftColumnIndex To ValidationRange.RightColumnIndex
+                    Dim ItemText As String =
+                        ValidationRange.Worksheet.Cells(
+                            RowIndex, ColumnIndex).DisplayText.Trim()
+                    If Not String.IsNullOrWhiteSpace(ItemText) Then
+                        Result.Add(ItemText)
+                    End If
+                Next
+            Next
+        End If
+
+        Return Result
+
+    End Function
+
+    Private Sub ConfigureNativePlannerBandEditorAppearance(
+        Editor As RepositoryItem,
+        SourceCell As DevExpress.Spreadsheet.Cell)
+
+        ApplyWorkbookCellAppearance(Editor.Appearance, SourceCell)
+        Editor.Appearance.Options.UseTextOptions = True
+        Editor.Appearance.TextOptions.HAlignment = HorzAlignment.Center
+        Editor.Appearance.TextOptions.VAlignment = VertAlignment.Center
+        Editor.AppearanceDisabled.Assign(Editor.Appearance)
+        Editor.AppearanceFocused.Assign(Editor.Appearance)
+        Editor.AppearanceReadOnly.Assign(Editor.Appearance)
+
+    End Sub
+
+    Private Sub NativePlannerCustomDrawBandHeader(
+        sender As Object,
+        e As BandHeaderCustomDrawEventArgs)
+
+        If e.Band Is Nothing Then Return
+        Dim State As NativePlannerBandEditorState =
+            NativePlannerBandEditors.FirstOrDefault(
+                Function(Item) Item.Band Is e.Band)
+        If State Is Nothing Then Return
+
+        Dim SavedCaption As String = e.Info.Caption
+        e.Info.Caption = String.Empty
+        e.DefaultDraw()
+        e.Info.Caption = SavedCaption
+
+        Dim CaptionBounds As New Rectangle(
+            e.Bounds.Left + 4, e.Bounds.Top + 2,
+            Math.Max(1, e.Bounds.Width - 8), 20)
+        Using CaptionFormat As New StringFormat With {
+            .Alignment = StringAlignment.Center,
+            .LineAlignment = StringAlignment.Center
+        }
+            e.Cache.DrawString(
+                "Test " & State.ScenarioIndex.ToString(),
+                e.Appearance.GetFont(),
+                e.Appearance.GetForeBrush(e.Cache),
+                CaptionBounds,
+                CaptionFormat)
+        End Using
+
+        CalculateNativePlannerBandEditorBounds(State, e.Bounds)
+        DrawEditorHelper.DrawEdit(
+            e.Graphics, State.ImportModeEditor,
+            State.ImportModeBounds, State.ImportModeValue)
+        DrawEditorHelper.DrawEdit(
+            e.Graphics, State.ScenarioNameEditor,
+            State.ScenarioNameBounds, State.ScenarioNameValue)
+        e.Handled = True
+
+    End Sub
+
+    Private Sub CalculateNativePlannerBandEditorBounds(
+        State As NativePlannerBandEditorState,
+        BandBounds As Rectangle)
+
+        Const HorizontalPadding As Integer = 5
+        Const CaptionHeight As Integer = 22
+        Const EditorGap As Integer = 3
+        Const BottomPadding As Integer = 4
+
+        Dim AvailableHeight As Integer =
+            Math.Max(
+                44,
+                BandBounds.Height - CaptionHeight - EditorGap - BottomPadding)
+        Dim EditorHeight As Integer =
+            Math.Max(22, (AvailableHeight - EditorGap) \ 2)
+        Dim EditorWidth As Integer =
+            Math.Max(1, BandBounds.Width - (2 * HorizontalPadding))
+        Dim FirstTop As Integer = BandBounds.Top + CaptionHeight
+
+        State.ImportModeBounds = New Rectangle(
+            BandBounds.Left + HorizontalPadding,
+            FirstTop,
+            EditorWidth,
+            EditorHeight)
+        State.ScenarioNameBounds = New Rectangle(
+            BandBounds.Left + HorizontalPadding,
+            FirstTop + EditorHeight + EditorGap,
+            EditorWidth,
+            EditorHeight)
+
+    End Sub
+
+    Private Sub NativePlannerBandMouseDown(
+        sender As Object,
+        e As MouseEventArgs)
+
+        CloseNativePlannerBandEditor(True)
+
+        For Each State As NativePlannerBandEditorState In
+            NativePlannerBandEditors
+            If State.ImportModeBounds.Contains(e.Location) Then
+                ShowNativePlannerBandEditor(
+                    State,
+                    NativePlannerBandEditorKind.ImportMode,
+                    State.ImportModeBounds)
+                DXMouseEventArgs.GetMouseArgs(e).Handled = True
+                Return
+            End If
+            If State.ScenarioNameBounds.Contains(e.Location) Then
+                ShowNativePlannerBandEditor(
+                    State,
+                    NativePlannerBandEditorKind.ScenarioName,
+                    State.ScenarioNameBounds)
+                DXMouseEventArgs.GetMouseArgs(e).Handled = True
+                Return
+            End If
+        Next
+
+    End Sub
+
+    Private Sub ShowNativePlannerBandEditor(
+        State As NativePlannerBandEditorState,
+        Kind As NativePlannerBandEditorKind,
+        Bounds As Rectangle)
+
+        Dim Template As RepositoryItem =
+            If(Kind = NativePlannerBandEditorKind.ImportMode,
+               DirectCast(State.ImportModeEditor, RepositoryItem),
+               DirectCast(State.ScenarioNameEditor, RepositoryItem))
+        Dim InitialValue As Object =
+            If(Kind = NativePlannerBandEditorKind.ImportMode,
+               State.ImportModeValue,
+               State.ScenarioNameValue)
+
+        NativePlannerBandActiveState = State
+        NativePlannerBandActiveKind = Kind
+        NativePlannerBandActiveEditor = Template.CreateEditor()
+        NativePlannerBandActiveEditor.Properties.LockEvents()
+        NativePlannerBandActiveEditor.Properties.Assign(Template)
+        NativePlannerBandActiveEditor.Properties.AutoHeight = False
+        NativePlannerBandActiveEditor.Parent = NativePlannerGrid
+        NativePlannerBandActiveEditor.Bounds = Bounds
+        NativePlannerBandActiveEditor.CreateControl()
+        NativePlannerBandActiveEditor.EditValue = InitialValue
+        NativePlannerBandActiveEditor.BringToFront()
+        NativePlannerBandActiveEditor.Properties.UnLockEvents()
+
+        AddHandler NativePlannerBandActiveEditor.Leave,
+            AddressOf NativePlannerBandEditorLeave
+        AddHandler NativePlannerBandActiveEditor.KeyDown,
+            AddressOf NativePlannerBandEditorKeyDown
+        If Kind = NativePlannerBandEditorKind.ImportMode Then
+            AddHandler NativePlannerBandActiveEditor.EditValueChanged,
+                AddressOf NativePlannerBandImportModeChanged
+        End If
+
+        NativePlannerBandActiveEditor.Focus()
+        Dim ComboEditor As DevExpress.XtraEditors.ComboBoxEdit =
+            TryCast(NativePlannerBandActiveEditor,
+                    DevExpress.XtraEditors.ComboBoxEdit)
+        If ComboEditor IsNot Nothing Then ComboEditor.ShowPopup()
+
+    End Sub
+
+    Private Sub NativePlannerBandImportModeChanged(
+        sender As Object,
+        e As EventArgs)
+
+        Dim ChangedEditor As DevExpress.XtraEditors.BaseEdit =
+            TryCast(sender, DevExpress.XtraEditors.BaseEdit)
+        If ChangedEditor Is Nothing OrElse
+           Not ReferenceEquals(ChangedEditor, NativePlannerBandActiveEditor) Then
+            Return
+        End If
+
+        BeginInvoke(
+            New MethodInvoker(
+                Sub()
+                    If ReferenceEquals(
+                            ChangedEditor,
+                            NativePlannerBandActiveEditor) Then
+                        CloseNativePlannerBandEditor(True)
+                    End If
+                End Sub))
+
+    End Sub
+
+    Private Sub NativePlannerBandEditorLeave(
+        sender As Object,
+        e As EventArgs)
+
+        CloseNativePlannerBandEditor(True)
+
+    End Sub
+
+    Private Sub NativePlannerBandEditorKeyDown(
+        sender As Object,
+        e As KeyEventArgs)
+
+        If e.KeyCode = Keys.Enter Then
+            e.Handled = True
+            e.SuppressKeyPress = True
+            CloseNativePlannerBandEditor(True)
+        ElseIf e.KeyCode = Keys.Escape Then
+            e.Handled = True
+            e.SuppressKeyPress = True
+            CloseNativePlannerBandEditor(False)
+        End If
+
+    End Sub
+
+    Private Sub NativePlannerBandLayout(
+        sender As Object,
+        e As EventArgs)
+
+        CloseNativePlannerBandEditor(True)
+        For Each State As NativePlannerBandEditorState In
+            NativePlannerBandEditors
+            State.ImportModeBounds = Rectangle.Empty
+            State.ScenarioNameBounds = Rectangle.Empty
+        Next
+
+    End Sub
+
+    Private Sub CloseNativePlannerBandEditor(CommitValue As Boolean)
+
+        If ClosingNativePlannerBandEditor OrElse
+           NativePlannerBandActiveEditor Is Nothing Then Return
+
+        ClosingNativePlannerBandEditor = True
+        Try
+            Dim Editor As DevExpress.XtraEditors.BaseEdit =
+                NativePlannerBandActiveEditor
+            Dim State As NativePlannerBandEditorState =
+                NativePlannerBandActiveState
+            Dim Kind As NativePlannerBandEditorKind =
+                NativePlannerBandActiveKind
+            Dim ChangedValue As Object = Editor.EditValue
+            Dim OriginalValue As Object =
+                If(Kind = NativePlannerBandEditorKind.ImportMode,
+                   State.ImportModeValue,
+                   State.ScenarioNameValue)
+
+            RemoveHandler Editor.Leave,
+                AddressOf NativePlannerBandEditorLeave
+            RemoveHandler Editor.KeyDown,
+                AddressOf NativePlannerBandEditorKeyDown
+            RemoveHandler Editor.EditValueChanged,
+                AddressOf NativePlannerBandImportModeChanged
+
+            NativePlannerBandActiveEditor = Nothing
+            NativePlannerBandActiveState = Nothing
+            Editor.Dispose()
+
+            If CommitValue AndAlso
+               Not String.Equals(
+                   Convert.ToString(ChangedValue),
+                   Convert.ToString(OriginalValue),
+                   StringComparison.Ordinal) Then
+                CommitNativePlannerBandEditorValue(
+                    State, Kind, ChangedValue)
+            End If
+        Finally
+            ClosingNativePlannerBandEditor = False
+        End Try
+
+    End Sub
+
+    Private Sub CommitNativePlannerBandEditorValue(
+        State As NativePlannerBandEditorState,
+        Kind As NativePlannerBandEditorKind,
+        ChangedValue As Object)
+
+        If State Is Nothing Then Return
+        Dim Sheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("Multivariable Planner")
+        Dim TargetRow As Integer =
+            If(Kind = NativePlannerBandEditorKind.ImportMode, 6, 7)
+        Dim Description As String =
+            If(Kind = NativePlannerBandEditorKind.ImportMode,
+               "Stress-test scenario import mode updated",
+               "Stress-test scenario name updated")
+        Dim Target As DevExpress.Spreadsheet.Cell =
+            Sheet.Cells(
+                TargetRow,
+                ScenarioStartColumn(State.ScenarioIndex))
+
+        ProcessStressTestCellChange(
+            Target,
+            NormalizeStressTestEditValue(ChangedValue),
+            "S",
+            Description)
+
+        LoadingNativeViews = True
+        Try
+            NativePlannerScenario.SelectedIndex =
+                State.ScenarioIndex - 1
+        Finally
+            LoadingNativeViews = False
+        End Try
+        RefreshNativePlanner()
+
+    End Sub
+
+    Private Sub ResetNativePlannerBandEditors()
+
+        CloseNativePlannerBandEditor(False)
+        For Each State As NativePlannerBandEditorState In
+            NativePlannerBandEditors
+            State.ImportModeEditor.Dispose()
+            State.ScenarioNameEditor.Dispose()
+        Next
+        NativePlannerBandEditors.Clear()
 
     End Sub
 
