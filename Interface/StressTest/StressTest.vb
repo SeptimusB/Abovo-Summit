@@ -103,17 +103,33 @@ Public Class StressTest
     Private Enum NativePlannerBandEditorKind
         ImportMode
         ScenarioName
+        CopySource
     End Enum
+
+    Private Class NativePlannerCopySource
+        Public ScenarioIndex As Integer
+        Public ScenarioName As String
+
+        Public Overrides Function ToString() As String
+            Return "Test " & ScenarioIndex.ToString() & " - " & ScenarioName
+        End Function
+    End Class
 
     Private Class NativePlannerBandEditorState
         Public Band As GridBand
         Public ScenarioIndex As Integer
         Public ImportModeEditor As RepositoryItemComboBox
         Public ScenarioNameEditor As RepositoryItemTextEdit
+        Public CopySourceEditor As RepositoryItemComboBox
+        Public GoButtonEditor As RepositoryItemButtonEdit
         Public ImportModeValue As Object
         Public ScenarioNameValue As Object
+        Public CopySourceValue As NativePlannerCopySource
         Public ImportModeBounds As Rectangle = Rectangle.Empty
         Public ScenarioNameBounds As Rectangle = Rectangle.Empty
+        Public CopySourceLabelBounds As Rectangle = Rectangle.Empty
+        Public CopySourceBounds As Rectangle = Rectangle.Empty
+        Public GoButtonBounds As Rectangle = Rectangle.Empty
     End Class
 
     Private ModelID As Integer
@@ -2108,6 +2124,31 @@ Public Class StressTest
 
     End Function
 
+    Private Sub DisableStressTestGridFilteringAndSorting()
+
+        For Each Grid As GridControl In FindControls(Of GridControl)(Me)
+            Dim View As GridView = TryCast(Grid.MainView, GridView)
+            If View Is Nothing Then Continue For
+
+            View.OptionsCustomization.AllowFilter = False
+            View.OptionsCustomization.AllowSort = False
+            View.OptionsCustomization.AllowGroup = False
+            View.OptionsMenu.EnableColumnMenu = False
+            View.OptionsView.ShowAutoFilterRow = False
+            View.OptionsView.ShowFilterPanelMode =
+                DevExpress.XtraGrid.Views.Base.ShowFilterPanelMode.Never
+            View.ClearColumnsFilter()
+
+            For Each Column As DevExpress.XtraGrid.Columns.GridColumn In
+                View.Columns
+                Column.OptionsColumn.AllowSort =
+                    DevExpress.Utils.DefaultBoolean.False
+                Column.OptionsFilter.AllowFilter = False
+            Next
+        Next
+
+    End Sub
+
     Private Sub SimpleButtonQC_Click(sender As Object, e As EventArgs) Handles SimpleButtonQC.Click
 
         RunStressSensitivityCapture()
@@ -2216,6 +2257,7 @@ Public Class StressTest
         RefreshNativeSensitivityList()
         RefreshNativeDashboard()
         RefreshNativeComparativeViews()
+        DisableStressTestGridFilteringAndSorting()
 
     End Sub
 
@@ -2591,12 +2633,6 @@ Public Class StressTest
         Dim ClearButton As New DevExpress.XtraEditors.SimpleButton With {
             .Text = "Clear selected scenario", .Width = 165, .Height = 36
         }
-        Toolbar.Controls.Add(CreateNativeLabel("Scenario settings"))
-        Toolbar.Controls.Add(NativePlannerScenario)
-        Toolbar.Controls.Add(CreateNativeLabel("Name"))
-        Toolbar.Controls.Add(NativePlannerName)
-        Toolbar.Controls.Add(NativePlannerImportMode)
-        Toolbar.Controls.Add(NativePlannerInclude)
         Toolbar.Controls.Add(CalculateButton)
         Toolbar.Controls.Add(GenerateButton)
         Toolbar.Controls.Add(ClearButton)
@@ -2606,7 +2642,7 @@ Public Class StressTest
         NativePlannerGrid.MainView = NativePlannerView
         NativePlannerGrid.ViewCollection.Add(NativePlannerView)
         NativePlannerView.OptionsView.ShowGroupPanel = False
-        NativePlannerView.OptionsView.ShowAutoFilterRow = True
+        NativePlannerView.OptionsView.ShowAutoFilterRow = False
         NativePlannerView.OptionsView.ColumnAutoWidth = False
         NativePlannerView.OptionsView.ShowBands = True
         NativePlannerView.OptionsBehavior.EditorShowMode = DevExpress.Utils.EditorShowMode.MouseDownFocused
@@ -2851,8 +2887,8 @@ Public Class StressTest
                     PlannerScenarioFormatFieldName(PlannerScenarioIndex),
                     GetType(String))
             Next
-            AddPlannerRows(Data, Sheet, 9, 47, "Stress")
-            AddPlannerRows(Data, Sheet, 51, 75, "Mitigation")
+            AddPlannerRows(Data, Sheet, 9, 47, "Stresses")
+            AddPlannerRows(Data, Sheet, 51, 75, "Mitigations")
             NativePlannerData = Data
             NativePlannerGrid.DataSource = Data
             ConfigureNativePlannerColumns()
@@ -3027,7 +3063,7 @@ Public Class StressTest
             AddNativePlannerBandEditors(
                 ScenarioBand, Sheet, ScenarioIndex, ImportMode, ScenarioName)
         Next
-        NativePlannerView.BandPanelRowHeight = 86
+        NativePlannerView.BandPanelRowHeight = 126
         NativePlannerView.ExpandAllGroups()
 
     End Sub
@@ -3062,12 +3098,45 @@ Public Class StressTest
         ConfigureNativePlannerBandEditorAppearance(
             NameEditor, NameCell)
 
+        Dim CopyEditor As New RepositoryItemComboBox
+        CopyEditor.TextEditStyle =
+            DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
+        For CopyScenarioIndex As Integer = 1 To 10
+            If CopyScenarioIndex = ScenarioIndex Then Continue For
+            Dim CopyName As String =
+                Sheet.Cells(
+                    7,
+                    ScenarioStartColumn(CopyScenarioIndex)).DisplayText.Trim()
+            If String.IsNullOrWhiteSpace(CopyName) Then
+                CopyName = "Scenario " & CopyScenarioIndex.ToString()
+            End If
+            CopyEditor.Items.Add(
+                New NativePlannerCopySource With {
+                    .ScenarioIndex = CopyScenarioIndex,
+                    .ScenarioName = CopyName
+                })
+        Next
+        CopyEditor.Appearance.Options.UseTextOptions = True
+        CopyEditor.Appearance.TextOptions.HAlignment = HorzAlignment.Center
+
+        Dim GoEditor As New RepositoryItemButtonEdit
+        GoEditor.TextEditStyle =
+            DevExpress.XtraEditors.Controls.TextEditStyles.HideTextEditor
+        GoEditor.Buttons.Clear()
+        GoEditor.Buttons.Add(
+            New DevExpress.XtraEditors.Controls.EditorButton(
+                DevExpress.XtraEditors.Controls.ButtonPredefines.Glyph) With {
+                    .Caption = "Go"
+                })
+
         NativePlannerBandEditors.Add(
             New NativePlannerBandEditorState With {
                 .Band = Band,
                 .ScenarioIndex = ScenarioIndex,
                 .ImportModeEditor = ImportEditor,
                 .ScenarioNameEditor = NameEditor,
+                .CopySourceEditor = CopyEditor,
+                .GoButtonEditor = GoEditor,
                 .ImportModeValue = ImportMode,
                 .ScenarioNameValue = ScenarioName
             })
@@ -3123,6 +3192,11 @@ Public Class StressTest
         SourceCell As DevExpress.Spreadsheet.Cell)
 
         ApplyWorkbookCellAppearance(Editor.Appearance, SourceCell)
+        Dim ResolvedFill As Color = SourceCell.FillColor
+        If Not ResolvedFill.IsEmpty AndAlso ResolvedFill.A > 0 Then
+            Editor.Appearance.BackColor = ResolvedFill
+            Editor.Appearance.Options.UseBackColor = True
+        End If
         Editor.Appearance.Options.UseTextOptions = True
         Editor.Appearance.TextOptions.HAlignment = HorzAlignment.Center
         Editor.Appearance.TextOptions.VAlignment = VertAlignment.Center
@@ -3169,6 +3243,23 @@ Public Class StressTest
         DrawEditorHelper.DrawEdit(
             e.Graphics, State.ScenarioNameEditor,
             State.ScenarioNameBounds, State.ScenarioNameValue)
+        Using CopyLabelFormat As New StringFormat With {
+            .Alignment = StringAlignment.Near,
+            .LineAlignment = StringAlignment.Center
+        }
+            e.Cache.DrawString(
+                "Copy From:",
+                e.Appearance.GetFont(),
+                e.Appearance.GetForeBrush(e.Cache),
+                State.CopySourceLabelBounds,
+                CopyLabelFormat)
+        End Using
+        DrawEditorHelper.DrawEdit(
+            e.Graphics, State.CopySourceEditor,
+            State.CopySourceBounds, State.CopySourceValue)
+        DrawEditorHelper.DrawEdit(
+            e.Graphics, State.GoButtonEditor,
+            State.GoButtonBounds, Nothing)
         e.Handled = True
 
     End Sub
@@ -3180,14 +3271,10 @@ Public Class StressTest
         Const HorizontalPadding As Integer = 5
         Const CaptionHeight As Integer = 22
         Const EditorGap As Integer = 3
-        Const BottomPadding As Integer = 4
-
-        Dim AvailableHeight As Integer =
-            Math.Max(
-                44,
-                BandBounds.Height - CaptionHeight - EditorGap - BottomPadding)
-        Dim EditorHeight As Integer =
-            Math.Max(22, (AvailableHeight - EditorGap) \ 2)
+        Const EditorHeight As Integer = 27
+        Const CopyTopGap As Integer = 8
+        Const CopyLabelWidth As Integer = 74
+        Const GoButtonWidth As Integer = 48
         Dim EditorWidth As Integer =
             Math.Max(1, BandBounds.Width - (2 * HorizontalPadding))
         Dim FirstTop As Integer = BandBounds.Top + CaptionHeight
@@ -3201,6 +3288,27 @@ Public Class StressTest
             BandBounds.Left + HorizontalPadding,
             FirstTop + EditorHeight + EditorGap,
             EditorWidth,
+            EditorHeight)
+        Dim CopyTop As Integer =
+            State.ScenarioNameBounds.Bottom + CopyTopGap
+        State.CopySourceLabelBounds = New Rectangle(
+            BandBounds.Left + HorizontalPadding,
+            CopyTop,
+            CopyLabelWidth,
+            EditorHeight)
+        State.GoButtonBounds = New Rectangle(
+            BandBounds.Right - HorizontalPadding - GoButtonWidth,
+            CopyTop,
+            GoButtonWidth,
+            EditorHeight)
+        State.CopySourceBounds = New Rectangle(
+            State.CopySourceLabelBounds.Right + EditorGap,
+            CopyTop,
+            Math.Max(
+                1,
+                State.GoButtonBounds.Left -
+                    State.CopySourceLabelBounds.Right -
+                    (2 * EditorGap)),
             EditorHeight)
 
     End Sub
@@ -3229,6 +3337,19 @@ Public Class StressTest
                 DXMouseEventArgs.GetMouseArgs(e).Handled = True
                 Return
             End If
+            If State.CopySourceBounds.Contains(e.Location) Then
+                ShowNativePlannerBandEditor(
+                    State,
+                    NativePlannerBandEditorKind.CopySource,
+                    State.CopySourceBounds)
+                DXMouseEventArgs.GetMouseArgs(e).Handled = True
+                Return
+            End If
+            If State.GoButtonBounds.Contains(e.Location) Then
+                CopyNativePlannerScenario(State)
+                DXMouseEventArgs.GetMouseArgs(e).Handled = True
+                Return
+            End If
         Next
 
     End Sub
@@ -3238,14 +3359,21 @@ Public Class StressTest
         Kind As NativePlannerBandEditorKind,
         Bounds As Rectangle)
 
-        Dim Template As RepositoryItem =
-            If(Kind = NativePlannerBandEditorKind.ImportMode,
-               DirectCast(State.ImportModeEditor, RepositoryItem),
-               DirectCast(State.ScenarioNameEditor, RepositoryItem))
-        Dim InitialValue As Object =
-            If(Kind = NativePlannerBandEditorKind.ImportMode,
-               State.ImportModeValue,
-               State.ScenarioNameValue)
+        Dim Template As RepositoryItem
+        Dim InitialValue As Object
+        Select Case Kind
+            Case NativePlannerBandEditorKind.ImportMode
+                Template = State.ImportModeEditor
+                InitialValue = State.ImportModeValue
+            Case NativePlannerBandEditorKind.ScenarioName
+                Template = State.ScenarioNameEditor
+                InitialValue = State.ScenarioNameValue
+            Case NativePlannerBandEditorKind.CopySource
+                Template = State.CopySourceEditor
+                InitialValue = State.CopySourceValue
+            Case Else
+                Return
+        End Select
 
         NativePlannerBandActiveState = State
         NativePlannerBandActiveKind = Kind
@@ -3264,7 +3392,7 @@ Public Class StressTest
             AddressOf NativePlannerBandEditorLeave
         AddHandler NativePlannerBandActiveEditor.KeyDown,
             AddressOf NativePlannerBandEditorKeyDown
-        If Kind = NativePlannerBandEditorKind.ImportMode Then
+        If Kind <> NativePlannerBandEditorKind.ScenarioName Then
             AddHandler NativePlannerBandActiveEditor.EditValueChanged,
                 AddressOf NativePlannerBandImportModeChanged
         End If
@@ -3333,6 +3461,9 @@ Public Class StressTest
             NativePlannerBandEditors
             State.ImportModeBounds = Rectangle.Empty
             State.ScenarioNameBounds = Rectangle.Empty
+            State.CopySourceLabelBounds = Rectangle.Empty
+            State.CopySourceBounds = Rectangle.Empty
+            State.GoButtonBounds = Rectangle.Empty
         Next
 
     End Sub
@@ -3351,10 +3482,15 @@ Public Class StressTest
             Dim Kind As NativePlannerBandEditorKind =
                 NativePlannerBandActiveKind
             Dim ChangedValue As Object = Editor.EditValue
-            Dim OriginalValue As Object =
-                If(Kind = NativePlannerBandEditorKind.ImportMode,
-                   State.ImportModeValue,
-                   State.ScenarioNameValue)
+            Dim OriginalValue As Object = Nothing
+            Select Case Kind
+                Case NativePlannerBandEditorKind.ImportMode
+                    OriginalValue = State.ImportModeValue
+                Case NativePlannerBandEditorKind.ScenarioName
+                    OriginalValue = State.ScenarioNameValue
+                Case NativePlannerBandEditorKind.CopySource
+                    OriginalValue = State.CopySourceValue
+            End Select
 
             RemoveHandler Editor.Leave,
                 AddressOf NativePlannerBandEditorLeave
@@ -3387,6 +3523,13 @@ Public Class StressTest
         ChangedValue As Object)
 
         If State Is Nothing Then Return
+        If Kind = NativePlannerBandEditorKind.CopySource Then
+            State.CopySourceValue =
+                TryCast(ChangedValue, NativePlannerCopySource)
+            NativePlannerView.InvalidateBandHeader(State.Band)
+            Return
+        End If
+
         Dim Sheet As DevExpress.Spreadsheet.Worksheet =
             ActiveWorkbook.Worksheets("Multivariable Planner")
         Dim TargetRow As Integer =
@@ -3417,6 +3560,67 @@ Public Class StressTest
 
     End Sub
 
+    Private Sub CopyNativePlannerScenario(
+        State As NativePlannerBandEditorState)
+
+        If State Is Nothing OrElse State.CopySourceValue Is Nothing Then
+            DevExpress.XtraEditors.XtraMessageBox.Show(
+                "Select a source test first.", "Copy test")
+            Return
+        End If
+
+        Dim SourceIndex As Integer = State.CopySourceValue.ScenarioIndex
+        Dim TargetIndex As Integer = State.ScenarioIndex
+        If SourceIndex = TargetIndex Then Return
+
+        If DevExpress.XtraEditors.XtraMessageBox.Show(
+                "Copy Test " & SourceIndex.ToString() & " assumptions into Test " &
+                TargetIndex.ToString() & "? This replaces the current test's " &
+                "stress and mitigation inputs.",
+                "Copy test", MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question) <> DialogResult.Yes Then Return
+
+        Dim PlannerSheet As DevExpress.Spreadsheet.Worksheet =
+            ActiveWorkbook.Worksheets("Multivariable Planner")
+        Dim WasProtected As Boolean = PlannerSheet.IsProtected
+
+        Me.Cursor = Cursors.WaitCursor
+        UNProtectWS(ModelID, PlannerSheet.Name)
+        Try
+            CopyRangeValues(
+                ActiveWorkbook.DefinedNames.GetDefinedName(
+                    "Assumptions" & SourceIndex.ToString()).Range,
+                ActiveWorkbook.DefinedNames.GetDefinedName(
+                    "Assumptions" & TargetIndex.ToString()).Range)
+            CopyRangeValues(
+                ActiveWorkbook.DefinedNames.GetDefinedName(
+                    "AssumptionsA" & SourceIndex.ToString()).Range,
+                ActiveWorkbook.DefinedNames.GetDefinedName(
+                    "AssumptionsA" & TargetIndex.ToString()).Range)
+
+            ExcelModels(ModelID).IsDirty = True
+            CalculateStressWorkbook(True)
+
+            LoadingNativeViews = True
+            Try
+                NativePlannerScenario.SelectedIndex = TargetIndex - 1
+            Finally
+                LoadingNativeViews = False
+            End Try
+            RefreshNativePlanner()
+            RefreshNativeDashboard()
+            RefreshNativeComparativeViews()
+        Catch ex As Exception
+            DevExpress.XtraEditors.XtraMessageBox.Show(
+                "The test could not be copied: " & ex.Message,
+                "Copy test", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        Finally
+            If WasProtected Then ProtectWS(ModelID, PlannerSheet.Name)
+            Me.Cursor = Cursors.Default
+        End Try
+
+    End Sub
+
     Private Sub ResetNativePlannerBandEditors()
 
         CloseNativePlannerBandEditor(False)
@@ -3424,6 +3628,8 @@ Public Class StressTest
             NativePlannerBandEditors
             State.ImportModeEditor.Dispose()
             State.ScenarioNameEditor.Dispose()
+            State.CopySourceEditor.Dispose()
+            State.GoButtonEditor.Dispose()
         Next
         NativePlannerBandEditors.Clear()
 
