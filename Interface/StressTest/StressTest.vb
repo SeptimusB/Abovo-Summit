@@ -87,6 +87,11 @@ Public Class StressTest
     Private NativePlannerBandActiveState As NativePlannerBandEditorState
     Private NativePlannerBandActiveKind As NativePlannerBandEditorKind
     Private ClosingNativePlannerBandEditor As Boolean
+    Private NativePlannerTabs As DevExpress.XtraTab.XtraTabControl
+    Private NativeTargetsGrid As GridControl
+    Private NativeTargetsView As BandedGridView
+    Private NativeTargetsData As System.Data.DataTable
+    Private ReadOnly NativeTargetHeaderEditors As New List(Of NativeTargetHeaderEditorState)
     Private NativeDashboardScenario As DevExpress.XtraEditors.ComboBoxEdit
     Private NativeDashboardCharts As TableLayoutPanel
     Private NativeDashboardSummary As GridControl
@@ -130,6 +135,16 @@ Public Class StressTest
         Public CopySourceLabelBounds As Rectangle = Rectangle.Empty
         Public CopySourceBounds As Rectangle = Rectangle.Empty
         Public GoButtonBounds As Rectangle = Rectangle.Empty
+    End Class
+
+    Private Class NativeTargetHeaderTag
+        Public RowIndex As Integer
+        Public ColumnIndex As Integer
+    End Class
+
+    Private Class NativeTargetHeaderEditorState
+        Public Helper As Abovo.ColumnInplaceEditorHelper
+        Public Editor As RepositoryItem
     End Class
 
     Private ModelID As Integer
@@ -2254,6 +2269,7 @@ Public Class StressTest
         AddHandler ComboBoxBreachMode.SelectedIndexChanged, AddressOf LiveScenarioNumberChanged
 
         RefreshNativePlanner()
+        RefreshNativeTargets()
         RefreshNativeSensitivityList()
         RefreshNativeDashboard()
         RefreshNativeComparativeViews()
@@ -2602,6 +2618,17 @@ Public Class StressTest
     Private Sub BuildNativePlannerPage()
 
         XtraTabPageMVP.Controls.Clear()
+        NativePlannerTabs = New DevExpress.XtraTab.XtraTabControl With {
+            .Dock = DockStyle.Fill
+        }
+        Dim TestsPage As New DevExpress.XtraTab.XtraTabPage With {
+            .Text = "Tests"
+        }
+        Dim TargetsPage As New DevExpress.XtraTab.XtraTabPage With {
+            .Text = "Targets and Golden Rules"
+        }
+        NativePlannerTabs.TabPages.AddRange(
+            New DevExpress.XtraTab.XtraTabPage() {TestsPage, TargetsPage})
         Dim Root As New TableLayoutPanel With {
             .Dock = DockStyle.Fill, .BackColor = Color.White, .ColumnCount = 1, .RowCount = 2
         }
@@ -2660,7 +2687,9 @@ Public Class StressTest
 
         Root.Controls.Add(Toolbar, 0, 0)
         Root.Controls.Add(NativePlannerGrid, 0, 1)
-        XtraTabPageMVP.Controls.Add(Root)
+        TestsPage.Controls.Add(Root)
+        BuildNativeTargetsPage(TargetsPage)
+        XtraTabPageMVP.Controls.Add(NativePlannerTabs)
 
         AddHandler NativePlannerScenario.SelectedIndexChanged, AddressOf NativePlannerScenarioChanged
         AddHandler NativePlannerName.Validated, AddressOf NativePlannerNameChanged
@@ -2679,6 +2708,398 @@ Public Class StressTest
         AddHandler CalculateButton.Click, Sub() RecalculateAndRefreshNativeViews()
         AddHandler GenerateButton.Click, AddressOf GenerateMultivariableDashboard_Click
         AddHandler ClearButton.Click, AddressOf ClearNativeScenario_Click
+
+    End Sub
+
+    Private Sub BuildNativeTargetsPage(
+        Page As DevExpress.XtraTab.XtraTabPage)
+
+        NativeTargetsGrid = New GridControl With {.Dock = DockStyle.Fill}
+        NativeTargetsView = New BandedGridView(NativeTargetsGrid)
+        NativeTargetsGrid.MainView = NativeTargetsView
+        NativeTargetsGrid.ViewCollection.Add(NativeTargetsView)
+        NativeTargetsView.OptionsView.ShowBands = True
+        NativeTargetsView.OptionsView.ShowGroupPanel = False
+        NativeTargetsView.OptionsView.ShowAutoFilterRow = False
+        NativeTargetsView.OptionsView.ColumnAutoWidth = False
+        NativeTargetsView.OptionsView.ColumnHeaderAutoHeight =
+            DevExpress.Utils.DefaultBoolean.False
+        'The workbook uses three distinct header rows here: group, metric/unit,
+        'and the row-8 editor. Give the nested metric band enough room to keep
+        'its wrapped label and unit clear of the editor row below it.
+        NativeTargetsView.ColumnPanelRowHeight = 32
+        NativeTargetsView.BandPanelRowHeight = 40
+        NativeTargetsView.OptionsBehavior.EditorShowMode =
+            DevExpress.Utils.EditorShowMode.MouseDownFocused
+        NativeTargetsView.OptionsCustomization.AllowFilter = False
+        NativeTargetsView.OptionsCustomization.AllowSort = False
+        NativeTargetsView.OptionsCustomization.AllowGroup = False
+        NativeTargetsView.OptionsMenu.EnableColumnMenu = False
+
+        NativeTargetsGrid.RepositoryItems.Add(StandardPercentSpinEdit)
+        NativeTargetsGrid.RepositoryItems.Add(Standard2digitnumberTextBoxEdit)
+        Page.Controls.Add(NativeTargetsGrid)
+
+        AddHandler NativeTargetsView.CellValueChanged,
+            AddressOf NativeTargetsCellValueChanged
+        AddHandler NativeTargetsView.CustomRowCellEdit,
+            AddressOf NativeTargetsCustomRowCellEdit
+        AddHandler NativeTargetsView.CustomColumnDisplayText,
+            AddressOf NativeTargetsCustomColumnDisplayText
+        AddHandler NativeTargetsView.CustomDrawCell,
+            AddressOf NativeTargetsCustomDrawCell
+        AddHandler NativeTargetsView.ShowingEditor,
+            AddressOf NativeTargetsShowingEditor
+
+    End Sub
+
+    Private Sub RefreshNativeTargets()
+
+        If NativeTargetsGrid Is Nothing Then Return
+
+        LoadingNativeViews = True
+        Try
+            Dim Sheet As DevExpress.Spreadsheet.Worksheet =
+                ActiveWorkbook.Worksheets("Multivariable Planner")
+            Dim Data As New System.Data.DataTable
+            Data.Columns.Add("SourceRow", GetType(Integer))
+            Data.Columns.Add("Year", GetType(Object))
+            For Offset As Integer = 0 To 4
+                Data.Columns.Add("Target" & Offset.ToString(), GetType(Object))
+            Next
+            Data.Columns.Add("Spacer", GetType(Object))
+            For Offset As Integer = 0 To 4
+                Data.Columns.Add("Golden" & Offset.ToString(), GetType(Object))
+            Next
+
+            For RowIndex As Integer = 9 To 47
+                Dim Row As System.Data.DataRow = Data.NewRow()
+                Row("SourceRow") = RowIndex
+                Row("Year") = CellToObject(Sheet.Cells(RowIndex, 59))
+                For Offset As Integer = 0 To 4
+                    Row("Target" & Offset.ToString()) =
+                        CellToObject(Sheet.Cells(RowIndex, 60 + Offset))
+                    Row("Golden" & Offset.ToString()) =
+                        CellToObject(Sheet.Cells(RowIndex, 66 + Offset))
+                Next
+                Row("Spacer") = DBNull.Value
+                Data.Rows.Add(Row)
+            Next
+
+            NativeTargetsData = Data
+            NativeTargetsGrid.DataSource = Data
+            NativeTargetsGrid.ForceInitialize()
+            ConfigureNativeTargetColumns(Sheet)
+        Finally
+            LoadingNativeViews = False
+        End Try
+
+    End Sub
+
+    Private Sub ConfigureNativeTargetColumns(
+        Sheet As DevExpress.Spreadsheet.Worksheet)
+
+        ResetNativeTargetHeaderEditors()
+        NativeTargetsView.PopulateColumns()
+        NativeTargetsView.Bands.Clear()
+        NativeTargetsView.Columns("SourceRow").Visible = False
+
+        Dim YearColumn As BandedGridColumn =
+            TryCast(NativeTargetsView.Columns("Year"), BandedGridColumn)
+        YearColumn.Caption = Sheet.Cells(8, 59).DisplayText
+        YearColumn.Width = 72
+        YearColumn.OptionsColumn.AllowEdit = False
+        Dim YearBand As New GridBand With {
+            .Caption = Sheet.Cells(8, 59).DisplayText,
+            .Fixed = DevExpress.XtraGrid.Columns.FixedStyle.Left
+        }
+        ApplyWorkbookCellAppearance(YearBand.AppearanceHeader, Sheet.Cells(8, 59))
+        YearBand.Columns.Add(YearColumn)
+        NativeTargetsView.Bands.Add(YearBand)
+
+        Dim TargetBand As New GridBand With {
+            .Caption = Sheet.Cells(5, 60).DisplayText
+        }
+        ApplyWorkbookCellAppearance(TargetBand.AppearanceHeader, Sheet.Cells(5, 60))
+        TargetBand.AppearanceHeader.TextOptions.HAlignment = HorzAlignment.Center
+        NativeTargetsView.Bands.Add(TargetBand)
+
+        For Offset As Integer = 0 To 4
+            ConfigureNativeTargetMetric(
+                Sheet, TargetBand, "Target" & Offset.ToString(),
+                60 + Offset, False)
+        Next
+
+        Dim SpacerColumn As BandedGridColumn =
+            TryCast(NativeTargetsView.Columns("Spacer"), BandedGridColumn)
+        SpacerColumn.Caption = String.Empty
+        SpacerColumn.Width = 26
+        SpacerColumn.OptionsColumn.AllowEdit = False
+        Dim SpacerBand As New GridBand With {
+            .Caption = String.Empty, .Width = 26, .MinWidth = 26
+        }
+        SpacerBand.Columns.Add(SpacerColumn)
+        NativeTargetsView.Bands.Add(SpacerBand)
+
+        Dim GoldenBand As New GridBand With {
+            .Caption = Sheet.Cells(5, 66).DisplayText
+        }
+        ApplyWorkbookCellAppearance(GoldenBand.AppearanceHeader, Sheet.Cells(5, 66))
+        GoldenBand.AppearanceHeader.TextOptions.HAlignment = HorzAlignment.Center
+        NativeTargetsView.Bands.Add(GoldenBand)
+
+        For Offset As Integer = 0 To 4
+            ConfigureNativeTargetMetric(
+                Sheet, GoldenBand, "Golden" & Offset.ToString(),
+                66 + Offset, True)
+        Next
+
+        DisableStressTestGridFilteringAndSorting()
+
+    End Sub
+
+    Private Sub ConfigureNativeTargetMetric(
+        Sheet As DevExpress.Spreadsheet.Worksheet,
+        ParentBand As GridBand,
+        FieldName As String,
+        SourceColumn As Integer,
+        IsGoldenRule As Boolean)
+
+        Dim Column As BandedGridColumn =
+            TryCast(NativeTargetsView.Columns(FieldName), BandedGridColumn)
+        Column.Caption = String.Empty
+        Column.Width = 126
+        Column.OptionsColumn.AllowEdit = IsGoldenRule
+        Column.OptionsColumn.AllowSort = DevExpress.Utils.DefaultBoolean.False
+        Column.OptionsFilter.AllowFilter = False
+
+        Dim MetricCaption As String = Sheet.Cells(6, SourceColumn).DisplayText
+        Dim UnitCaption As String = Sheet.Cells(8, SourceColumn).DisplayText
+        If Not String.IsNullOrWhiteSpace(UnitCaption) Then
+            MetricCaption &= Environment.NewLine & UnitCaption
+        End If
+        Dim MetricBand As New GridBand With {
+            .Caption = MetricCaption
+        }
+        ApplyWorkbookCellAppearance(
+            MetricBand.AppearanceHeader, Sheet.Cells(6, SourceColumn))
+        MetricBand.AppearanceHeader.Options.UseTextOptions = True
+        MetricBand.AppearanceHeader.TextOptions.HAlignment = HorzAlignment.Center
+        MetricBand.AppearanceHeader.TextOptions.VAlignment = VertAlignment.Bottom
+        MetricBand.AppearanceHeader.TextOptions.WordWrap = WordWrap.Wrap
+        MetricBand.Columns.Add(Column)
+        ParentBand.Children.Add(MetricBand)
+
+        Dim SourceCell As DevExpress.Spreadsheet.Cell =
+            Sheet.Cells(7, SourceColumn)
+        Dim Editor As RepositoryItem
+        If IsGoldenRule Then
+            Dim Combo As New RepositoryItemComboBox
+            Combo.TextEditStyle =
+                DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
+            For Each Item As Object In WorkbookValidationListItems(SourceCell)
+                Combo.Items.Add(Item)
+            Next
+            Editor = Combo
+        Else
+            Editor = New RepositoryItemTextEdit
+        End If
+        ConfigureNativePlannerBandEditorAppearance(Editor, SourceCell)
+        NativeTargetsGrid.RepositoryItems.Add(Editor)
+
+        Dim Helper As New Abovo.ColumnInplaceEditorHelper(Column, Editor) With {
+            .EditValue = SourceCell.DisplayText,
+            .Tag = New NativeTargetHeaderTag With {
+                .RowIndex = 7,
+                .ColumnIndex = SourceColumn
+            },
+            .ForceItemAppearance = True
+        }
+        AddHandler Helper.EditValueCommitted,
+            AddressOf NativeTargetHeaderEditorCommitted
+        NativeTargetHeaderEditors.Add(
+            New NativeTargetHeaderEditorState With {
+                .Helper = Helper,
+                .Editor = Editor
+            })
+
+    End Sub
+
+    Private Sub ResetNativeTargetHeaderEditors()
+
+        For Each State As NativeTargetHeaderEditorState In
+            NativeTargetHeaderEditors
+            RemoveHandler State.Helper.EditValueCommitted,
+                AddressOf NativeTargetHeaderEditorCommitted
+            State.Helper.DetachForDisposal()
+            NativeTargetsGrid.RepositoryItems.Remove(State.Editor)
+            State.Editor.Dispose()
+        Next
+        NativeTargetHeaderEditors.Clear()
+
+    End Sub
+
+    Private Sub NativeTargetHeaderEditorCommitted(
+        sender As Object,
+        e As EventArgs)
+
+        If LoadingNativeViews Then Return
+        Dim Helper As Abovo.ColumnInplaceEditorHelper =
+            TryCast(sender, Abovo.ColumnInplaceEditorHelper)
+        Dim Tag As NativeTargetHeaderTag =
+            If(Helper Is Nothing, Nothing,
+               TryCast(Helper.Tag, NativeTargetHeaderTag))
+        If Tag Is Nothing Then Return
+
+        Dim TargetRow As Integer = Tag.RowIndex
+        Dim TargetColumn As Integer = Tag.ColumnIndex
+        Dim ChangedValue As Object =
+            NormalizeStressTestEditValue(Helper.EditValue)
+        BeginInvoke(
+            New MethodInvoker(
+                Sub()
+                    CommitNativeTargetHeaderEditor(
+                        TargetRow, TargetColumn, ChangedValue)
+                End Sub))
+
+    End Sub
+
+    Private Sub CommitNativeTargetHeaderEditor(
+        TargetRow As Integer,
+        TargetColumn As Integer,
+        ChangedValue As Object)
+
+        Dim Target As DevExpress.Spreadsheet.Cell =
+            ActiveWorkbook.Worksheets("Multivariable Planner").
+                Cells(TargetRow, TargetColumn)
+        ProcessStressTestCellChange(
+            Target,
+            ChangedValue,
+            "S",
+            "Stress-test covenant header setting updated",
+            True)
+        RefreshNativeTargets()
+
+    End Sub
+
+    Private Function TryGetNativeTargetSourceColumn(
+        Column As DevExpress.XtraGrid.Columns.GridColumn,
+        ByRef SourceColumn As Integer) As Boolean
+
+        If Column Is Nothing Then Return False
+        If Column.FieldName = "Year" Then
+            SourceColumn = 59
+            Return True
+        End If
+        If Column.FieldName.StartsWith("Target", StringComparison.Ordinal) Then
+            SourceColumn = 60 + Integer.Parse(Column.FieldName.Substring(6))
+            Return True
+        End If
+        If Column.FieldName.StartsWith("Golden", StringComparison.Ordinal) Then
+            SourceColumn = 66 + Integer.Parse(Column.FieldName.Substring(6))
+            Return True
+        End If
+        Return False
+
+    End Function
+
+    Private Function TryGetNativeTargetSourceCell(
+        RowHandle As Integer,
+        Column As DevExpress.XtraGrid.Columns.GridColumn,
+        ByRef SourceCell As DevExpress.Spreadsheet.Cell) As Boolean
+
+        If RowHandle < 0 Then Return False
+        Dim SourceColumn As Integer
+        If Not TryGetNativeTargetSourceColumn(Column, SourceColumn) Then Return False
+        Dim SourceRowValue As Object =
+            NativeTargetsView.GetRowCellValue(RowHandle, "SourceRow")
+        If SourceRowValue Is Nothing OrElse SourceRowValue Is DBNull.Value Then Return False
+        SourceCell = ActiveWorkbook.Worksheets("Multivariable Planner").Cells(
+            Convert.ToInt32(SourceRowValue), SourceColumn)
+        Return True
+
+    End Function
+
+    Private Sub NativeTargetsShowingEditor(
+        sender As Object,
+        e As CancelEventArgs)
+
+        Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
+        If Not TryGetNativeTargetSourceCell(
+                NativeTargetsView.FocusedRowHandle,
+                NativeTargetsView.FocusedColumn,
+                SourceCell) OrElse
+           Not IsWorkbookLinkedGridCellEditable(SourceCell) Then
+            e.Cancel = True
+        End If
+
+    End Sub
+
+    Private Sub NativeTargetsCustomRowCellEdit(
+        sender As Object,
+        e As CustomRowCellEditEventArgs)
+
+        Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
+        If Not TryGetNativeTargetSourceCell(
+                e.RowHandle, e.Column, SourceCell) OrElse
+           Not IsWorkbookLinkedGridCellEditable(SourceCell) Then Return
+        If SourceCell.NumberFormat.Contains("%") Then
+            e.RepositoryItem = StandardPercentSpinEdit
+        Else
+            e.RepositoryItem = Standard2digitnumberTextBoxEdit
+        End If
+
+    End Sub
+
+    Private Sub NativeTargetsCustomColumnDisplayText(
+        sender As Object,
+        e As DevExpress.XtraGrid.Views.Base.CustomColumnDisplayTextEventArgs)
+
+        If e.ListSourceRowIndex < 0 Then Return
+        Dim RowHandle As Integer =
+            NativeTargetsView.GetRowHandle(e.ListSourceRowIndex)
+        Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
+        If TryGetNativeTargetSourceCell(RowHandle, e.Column, SourceCell) Then
+            e.DisplayText = SourceCell.DisplayText
+        End If
+
+    End Sub
+
+    Private Sub NativeTargetsCustomDrawCell(
+        sender As Object,
+        e As RowCellCustomDrawEventArgs)
+
+        Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
+        If TryGetNativeTargetSourceCell(e.RowHandle, e.Column, SourceCell) Then
+            ApplyWorkbookCellAppearance(e.Appearance, SourceCell)
+        End If
+        e.DefaultDraw()
+        e.Handled = True
+
+    End Sub
+
+    Private Sub NativeTargetsCellValueChanged(
+        sender As Object,
+        e As DevExpress.XtraGrid.Views.Base.CellValueChangedEventArgs)
+
+        If LoadingNativeViews Then Return
+        Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
+        If Not TryGetNativeTargetSourceCell(
+                e.RowHandle, e.Column, SourceCell) OrElse
+           Not IsWorkbookLinkedGridCellEditable(SourceCell) Then
+            RefreshNativeTargets()
+            Return
+        End If
+
+        Dim DataFormat As String =
+            If(SourceCell.NumberFormat.Contains("%"), "P", "N")
+        ProcessStressTestCellChange(
+            SourceCell,
+            NormalizeStressTestEditValue(e.Value),
+            DataFormat,
+            "Stress-test golden rule updated",
+            True)
+        RefreshNativeTargets()
 
     End Sub
 
@@ -4063,6 +4484,7 @@ Public Class StressTest
         Me.Cursor = Cursors.WaitCursor
         Try
             CalculateStressWorkbook()
+            RefreshNativeTargets()
             RefreshNativeDashboard()
             RefreshNativeComparativeViews()
         Finally

@@ -47,6 +47,8 @@ Namespace Abovo
         Private _Column As BandedGridColumn
         Private bgview As GridView
         Private _EditorHeight As Integer = -1
+        Public Event EditValueCommitted As EventHandler
+        Public Property ForceItemAppearance As Boolean
 
         'Exact editor rectangle used by the most recent custom header paint.
         'Mouse interaction must use the same rectangle rather than trying to
@@ -137,7 +139,16 @@ Namespace Abovo
                         GetRightIndent(),
                         _EditorHeight)
 
-                DrawEditorHelper.DrawColumnInplaceEditor(e, _Item, EditValue, GetRightIndent(), _EditorHeight)
+                If ForceItemAppearance Then
+                    Dim editorBounds As Rectangle =
+                        DrawEditorHelper.GetEditorBounds(
+                            e.Bounds, GetRightIndent(), _EditorHeight)
+                    DrawEditorHelper.DrawEdit(
+                        e.Graphics, _Item, editorBounds, EditValue, True)
+                Else
+                    DrawEditorHelper.DrawColumnInplaceEditor(
+                        e, _Item, EditValue, GetRightIndent(), _EditorHeight)
+                End If
                 e.Handled = True
 
             End If
@@ -282,14 +293,38 @@ Namespace Abovo
 
         Private Sub CloseEditor()
             If ActiveEditor IsNot Nothing Then
-                EditValue = ActiveEditor.EditValue
+                Dim OriginalValue As Object = EditValue
+                Dim ChangedValue As Object = ActiveEditor.EditValue
                 RemoveHandler ActiveEditor.Leave, AddressOf editor_Leave
                 ActiveEditor.Dispose()
                 ActiveEditor = Nothing
+                EditValue = ChangedValue
+                If Not String.Equals(
+                        Convert.ToString(OriginalValue),
+                        Convert.ToString(ChangedValue),
+                        StringComparison.Ordinal) Then
+                    RaiseEvent EditValueCommitted(Me, EventArgs.Empty)
+                End If
             End If
         End Sub
         Private Sub editor_Leave(ByVal sender As Object, ByVal e As EventArgs)
             CloseEditor()
+        End Sub
+
+        Public Sub DetachForDisposal()
+
+            CloseEditor()
+            If bgview IsNot Nothing Then
+                RemoveHandler bgview.CustomDrawColumnHeader,
+                    AddressOf view_CustomDrawColumnHeader
+                RemoveHandler bgview.MouseDown, AddressOf view_MouseDown
+                RemoveHandler bgview.Layout, AddressOf view_Layout
+            End If
+            _Column = Nothing
+            _Item = Nothing
+            bgview = Nothing
+            Tag = Nothing
+
         End Sub
     End Class
 
