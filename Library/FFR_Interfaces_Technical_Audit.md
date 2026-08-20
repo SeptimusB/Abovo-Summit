@@ -69,6 +69,14 @@ On 19 August 2026 the Debug application opened `TestFileMigrated.xlsb` through t
 
 Debug builds may auto-open `Z:\Sandbox\TestFileMigrated.xlsb` when that file exists. The hook is compile-time excluded from Release and still uses the normal model-open path.
 
+### 2026-08-20 validation-summary refinement
+
+Version 6.72 replaces the literal A1:J31 presentation of FFR Validation Summary with a compact, purpose-built read-only view. The visible workbook contract is rows 5-28: A5:A16 supplies the production instructions and warning text, A18:C23 supplies the hard-error heading, count caption, four validations and messages, and A25:C28 supplies the equivalent two-row soft-notification section.
+
+The two summary sections use centred native DevExpress grids following the established Stress Test presentation policy: no filtering, sorting, grouping, column menus, row indicators or edit path. The workspace is capped at 1,240 pixels and centred when wider space is available. Empty spreadsheet rows and unused columns are not presented.
+
+All captions, calculated counts, messages, resolved colours, font emphasis and alignment are re-read from the live workbook when the tab is opened or refreshed. Runtime verification through the normal Debug startup path displayed hard counts 61, 84, 0, and 27, soft counts 33 and 24, and the exact workbook messages. The verification workbook was closed without saving.
+
 ## Build validation
 
-Version 6.71 passed Debug and Release MSBuild validation on 19 August 2026 with zero warnings and zero errors. The repository has no automated workbook/UI integration suite. The workbook-open and Tabs 2-4 checks above ran in Summit's normal application startup path; the remaining five tabs, interactive edit round trips and provider-template export checks still require representative client validation.
+Version 6.72 passed Debug and Release MSBuild validation on 20 August 2026. The repository has no automated workbook/UI integration suite. The workbook-open, compact validation summary, and Tabs 2-4 checks above ran in Summit's normal application startup path; the remaining four tabs, interactive edit round trips and provider-template export checks still require representative client validation.

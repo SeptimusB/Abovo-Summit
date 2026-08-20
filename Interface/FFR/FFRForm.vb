@@ -71,7 +71,9 @@ Public Class FFRForm
 
         Dim ExistingView As Control = Nothing
         If SheetViews.TryGetValue(Page, ExistingView) Then
-            If TypeOf ExistingView Is FFRFrontSheetView Then
+            If TypeOf ExistingView Is FFRValidationSummaryView Then
+                DirectCast(ExistingView, FFRValidationSummaryView).RefreshFromWorkbook()
+            ElseIf TypeOf ExistingView Is FFRFrontSheetView Then
                 DirectCast(ExistingView, FFRFrontSheetView).RefreshFromWorkbook()
             Else
                 DirectCast(ExistingView, FFRWorkbookSheetView).RefreshFromWorkbook()
@@ -95,7 +97,9 @@ Public Class FFRForm
         Page.SuspendLayout()
         Try
             Dim View As Control
-            If String.Equals(SheetName, "Front Sheet", StringComparison.Ordinal) Then
+            If String.Equals(SheetName, "FFR Validation Summary", StringComparison.Ordinal) Then
+                View = New FFRValidationSummaryView(ModelID) With {.Dock = DockStyle.Fill}
+            ElseIf String.Equals(SheetName, "Front Sheet", StringComparison.Ordinal) Then
                 Dim FrontSheetView As New FFRFrontSheetView(ModelID) With {.Dock = DockStyle.Fill}
                 AddHandler FrontSheetView.WorkbookCellChanged, AddressOf WorkbookCellChanged
                 View = FrontSheetView
@@ -233,7 +237,9 @@ Public Class FFRForm
     Public Sub ManualDispose()
         ClosingForDisposal = True
         For Each View As Control In SheetViews.Values
-            If TypeOf View Is FFRFrontSheetView Then
+            If TypeOf View Is FFRValidationSummaryView Then
+                'Read-only workbook summary has no edit event to detach.
+            ElseIf TypeOf View Is FFRFrontSheetView Then
                 RemoveHandler DirectCast(View, FFRFrontSheetView).WorkbookCellChanged, AddressOf WorkbookCellChanged
             Else
                 RemoveHandler DirectCast(View, FFRWorkbookSheetView).WorkbookCellChanged, AddressOf WorkbookCellChanged

@@ -377,6 +377,9 @@
     <Compile Include="Interface\FFR\FFRFrontSheetView.vb">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Interface\FFR\FFRValidationSummaryView.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Interface\FFR\FFRWorkbookSheetView.vb">
       <SubType>UserControl</SubType>
     </Compile>
