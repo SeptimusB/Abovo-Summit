@@ -34,6 +34,7 @@ Public Class FFRWorkbookSheetView
     Private ReadOnly PresentationTitle As String
     Private ReadOnly HideVerticalScrollbar As Boolean
     Private ReadOnly CompactRows As Boolean
+    Private ReadOnly CompactWorksheetLayout As Boolean
     Private ReadOnly Workbook As IWorkbook
     Private ReadOnly ChangeManager As ModelChangeManager
     Private ReadOnly SheetGrid As New GridControl()
@@ -59,7 +60,8 @@ Public Class FFRWorkbookSheetView
         Optional SetRangeAddress As String = Nothing,
         Optional SetPresentationTitle As String = Nothing,
         Optional SetHideVerticalScrollbar As Boolean = False,
-        Optional SetCompactRows As Boolean = False)
+        Optional SetCompactRows As Boolean = False,
+        Optional SetCompactWorksheetLayout As Boolean = False)
 
         ModelID = SetModelID
         SheetName = SetSheetName
@@ -67,6 +69,7 @@ Public Class FFRWorkbookSheetView
         PresentationTitle = SetPresentationTitle
         HideVerticalScrollbar = SetHideVerticalScrollbar
         CompactRows = SetCompactRows
+        CompactWorksheetLayout = SetCompactWorksheetLayout
         Workbook = FileManager.GetWorkBook(ModelID)
         ChangeManager = ExcelModels(ModelID).ChangeManager
 
@@ -119,7 +122,7 @@ Public Class FFRWorkbookSheetView
             .OptionsView.ShowAutoFilterRow = False
             .OptionsView.ShowFilterPanelMode = ShowFilterPanelMode.Never
             .OptionsView.ShowGroupPanel = False
-            .OptionsView.ShowIndicator = True
+            .OptionsView.ShowIndicator = Not CompactWorksheetLayout
             .OptionsView.ShowHorizontalLines = DefaultBoolean.True
             .OptionsView.ShowVerticalLines = DefaultBoolean.True
             .OptionsView.RowAutoHeight = False
@@ -128,7 +131,7 @@ Public Class FFRWorkbookSheetView
                 ScrollVisibility.Never,
                 ScrollVisibility.Auto)
             .RowHeight = If(CompactRows, 18, DefaultRowHeight)
-            .IndicatorWidth = 54
+            .IndicatorWidth = If(CompactWorksheetLayout, 0, 54)
         End With
 
         TextEditor.NullText = String.Empty
@@ -223,14 +226,29 @@ Public Class FFRWorkbookSheetView
             Dim Column As GridColumn = SheetView.Columns(SourceColumnField(ColumnIndex))
             If Column Is Nothing Then Continue For
 
-            Column.Caption = ColumnName(ColumnIndex)
+            Column.Caption = If(CompactWorksheetLayout, String.Empty, ColumnName(ColumnIndex))
             Column.Tag = ColumnIndex
             Column.VisibleIndex = VisibleIndex
             Column.OptionsColumn.AllowEdit = True
             Column.OptionsColumn.AllowFocus = True
             Column.OptionsColumn.AllowMerge = DefaultBoolean.False
-            Column.MinWidth = 36
-            Column.Width = Math.Max(44, Math.Min(420, CInt(Math.Round(Worksheet.Columns(ColumnIndex).Width * 1.15F))))
+            If CompactWorksheetLayout Then
+                Dim RelativeColumn As Integer = ColumnIndex - UsedRange.LeftColumnIndex
+                Select Case RelativeColumn
+                    Case 0
+                        Column.Width = 42
+                        Column.MinWidth = 36
+                    Case 1
+                        Column.Width = 400
+                        Column.MinWidth = 240
+                    Case Else
+                        Column.Width = 66
+                        Column.MinWidth = 54
+                End Select
+            Else
+                Column.MinWidth = 36
+                Column.Width = Math.Max(44, Math.Min(420, CInt(Math.Round(Worksheet.Columns(ColumnIndex).Width * 1.15F))))
+            End If
             VisibleIndex += 1
         Next
     End Sub
@@ -366,9 +384,13 @@ Public Class FFRWorkbookSheetView
 
         Dim SourceRow As Integer = Convert.ToInt32(Value, CultureInfo.InvariantCulture)
         Dim WorkbookHeight As Single = Workbook.Worksheets(SheetName).Rows(SourceRow).Height
-        Dim MinimumHeight As Integer = If(CompactRows, 18, DefaultRowHeight)
-        Dim Scale As Single = If(CompactRows, 1.0F, 1.35F)
-        e.RowHeight = Math.Max(MinimumHeight, Math.Min(180, CInt(Math.Ceiling(WorkbookHeight * Scale))))
+        If CompactWorksheetLayout Then
+            e.RowHeight = Math.Max(18, Math.Min(30, CInt(Math.Ceiling(WorkbookHeight))))
+        Else
+            Dim MinimumHeight As Integer = If(CompactRows, 18, DefaultRowHeight)
+            Dim Scale As Single = If(CompactRows, 1.0F, 1.35F)
+            e.RowHeight = Math.Max(MinimumHeight, Math.Min(180, CInt(Math.Ceiling(WorkbookHeight * Scale))))
+        End If
     End Sub
 
     Private Sub CellToolTipsGetActiveObjectInfo(

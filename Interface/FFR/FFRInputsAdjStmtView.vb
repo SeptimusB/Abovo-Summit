@@ -31,12 +31,14 @@ Public Class FFRInputsAdjStmtView
             "A5:J50",
             "FFR Actual Stock Inputs",
             True,
+            True,
             True)
         LoanAdjustmentsView = New FFRWorkbookSheetView(
             SetModelID,
             SheetName,
             "A53:AF70",
             "Statement of Cash Flow – Movements in Loans",
+            True,
             True,
             True)
 
@@ -65,8 +67,8 @@ Public Class FFRInputsAdjStmtView
         Workspace.Margin = New Padding(0)
         Workspace.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100.0F))
         Workspace.RowStyles.Add(New RowStyle(SizeType.Absolute, 34.0F))
-        Workspace.RowStyles.Add(New RowStyle(SizeType.Absolute, 900.0F))
-        Workspace.RowStyles.Add(New RowStyle(SizeType.Absolute, 390.0F))
+        Workspace.RowStyles.Add(New RowStyle(SizeType.Absolute, 760.0F))
+        Workspace.RowStyles.Add(New RowStyle(SizeType.Absolute, 340.0F))
 
         Dim PageTitle As New LabelControl With {
             .Dock = DockStyle.Fill,
@@ -106,7 +108,7 @@ Public Class FFRInputsAdjStmtView
     Private Sub PositionWorkspace(sender As Object, e As EventArgs)
         Dim AvailableWidth As Integer = Math.Max(0, ScrollHost.ClientSize.Width - 32)
         Dim DesiredWidth As Integer = Math.Min(WorkspaceMaximumWidth, Math.Max(WorkspaceMinimumWidth, AvailableWidth))
-        Workspace.Size = New Size(DesiredWidth, 1350)
+        Workspace.Size = New Size(DesiredWidth, 1160)
         Workspace.Location = New Point(Math.Max(16, (ScrollHost.ClientSize.Width - DesiredWidth) \ 2), 6)
     End Sub
 
