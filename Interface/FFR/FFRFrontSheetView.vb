@@ -27,10 +27,15 @@ Public Class FFRFrontSheetView
     Private Const SourceRowField As String = "__SourceRow"
     Private Const EntryField As String = "Entry"
     Private Const EntityField As String = "Entity"
+    Private Const WorkspaceMaximumWidth As Integer = 1240
+    Private Const WorkspaceMinimumWidth As Integer = 880
+    Private Const WorkspaceHeight As Integer = 910
 
     Private ReadOnly ModelID As Integer
     Private ReadOnly Workbook As IWorkbook
     Private ReadOnly ChangeManager As ModelChangeManager
+    Private ReadOnly ScrollHost As New XtraScrollableControl()
+    Private ReadOnly Workspace As New TableLayoutPanel()
 
     Private ReadOnly WorkbookTitle As New LabelControl()
     Private ReadOnly SheetTitle As New LabelControl()
@@ -77,18 +82,21 @@ Public Class FFRFrontSheetView
     Private Sub BuildNativeSurface()
         BackColor = Color.White
 
-        Dim MainLayout As New TableLayoutPanel With {
-            .BackColor = Color.White,
-            .ColumnCount = 1,
-            .Dock = DockStyle.Fill,
-            .Padding = New Padding(22, 14, 22, 16),
-            .RowCount = 4
-        }
-        MainLayout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100.0F))
-        MainLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 70.0F))
-        MainLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 112.0F))
-        MainLayout.RowStyles.Add(New RowStyle(SizeType.Percent, 100.0F))
-        MainLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 30.0F))
+        ScrollHost.Dock = DockStyle.Fill
+        ScrollHost.BackColor = Color.White
+        ScrollHost.AutoScroll = True
+
+        Workspace.BackColor = Color.White
+        Workspace.ColumnCount = 1
+        Workspace.RowCount = 4
+        Workspace.Padding = New Padding(22, 14, 22, 16)
+        Workspace.Margin = New Padding(0)
+        Workspace.Size = New Size(WorkspaceMaximumWidth, WorkspaceHeight)
+        Workspace.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100.0F))
+        Workspace.RowStyles.Add(New RowStyle(SizeType.Absolute, 70.0F))
+        Workspace.RowStyles.Add(New RowStyle(SizeType.Absolute, 112.0F))
+        Workspace.RowStyles.Add(New RowStyle(SizeType.Percent, 100.0F))
+        Workspace.RowStyles.Add(New RowStyle(SizeType.Absolute, 30.0F))
 
         Dim TitlePanel As New PanelControl With {
             .Dock = DockStyle.Fill,
@@ -181,11 +189,14 @@ Public Class FFRFrontSheetView
         Footer.Appearance.Options.UseForeColor = True
         Footer.Appearance.TextOptions.VAlignment = VertAlignment.Center
 
-        MainLayout.Controls.Add(TitlePanel, 0, 0)
-        MainLayout.Controls.Add(DetailsGroup, 0, 1)
-        MainLayout.Controls.Add(EntityLayout, 0, 2)
-        MainLayout.Controls.Add(Footer, 0, 3)
-        Controls.Add(MainLayout)
+        Workspace.Controls.Add(TitlePanel, 0, 0)
+        Workspace.Controls.Add(DetailsGroup, 0, 1)
+        Workspace.Controls.Add(EntityLayout, 0, 2)
+        Workspace.Controls.Add(Footer, 0, 3)
+        ScrollHost.Controls.Add(Workspace)
+        AddHandler ScrollHost.Resize, AddressOf PositionWorkspace
+        Controls.Add(ScrollHost)
+        PositionWorkspace(Nothing, EventArgs.Empty)
 
         AddHandler RPNumberEdit.Validated, AddressOf RPNumberValidated
         AddHandler FirstForecastYearEdit.Validated, AddressOf FirstForecastYearValidated
@@ -299,6 +310,7 @@ Public Class FFRFrontSheetView
             .OptionsView.ShowIndicator = False
             .OptionsView.ShowHorizontalLines = DefaultBoolean.True
             .OptionsView.ShowVerticalLines = DefaultBoolean.True
+            .VertScrollVisibility = DevExpress.XtraGrid.Views.Base.ScrollVisibility.Never
             .RowHeight = 25
             .ColumnPanelRowHeight = 32
         End With
@@ -656,9 +668,17 @@ Public Class FFRFrontSheetView
         Return "S"
     End Function
 
+    Private Sub PositionWorkspace(sender As Object, e As EventArgs)
+        Dim AvailableWidth As Integer = Math.Max(0, ScrollHost.ClientSize.Width - 32)
+        Dim DesiredWidth As Integer = Math.Min(WorkspaceMaximumWidth, Math.Max(WorkspaceMinimumWidth, AvailableWidth))
+        Workspace.Size = New Size(DesiredWidth, WorkspaceHeight)
+        Workspace.Location = New Point(Math.Max(16, (ScrollHost.ClientSize.Width - DesiredWidth) \ 2), 6)
+    End Sub
+
     Protected Overrides Sub Dispose(disposing As Boolean)
         If disposing AndAlso Not DisposedView Then
             DisposedView = True
+            RemoveHandler ScrollHost.Resize, AddressOf PositionWorkspace
             RegisteredData.Dispose()
             OtherData.Dispose()
             RegisteredEntryEditor.Dispose()
