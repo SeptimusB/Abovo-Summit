@@ -30,6 +30,10 @@ Public Class FFRWorkbookSheetView
 
     Private ReadOnly ModelID As Integer
     Private ReadOnly SheetName As String
+    Private ReadOnly RangeAddress As String
+    Private ReadOnly PresentationTitle As String
+    Private ReadOnly HideVerticalScrollbar As Boolean
+    Private ReadOnly CompactRows As Boolean
     Private ReadOnly Workbook As IWorkbook
     Private ReadOnly ChangeManager As ModelChangeManager
     Private ReadOnly SheetGrid As New GridControl()
@@ -49,9 +53,20 @@ Public Class FFRWorkbookSheetView
 
     Public Event WorkbookCellChanged As EventHandler
 
-    Public Sub New(SetModelID As Integer, SetSheetName As String)
+    Public Sub New(
+        SetModelID As Integer,
+        SetSheetName As String,
+        Optional SetRangeAddress As String = Nothing,
+        Optional SetPresentationTitle As String = Nothing,
+        Optional SetHideVerticalScrollbar As Boolean = False,
+        Optional SetCompactRows As Boolean = False)
+
         ModelID = SetModelID
         SheetName = SetSheetName
+        RangeAddress = SetRangeAddress
+        PresentationTitle = SetPresentationTitle
+        HideVerticalScrollbar = SetHideVerticalScrollbar
+        CompactRows = SetCompactRows
         Workbook = FileManager.GetWorkBook(ModelID)
         ChangeManager = ExcelModels(ModelID).ChangeManager
 
@@ -108,7 +123,11 @@ Public Class FFRWorkbookSheetView
             .OptionsView.ShowHorizontalLines = DefaultBoolean.True
             .OptionsView.ShowVerticalLines = DefaultBoolean.True
             .OptionsView.RowAutoHeight = False
-            .RowHeight = DefaultRowHeight
+            .VertScrollVisibility = If(
+                HideVerticalScrollbar,
+                ScrollVisibility.Never,
+                ScrollVisibility.Auto)
+            .RowHeight = If(CompactRows, 18, DefaultRowHeight)
             .IndicatorWidth = 54
         End With
 
@@ -151,7 +170,10 @@ Public Class FFRWorkbookSheetView
             SourceColumns.Clear()
 
             Dim Worksheet As Worksheet = Workbook.Worksheets(SheetName)
-            Dim UsedRange As CellRange = Worksheet.GetUsedRange()
+            Dim UsedRange As CellRange = If(
+                String.IsNullOrWhiteSpace(RangeAddress),
+                Worksheet.GetUsedRange(),
+                Worksheet.Range(RangeAddress))
             UsedTopRow = UsedRange.TopRowIndex
             UsedLeftColumn = UsedRange.LeftColumnIndex
 
@@ -221,10 +243,11 @@ Public Class FFRWorkbookSheetView
             Next
         Next
 
+        Dim Title As String = If(String.IsNullOrWhiteSpace(PresentationTitle), SheetName, PresentationTitle)
         If EditableCount = 0 Then
-            Return SheetName & "  •  calculated workbook output (read-only)"
+            Return Title & "  •  calculated workbook output (read-only)"
         End If
-        Return SheetName & "  •  " & EditableCount.ToString("N0", CultureInfo.CurrentCulture) &
+        Return Title & "  •  " & EditableCount.ToString("N0", CultureInfo.CurrentCulture) &
                " workbook-controlled input cells"
     End Function
 
@@ -343,7 +366,9 @@ Public Class FFRWorkbookSheetView
 
         Dim SourceRow As Integer = Convert.ToInt32(Value, CultureInfo.InvariantCulture)
         Dim WorkbookHeight As Single = Workbook.Worksheets(SheetName).Rows(SourceRow).Height
-        e.RowHeight = Math.Max(DefaultRowHeight, Math.Min(180, CInt(Math.Ceiling(WorkbookHeight * 1.35F))))
+        Dim MinimumHeight As Integer = If(CompactRows, 18, DefaultRowHeight)
+        Dim Scale As Single = If(CompactRows, 1.0F, 1.35F)
+        e.RowHeight = Math.Max(MinimumHeight, Math.Min(180, CInt(Math.Ceiling(WorkbookHeight * Scale))))
     End Sub
 
     Private Sub CellToolTipsGetActiveObjectInfo(
