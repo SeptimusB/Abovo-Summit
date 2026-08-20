@@ -2142,7 +2142,7 @@ Public Class StressTest
 
     End Function
 
-    Private Sub DisableStressTestGridFilteringAndSorting()
+    Private Sub ApplyStressTestGridViewPolicy()
 
         For Each Grid As GridControl In FindControls(Of GridControl)(Me)
             Dim View As GridView = TryCast(Grid.MainView, GridView)
@@ -2157,6 +2157,21 @@ Public Class StressTest
                 DevExpress.XtraGrid.Views.Base.ShowButtonModeEnum.ShowForFocusedRow
             View.OptionsView.ShowFilterPanelMode =
                 DevExpress.XtraGrid.Views.Base.ShowFilterPanelMode.Never
+            View.OptionsSelection.MultiSelect = True
+            If Object.ReferenceEquals(View, NativeSensitivityView) Then
+                'This grid retains row selection because its Delete Selected
+                'command operates on complete captured workbook records.
+                View.OptionsSelection.MultiSelectMode =
+                    DevExpress.XtraGrid.Views.Grid.GridMultiSelectMode.RowSelect
+            Else
+                View.OptionsSelection.MultiSelectMode =
+                    DevExpress.XtraGrid.Views.Grid.GridMultiSelectMode.CellSelect
+            End If
+            View.OptionsClipboard.AllowCopy = DevExpress.Utils.DefaultBoolean.True
+            View.OptionsClipboard.CopyColumnHeaders =
+                DevExpress.Utils.DefaultBoolean.False
+            RemoveHandler View.KeyDown, AddressOf StressTestGridKeyDown
+            AddHandler View.KeyDown, AddressOf StressTestGridKeyDown
             View.ClearColumnsFilter()
 
             For Each Column As DevExpress.XtraGrid.Columns.GridColumn In
@@ -2166,6 +2181,17 @@ Public Class StressTest
                 Column.OptionsFilter.AllowFilter = False
             Next
         Next
+
+    End Sub
+
+    Private Sub StressTestGridKeyDown(sender As Object, e As KeyEventArgs)
+
+        If Not e.Control OrElse e.KeyCode <> Keys.C Then Return
+        Dim View As GridView = TryCast(sender, GridView)
+        If View Is Nothing Then Return
+        View.CopyToClipboard()
+        e.Handled = True
+        e.SuppressKeyPress = True
 
     End Sub
 
@@ -2278,7 +2304,7 @@ Public Class StressTest
         RefreshNativeSensitivityList()
         RefreshNativeDashboard()
         RefreshNativeComparativeViews()
-        DisableStressTestGridFilteringAndSorting()
+        ApplyStressTestGridViewPolicy()
 
     End Sub
 
@@ -2868,7 +2894,7 @@ Public Class StressTest
                 66 + Offset, True)
         Next
 
-        DisableStressTestGridFilteringAndSorting()
+        ApplyStressTestGridViewPolicy()
 
     End Sub
 
@@ -5410,7 +5436,7 @@ Public Class StressTest
             Band.Columns.Add(PlotColumn)
             NativeDashboardView.Bands.Add(Band)
         Next
-        DisableStressTestGridFilteringAndSorting()
+        ApplyStressTestGridViewPolicy()
 
     End Sub
 
@@ -5869,7 +5895,7 @@ Public Class StressTest
         If View.Columns.ColumnByFieldName("SourceRow") IsNot Nothing Then
             View.Columns("SourceRow").Visible = False
         End If
-        DisableStressTestGridFilteringAndSorting()
+        ApplyStressTestGridViewPolicy()
         View.BestFitColumns()
         If View.Columns.Count > 0 Then
             View.Columns(0).Width = Math.Max(View.Columns(0).Width, 135)
