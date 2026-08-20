@@ -4,6 +4,8 @@
 
 - Summit is a VB.NET/DevExpress layer over an authoritative Excel XLSB model for Abovo.
 - Most interface functionality is available through DevExpress Ultimate Edition 25.2; prefer its supported native controls and features before introducing custom or third-party implementations.
+- Wherever practical, match the XLSB's visual appearance in the native interface unless the user specifically instructs otherwise.
+- Increment the test-release version defined by AbovoAppCls/AbovoApp for each test delivery; reset the count only for the final user release.
 - Preserve Excel round-tripping: a workbook must remain usable in Summit, then Microsoft Excel/VBA, then Summit again without losing formulas, names, VBA behavior, or user edits.
 - Do not make any change to a utilised XLSB or XLSM that could impair its standalone Microsoft Excel or VBA functionality.
 - Treat `Library/TestFileMigrated.xlsb`, its embedded VBA, workbook names/formulas/locks, and `Structure.xml` as the behavioral contract. Do not infer parity from similarly named VB methods alone.
