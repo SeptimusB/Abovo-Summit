@@ -3,7 +3,9 @@
 ## Product contract
 
 - Summit is a VB.NET/DevExpress layer over an authoritative Excel XLSB model for Abovo.
+- Most interface functionality is available through DevExpress Ultimate Edition 25.2; prefer its supported native controls and features before introducing custom or third-party implementations.
 - Preserve Excel round-tripping: a workbook must remain usable in Summit, then Microsoft Excel/VBA, then Summit again without losing formulas, names, VBA behavior, or user edits.
+- Do not make any change to a utilised XLSB or XLSM that could impair its standalone Microsoft Excel or VBA functionality.
 - Treat `Library/TestFileMigrated.xlsb`, its embedded VBA, workbook names/formulas/locks, and `Structure.xml` as the behavioral contract. Do not infer parity from similarly named VB methods alone.
 - Read `Library/Abovo_Summit_Project_Scope_Audit.md` and `Library/Abovo_Summit_Project_Index.json` before broad workbook, migration, Transactional DB, or Stress Test changes.
 
@@ -14,6 +16,8 @@
 - An unprotected worksheet in the development workbook is not itself a defect. Respect cell `Protection.Locked` for interface editability and restore each worksheet's entry protection state.
 - Normal interactive calculation uses `WBCalcEngine.CalculateWSs`. Dependency-sensitive bulk operations may temporarily select DevExpress `CalculationEngineType.Recursive`, but must restore the previous engine in `Finally`.
 - Do not reproduce the VBA `ABVCalculate` early-exit accident; preserve the intended recalculation point.
+- Assume every DevExpress grid requires cell multiselect and clipboard copy, including grids that are read-only.
+- Source every worksheet-backed grid cell's visible formatting from its underlying spreadsheet cell; do not replace workbook-owned colours, font treatment, number display, or alignment with inferred UI styling.
 
 ## Migrations and persistence
 

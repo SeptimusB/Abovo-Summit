@@ -219,6 +219,8 @@ Version 6.71 replaces the disposable legacy `FFRForm` implementation with lazy n
 
 ## Durable-audit files
 
+Library/Abovo_Summit_Architecture_Review.md is the durable review of the workbook, Structure.xml, DataManager, PresentationManager and DataInterfaceTemplate ownership boundaries. Use it with this audit and AGENTS.md before workbook-facing architectural changes.
+
 - `TestFileMigrated.xlsb` — unchanged source workbook.
 - `TestFileMigrated.analysis.md` — workbook compatibility summary.
 - `Abovo_Summit_Project_Scope_Audit.md` — this architecture, VBA, workbook, and risk narrative.
