@@ -99,6 +99,7 @@ Public Class FFRWorkbookSheetView
             .OptionsSelection.EnableAppearanceFocusedRow = False
             .OptionsSelection.MultiSelect = True
             .OptionsSelection.MultiSelectMode = GridMultiSelectMode.CellSelect
+            .OptionsClipboard.CopyColumnHeaders = DefaultBoolean.False
             .OptionsView.ColumnAutoWidth = False
             .OptionsView.ShowAutoFilterRow = False
             .OptionsView.ShowFilterPanelMode = ShowFilterPanelMode.Never

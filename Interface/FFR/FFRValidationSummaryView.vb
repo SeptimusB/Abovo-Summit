@@ -155,6 +155,9 @@ Public Class FFRValidationSummaryView
             .OptionsMenu.EnableFooterMenu = False
             .OptionsSelection.EnableAppearanceFocusedCell = False
             .OptionsSelection.EnableAppearanceFocusedRow = False
+            .OptionsSelection.MultiSelect = True
+            .OptionsSelection.MultiSelectMode = GridMultiSelectMode.CellSelect
+            .OptionsClipboard.CopyColumnHeaders = DefaultBoolean.False
             .OptionsView.ColumnAutoWidth = True
             .OptionsView.ShowAutoFilterRow = False
             .OptionsView.ShowFilterPanelMode = DevExpress.XtraGrid.Views.Base.ShowFilterPanelMode.Never
@@ -164,6 +167,7 @@ Public Class FFRValidationSummaryView
             .OptionsView.ShowVerticalLines = DefaultBoolean.False
             .RowHeight = 25
             .ColumnPanelRowHeight = 25
+            .VertScrollVisibility = DevExpress.XtraGrid.Views.Base.ScrollVisibility.Never
             .Appearance.HeaderPanel.Font = New Font(.Appearance.HeaderPanel.Font, FontStyle.Bold)
             .Appearance.HeaderPanel.ForeColor = Color.FromArgb(0, 75, 160)
             .Appearance.HeaderPanel.Options.UseFont = True
@@ -255,7 +259,7 @@ Public Class FFRValidationSummaryView
 
         For Each Column As GridColumn In View.Columns
             Column.OptionsColumn.AllowEdit = False
-            Column.OptionsColumn.AllowFocus = False
+            Column.OptionsColumn.AllowFocus = True
             Column.OptionsColumn.AllowSort = DefaultBoolean.False
             Column.OptionsFilter.AllowFilter = False
         Next

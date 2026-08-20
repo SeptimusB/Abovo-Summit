@@ -77,6 +77,8 @@ The two summary sections use centred native DevExpress grids following the estab
 
 All captions, calculated counts, messages, resolved colours, font emphasis and alignment are re-read from the live workbook when the tab is opened or refreshed. Runtime verification through the normal Debug startup path displayed hard counts 61, 84, 0, and 27, soft counts 33 and 24, and the exact workbook messages. The verification workbook was closed without saving.
 
+Version 6.73 suppresses vertical scrollbars on the two compact validation-summary grids because their complete four-row and two-row datasets are presented at once. Every native FFR grid now uses DevExpress cell multiselect and copies selected cells without column headers, including calculated and otherwise read-only cells. Selection does not create an edit path: workbook lock, fill-pattern and ModelChangeManager rules remain unchanged.
+
 ## Build validation
 
-Version 6.72 passed Debug and Release MSBuild validation on 20 August 2026. The repository has no automated workbook/UI integration suite. The workbook-open, compact validation summary, and Tabs 2-4 checks above ran in Summit's normal application startup path; the remaining four tabs, interactive edit round trips and provider-template export checks still require representative client validation.
+Version 6.73 passed Debug and Release MSBuild validation on 20 August 2026. The repository has no automated workbook/UI integration suite. The workbook-open, compact validation summary, and Tabs 2-4 checks above ran in Summit's normal application startup path; the remaining four tabs, interactive edit and clipboard round trips, and provider-template export checks still require representative client validation.

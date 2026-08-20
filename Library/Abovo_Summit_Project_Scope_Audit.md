@@ -205,6 +205,7 @@ Version 6.71 replaces the disposable legacy `FFRForm` implementation with lazy n
 - Debug startup auto-opens `Z:\Sandbox\TestFileMigrated.xlsb` when present by passing it to the existing `FormMainScreen.OpenModelProceedureBP` routine. The hook is compile-time excluded from Release.
 - Version 6.71 passed Debug and Release builds on 19 August 2026 with zero warnings and zero errors. Interactive eight-tab and provider-template validation remains required in the normally started application.
 - Version 6.72 replaces the worksheet-scale FFR Validation Summary surface with a centred compact view of workbook rows 5-28. Production instructions remain workbook-driven, while the hard-error (A18:C23) and soft-notification (A25:C28) blocks use read-only DevExpress grids with the established Stress Test filtering, sorting and grouping restrictions. Runtime verification reproduced all current workbook counts and messages; Debug and Release builds passed on 20 August 2026.
+- Version 6.73 removes unnecessary vertical scrollbars from the two compact validation grids and standardises all FFR grids on cell multiselect with header-free clipboard copying. Read-only workbook cells remain selectable for copying without becoming editable. Debug and Release builds passed on 20 August 2026.
 
 ## Current project risks and missing assets
 

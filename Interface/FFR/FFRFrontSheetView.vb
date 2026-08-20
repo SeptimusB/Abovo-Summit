@@ -291,6 +291,9 @@ Public Class FFRFrontSheetView
             .OptionsCustomization.AllowSort = False
             .OptionsMenu.EnableColumnMenu = False
             .OptionsSelection.EnableAppearanceFocusedRow = False
+            .OptionsSelection.MultiSelect = True
+            .OptionsSelection.MultiSelectMode = GridMultiSelectMode.CellSelect
+            .OptionsClipboard.CopyColumnHeaders = DefaultBoolean.False
             .OptionsView.ColumnAutoWidth = True
             .OptionsView.ShowGroupPanel = False
             .OptionsView.ShowIndicator = False
