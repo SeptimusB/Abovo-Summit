@@ -151,7 +151,7 @@ Namespace Abovo
 
 
 
-            If IEDSource.DSType = "LiveGrid" Then
+            If IEDSource.DSType = "LiveGrid" OrElse IEDSource.DSType = "LiveVGrid" Then
 
                 Dim WSName As String = IEDSource.CellRangeSources(0).WSName
                 Dim CRSource As CellRangeDataSource = IEDSource.CellRangeSources(0)
@@ -171,6 +171,8 @@ Namespace Abovo
                     .LiveGridSourceName = CRSource.LiveGridSourceName,
                     .LiveGridSourceRanges = CRSource.LiveGridSourceRanges,
                     .LiveGridHeaderRows = CRSource.LiveGridHeaderRows,
+                    .LiveVGridCategoryRow = CRSource.LiveVGridCategoryRow,
+                    .LiveVGridRecordHeaderColumns = CRSource.LiveVGridRecordHeaderColumns,
                     .FormatMap = CRSource.DataFieldDefinitions(0).DataFormat
                 }
 
@@ -4281,6 +4283,8 @@ ErrorHandler:
             Public LiveGridSourceRanges As String
             Public LiveGridSourceAreaReferences As New List(Of String)
             Public LiveGridHeaderRows As String
+            Public LiveVGridCategoryRow As String
+            Public LiveVGridRecordHeaderColumns As String
             Public Capacity As Integer = 0
             Public UsedRows As Integer = 0
             Public DataRows() As SheetDataRow

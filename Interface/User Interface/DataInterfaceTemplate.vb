@@ -141,6 +141,20 @@ Public Class DataInterfaceTemplate
     Private Class VGridLayoutTag
 
         Public TableRowIndex As Integer = -1
+        Public IsLiveGrid As Boolean = False
+
+    End Class
+
+    Private Class LiveVGridRowTag
+
+        Public SourceColumnIndex As Integer
+
+    End Class
+
+    Private Class LiveVGridCategoryTag
+
+        Public SourceRowIndex As Integer
+        Public SourceColumnIndex As Integer
 
     End Class
 
@@ -611,6 +625,7 @@ Public Class DataInterfaceTemplate
 
                 If vertGridControl IsNot Nothing AndAlso Not vertGridControl.IsDisposed Then
                     vertGridControl.RefreshDataSource()
+                    RefreshLiveVGridHeaders(vertGridControl)
                 End If
 
             Next
@@ -2463,6 +2478,7 @@ SkipRefresh:
                 RemoveHandler VG.KeyDown, AddressOf VGrid_KeyDown
                 RemoveHandler VG.EditorKeyDown, AddressOf VGrid_KeyDown
                 RemoveHandler VG.CustomDrawRowValueCell, AddressOf VGrid_CustomDrawCell
+                RemoveHandler VG.CustomDrawRowValueCell, AddressOf LiveVGrid_CustomDrawCell
                 RemoveHandler VG.ValidatingEditor, AddressOf VGrid_ValidatingEditor
                 RemoveHandler VG.ShowingEditor, AddressOf VGrid_ShowingEditor
                 RemoveHandler VG.ShownEditor, AddressOf VGrid_ShownEditor
@@ -2674,6 +2690,185 @@ SkipRefresh:
 
                 TP.SetCell(GridControls(GridCount), TPRowCount, 0)
                 TP.SetColumnSpan(GridControls(GridCount), 4)
+
+#End Region
+
+#Region "LiveVGrid"
+
+            ElseIf SectionElement.Type = "LiveVGrid" Then
+
+                ActiveDataSet = DataPres.DataSets(SectionElement.ControlSourceIndex)
+
+                'Outputs cashflows are naturally read down as measures and across
+                'as periods.  Project the workbook range through the same detached
+                'source used by LiveGrid, then transpose only the presentation:
+                'worksheet columns become VGrid rows and worksheet rows become
+                'records.  No worksheet cell is data-bound or edited by this view.
+                Dim LiveWorksheet As DevExpress.Spreadsheet.Worksheet =
+                    ExcelModels(ModelID).WB.Worksheets(ActiveDataSet.SourceWorksheet)
+                Dim LiveSourceRows As New List(Of Integer)
+                Dim LiveSourceColumns As New List(Of Integer)
+                Dim LiveSourceRanges As New List(Of DevExpress.Spreadsheet.CellRange)
+
+                If ActiveDataSet.LiveGridSourceAreaReferences IsNot Nothing AndAlso
+                   ActiveDataSet.LiveGridSourceAreaReferences.Count > 0 Then
+                    For Each AreaReference As String In ActiveDataSet.LiveGridSourceAreaReferences
+                        LiveSourceRanges.Add(LiveWorksheet.Range(AreaReference))
+                    Next
+                Else
+                    LiveSourceRanges.Add(LiveWorksheet.Range(ActiveDataSet.DataRange))
+                End If
+
+                For RowIndex As Integer = LiveSourceRanges(0).TopRowIndex To LiveSourceRanges(0).BottomRowIndex
+                    If LiveWorksheet.Rows(RowIndex).Visible Then LiveSourceRows.Add(RowIndex)
+                Next
+
+                For Each SourceRange As DevExpress.Spreadsheet.CellRange In LiveSourceRanges
+                    For ColumnIndex As Integer = SourceRange.LeftColumnIndex To SourceRange.RightColumnIndex
+                        If LiveWorksheet.Columns(ColumnIndex).Visible Then LiveSourceColumns.Add(ColumnIndex)
+                    Next
+                Next
+
+                UBSDataSourceCount += 1
+                ReDim Preserve UnboundDataSources(UBSDataSourceCount)
+
+                Dim LiveSetTag As New AbovoUnboundSourceTag With {
+                    .ModelID = ModelID,
+                    .GSID = GSID,
+                    .CSID = CSID,
+                    .RO = True,
+                    .DSIndex = SectionElement.ControlSourceIndex,
+                    .IsLiveGrid = True,
+                    .LiveGridWorksheet = ActiveDataSet.SourceWorksheet,
+                    .LiveGridSourceRows = LiveSourceRows,
+                    .LiveGridSourceColumns = LiveSourceColumns
+                }
+                Dim LiveSource As New AbovoUnboundSource(UBSDataSourceCount, LiveSetTag)
+                Dim LiveProperties As New List(Of UnboundSourceProperty)
+
+                For ColumnOffset As Integer = 0 To ActiveDataSet.DataColumns.Length - 1
+                    Dim LiveColumnName As String = "Col_" & ColumnOffset.ToString()
+                    ActiveDataSet.DataColumns(ColumnOffset).ColumnTag.ActiveColumnName = LiveColumnName
+                    LiveProperties.Add(New UnboundSourceProperty With {
+                        .UserTag = ActiveDataSet.DataColumns(ColumnOffset).ColumnTag,
+                        .DisplayName = ActiveDataSet.DataColumns(ColumnOffset).ColumnTag.ColumnHeading,
+                        .Name = LiveColumnName,
+                        .PropertyType = GetType(String)
+                    })
+                Next
+
+                LiveSource.Properties.AddRange(LiveProperties)
+                LiveSource.SetRowCount(LiveSourceRows.Count)
+                AddHandler LiveSource.ValueNeeded, AddressOf UnboundDS_ValueNeeded
+                UnboundDataSources(UBSDataSourceCount) = LiveSource
+
+                VertGridCount += 1
+                ReDim Preserve VertGridControls(VertGridCount)
+                Dim LiveVGrid As New VGridControl() With {
+                    .Name = "LiveVGridControl_" & VertGridCount.ToString(),
+                    .Parent = Me,
+                    .Dock = DockStyle.None,
+                    .Anchor = AnchorStyles.Top Or AnchorStyles.Left,
+                    .DataSource = LiveSource,
+                    .LayoutStyle = LayoutViewStyle.MultiRecordView,
+                    .ScrollVisibility = DevExpress.XtraVerticalGrid.ScrollVisibility.Horizontal,
+                    .RecordWidth = 100,
+                    .RowHeaderWidth = 340,
+                    .RecordHeaderHeight = 42
+                }
+                VertGridControls(VertGridCount) = LiveVGrid
+                CurrentAbovoTabPage.AddVGrid(LiveVGrid)
+                LiveVGrid.ForceInitialize()
+
+                LiveVGrid.OptionsBehavior.Editable = False
+                LiveVGrid.OptionsBehavior.CopyToClipboardWithRowHeaders = True
+                LiveVGrid.OptionsSelectionAndFocus.MultiSelect = True
+                LiveVGrid.OptionsSelectionAndFocus.MultiSelectMode = MultiSelectMode.CellSelect
+                LiveVGrid.OptionsView.ShowRecordHeaders = True
+
+                Dim RecordHeaderColumnCount As Integer = 2
+                Integer.TryParse(ActiveDataSet.LiveVGridRecordHeaderColumns, RecordHeaderColumnCount)
+                RecordHeaderColumnCount = Math.Max(1, Math.Min(RecordHeaderColumnCount, LiveSourceColumns.Count))
+                LiveVGrid.RecordHeaderFormat = "{Col_" & (RecordHeaderColumnCount - 1).ToString() & "}"
+
+                Dim CategoryRowIndex As Integer = -1
+                Dim ParsedCategoryRow As Integer
+                If Integer.TryParse(ActiveDataSet.LiveVGridCategoryRow, ParsedCategoryRow) AndAlso
+                   ParsedCategoryRow > 0 Then
+                    CategoryRowIndex = ParsedCategoryRow - 1
+                End If
+
+                LiveVGrid.Rows.Clear()
+                Dim CurrentCategory As CategoryRow = Nothing
+                Dim LastCategoryCaption As String = Nothing
+
+                For ColumnOffset As Integer = 0 To Math.Min(LiveSourceColumns.Count, ActiveDataSet.DataColumns.Length) - 1
+                    Dim SourceColumnIndex As Integer = LiveSourceColumns(ColumnOffset)
+                    Dim RowCaption As String = BuildLiveGridColumnCaption(
+                        LiveWorksheet,
+                        LiveSourceRanges(0),
+                        SourceColumnIndex,
+                        ActiveDataSet.DataColumns(ColumnOffset).ColumnTag.ColumnHeading,
+                        ActiveDataSet.LiveGridHeaderRows)
+
+                    Dim VRow As New EditorRow("Col_" & ColumnOffset.ToString()) With {
+                        .Height = IdealGridRowHeight,
+                        .Tag = New LiveVGridRowTag With {.SourceColumnIndex = SourceColumnIndex}
+                    }
+                    VRow.Properties.Caption = RowCaption
+                    VRow.Properties.ReadOnly = True
+
+                    If ColumnOffset < RecordHeaderColumnCount Then
+                        VRow.Visible = False
+                        LiveVGrid.Rows.Add(VRow)
+                        Continue For
+                    End If
+
+                    Dim CategoryCaption As String = Nothing
+                    If CategoryRowIndex >= 0 Then
+                        CategoryCaption = LiveWorksheet.Cells(CategoryRowIndex, SourceColumnIndex).DisplayText.Trim()
+                    End If
+
+                    If Not String.IsNullOrWhiteSpace(CategoryCaption) AndAlso
+                       Not String.Equals(CategoryCaption, LastCategoryCaption, StringComparison.Ordinal) Then
+                        CurrentCategory = New CategoryRow("LiveCategory_" & ColumnOffset.ToString()) With {
+                            .Height = 36,
+                            .Tag = New LiveVGridCategoryTag With {
+                                .SourceRowIndex = CategoryRowIndex,
+                                .SourceColumnIndex = SourceColumnIndex
+                            }
+                        }
+                        CurrentCategory.Properties.Caption = CategoryCaption
+                        LiveVGrid.Rows.Add(CurrentCategory)
+                        LastCategoryCaption = CategoryCaption
+                    End If
+
+                    If CurrentCategory Is Nothing Then
+                        LiveVGrid.Rows.Add(VRow)
+                    Else
+                        CurrentCategory.ChildRows.Add(VRow)
+                    End If
+                Next
+
+                LiveVGrid.Tag = New VGridLayoutTag With {
+                    .TableRowIndex = TPRowCount,
+                    .IsLiveGrid = True
+                }
+                AddHandler LiveVGrid.CustomDrawRowValueCell, AddressOf LiveVGrid_CustomDrawCell
+                RegisterDataSetDependencies(SetSectionID, ActiveDataSet)
+
+                Dim IdealVGridHeight As Integer = Math.Min(
+                    Math.Max(400, GetPreferredVGridContentHeight(LiveVGrid) + 50),
+                    MaxGridHeight)
+                LiveVGrid.Height = IdealVGridHeight
+                SectionControlsCumlHeight += IdealVGridHeight +
+                    DefaultTablePanelPadding.Top + DefaultTablePanelPadding.Bottom
+                TP.Controls.Add(LiveVGrid)
+                TP.SetCell(LiveVGrid, TPRowCount, 0)
+                TP.SetColumnSpan(LiveVGrid, 4)
+                TP.AutoSize = True
+                TP.AutoSizeMode = AutoSizeMode.GrowAndShrink
+                UnboundDataSources(UBSDataSourceCount).AttachedVertGrid = LiveVGrid
 
 #End Region
 
@@ -6561,6 +6756,7 @@ NextCell:
                 RemoveHandler vg.KeyDown, AddressOf VGrid_KeyDown
                 RemoveHandler vg.EditorKeyDown, AddressOf VGrid_KeyDown
                 RemoveHandler vg.CustomDrawRowValueCell, AddressOf VGrid_CustomDrawCell
+                RemoveHandler vg.CustomDrawRowValueCell, AddressOf LiveVGrid_CustomDrawCell
                 RemoveHandler vg.ValidatingEditor, AddressOf VGrid_ValidatingEditor
                 RemoveHandler vg.ShowingEditor, AddressOf VGrid_ShowingEditor
                 RemoveHandler vg.ShownEditor, AddressOf VGrid_ShownEditor
@@ -9370,6 +9566,69 @@ SectionSelect:
 
     End Sub
 
+    Private Sub RefreshLiveVGridHeaders(ByVal Grid As VGridControl)
+
+        If Grid Is Nothing OrElse Grid.IsDisposed Then Return
+
+        Dim LayoutTag As VGridLayoutTag = TryCast(Grid.Tag, VGridLayoutTag)
+        Dim LiveSource As AbovoUnboundSource = TryCast(Grid.DataSource, AbovoUnboundSource)
+        If LayoutTag Is Nothing OrElse Not LayoutTag.IsLiveGrid OrElse
+           LiveSource Is Nothing OrElse LiveSource.UBSTag Is Nothing Then Return
+
+        Dim LiveTag As AbovoUnboundSourceTag = LiveSource.UBSTag
+        Dim DataSet As DataCellRange = DataPres.DataSets(LiveTag.DSIndex)
+        If DataSet Is Nothing OrElse DataSet.DataColumns Is Nothing Then Return
+
+        Dim Worksheet As DevExpress.Spreadsheet.Worksheet =
+            ExcelModels(LiveTag.ModelID).WB.Worksheets(LiveTag.LiveGridWorksheet)
+        Dim SourceRange As DevExpress.Spreadsheet.CellRange = Worksheet.Range(DataSet.DataRange)
+
+        Grid.BeginUpdate()
+        Try
+            For Each Row As BaseRow In Grid.Rows
+                RefreshLiveVGridRowHeader(Row, Worksheet, SourceRange, DataSet)
+            Next
+            Grid.InvalidateRecordHeaders()
+        Finally
+            Grid.EndUpdate()
+        End Try
+
+    End Sub
+
+    Private Sub RefreshLiveVGridRowHeader(
+        ByVal Row As BaseRow,
+        ByVal Worksheet As DevExpress.Spreadsheet.Worksheet,
+        ByVal SourceRange As DevExpress.Spreadsheet.CellRange,
+        ByVal DataSet As DataCellRange)
+
+        Dim ValueTag As LiveVGridRowTag = TryCast(Row.Tag, LiveVGridRowTag)
+        If ValueTag IsNot Nothing Then
+            Dim ColumnOffset As Integer = ValueTag.SourceColumnIndex - SourceRange.LeftColumnIndex
+            Dim FallbackCaption As String = Row.Properties.Caption
+            If ColumnOffset >= 0 AndAlso ColumnOffset < DataSet.DataColumns.Length Then
+                FallbackCaption = DataSet.DataColumns(ColumnOffset).ColumnTag.ColumnHeading
+            End If
+            Row.Properties.Caption = BuildLiveGridColumnCaption(
+                Worksheet,
+                SourceRange,
+                ValueTag.SourceColumnIndex,
+                FallbackCaption,
+                DataSet.LiveGridHeaderRows)
+        End If
+
+        Dim CategoryTag As LiveVGridCategoryTag = TryCast(Row.Tag, LiveVGridCategoryTag)
+        If CategoryTag IsNot Nothing Then
+            Row.Properties.Caption = Worksheet.Cells(
+                CategoryTag.SourceRowIndex,
+                CategoryTag.SourceColumnIndex).DisplayText.Trim()
+        End If
+
+        For Each ChildRow As BaseRow In Row.ChildRows
+            RefreshLiveVGridRowHeader(ChildRow, Worksheet, SourceRange, DataSet)
+        Next
+
+    End Sub
+
     Private Function TryGetLiveGridSourceCell(ByVal View As GridView,
                                               ByVal RowHandle As Integer,
                                               ByVal Column As GridColumn,
@@ -9479,6 +9738,79 @@ SectionSelect:
             e.Appearance.BackColor = Color.Beige
             e.Appearance.ForeColor = Color.Black
         End If
+
+    End Sub
+
+    Private Sub LiveVGrid_CustomDrawCell(
+        ByVal sender As Object,
+        ByVal e As DevExpress.XtraVerticalGrid.Events.CustomDrawRowValueCellEventArgs)
+
+        Dim Grid As VGridControl = TryCast(sender, VGridControl)
+        Dim LiveSource As AbovoUnboundSource =
+            If(Grid Is Nothing, Nothing, TryCast(Grid.DataSource, AbovoUnboundSource))
+        Dim ValueTag As LiveVGridRowTag = TryCast(e.Row.Tag, LiveVGridRowTag)
+
+        If LiveSource Is Nothing OrElse LiveSource.UBSTag Is Nothing OrElse
+           ValueTag Is Nothing Then Return
+
+        Dim LiveTag As AbovoUnboundSourceTag = LiveSource.UBSTag
+        If LiveTag.LiveGridSourceRows Is Nothing OrElse
+           e.RecordIndex < 0 OrElse e.RecordIndex >= LiveTag.LiveGridSourceRows.Count Then Return
+
+        Dim Worksheet As DevExpress.Spreadsheet.Worksheet =
+            ExcelModels(LiveTag.ModelID).WB.Worksheets(LiveTag.LiveGridWorksheet)
+        Dim SourceCell As DevExpress.Spreadsheet.Cell = Worksheet.Cells(
+            LiveTag.LiveGridSourceRows(e.RecordIndex),
+            ValueTag.SourceColumnIndex)
+
+        Dim Background As Color = SourceCell.FillColor
+        If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
+
+        Dim Foreground As Color = SourceCell.Font.Color
+        If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = AbovoBlue
+        If SourceCell.DisplayText.Trim().StartsWith("(", StringComparison.Ordinal) Then
+            Foreground = Color.Red
+        End If
+
+        e.Appearance.BackColor = Background
+        e.Appearance.ForeColor = Foreground
+        e.Appearance.Options.UseBackColor = True
+        e.Appearance.Options.UseForeColor = True
+        e.Appearance.Options.UseTextOptions = True
+        e.Appearance.TextOptions.WordWrap = WordWrap.Wrap
+
+        Select Case SourceCell.Alignment.Horizontal
+            Case SpreadsheetHorizontalAlignment.Center
+                e.Appearance.TextOptions.HAlignment = HorzAlignment.Center
+            Case SpreadsheetHorizontalAlignment.Right
+                e.Appearance.TextOptions.HAlignment = HorzAlignment.Far
+            Case SpreadsheetHorizontalAlignment.General
+                e.Appearance.TextOptions.HAlignment =
+                    If(SourceCell.Value.IsNumeric, HorzAlignment.Far, HorzAlignment.Near)
+            Case Else
+                e.Appearance.TextOptions.HAlignment = HorzAlignment.Near
+        End Select
+
+        Select Case SourceCell.Alignment.Vertical
+            Case SpreadsheetVerticalAlignment.Top
+                e.Appearance.TextOptions.VAlignment = VertAlignment.Top
+            Case SpreadsheetVerticalAlignment.Center
+                e.Appearance.TextOptions.VAlignment = VertAlignment.Center
+            Case Else
+                e.Appearance.TextOptions.VAlignment = VertAlignment.Bottom
+        End Select
+
+        Dim SourceFontStyle As FontStyle = FontStyle.Regular
+        If SourceCell.Font.Bold Then SourceFontStyle = SourceFontStyle Or FontStyle.Bold
+        If SourceCell.Font.Italic Then SourceFontStyle = SourceFontStyle Or FontStyle.Italic
+        If SourceCell.Font.UnderlineType <> DevExpress.Spreadsheet.UnderlineType.None Then
+            SourceFontStyle = SourceFontStyle Or FontStyle.Underline
+        End If
+        e.Appearance.Font = New Font(
+            e.Appearance.Font.FontFamily,
+            e.Appearance.Font.Size,
+            SourceFontStyle)
+        e.Appearance.Options.UseFont = True
 
     End Sub
 

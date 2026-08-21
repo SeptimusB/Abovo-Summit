@@ -140,7 +140,7 @@ CreatePresentation:
                 For Each SectionDefinition As CSInterfaceSection In DPCS.InterfaceSections
                     For Each ElementDefinition In SectionDefinition.IElements
                         Select Case ElementDefinition.Type
-                            Case "Grid", "VGrid", "LiveGrid", "TextBox", "Label", "ComboBox", "DateBox"
+                            Case "Grid", "VGrid", "LiveGrid", "LiveVGrid", "TextBox", "Label", "ComboBox", "DateBox"
                                 InitialDataSetCount += 1
                         End Select
                     Next
@@ -229,11 +229,11 @@ CreatePresentation:
 
                         End If
 
-                    ElseIf ISElement.Type = "LiveGrid" Then
+                    ElseIf ISElement.Type = "LiveGrid" OrElse ISElement.Type = "LiveVGrid" Then
 
                         DataSetCount += 1
                         EnsureDataSetSlot(DataSetCount)
-                        Section.SectionElements(SElementCount).Type = "LiveGrid"
+                        Section.SectionElements(SElementCount).Type = ISElement.Type
                         DataSets(DataSetCount) = WBData.GetISEDataStructure(ModelID, GSID, CSID, SectionCount, CInt(ISElement.DataSource))
                         Section.SectionElements(SElementCount).ControlSourceIndex = DataSetCount
                         Section.SectionElements(SElementCount).Tag.Description = ISElement.Description

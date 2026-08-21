@@ -254,6 +254,8 @@ Namespace Abovo
         <XmlElement("LiveGridSourceAreas")> Public LiveGridSourceAreas As String
         <XmlElement("LiveGridLeadingColumns")> Public LiveGridLeadingColumns As String
         <XmlElement("LiveGridHeaderRows")> Public LiveGridHeaderRows As String
+        <XmlElement("LiveVGridCategoryRow")> Public LiveVGridCategoryRow As String
+        <XmlElement("LiveVGridRecordHeaderColumns")> Public LiveVGridRecordHeaderColumns As String
         <XmlElement("PositID")> Public PositID As String
         <XmlElement("ParentID")> Public ParentID As String
         <XmlElement("BandID")> Public BandID As String
