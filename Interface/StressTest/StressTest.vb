@@ -210,15 +210,14 @@ Public Class StressTest
 
             STMode = "Y"
             ToggleModeSwitch.IsOn = True
-            TextEditMultivariableName.EditValue = ActiveWorkbook.DefinedNames.GetDefinedName("NewStressName").Range(0, 0).Value.TextValue
 
         Else
 
             STMode = "N"
             ToggleModeSwitch.IsOn = False
-            TextEditMultivariableName.EditValue = "Base"
 
         End If
+        RefreshLiveMultivariableNameEditor()
 
         Form_InitilisationProcess_SetDataSources()
 
@@ -1332,7 +1331,7 @@ Public Class StressTest
 
             End If
 
-            TextEditMultivariableName.EditValue = ActiveWorkbook.DefinedNames.GetDefinedName("NewStressName").Range(0, 0).Value.TextValue
+            RefreshLiveMultivariableNameEditor()
 
             'SimpleButtonModeSwitch.Text = "Deactivate Stress Test Mode"
             PanelControlCovSel.Visible = True
@@ -1785,27 +1784,38 @@ Public Class StressTest
         PanelControl3.Controls.Clear()
         Dim Layout As TableLayoutPanel = NewFirstTabLayout(2)
         Layout.RowCount = 1
-        Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 42.0!))
-        Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 58.0!))
+        Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 34.0!))
+        Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 66.0!))
         SimpleButtonCapture.Text = "Capture scenario"
-        SimpleButtonCapture.Dock = DockStyle.None
-        SimpleButtonCapture.Anchor = AnchorStyles.Top Or AnchorStyles.Left Or AnchorStyles.Right
-        SimpleButtonCapture.Height = 42
-        SimpleButtonCapture.Margin = New Padding(4, 12, 10, 12)
+        SimpleButtonCapture.Dock = DockStyle.Fill
+        SimpleButtonCapture.Margin = New Padding(4, 10, 12, 10)
 
         Dim SelectionLayout As New TableLayoutPanel With {
             .Dock = DockStyle.Fill, .BackColor = Color.White,
-            .ColumnCount = 1, .RowCount = 2, .Margin = New Padding(0)
+            .ColumnCount = 2, .RowCount = 2, .Margin = New Padding(0)
         }
-        SelectionLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 32.0!))
-        SelectionLayout.RowStyles.Add(New RowStyle(SizeType.Percent, 100.0!))
+        SelectionLayout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 42.0!))
+        SelectionLayout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 58.0!))
+        SelectionLayout.RowStyles.Add(New RowStyle(SizeType.Percent, 50.0!))
+        SelectionLayout.RowStyles.Add(New RowStyle(SizeType.Percent, 50.0!))
+        LabelControl4.Text = "Multivariable Name:"
+        LabelControl4.Dock = DockStyle.Fill
+        LabelControl4.AutoSizeMode = DevExpress.XtraEditors.LabelAutoSizeMode.None
+        LabelControl4.Appearance.TextOptions.VAlignment = VertAlignment.Center
+        LabelControl4.Margin = New Padding(0, 0, 8, 0)
+        TextEditMultivariableName.Properties.UseAdvancedMode = DefaultBoolean.False
+        TextEditMultivariableName.Properties.NullValuePrompt = "Multivariable name"
+        TextEditMultivariableName.Dock = DockStyle.Fill
+        TextEditMultivariableName.Margin = New Padding(0, 7, 0, 7)
         LabelControl1.Dock = DockStyle.Fill
         LabelControl1.AutoSizeMode = DevExpress.XtraEditors.LabelAutoSizeMode.None
         LabelControl1.Appearance.TextOptions.VAlignment = VertAlignment.Center
         ComboBoxBreachMode.Dock = DockStyle.Fill
-        ComboBoxBreachMode.Margin = New Padding(0, 0, 0, 4)
-        SelectionLayout.Controls.Add(LabelControl1, 0, 0)
-        SelectionLayout.Controls.Add(ComboBoxBreachMode, 0, 1)
+        ComboBoxBreachMode.Margin = New Padding(0, 7, 0, 7)
+        SelectionLayout.Controls.Add(LabelControl4, 0, 0)
+        SelectionLayout.Controls.Add(TextEditMultivariableName, 1, 0)
+        SelectionLayout.Controls.Add(LabelControl1, 0, 1)
+        SelectionLayout.Controls.Add(ComboBoxBreachMode, 1, 1)
 
         Layout.Controls.Add(SimpleButtonCapture, 0, 0)
         Layout.Controls.Add(SelectionLayout, 1, 0)
@@ -1816,26 +1826,12 @@ Public Class StressTest
     Private Sub ConfigureQuickCapturePanel()
 
         PanelControl2.Controls.Clear()
-        Dim Layout As TableLayoutPanel = NewFirstTabLayout(3)
+        Dim Layout As TableLayoutPanel = NewFirstTabLayout(1)
         Layout.RowCount = 1
-        Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 34.0!))
-        Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 15.0!))
-        Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 51.0!))
+        Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100.0!))
         SimpleButtonQC.Dock = DockStyle.Fill
-        SimpleButtonQC.Margin = New Padding(0, 2, 10, 2)
-        LabelControl4.Text = "Capture as:"
-        LabelControl4.Dock = DockStyle.Fill
-        LabelControl4.AutoSizeMode = DevExpress.XtraEditors.LabelAutoSizeMode.None
-        LabelControl4.Appearance.TextOptions.HAlignment = HorzAlignment.Far
-        LabelControl4.Appearance.TextOptions.VAlignment = VertAlignment.Center
-        LabelControl4.Margin = New Padding(0, 0, 8, 0)
-        TextEditMultivariableName.Properties.UseAdvancedMode = DefaultBoolean.False
-        TextEditMultivariableName.Properties.NullValuePrompt = "Scenario name"
-        TextEditMultivariableName.Dock = DockStyle.Fill
-        TextEditMultivariableName.Margin = New Padding(0, 10, 0, 10)
+        SimpleButtonQC.Margin = New Padding(12, 10, 12, 10)
         Layout.Controls.Add(SimpleButtonQC, 0, 0)
-        Layout.Controls.Add(LabelControl4, 1, 0)
-        Layout.Controls.Add(TextEditMultivariableName, 2, 0)
         PanelControl2.Controls.Add(Layout)
 
     End Sub
@@ -4969,6 +4965,43 @@ Public Class StressTest
 
     End Sub
 
+    Private Function LiveMultivariableNameCell() As DevExpress.Spreadsheet.Cell
+
+        'NewStressName is the workbook name for Live Multivariable Planner!B5.
+        'Use the worksheet coordinate as the UI contract so the editor continues
+        'to mirror the input cell even if a future workbook loses the defined name.
+        Return ActiveWorkbook.Worksheets("Live Multivariable Planner").Cells(4, 1)
+
+    End Function
+
+    Private Sub RefreshLiveMultivariableNameEditor()
+
+        Dim Target As DevExpress.Spreadsheet.Cell = LiveMultivariableNameCell()
+        TextEditMultivariableName.EditValue = Target.DisplayText
+        TextEditMultivariableName.Properties.ReadOnly = Target.Protection.Locked
+
+    End Sub
+
+    Private Function CommitLiveMultivariableName(Value As Object) As Boolean
+
+        Dim Target As DevExpress.Spreadsheet.Cell = LiveMultivariableNameCell()
+        Dim ChangedText As String = Convert.ToString(Value)
+        If String.Equals(Target.DisplayText, ChangedText, StringComparison.Ordinal) Then
+            Return True
+        End If
+
+        If ProcessStressTestCellChange(
+                Target, Value, "S",
+                "Live multivariable name updated") Then
+            RefreshLiveMultivariableNameEditor()
+            Return True
+        End If
+
+        RefreshLiveMultivariableNameEditor()
+        Return False
+
+    End Function
+
     Private Sub CaptureCurrentLiveScenario_Click(sender As Object, e As EventArgs)
 
         If ComboBoxBreachMode.SelectedIndex < 0 Then
@@ -4981,6 +5014,12 @@ Public Class StressTest
            String.Equals(ScenarioName, "Base", StringComparison.OrdinalIgnoreCase) Then
             DevExpress.XtraEditors.XtraMessageBox.Show(
                 "Enter a multivariable scenario name first.", "Capture multivariable assumptions")
+            Return
+        End If
+        If Not CommitLiveMultivariableName(ScenarioName) Then
+            DevExpress.XtraEditors.XtraMessageBox.Show(
+                "The multivariable name could not be written to the workbook.",
+                "Capture multivariable assumptions")
             Return
         End If
 
@@ -6634,20 +6673,7 @@ Public Class StressTest
 
     Private Sub TextEditMultivariableName_EditValueChanged(sender As Object, e As EventArgs)
 
-        Dim Target As DevExpress.Spreadsheet.Cell =
-            ActiveWorkbook.DefinedNames.GetDefinedName("NewStressName").Range(0, 0)
-        If Not ProcessStressTestCellChange(
-                Target, TextEditMultivariableName.EditValue, "S",
-                "Live stress-test scenario name updated") Then
-            RemoveHandler TextEditMultivariableName.Validated,
-                AddressOf TextEditMultivariableName_EditValueChanged
-            Try
-                TextEditMultivariableName.EditValue = Target.DisplayText
-            Finally
-                AddHandler TextEditMultivariableName.Validated,
-                    AddressOf TextEditMultivariableName_EditValueChanged
-            End Try
-        End If
+        CommitLiveMultivariableName(TextEditMultivariableName.EditValue)
 
     End Sub
 
