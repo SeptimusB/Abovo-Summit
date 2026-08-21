@@ -235,6 +235,7 @@ CreatePresentation:
                         EnsureDataSetSlot(DataSetCount)
                         Section.SectionElements(SElementCount).Type = "LiveGrid"
                         DataSets(DataSetCount) = WBData.GetISEDataStructure(ModelID, GSID, CSID, SectionCount, CInt(ISElement.DataSource))
+                        Section.SectionElements(SElementCount).ControlSourceIndex = DataSetCount
                         Section.SectionElements(SElementCount).Tag.Description = ISElement.Description
 
                     ElseIf ISElement.Type = "ControlGroup" Then

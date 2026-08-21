@@ -165,54 +165,109 @@ Namespace Abovo
                     .IsDirty = False,
                     .SourceWorksheet = WSName,
                     .DataRange = CRSource.DataRange,
-                    .RO = True,
+                    .RO = IIf(IEDSource.RO = "TRUE", True, False),
+                    .ColExpandByNR = If(CRSource.ColsDefinedBy = "NR", CRSource.ColsDefinedByData, Nothing),
+                    .RowExpandByNR = If(CRSource.RowsDefinedBy = "NR", CRSource.RowsDefinedByData, Nothing),
+                    .LiveGridSourceName = CRSource.LiveGridSourceName,
+                    .LiveGridSourceRanges = CRSource.LiveGridSourceRanges,
+                    .LiveGridHeaderRows = CRSource.LiveGridHeaderRows,
                     .FormatMap = CRSource.DataFieldDefinitions(0).DataFormat
                 }
-                For Each CellRangeSource In IEDSource.CellRangeSources
+
+                DataSets(DataSetIndex).LiveGridSourceAreaReferences =
+                    ResolveLiveGridSourceAreaReferences(
+                        CurrWS,
+                        ExcelModels(ModelID).WB,
+                        CRSource)
+
+                If DataSets(DataSetIndex).LiveGridSourceAreaReferences.Count > 0 Then
 
                     Dim ColIndex As Integer = -1
 
-                    For Each DataFieldDefinition In CellRangeSource.DataFieldDefinitions
+                    For Each AreaReference As String In
+                        DataSets(DataSetIndex).LiveGridSourceAreaReferences
 
-                        'MultiRepeatingHeaders = False
+                        Dim SourceArea As DevExpress.Spreadsheet.CellRange =
+                            CurrWS.Range(AreaReference)
 
-                        'CurrDataType = DataFieldDefinition.DataFormat
+                        For SourceColumnIndex As Integer =
+                            SourceArea.LeftColumnIndex To SourceArea.RightColumnIndex
 
-                        'If CurrDataType = "DUMMY" Then GoTo NextDFD
+                            If Not CurrWS.Columns(SourceColumnIndex).Visible Then Continue For
 
-                        Dim RepeatCount As Integer = 0
+                            ColIndex += 1
+                            EnsureArrayCapacity(DataSets(DataSetIndex).DataColumns, ColIndex)
+                            DataSets(DataSetIndex).DataColumns(ColIndex) =
+                                New SheetDataColumn With {
+                                    .ColumnTag = New DataColumnTag With {
+                                        .ColumnHeading = String.Empty,
+                                        .DataType = "S",
+                                        .IsReadOnly = True,
+                                        .IsCalculated = True
+                                    },
+                                    .Index = ColIndex
+                                }
+                        Next
+                    Next
 
-                        If DataFieldDefinition.RepeatsByNR = "TRUE" Or DataFieldDefinition.RepeatsByCR = "TRUE" Then
+                Else
 
-                            Dim DefiningRange As DevExpress.Spreadsheet.CellRange
+                    For Each CellRangeSource In IEDSource.CellRangeSources
 
-                            If DataFieldDefinition.RepeatsByNR = "TRUE" Then
+                        Dim ColIndex As Integer = -1
 
-                                DefiningRange = ExcelModels(ModelID).WB.DefinedNames.GetDefinedName(DataFieldDefinition.RepeatingNR).Range
+                        For Each DataFieldDefinition In CellRangeSource.DataFieldDefinitions
 
-                            Else
+                            'MultiRepeatingHeaders = False
 
-                                DefiningRange = ExcelModels(ModelID).WB.Worksheets(CellRangeSource.WSName).Range(DataFieldDefinition.RepeatsByCRData)
+                            'CurrDataType = DataFieldDefinition.DataFormat
 
-                            End If
+                            'If CurrDataType = "DUMMY" Then GoTo NextDFD
 
-                            Dim ColHead As String
-                            Dim CellExamineNRD As DevExpress.Spreadsheet.Cell
+                            Dim RepeatCount As Integer = 0
 
-                            For x = 0 To DefiningRange.ColumnCount - 1
+                            If DataFieldDefinition.RepeatsByNR = "TRUE" Or DataFieldDefinition.RepeatsByCR = "TRUE" Then
 
-                                ColIndex += 1
-                                CellExamineNRD = DefiningRange(0, x)
-                                ColHead = Replace(DataFieldDefinition.FieldName, "vblf", vbLf) & " vblf " & CellExamineNRD.DisplayText
-                                If Len(DataFieldDefinition.Units) > 0 Then ColHead += DataFieldDefinition.Units
-                                EnsureArrayCapacity(DataSets(DataSetIndex).DataColumns, ColIndex)
+                                Dim DefiningRange As DevExpress.Spreadsheet.CellRange
 
-                                DataSets(DataSetIndex).DataColumns(ColIndex) = New SheetDataColumn With {
+                                If DataFieldDefinition.RepeatsByNR = "TRUE" Then
+
+                                    DefiningRange = ExcelModels(ModelID).WB.DefinedNames.GetDefinedName(DataFieldDefinition.RepeatingNR).Range
+
+                                Else
+
+                                    DefiningRange = ExcelModels(ModelID).WB.Worksheets(CellRangeSource.WSName).Range(DataFieldDefinition.RepeatsByCRData)
+
+                                End If
+
+                                Dim ColHead As String
+                                Dim CellExamineNRD As DevExpress.Spreadsheet.Cell
+
+                                Dim RepeatingItemCount As Integer =
+                                If(DefiningRange.RowCount = 1,
+                                   DefiningRange.ColumnCount,
+                                   If(DefiningRange.ColumnCount = 1,
+                                      DefiningRange.RowCount,
+                                      DefiningRange.ColumnCount))
+
+                                For x = 0 To RepeatingItemCount - 1
+
+                                    ColIndex += 1
+                                    CellExamineNRD =
+                                    If(DefiningRange.RowCount = 1,
+                                       DefiningRange(0, x),
+                                       DefiningRange(x, 0))
+                                    ColHead = Replace(DataFieldDefinition.FieldName, "vblf", vbLf) & " vblf " & CellExamineNRD.DisplayText
+                                    If Len(DataFieldDefinition.Units) > 0 Then ColHead += DataFieldDefinition.Units
+                                    EnsureArrayCapacity(DataSets(DataSetIndex).DataColumns, ColIndex)
+
+                                    DataSets(DataSetIndex).DataColumns(ColIndex) = New SheetDataColumn With {
                                         .ColumnTag = New DataColumnTag With {
                                         .ColumnHeading = ColHead,
                                         .DataType = DataFieldDefinition.DataFormat,
                                         .IsReadOnly = True,
                                         .IsCalculated = True,
+                                        .RepeatingNR = DataFieldDefinition.RepeatingNR,
                                         .Units = DataFieldDefinition.Units,
                                         .ShowSummary = DataFieldDefinition.ShowSummary,
                                         .TipText = DataFieldDefinition.TipText
@@ -220,17 +275,17 @@ Namespace Abovo
                                         .Index = ColIndex
                                         }
 
-                                DataSets(DataSetIndex).DataColumns(ColIndex).ColumnTag.IsReadOnly = True
+                                    DataSets(DataSetIndex).DataColumns(ColIndex).ColumnTag.IsReadOnly = True
 
-                            Next
+                                Next
 
-                        Else
+                            Else
 
-                            ColIndex += 1
+                                ColIndex += 1
 
-                            EnsureArrayCapacity(DataSets(DataSetIndex).DataColumns, ColIndex)
+                                EnsureArrayCapacity(DataSets(DataSetIndex).DataColumns, ColIndex)
 
-                            DataSets(DataSetIndex).DataColumns(ColIndex) = New SheetDataColumn With {
+                                DataSets(DataSetIndex).DataColumns(ColIndex) = New SheetDataColumn With {
                                         .ColumnTag = New DataColumnTag With {
                                         .ColumnHeading = DataFieldDefinition.FieldName,
                                         .DataType = DataFieldDefinition.DataFormat,
@@ -243,13 +298,52 @@ Namespace Abovo
                                         .Index = ColIndex
                                         }
 
-                            DataSets(DataSetIndex).DataColumns(ColIndex).ColumnTag.IsReadOnly = True
+                                DataSets(DataSetIndex).DataColumns(ColIndex).ColumnTag.IsReadOnly = True
 
-                        End If
+                            End If
+
+                        Next
 
                     Next
 
-                Next
+                End If
+
+                'LiveGrid is a direct, read-only workbook display. Its configured
+                'range provides the anchor and row extent, while the generated
+                'column definitions provide the current structural width. This
+                'keeps StockType-driven workings aligned after columns are added or
+                'removed without changing the workbook or Structure.xml.
+                Dim ConfiguredLiveRange As DevExpress.Spreadsheet.CellRange =
+                    If(DataSets(DataSetIndex).LiveGridSourceAreaReferences.Count > 0,
+                       CurrWS.Range(DataSets(DataSetIndex).LiveGridSourceAreaReferences(0)),
+                       CurrWS.Range(CRSource.DataRange))
+
+                'LiveGrid binds the worksheet range directly and therefore does
+                'not materialise DataRows. Trim the chunk-grown column array before
+                'using its length to resolve the current StockType-driven width.
+                TrimDataCellCapacity(DataSets(DataSetIndex))
+
+                Dim LiveColumnCount As Integer = DataSets(DataSetIndex).DataColumns.Length
+
+                If LiveColumnCount > 0 Then
+                    Dim ResolvedLiveRange As DevExpress.Spreadsheet.CellRange =
+                        CurrWS.Range.FromLTRB(
+                            ConfiguredLiveRange.LeftColumnIndex,
+                            ConfiguredLiveRange.TopRowIndex,
+                            ConfiguredLiveRange.LeftColumnIndex + LiveColumnCount - 1,
+                            ConfiguredLiveRange.BottomRowIndex)
+
+                    DataSets(DataSetIndex).DataRange = ResolvedLiveRange.GetReferenceA1()
+                    DataSets(DataSetIndex).ColCount = LiveColumnCount
+                    DataSets(DataSetIndex).RowCount = ResolvedLiveRange.RowCount
+                    DataSets(DataSetIndex).UsedRows = ResolvedLiveRange.RowCount
+                    DataSets(DataSetIndex).Capacity = 0
+                End If
+
+                'The common post-processing path below counts materialised
+                'DataRows for Grid/VGrid datasets. A direct LiveGrid has no such
+                'objects, so return the fully resolved range dataset here.
+                Return DataSets(DataSetIndex)
 
                 ''''''''''''''''''''
                 '''''End LiveGrid
@@ -2008,6 +2102,130 @@ NextDFD2:
             Next
 
         End Sub
+
+        Private Shared Function ResolveLiveGridSourceAreaReferences(
+            ByVal Worksheet As DevExpress.Spreadsheet.Worksheet,
+            ByVal Workbook As DevExpress.Spreadsheet.IWorkbook,
+            ByVal Source As CellRangeDataSource) As List(Of String)
+
+            Dim Result As New List(Of String)
+
+            If Worksheet Is Nothing OrElse
+               Workbook Is Nothing OrElse
+               Source Is Nothing Then Return Result
+
+            If Not String.IsNullOrWhiteSpace(Source.LiveGridSourceRanges) Then
+                For Each RangeToken As String In Source.LiveGridSourceRanges.Split(";"c)
+                    If String.IsNullOrWhiteSpace(RangeToken) Then Continue For
+                    Try
+                        Result.Add(
+                            Worksheet.Range(
+                                RangeToken.Trim().Replace("$", String.Empty)).GetReferenceA1())
+                    Catch
+                        'Ignore invalid optional direct-range fragments.
+                    End Try
+                Next
+
+                Return Result
+            End If
+
+            If String.IsNullOrWhiteSpace(Source.LiveGridSourceName) Then Return Result
+
+            Dim Defined As DevExpress.Spreadsheet.DefinedName =
+                Workbook.DefinedNames.GetDefinedName(Source.LiveGridSourceName.Trim())
+
+            If Defined Is Nothing OrElse String.IsNullOrWhiteSpace(Defined.RefersTo) Then Return Result
+
+            Dim CandidateRanges As New List(Of DevExpress.Spreadsheet.CellRange)
+            Dim RefersTo As String = Defined.RefersTo.Trim()
+            If RefersTo.StartsWith("=", StringComparison.Ordinal) Then
+                RefersTo = RefersTo.Substring(1)
+            End If
+
+            For Each AreaPart As String In RefersTo.Split(","c)
+                Dim BangIndex As Integer = AreaPart.LastIndexOf("!"c)
+                If BangIndex < 0 OrElse BangIndex = AreaPart.Length - 1 Then Continue For
+
+                Dim SheetToken As String =
+                    AreaPart.Substring(0, BangIndex).Trim().Trim("'"c).Replace("''", "'")
+                If Not String.Equals(SheetToken, Worksheet.Name, StringComparison.Ordinal) Then Continue For
+
+                Dim Address As String =
+                    AreaPart.Substring(BangIndex + 1).Trim().Replace("$", String.Empty)
+
+                Try
+                    CandidateRanges.Add(Worksheet.Range(Address))
+                Catch
+                    'Ignore non-range name fragments. Workings names use A1 areas.
+                End Try
+            Next
+
+            If CandidateRanges.Count = 0 Then Return Result
+
+            'Some Workings names retain an earlier block as well as the later block
+            'identified by the name suffix, or include a title cell before the
+            'actual table. A LiveGrid must project one aligned row block, so choose
+            'the last block and then its modal row extent.
+            Dim SelectedTopRow As Integer =
+                CandidateRanges.Max(Function(Item) Item.TopRowIndex)
+            Dim RangesAtSelectedTop As List(Of DevExpress.Spreadsheet.CellRange) =
+                CandidateRanges.Where(
+                    Function(Item) Item.TopRowIndex = SelectedTopRow).ToList()
+            Dim SelectedRowCount As Integer =
+                RangesAtSelectedTop.
+                    GroupBy(Function(Item) Item.RowCount).
+                    OrderByDescending(Function(Group) Group.Count()).
+                    ThenByDescending(Function(Group) Group.Key).
+                    First().Key
+            Dim EligibleRanges As List(Of DevExpress.Spreadsheet.CellRange) =
+                RangesAtSelectedTop.Where(
+                    Function(Item) Item.RowCount = SelectedRowCount).ToList()
+
+            Dim SelectedAreaIndexes As New List(Of Integer)
+
+            If String.IsNullOrWhiteSpace(Source.LiveGridSourceAreas) Then
+                For AreaIndex As Integer = 0 To EligibleRanges.Count - 1
+                    SelectedAreaIndexes.Add(AreaIndex)
+                Next
+            Else
+                For Each AreaToken As String In Source.LiveGridSourceAreas.Split(","c)
+                    Dim OneBasedAreaIndex As Integer
+                    If Integer.TryParse(AreaToken.Trim(), OneBasedAreaIndex) AndAlso
+                       OneBasedAreaIndex > 0 AndAlso
+                       OneBasedAreaIndex <= EligibleRanges.Count Then
+
+                        SelectedAreaIndexes.Add(OneBasedAreaIndex - 1)
+                    End If
+                Next
+            End If
+
+            Dim LeadingColumnCount As Integer = 0
+            Integer.TryParse(Source.LiveGridLeadingColumns, LeadingColumnCount)
+
+            If LeadingColumnCount > 0 AndAlso
+               EligibleRanges.Count > 0 AndAlso
+               Not SelectedAreaIndexes.Contains(0) Then
+
+                Dim LeadingSource As DevExpress.Spreadsheet.CellRange = EligibleRanges(0)
+                LeadingColumnCount = Math.Min(LeadingColumnCount, LeadingSource.ColumnCount)
+
+                Dim LeadingRange As DevExpress.Spreadsheet.CellRange =
+                    Worksheet.Range.FromLTRB(
+                        LeadingSource.LeftColumnIndex,
+                        LeadingSource.TopRowIndex,
+                        LeadingSource.LeftColumnIndex + LeadingColumnCount - 1,
+                        LeadingSource.BottomRowIndex)
+
+                Result.Add(LeadingRange.GetReferenceA1())
+            End If
+
+            For Each AreaIndex As Integer In SelectedAreaIndexes
+                Result.Add(EligibleRanges(AreaIndex).GetReferenceA1())
+            Next
+
+            Return Result
+
+        End Function
 
         Public Function RenderIEHTMLCource(ModelID, SetGSID, SetCSID, SetIntSecID, SetISDID) As String
 
@@ -3868,6 +4086,11 @@ ErrorHandler:
             Public DataSet As DataCellRange
             Public InManualReizeMode As Boolean = False
             Public HaveProcessedColumns As Boolean = False
+            Public IsLiveGrid As Boolean = False
+            Public LiveGridWorksheet As String
+            Public LiveGridRange As String
+            Public LiveGridSourceRows As List(Of Integer)
+            Public LiveGridSourceColumns As List(Of Integer)
 
         End Class
 
@@ -4054,6 +4277,10 @@ ErrorHandler:
             Public DefaultDataNR As String
             Public RepeatingNR As String
             Public DataRange As String
+            Public LiveGridSourceName As String
+            Public LiveGridSourceRanges As String
+            Public LiveGridSourceAreaReferences As New List(Of String)
+            Public LiveGridHeaderRows As String
             Public Capacity As Integer = 0
             Public UsedRows As Integer = 0
             Public DataRows() As SheetDataRow
@@ -4237,6 +4464,10 @@ nextDP:
             Public CSID As Integer
             Public RO As Boolean
             Public HasCalcs As Boolean = False
+            Public IsLiveGrid As Boolean = False
+            Public LiveGridWorksheet As String
+            Public LiveGridSourceRows As List(Of Integer)
+            Public LiveGridSourceColumns As List(Of Integer)
             Public GridTag As GridViewTag
             Public SectionTag As InterfaceSectionTag
 

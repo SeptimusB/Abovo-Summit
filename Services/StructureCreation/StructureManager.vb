@@ -249,6 +249,11 @@ Namespace Abovo
         <XmlElement("MergeRowHeadingFormat")> Public MergeRowHeadingFormat As String
         <XmlElement("DataRange")> Public DataRange As String
         <XmlElement("DataRangeExtensionData")> Public DataRangeExtensionData As String
+        <XmlElement("LiveGridSourceName")> Public LiveGridSourceName As String
+        <XmlElement("LiveGridSourceRanges")> Public LiveGridSourceRanges As String
+        <XmlElement("LiveGridSourceAreas")> Public LiveGridSourceAreas As String
+        <XmlElement("LiveGridLeadingColumns")> Public LiveGridLeadingColumns As String
+        <XmlElement("LiveGridHeaderRows")> Public LiveGridHeaderRows As String
         <XmlElement("PositID")> Public PositID As String
         <XmlElement("ParentID")> Public ParentID As String
         <XmlElement("BandID")> Public BandID As String

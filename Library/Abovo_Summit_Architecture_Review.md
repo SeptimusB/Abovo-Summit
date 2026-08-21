@@ -33,9 +33,13 @@ DataValidationsSet resolves list validation from direct ranges, formulas, worksh
 
 AbovoRangeDataSource deliberately creates a read-only RangeDataSource with formulas not preserved. It is a display adapter, not an interactive write path.
 
+For workbook Workings displays, LiveGrid resolves its current width from the declared data-field definitions and their repeating named ranges while retaining the configured range as the row/anchor contract. A LiveGrid may also project selected areas from a workbook-defined multi-area `Workings_*` name, optionally prepending the shared year columns; this allows one worksheet block to be split into compact tabs without copying data or exposing intervening helper columns. The resulting read-only RangeDataSource refreshes calculated values in place. Source-worksheet or named-range structural changes invalidate the dependent section, detach the old grid data source and rebuild the presentation atomically.
+
 ## Native interface policy
 
 DataInterfaceTemplate owns dynamic DevExpress Grid, BandedGrid and VGrid lifecycle, binding, editors, events and disposal. Its VGrid policy expands the VGrid to visible-content height and lets the containing page own vertical scrolling; wide record sets retain horizontal scrolling.
+
+LiveGrid workbook displays preserve source-cell display text, fill, font treatment and alignment, and use the same cell-multiselect/header-free clipboard-copy policy as other read-only grids.
 
 Use DevExpress Ultimate Edition 25.2 native controls first. All grids are assumed to require cell multiselect and clipboard copy, including read-only grids. A VGrid may not replace a GridView/BandedGrid merely for compactness unless its selection/copy requirements are preserved.
 
