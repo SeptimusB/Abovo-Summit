@@ -80,6 +80,12 @@ Public Class FFRForm
                 DirectCast(ExistingView, FFRInputsAdjStmtVGridView).RefreshFromWorkbook()
             ElseIf TypeOf ExistingView Is FFRWorkingsVGridView Then
                 DirectCast(ExistingView, FFRWorkingsVGridView).RefreshFromWorkbook()
+            ElseIf TypeOf ExistingView Is FFRStatementsVGridView Then
+                DirectCast(ExistingView, FFRStatementsVGridView).RefreshFromWorkbook()
+            ElseIf TypeOf ExistingView Is FFRAssumptionsTenureVGridView Then
+                DirectCast(ExistingView, FFRAssumptionsTenureVGridView).RefreshFromWorkbook()
+            ElseIf TypeOf ExistingView Is FFRComplianceQuestionsVGridView Then
+                DirectCast(ExistingView, FFRComplianceQuestionsVGridView).RefreshFromWorkbook()
             Else
                 DirectCast(ExistingView, FFRWorkbookSheetView).RefreshFromWorkbook()
             End If
@@ -116,6 +122,14 @@ Public Class FFRForm
                 Dim WorkingsView As New FFRWorkingsVGridView(ModelID) With {.Dock = DockStyle.Fill}
                 AddHandler WorkingsView.WorkbookCellChanged, AddressOf WorkbookCellChanged
                 View = WorkingsView
+            ElseIf String.Equals(SheetName, "Statements", StringComparison.Ordinal) Then
+                View = New FFRStatementsVGridView(ModelID) With {.Dock = DockStyle.Fill}
+            ElseIf String.Equals(SheetName, "Assumptions & tenure inputs", StringComparison.Ordinal) Then
+                View = New FFRAssumptionsTenureVGridView(ModelID) With {.Dock = DockStyle.Fill}
+            ElseIf String.Equals(SheetName, "Compliance Questions", StringComparison.Ordinal) Then
+                View = New FFRComplianceQuestionsVGridView(ModelID) With {.Dock = DockStyle.Fill}
+            ElseIf String.Equals(SheetName, "FFR Key Defn", StringComparison.Ordinal) Then
+                View = New FFRKeyDefinitionsVGridView(ModelID) With {.Dock = DockStyle.Fill}
             Else
                 Dim WorkbookView As New FFRWorkbookSheetView(ModelID, SheetName) With {.Dock = DockStyle.Fill}
                 AddHandler WorkbookView.WorkbookCellChanged, AddressOf WorkbookCellChanged
@@ -147,6 +161,12 @@ Public Class FFRForm
             ChangedSheetName = DirectCast(sender, FFRInputsAdjStmtVGridView).WorksheetName
         ElseIf TypeOf sender Is FFRWorkingsVGridView Then
             ChangedSheetName = DirectCast(sender, FFRWorkingsVGridView).WorksheetName
+        ElseIf TypeOf sender Is FFRStatementsVGridView Then
+            ChangedSheetName = DirectCast(sender, FFRStatementsVGridView).WorksheetName
+        ElseIf TypeOf sender Is FFRAssumptionsTenureVGridView Then
+            ChangedSheetName = DirectCast(sender, FFRAssumptionsTenureVGridView).WorksheetName
+        ElseIf TypeOf sender Is FFRComplianceQuestionsVGridView Then
+            ChangedSheetName = DirectCast(sender, FFRComplianceQuestionsVGridView).WorksheetName
         Else
             ChangedSheetName = DirectCast(sender, FFRWorkbookSheetView).WorksheetName
         End If
@@ -263,6 +283,12 @@ Public Class FFRForm
                 RemoveHandler DirectCast(View, FFRInputsAdjStmtVGridView).WorkbookCellChanged, AddressOf WorkbookCellChanged
             ElseIf TypeOf View Is FFRWorkingsVGridView Then
                 RemoveHandler DirectCast(View, FFRWorkingsVGridView).WorkbookCellChanged, AddressOf WorkbookCellChanged
+            ElseIf TypeOf View Is FFRStatementsVGridView Then
+                'Statements is intentionally read-only, so it has no edit event to detach.
+            ElseIf TypeOf View Is FFRAssumptionsTenureVGridView Then
+                'Assumptions & tenure inputs is intentionally read-only.
+            ElseIf TypeOf View Is FFRComplianceQuestionsVGridView Then
+                'Compliance Questions is intentionally read-only.
             Else
                 RemoveHandler DirectCast(View, FFRWorkbookSheetView).WorkbookCellChanged, AddressOf WorkbookCellChanged
             End If

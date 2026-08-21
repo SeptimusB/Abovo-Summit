@@ -160,6 +160,7 @@ Public Class FFRWorkingsVGridView
             Dim editorRow As New EditorRow(item.Key)
             editorRow.Properties.FieldName = item.Key
             editorRow.Properties.Caption = EditorCaption(ws, row)
+            editorRow.Properties.ToolTip = GetCellNote(ws.Cells(row, 1), ws.Cells(row, 4), ws.Cells(row, 0))
             editorRow.Properties.ReadOnly = False
             editorRow.Height = 18
             category.ChildRows.Add(editorRow)
@@ -301,25 +302,34 @@ Public Class FFRWorkingsVGridView
         Dim cell As Cell = Workbook.Worksheets(SheetName).Cells(row, SourceColumn(e.RecordIndex))
         e.CellText = cell.DisplayText
         e.Appearance.BackColor = If(cell.FillColor.IsEmpty, Color.White, cell.FillColor)
-        e.Appearance.ForeColor = If(cell.Font.Color.IsEmpty, Color.FromArgb(32, 58, 89), cell.Font.Color)
+        e.Appearance.ForeColor = DisplayForeground(cell)
         e.Appearance.Font = New Font(Font, If(cell.Font.Bold, FontStyle.Bold, FontStyle.Regular))
     End Sub
 
     Private Sub GridCustomDrawRowHeaderCell(ByVal sender As Object, ByVal e As CustomDrawRowHeaderCellEventArgs)
         Dim category As CategoryRow = TryCast(e.Row, CategoryRow)
-        If category Is Nothing Then Return
+        If category IsNot Nothing Then
+            Dim style As String = TryCast(category.Tag, String)
+            If style = "ValidationTop" Then
+                e.Appearance.ForeColor = Color.FromArgb(0, 85, 170)
+                e.Appearance.Font = New Font(Font, FontStyle.Bold)
+            ElseIf style = "ValidationSub" Then
+                e.Appearance.ForeColor = Color.FromArgb(32, 58, 89)
+                e.Appearance.Font = New Font(Font, FontStyle.Bold)
+            Else
+                Return
+            End If
 
-        Dim style As String = TryCast(category.Tag, String)
-        If style = "ValidationTop" Then
-            e.Appearance.ForeColor = Color.FromArgb(0, 85, 170)
-            e.Appearance.Font = New Font(Font, FontStyle.Bold)
-        ElseIf style = "ValidationSub" Then
-            e.Appearance.ForeColor = Color.FromArgb(32, 58, 89)
-            e.Appearance.Font = New Font(Font, FontStyle.Bold)
-        Else
+            e.DefaultDraw()
+            e.Handled = True
             Return
         End If
 
+        Dim sourceRow As Integer
+        If Not SourceRows.TryGetValue(e.Row.Properties.FieldName, sourceRow) Then Return
+        Dim sourceCell As Cell = Workbook.Worksheets(SheetName).Cells(sourceRow, 1)
+        e.Appearance.ForeColor = If(sourceCell.Font.Color.IsEmpty, Color.FromArgb(32, 58, 89), sourceCell.Font.Color)
+        e.Appearance.Font = New Font(Font, If(sourceCell.Font.Bold, FontStyle.Bold, FontStyle.Regular))
         e.DefaultDraw()
         e.Handled = True
     End Sub
@@ -336,6 +346,21 @@ Public Class FFRWorkingsVGridView
         If cell.Value.IsBoolean Then Return cell.Value.BooleanValue
         If cell.Value.IsDateTime Then Return cell.Value.DateTimeValue
         Return cell.DisplayText
+    End Function
+
+    Private Shared Function GetCellNote(ParamArray cells() As Cell) As String
+        For Each sourceCell As Cell In cells
+            Dim comments = sourceCell.Worksheet.Comments.GetComments(sourceCell)
+            If comments Is Nothing OrElse comments.Count = 0 Then Continue For
+            Dim text As String = String.Join(Environment.NewLine, comments.Select(Function(comment) comment.Text.Trim()).Where(Function(value) value.Length > 0))
+            If text.Length > 0 Then Return text
+        Next
+        Return String.Empty
+    End Function
+
+    Private Shared Function DisplayForeground(ByVal cell As Cell) As Color
+        If cell IsNot Nothing AndAlso cell.DisplayText.Trim().StartsWith("(", StringComparison.Ordinal) Then Return Color.Red
+        Return If(cell Is Nothing OrElse cell.Font.Color.IsEmpty, Color.FromArgb(32, 58, 89), cell.Font.Color)
     End Function
 
     Private Sub RefreshAfterWorkbookCalculation()

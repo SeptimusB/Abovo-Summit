@@ -247,7 +247,7 @@ Public Class FFRInputsAdjStmtVGridView
         Dim cell As Cell = Workbook.Worksheets(SheetName).Cells(row, SourceColumn(grid, e.RecordIndex))
         e.CellText = cell.DisplayText
         e.Appearance.BackColor = If(cell.FillColor.IsEmpty, Color.White, cell.FillColor)
-        e.Appearance.ForeColor = If(cell.Font.Color.IsEmpty, Color.FromArgb(32, 58, 89), cell.Font.Color)
+        e.Appearance.ForeColor = DisplayForeground(cell)
         e.Appearance.Font = New Font(Font, If(cell.Font.Bold, FontStyle.Bold, FontStyle.Regular))
     End Sub
 
@@ -268,6 +268,11 @@ Public Class FFRInputsAdjStmtVGridView
         If cell Is Nothing OrElse cell.Value.IsEmpty Then Return String.Empty
         If cell.Value.IsNumeric Then Return cell.Value.NumericValue
         Return cell.DisplayText
+    End Function
+
+    Private Shared Function DisplayForeground(ByVal cell As Cell) As Color
+        If cell IsNot Nothing AndAlso cell.DisplayText.Trim().StartsWith("(", StringComparison.Ordinal) Then Return Color.Red
+        Return If(cell Is Nothing OrElse cell.Font.Color.IsEmpty, Color.FromArgb(32, 58, 89), cell.Font.Color)
     End Function
 
     Private Shared Function IsEditable(ByVal cell As Cell) As Boolean

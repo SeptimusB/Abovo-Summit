@@ -282,8 +282,7 @@ Public Class FFRWorkbookSheetView
 
         Dim Background As Color = SourceCell.FillColor
         If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
-        Dim Foreground As Color = SourceCell.Font.Color
-        If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = Color.FromArgb(32, 58, 89)
+        Dim Foreground As Color = DisplayForeground(SourceCell)
 
         e.Appearance.BackColor = Background
         e.Appearance.ForeColor = Foreground
@@ -477,6 +476,13 @@ Public Class FFRWorkbookSheetView
             Next
         Next
     End Sub
+
+    Private Shared Function DisplayForeground(ByVal SourceCell As Cell) As Color
+        If SourceCell IsNot Nothing AndAlso SourceCell.DisplayText.Trim().StartsWith("(", StringComparison.Ordinal) Then Return Color.Red
+        Dim Foreground As Color = If(SourceCell Is Nothing, Color.Empty, SourceCell.Font.Color)
+        If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = Color.FromArgb(32, 58, 89)
+        Return Foreground
+    End Function
 
     Private Shared Sub AddValidationItem(Result As List(Of String), Value As String)
         Dim Item As String = If(Value, String.Empty).Trim()

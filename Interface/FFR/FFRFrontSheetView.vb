@@ -404,8 +404,7 @@ Public Class FFRFrontSheetView
     Private Shared Sub ApplyWorkbookAppearance(Editor As BaseEdit, SourceCell As Cell)
         Dim Background As Color = SourceCell.FillColor
         If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
-        Dim Foreground As Color = SourceCell.Font.Color
-        If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = Color.FromArgb(32, 58, 89)
+        Dim Foreground As Color = DisplayForeground(SourceCell)
         Editor.Properties.Appearance.BackColor = Background
         Editor.Properties.Appearance.ForeColor = Foreground
         Editor.Properties.Appearance.Options.UseBackColor = True
@@ -467,8 +466,7 @@ Public Class FFRFrontSheetView
 
         Dim Background As Color = SourceCell.FillColor
         If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
-        Dim Foreground As Color = SourceCell.Font.Color
-        If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = Color.FromArgb(32, 58, 89)
+        Dim Foreground As Color = DisplayForeground(SourceCell)
         e.Appearance.BackColor = Background
         e.Appearance.ForeColor = Foreground
         e.Appearance.Options.UseBackColor = True
@@ -674,6 +672,13 @@ Public Class FFRFrontSheetView
         Workspace.Size = New Size(DesiredWidth, WorkspaceHeight)
         Workspace.Location = New Point(Math.Max(16, (ScrollHost.ClientSize.Width - DesiredWidth) \ 2), 6)
     End Sub
+
+    Private Shared Function DisplayForeground(ByVal SourceCell As Cell) As Color
+        If SourceCell IsNot Nothing AndAlso SourceCell.DisplayText.Trim().StartsWith("(", StringComparison.Ordinal) Then Return Color.Red
+        Dim Foreground As Color = If(SourceCell Is Nothing, Color.Empty, SourceCell.Font.Color)
+        If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = Color.FromArgb(32, 58, 89)
+        Return Foreground
+    End Function
 
     Protected Overrides Sub Dispose(disposing As Boolean)
         If disposing AndAlso Not DisposedView Then
