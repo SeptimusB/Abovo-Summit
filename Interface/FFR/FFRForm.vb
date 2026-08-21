@@ -28,6 +28,7 @@ Public Class FFRForm
         InitializeComponent()
         ModelID = SetModelID
         Text = "Financial Forecast Return for " & ExcelModels(ModelID).WBStructure.CompanyName
+        WindowState = FormWindowState.Maximized
         SheetCaption.Text = Text
         BuildSheetTabs()
         EnsureSelectedSheetBuilt()
@@ -77,6 +78,8 @@ Public Class FFRForm
                 DirectCast(ExistingView, FFRFrontSheetView).RefreshFromWorkbook()
             ElseIf TypeOf ExistingView Is FFRInputsAdjStmtVGridView Then
                 DirectCast(ExistingView, FFRInputsAdjStmtVGridView).RefreshFromWorkbook()
+            ElseIf TypeOf ExistingView Is FFRWorkingsVGridView Then
+                DirectCast(ExistingView, FFRWorkingsVGridView).RefreshFromWorkbook()
             Else
                 DirectCast(ExistingView, FFRWorkbookSheetView).RefreshFromWorkbook()
             End If
@@ -109,6 +112,10 @@ Public Class FFRForm
                 Dim InputsView As New FFRInputsAdjStmtVGridView(ModelID) With {.Dock = DockStyle.Fill}
                 AddHandler InputsView.WorkbookCellChanged, AddressOf WorkbookCellChanged
                 View = InputsView
+            ElseIf String.Equals(SheetName, "FFR Workings", StringComparison.Ordinal) Then
+                Dim WorkingsView As New FFRWorkingsVGridView(ModelID) With {.Dock = DockStyle.Fill}
+                AddHandler WorkingsView.WorkbookCellChanged, AddressOf WorkbookCellChanged
+                View = WorkingsView
             Else
                 Dim WorkbookView As New FFRWorkbookSheetView(ModelID, SheetName) With {.Dock = DockStyle.Fill}
                 AddHandler WorkbookView.WorkbookCellChanged, AddressOf WorkbookCellChanged
@@ -138,10 +145,13 @@ Public Class FFRForm
             ChangedSheetName = DirectCast(sender, FFRFrontSheetView).WorksheetName
         ElseIf TypeOf sender Is FFRInputsAdjStmtVGridView Then
             ChangedSheetName = DirectCast(sender, FFRInputsAdjStmtVGridView).WorksheetName
+        ElseIf TypeOf sender Is FFRWorkingsVGridView Then
+            ChangedSheetName = DirectCast(sender, FFRWorkingsVGridView).WorksheetName
         Else
             ChangedSheetName = DirectCast(sender, FFRWorkbookSheetView).WorksheetName
         End If
         SheetCaption.Text = "Financial Forecast Return  •  " & ChangedSheetName
+
     End Sub
 
     Private Sub FFRTabsSelectedPageChanged(sender As Object, e As TabPageChangedEventArgs) Handles FFRTabs.SelectedPageChanged
@@ -251,6 +261,8 @@ Public Class FFRForm
                 RemoveHandler DirectCast(View, FFRFrontSheetView).WorkbookCellChanged, AddressOf WorkbookCellChanged
             ElseIf TypeOf View Is FFRInputsAdjStmtVGridView Then
                 RemoveHandler DirectCast(View, FFRInputsAdjStmtVGridView).WorkbookCellChanged, AddressOf WorkbookCellChanged
+            ElseIf TypeOf View Is FFRWorkingsVGridView Then
+                RemoveHandler DirectCast(View, FFRWorkingsVGridView).WorkbookCellChanged, AddressOf WorkbookCellChanged
             Else
                 RemoveHandler DirectCast(View, FFRWorkbookSheetView).WorkbookCellChanged, AddressOf WorkbookCellChanged
             End If
