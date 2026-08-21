@@ -75,8 +75,8 @@ Public Class FFRForm
                 DirectCast(ExistingView, FFRValidationSummaryView).RefreshFromWorkbook()
             ElseIf TypeOf ExistingView Is FFRFrontSheetView Then
                 DirectCast(ExistingView, FFRFrontSheetView).RefreshFromWorkbook()
-            ElseIf TypeOf ExistingView Is FFRInputsAdjStmtView Then
-                DirectCast(ExistingView, FFRInputsAdjStmtView).RefreshFromWorkbook()
+            ElseIf TypeOf ExistingView Is FFRInputsAdjStmtVGridView Then
+                DirectCast(ExistingView, FFRInputsAdjStmtVGridView).RefreshFromWorkbook()
             Else
                 DirectCast(ExistingView, FFRWorkbookSheetView).RefreshFromWorkbook()
             End If
@@ -106,7 +106,7 @@ Public Class FFRForm
                 AddHandler FrontSheetView.WorkbookCellChanged, AddressOf WorkbookCellChanged
                 View = FrontSheetView
             ElseIf String.Equals(SheetName, "FFR Inputs Adj Stmt", StringComparison.Ordinal) Then
-                Dim InputsView As New FFRInputsAdjStmtView(ModelID) With {.Dock = DockStyle.Fill}
+                Dim InputsView As New FFRInputsAdjStmtVGridView(ModelID) With {.Dock = DockStyle.Fill}
                 AddHandler InputsView.WorkbookCellChanged, AddressOf WorkbookCellChanged
                 View = InputsView
             Else
@@ -136,8 +136,8 @@ Public Class FFRForm
         Dim ChangedSheetName As String
         If TypeOf sender Is FFRFrontSheetView Then
             ChangedSheetName = DirectCast(sender, FFRFrontSheetView).WorksheetName
-        ElseIf TypeOf sender Is FFRInputsAdjStmtView Then
-            ChangedSheetName = DirectCast(sender, FFRInputsAdjStmtView).WorksheetName
+        ElseIf TypeOf sender Is FFRInputsAdjStmtVGridView Then
+            ChangedSheetName = DirectCast(sender, FFRInputsAdjStmtVGridView).WorksheetName
         Else
             ChangedSheetName = DirectCast(sender, FFRWorkbookSheetView).WorksheetName
         End If
@@ -249,8 +249,8 @@ Public Class FFRForm
                 'Read-only workbook summary has no edit event to detach.
             ElseIf TypeOf View Is FFRFrontSheetView Then
                 RemoveHandler DirectCast(View, FFRFrontSheetView).WorkbookCellChanged, AddressOf WorkbookCellChanged
-            ElseIf TypeOf View Is FFRInputsAdjStmtView Then
-                RemoveHandler DirectCast(View, FFRInputsAdjStmtView).WorkbookCellChanged, AddressOf WorkbookCellChanged
+            ElseIf TypeOf View Is FFRInputsAdjStmtVGridView Then
+                RemoveHandler DirectCast(View, FFRInputsAdjStmtVGridView).WorkbookCellChanged, AddressOf WorkbookCellChanged
             Else
                 RemoveHandler DirectCast(View, FFRWorkbookSheetView).WorkbookCellChanged, AddressOf WorkbookCellChanged
             End If
