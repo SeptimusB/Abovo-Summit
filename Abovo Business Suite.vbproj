@@ -389,7 +389,9 @@
     <Compile Include="Interface\FFR\FFRInputsAdjStmtView.vb">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="Interface\FFR\FFRInputsAdjStmtVGridView.vb" />
+    <Compile Include="Interface\FFR\FFRInputsAdjStmtVGridView.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Interface\FFR\FFRValidationSummaryView.vb">
       <SubType>UserControl</SubType>
     </Compile>

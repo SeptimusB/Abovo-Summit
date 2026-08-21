@@ -25,6 +25,7 @@ Public Class FFRInputsAdjStmtVGridView
     Private ReadOnly Workbook As IWorkbook
     Private ReadOnly ChangeManager As ModelChangeManager
     Private ReadOnly Host As New XtraScrollableControl()
+    Private ReadOnly Workspace As New Panel()
     Private ReadOnly ActualGrid As New VGridControl()
     Private ReadOnly LoansGrid As New VGridControl()
     Private ReadOnly ActualSource As New PivotSource()
@@ -51,7 +52,10 @@ Public Class FFRInputsAdjStmtVGridView
     Private Sub BuildSurface()
         Host.Dock = DockStyle.Fill
         Host.AutoScroll = True
+        AddHandler Host.Resize, AddressOf HostResize
         Controls.Add(Host)
+        Workspace.Size = New Size(1080, 1040)
+        Host.Controls.Add(Workspace)
         ActualGrid.Name = "FFRActualStockGrid"
         LoansGrid.Name = "FFRLoansGrid"
         AddSection("FFR Inputs Adjustment Statement", "FFR Actual Stock Inputs", ActualGrid, 20, 18, 1080, 620)
@@ -65,16 +69,16 @@ Public Class FFRInputsAdjStmtVGridView
             Dim title As New LabelControl With {.Text = documentTitle, .Location = New Point(left, top), .AutoSizeMode = LabelAutoSizeMode.None, .Size = New Size(width, 26)}
             title.Appearance.Font = New Font(Font, FontStyle.Bold)
             title.Appearance.ForeColor = Color.FromArgb(32, 58, 89)
-            Host.Controls.Add(title)
+            Workspace.Controls.Add(title)
             top += 28
         End If
         Dim label As New LabelControl With {.Name = grid.Name & "_Caption", .Text = caption, .Location = New Point(left, top), .AutoSizeMode = LabelAutoSizeMode.None, .Size = New Size(width, 22)}
         label.Appearance.Font = New Font(Font, FontStyle.Bold)
         label.Appearance.ForeColor = Color.FromArgb(0, 90, 180)
-        Host.Controls.Add(label)
+        Workspace.Controls.Add(label)
         grid.Location = New Point(left, top + 24)
         grid.Size = New Size(width, height - 24)
-        Host.Controls.Add(grid)
+        Workspace.Controls.Add(grid)
     End Sub
 
     Private Sub ConfigureGrid(ByVal grid As VGridControl)
@@ -106,15 +110,27 @@ Public Class FFRInputsAdjStmtVGridView
         'block visible and let the page own vertical scrolling, just as the
         'Funding Assumptions presenter does for tiled datasets.
         Dim categoryCount As Integer = ActualSource.Bands.Values.Distinct().Count()
-        Dim desiredHeight As Integer = 8 + (ActualSource.Rows.Count * 21) + (categoryCount * 24)
+        Dim desiredHeight As Integer = 88 + (ActualSource.Rows.Count * 21) + (categoryCount * 24)
         ActualGrid.Height = Math.Max(300, desiredHeight)
 
-        Dim loansCaption As Control = Host.Controls(LoansGrid.Name & "_Caption")
+        Dim loansCaption As Control = Workspace.Controls(LoansGrid.Name & "_Caption")
         If loansCaption IsNot Nothing Then
             loansCaption.Top = ActualGrid.Bottom + 22
             LoansGrid.Top = loansCaption.Bottom + 2
         End If
-        Host.AutoScrollMinSize = New Size(1120, LoansGrid.Bottom + 24)
+        Workspace.Height = LoansGrid.Bottom + 24
+        Host.AutoScrollMinSize = New Size(Workspace.Width + 40, Workspace.Height + 20)
+        CentreWorkspace()
+    End Sub
+
+    Private Sub HostResize(ByVal sender As Object, ByVal e As EventArgs)
+        CentreWorkspace()
+    End Sub
+
+    Private Sub CentreWorkspace()
+        If Host Is Nothing OrElse Workspace Is Nothing Then Return
+        Workspace.Left = Math.Max(20, (Host.ClientSize.Width - Workspace.Width) \ 2)
+        Workspace.Top = 0
     End Sub
 
     Private Sub BuildPivot(ByVal source As PivotSource, ByVal grid As VGridControl, ByVal firstRow As Integer, ByVal lastRow As Integer, ByVal firstColumn As Integer, ByVal lastColumn As Integer, ByVal defaultBand As String)
@@ -209,8 +225,16 @@ Public Class FFRInputsAdjStmtVGridView
         'pivot afterwards so calculated rows (including Closing Actual Units)
         'are read back from the calculated workbook rather than retaining a
         'stale VGrid value.
-        ChangeManager.ProcessChange(change)
-        RefreshFromWorkbook()
+        If ChangeManager.ProcessChange(change).BError Then
+            RefreshFromWorkbook()
+            Return
+        End If
+
+        'CellValueChanged is raised while the VGrid is still committing its
+        'bound DataTable value.  Defer the DIT-equivalent RefreshData pass to
+        'the message queue so the calculated workbook results cannot be
+        'overwritten by that final local commit.
+        BeginInvoke(New MethodInvoker(AddressOf RefreshFromWorkbook))
         RaiseEvent WorkbookCellChanged(Me, EventArgs.Empty)
     End Sub
 
