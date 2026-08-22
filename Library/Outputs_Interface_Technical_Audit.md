@@ -2,7 +2,7 @@
 
 ## Delivery approach
 
-Outputs children 0 through 31 are implemented through 5 Yr Quarterly Cashflow.
+Outputs children 0 through 32 are implemented through Analysis.
 Scenario Planning is intentionally omitted because those interfaces are owned
 by Stress Test.
 The authoritative contract is `Library/TestFileMigrated.xlsb`; archived
@@ -18,7 +18,10 @@ values and formatting from the underlying workbook cells. `BP Dashboard` uses
 the existing native `BP_Dashboard` interface and now rebuilds its workbook-backed
 content after calculation while it remains open. `Funding Dashboard` is a
 dedicated native interface whose selectors and seven visualisations remain
-linked to their authoritative workbook cells and source ranges.
+linked to their authoritative workbook cells and source ranges. `Analysis` is
+a worksheet-free special child that opens the existing
+`BPIncomeExpenditureAnalyser` class; it does not declare a worksheet button
+target or a worksheet-backed interface range.
 
 ## Child 0: Existing Stock Numbers
 
@@ -61,7 +64,7 @@ refreshed.
 
 The generated XML is reproducible with
 `Tools/GenerateOutputsStructure.ps1 -Apply`. The generator replaces only the
-`Outputs` group, preserves child 0, and emits the verified child order 0-31
+`Outputs` group, preserves child 0, and emits the verified child order 0-32
 without Scenario Planning.
 
 ## Children 22-31
@@ -134,6 +137,15 @@ Full standard Debug and Release rebuilds passed on 22 August 2026 with zero
 warnings and zero errors. XML validation confirmed one Outputs group, 32
 unique child IDs/names, exactly ten new children, and no Scenario Planning
 group.
+
+Version 7.21 adds the worksheet-free `Analysis` child at `CSID 32`. Its
+`SpecialElement` routes directly through the existing
+`BPIncomeExpenditureAnalyser` branch in `GroupInterfaceTemplate`; no interface
+worksheet or default worksheet is declared, and the analyser class itself was
+not modified. XML validation confirmed one Outputs group, 33 unique child IDs
+and names, exactly one Analysis child, and no Scenario Planning group.
+Full standard Debug and Release rebuilds passed on 22 August 2026 with zero
+warnings and zero errors.
 
 Version 7.19 disables automatic column population for the selected-covenant
 XtraGrid and explicitly creates only Year, Value and Forecast visual columns.

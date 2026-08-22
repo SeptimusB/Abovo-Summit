@@ -196,17 +196,32 @@ foreach ($child in $additionalChildren) {
     }
     $group.Add('    </ChildStructure>')
 }
+$group.Add('    <ChildStructure Name="Analysis">')
+$group.Add('      <CSName>Analysis</CSName>')
+$group.Add('      <CSID>32</CSID>')
+$group.Add('      <ParentID>2</ParentID>')
+$group.Add('      <IsMaster>False</IsMaster>')
+$group.Add('      <SpecialElement>BPIncomeExpenditureAnalyser</SpecialElement>')
+$group.Add('      <GroupName>Analysis</GroupName>')
+$group.Add('      <CSInterfaceSection Name="Analysis">')
+$group.Add('        <ISName>Analysis</ISName>')
+$group.Add('        <IElement>')
+$group.Add('          <Type>Interface</Type>')
+$group.Add('          <DataSource>BPIncomeExpenditureAnalyser</DataSource>')
+$group.Add('        </IElement>')
+$group.Add('      </CSInterfaceSection>')
+$group.Add('    </ChildStructure>')
 $group.Add('  </GroupStructure>')
 
 $replacement = $group -join "`r`n"
 $updated = [regex]::Replace($text, '(?s)  <GroupStructure Name="Outputs">.*?  </GroupStructure>', [Text.RegularExpressions.MatchEvaluator]{ param($m) $replacement }, 1)
 if ($Apply) {
     if ($updated -eq $text) {
-        Write-Output 'Structure.xml Outputs children 0-31 (excluding Scenario Planning) are already current.'
+        Write-Output 'Structure.xml Outputs children 0-32 (excluding Scenario Planning) are already current.'
         return
     }
     [IO.File]::WriteAllText($structurePath, $updated, [Text.UTF8Encoding]::new($false))
-    Write-Output 'Updated Structure.xml Outputs children 0-31 (excluding Scenario Planning).'
+    Write-Output 'Updated Structure.xml Outputs children 0-32 (excluding Scenario Planning).'
 } else {
     Write-Output $replacement
 }

@@ -28919,6 +28919,21 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         </IElement>
       </CSInterfaceSection>
     </ChildStructure>
+    <ChildStructure Name="Analysis">
+      <CSName>Analysis</CSName>
+      <CSID>32</CSID>
+      <ParentID>2</ParentID>
+      <IsMaster>False</IsMaster>
+      <SpecialElement>BPIncomeExpenditureAnalyser</SpecialElement>
+      <GroupName>Analysis</GroupName>
+      <CSInterfaceSection Name="Analysis">
+        <ISName>Analysis</ISName>
+        <IElement>
+          <Type>Interface</Type>
+          <DataSource>BPIncomeExpenditureAnalyser</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+    </ChildStructure>
   </GroupStructure>
   <DefiningNR>
     <NRName>
