@@ -1,30 +1,32 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-22T17:15:00+01:00",
-  "purpose": "Compact current contract index for the SampleTestFileXLSB authoritative master and its Summit integration.",
+  "generatedAt": "2026-08-22T18:45:00+01:00",
+  "purpose": "Compact current contract index for the TestFileClean authoritative master and its Summit integration.",
   "security": {
     "containsWorkbook": false,
     "containsVbaSource": false,
     "containsPasswords": false
   },
   "authority": {
-    "masterSource": "Z:/Sandbox/SampleTestFileXLSB.xlsb",
+    "masterSource": "Z:/Sandbox/TestFileClean.xlsb",
     "repositoryCopy": "Library/TestFileMigrated.xlsb",
     "repositoryFilenameRetainedForCompatibility": true,
-    "sizeBytes": 11691134,
-    "sha256": "571E52B1815F0E441A046951DECD4DCCE25C04D35BC3B0BBF05290957D62C7B4"
+    "sizeBytes": 11841039,
+    "sha256": "B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE"
   },
   "workbook": {
     "fileFormat": 50,
     "readOnlyAudit": true,
-    "worksheetCount": 284,
-    "definedNameCount": 1766,
+    "worksheetCount": 281,
+    "definedNameCount": 1758,
     "transactionalRecords": "Transactional DB!A6:BV1599",
     "transactionalRecordRows": 1594,
     "transactionalRecordColumns": 74,
     "periodColumnCount": 40,
-    "firstPeriod": "2024/25",
-    "lastPeriod": "2063/64",
+    "firstPeriod": "2025/26",
+    "lastPeriod": "2064/65",
+    "hasVbaProject": true,
+    "checkSheetRange": "Check Sheet!A9:H63",
     "abovoGeneratedSheetCount": 0,
     "abovoGeneratedNameCount": 0
   },
@@ -39,7 +41,7 @@
   "application": {
     "project": "Abovo Business Suite.vbproj",
     "compiledFileCount": 155,
-    "testVersion": "7.28",
+    "testVersion": "7.30",
     "structureXmlSha256": "FA30906F0F8077B3B65BE0B4CB83AFEA6ADFAE29BDA3EDF075BB954119E04A12",
     "projectSha256": "D57E3E0F9CEBB584A69646D079008BF0EFE9C965A16B056AEB493C490BE78EA7",
     "keyFiles": [

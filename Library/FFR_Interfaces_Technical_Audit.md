@@ -67,7 +67,7 @@ The export workbook is an external target, not an interactive edit to the active
 
 On 19 August 2026 the Debug application opened `TestFileMigrated.xlsb` through the normal `FormMainScreen.OpenModelProceedureBP` path. The purpose-built `Front Sheet` rendered its return details and both 25-row entity lists. `FFR Inputs Adj Stmt` and `FFR Workings` were then selected in the same FFR window and both loaded without an exception or hidden error dialog. No workbook input was changed during this visual check.
 
-Debug builds now auto-open the authoritative `Z:\Sandbox\SampleTestFileXLSB.xlsb` when that file exists. The hook is compile-time excluded from Release and still uses the normal model-open path.
+Debug builds now auto-open the authoritative `Z:\Sandbox\TestFileClean.xlsb` when that file exists. The hook is compile-time excluded from Release and still uses the normal model-open path.
 
 ### 2026-08-20 validation-summary refinement
 

@@ -1,20 +1,22 @@
-# Abovo Summit Sample-master scope audit
+# Abovo Summit TestFileClean scope audit
 
 Audit date: 22 August 2026
 
 ## Current authority
 
-`Z:\Sandbox\SampleTestFileXLSB.xlsb` is the authoritative workbook master. `Library/TestFileMigrated.xlsb` deliberately retains its repository filename for existing tooling, but its bytes are an exact copy of that master:
+`Z:\Sandbox\TestFileClean.xlsb` is the authoritative workbook master. `Library/TestFileMigrated.xlsb` deliberately retains its repository filename for existing tooling, but its bytes are an exact copy of that master:
 
-- Size: 11,691,134 bytes
-- SHA-256: `571E52B1815F0E441A046951DECD4DCCE25C04D35BC3B0BBF05290957D62C7B4`
-- Worksheets: 284
-- Defined names: 1,766
+- Size: 11,841,039 bytes
+- SHA-256: `B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE`
+- Worksheets: 281
+- Defined names: 1,758
 - `Transactional_Records`: `Transactional DB!A6:BV1599` (1,594 rows by 74 columns)
-- Period fields: 40, from `2024/25` to `2063/64`
+- Period fields: 40, from `2025/26` to `2064/65`
+- Close validation range: `Outputs_CheckSheet = Check Sheet!A9:H63`
+- Embedded VBA project: present
 - ChatGPT-added `__Abovo_*` worksheets/names: none
 
-The source workbook was inspected read-only through Excel automation with macros and events disabled and was never saved. The repository copy hash was verified against the source immediately after copying.
+The source workbook was inspected read-only through Excel automation with macros and events disabled and was never saved. The repository copy hash was verified against the source immediately after copying. The user owns external backup management; Summit does not create or retain an internal master backup during this replacement.
 
 ## Transactional DB contract
 
@@ -42,6 +44,14 @@ The retired schema-10 audit, index, and workbook analysis are retained with `.Sc
 
 Version 7.28 keeps `ExcelModels(ModelID)` and its workbook registered until registered analyser resources and all group/data interfaces have detached. DataInterfaceTemplate now removes unbound callbacks before clearing grid columns or bindings, disposes its data sources and controls idempotently, and returns no value from a late callback once the model is marked as closing. Group interfaces are disposed directly during final model shutdown rather than passing through their cancel-and-hide user-close handler.
 
+### Merge-down Add Lines metadata
+
+Version 7.29 preserves `ISEDatasource.RowExpandByNR` when constructing `MergeDownAndPivot` datasets. This restores the workbook-owned Add Lines targets for Development Details (`HouseTypeInID`) and Development Dets. Multi-Year (`HouseTypeInMY`) without changing `Structure.xml` or either named range.
+
+### Close calculation and Check Sheet validation
+
+Version 7.30 performs a recursive full-rebuild calculation before any model close, temporarily includes the Transactional DB in calculation, and then examines every populated status in the workbook-defined `Outputs_CheckSheet` range. Blank section headings are ignored; `OK` is the only passing populated status. Calculation errors, missing/malformed validation ranges, formula errors and workbook check failures all prevent normal close. The user may cancel and return to the model, or continue only by saving a macro-preserving XLSB copy to a different path; the validation path cannot overwrite the original model.
+
 Completed automated/static validation:
 
 - Exact source/library hash comparison
@@ -52,7 +62,9 @@ Completed automated/static validation:
 
 Required manual integration validation remains:
 
-- Open the Sample master in Summit and open Analysis V1 and V2 in both orders
+- Open the TestFileClean master in Summit and open Analysis V1 and V2 in both orders
 - Add/remove a record in each structural domain and verify `Transactional DB` mirrors and analyser refresh
+- Close a passing model and confirm the normal Save/Discard/Cancel flow follows the completed full calculation
+- Trigger a Check Sheet failure, confirm Cancel returns to the open model, and confirm OK requires a differently named XLSB copy before close
 - Save a copy in Summit, open/save/recalculate it in Microsoft Excel/VBA, then reopen it in Summit
 - Exercise Stress Test scenario generation/import and sensitivity expansion on a disposable copy

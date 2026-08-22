@@ -421,11 +421,73 @@ Namespace Abovo
                 Return True
 
             End Function
-            Public Function SaveFileAs() As Boolean
+            Public Function SaveFileAs(Optional ByVal RequireDifferentPath As Boolean = False) As Boolean
 
                 Dim OriginalPath As String = FileName
 
                 Try
+
+                    If RequireDifferentPath Then
+
+                        Using SaveDialog As New SaveFileDialog()
+
+                            SaveDialog.Title = "Save validated model copy"
+                            SaveDialog.Filter = "Excel Binary Workbook (*.xlsb)|*.xlsb"
+                            SaveDialog.DefaultExt = "xlsb"
+                            SaveDialog.AddExtension = True
+                            SaveDialog.OverwritePrompt = True
+                            SaveDialog.CheckPathExists = True
+                            SaveDialog.RestoreDirectory = True
+
+                            Dim OriginalDirectory As String =
+                                System.IO.Path.GetDirectoryName(OriginalPath)
+
+                            If Not String.IsNullOrWhiteSpace(OriginalDirectory) AndAlso
+                               System.IO.Directory.Exists(OriginalDirectory) Then
+
+                                SaveDialog.InitialDirectory = OriginalDirectory
+                            End If
+
+                            SaveDialog.FileName =
+                                System.IO.Path.GetFileNameWithoutExtension(OriginalPath) &
+                                " - validation copy.xlsb"
+
+                            Do
+
+                                If SaveDialog.ShowDialog() <> DialogResult.OK Then Return False
+
+                                Dim SelectedPath As String =
+                                    System.IO.Path.GetFullPath(SaveDialog.FileName)
+
+                                If String.Equals(
+                                    SelectedPath,
+                                    System.IO.Path.GetFullPath(OriginalPath),
+                                    StringComparison.OrdinalIgnoreCase) Then
+
+                                    MessageBox.Show(
+                                        "The validation copy must be saved to a different file. " &
+                                        "Please choose another name or location.",
+                                        "Save validated model copy",
+                                        MessageBoxButtons.OK,
+                                        MessageBoxIcon.Information)
+
+                                    Continue Do
+                                End If
+
+                                ModelSpreadsheetControl.SaveDocument(
+                                    SelectedPath,
+                                    DocumentFormat.Xlsb)
+                                FileName = SelectedPath
+                                FileInfo = New System.IO.FileInfo(FileName)
+                                IsDirty = False
+                                Return True
+
+                            Loop
+
+                        End Using
+
+                    End If
+
                     ModelSpreadsheetControl.SaveDocumentAs()
 
                     Dim SavedPath As String = WB.Path
@@ -474,6 +536,42 @@ Namespace Abovo
 
                 Dim CloseTrans As New AbovoTransaction
 
+                Dim Validation As CloseModelValidationResult
+
+                Try
+                    Cursor.Current = Cursors.WaitCursor
+                    Validation = CalculateAndValidateForClose()
+                Catch ex As Exception
+                    Validation = New CloseModelValidationResult With {
+                        .ValidationError =
+                            "The close validation could not be completed: " &
+                            ex.Message
+                    }
+                Finally
+                    Cursor.Current = Cursors.Default
+                End Try
+
+                If Validation.HasFailures Then
+
+                    Dim ValidationResponse As DialogResult =
+                        MessageBox.Show(
+                            BuildCloseValidationMessage(Validation),
+                            "Model validation warning",
+                            MessageBoxButtons.OKCancel,
+                            MessageBoxIcon.Warning,
+                            MessageBoxDefaultButton.Button2)
+
+                    If ValidationResponse <> DialogResult.OK OrElse
+                       Not SaveFileAs(RequireDifferentPath:=True) Then
+
+                        CloseTrans.StringReturn = "Cancel"
+                        Return CloseTrans
+                    End If
+
+                    CloseTrans.StringReturn = "Proceed"
+                    Return CloseTrans
+                End If
+
                 If IsDirty Then
 
                     Dim response As MsgBoxResult = MsgBox("Save changes to " & FileName & "?", vbYesNoCancel)
@@ -500,6 +598,214 @@ Namespace Abovo
                 Return CloseTrans
 
             End Function
+
+            Private Function CalculateAndValidateForClose() As CloseModelValidationResult
+
+                Dim Result As New CloseModelValidationResult()
+
+                If WB Is Nothing Then
+                    Result.ValidationError = "The workbook is not available for validation."
+                    Return Result
+                End If
+
+                Dim PreviousEngineType As CalculationEngineType =
+                    WB.Options.CalculationEngineType
+
+                Dim PreviousDontCalcTransactionalDB As Boolean = True
+
+                If WBCalculationService IsNot Nothing Then
+                    PreviousDontCalcTransactionalDB =
+                        WBCalculationService.DontCalcTDBS
+                End If
+
+                Try
+                    If WBCalculationService IsNot Nothing Then
+                        WBCalculationService.DontCalcTDBS = False
+                    End If
+
+                    WB.Options.CalculationEngineType =
+                        CalculationEngineType.Recursive
+
+                    If WBCalcEngine IsNot Nothing Then
+                        WBCalcEngine.CalcFile(3)
+                    Else
+                        WB.CalculateFullRebuild()
+                    End If
+
+                Catch ex As Exception
+                    Result.ValidationError =
+                        "The full workbook calculation failed: " & ex.Message
+                    Return Result
+
+                Finally
+                    WB.Options.CalculationEngineType = PreviousEngineType
+
+                    If WBCalculationService IsNot Nothing Then
+                        WBCalculationService.DontCalcTDBS =
+                            PreviousDontCalcTransactionalDB
+                    End If
+                End Try
+
+                Try
+                    Dim ValidationName As DevExpress.Spreadsheet.DefinedName =
+                        WB.DefinedNames.GetDefinedName("Outputs_CheckSheet")
+
+                    If ValidationName Is Nothing OrElse
+                       ValidationName.Range Is Nothing Then
+
+                        Result.ValidationError =
+                            "The workbook does not contain the Outputs_CheckSheet validation range."
+                        Return Result
+                    End If
+
+                    Dim ValidationRange As DevExpress.Spreadsheet.CellRange =
+                        ValidationName.Range
+
+                    If ValidationRange.ColumnCount < 8 Then
+                        Result.ValidationError =
+                            "The Outputs_CheckSheet validation range does not contain the expected eight columns."
+                        Return Result
+                    End If
+
+                    Dim ValidationSheet As DevExpress.Spreadsheet.Worksheet =
+                        ValidationRange.Worksheet
+
+                    For RowOffset As Integer = 0 To ValidationRange.RowCount - 1
+
+                        Dim SheetRow As Integer =
+                            ValidationRange.TopRowIndex + RowOffset
+
+                        Dim FirstColumn As Integer =
+                            ValidationRange.LeftColumnIndex
+
+                        Dim StatusText As String =
+                            ValidationSheet.Cells(SheetRow, FirstColumn + 4).
+                                DisplayText.Trim()
+
+                        If String.IsNullOrWhiteSpace(StatusText) OrElse
+                           String.Equals(
+                               StatusText,
+                               "OK",
+                               StringComparison.OrdinalIgnoreCase) Then
+
+                            Continue For
+                        End If
+
+                        Result.Issues.Add(
+                            New CloseModelValidationIssue With {
+                                .CheckRow = SheetRow + 1,
+                                .Label = ValidationSheet.Cells(
+                                    SheetRow,
+                                    FirstColumn).DisplayText.Trim(),
+                                .Status = StatusText,
+                                .Message = ValidationSheet.Cells(
+                                    SheetRow,
+                                    FirstColumn + 5).DisplayText.Trim(),
+                                .TargetWorksheet = ValidationSheet.Cells(
+                                    SheetRow,
+                                    FirstColumn + 7).DisplayText.Trim()
+                            })
+
+                    Next
+
+                Catch ex As Exception
+                    Result.ValidationError =
+                        "The Check Sheet could not be examined: " & ex.Message
+                End Try
+
+                Return Result
+
+            End Function
+
+            Private Shared Function BuildCloseValidationMessage(
+                ByVal Validation As CloseModelValidationResult) As String
+
+                Dim MessageLines As New List(Of String) From {
+                    "The model did not pass its Check Sheet validation.",
+                    "",
+                    "To protect the original workbook, Summit must save this model " &
+                    "as a separate XLSB copy before closing."
+                }
+
+                If Not String.IsNullOrWhiteSpace(Validation.ValidationError) Then
+                    MessageLines.Add("")
+                    MessageLines.Add(Validation.ValidationError)
+                End If
+
+                If Validation.Issues.Count > 0 Then
+                    MessageLines.Add("")
+                    MessageLines.Add("Checks requiring attention:")
+
+                    Dim MaximumDisplayedIssues As Integer = 12
+
+                    For IssueIndex As Integer =
+                        0 To Math.Min(
+                            Validation.Issues.Count,
+                            MaximumDisplayedIssues) - 1
+
+                        Dim Issue As CloseModelValidationIssue =
+                            Validation.Issues(IssueIndex)
+
+                        Dim IssueDescription As String = Issue.Label
+
+                        If String.IsNullOrWhiteSpace(IssueDescription) Then
+                            IssueDescription = "Check Sheet row " &
+                                Issue.CheckRow.ToString()
+                        End If
+
+                        If Not String.IsNullOrWhiteSpace(Issue.Message) Then
+                            IssueDescription &= ": " & Issue.Message
+                        Else
+                            IssueDescription &= ": " & Issue.Status
+                        End If
+
+                        If Not String.IsNullOrWhiteSpace(Issue.TargetWorksheet) Then
+                            IssueDescription &= " [" & Issue.TargetWorksheet & "]"
+                        End If
+
+                        MessageLines.Add("- " & IssueDescription)
+                    Next
+
+                    If Validation.Issues.Count > MaximumDisplayedIssues Then
+                        MessageLines.Add(
+                            "- ...and " &
+                            (Validation.Issues.Count - MaximumDisplayedIssues).
+                                ToString() &
+                            " more check(s).")
+                    End If
+                End If
+
+                MessageLines.Add("")
+                MessageLines.Add(
+                    "Select OK to choose a new filename, or Cancel to return to the model.")
+
+                Return String.Join(Environment.NewLine, MessageLines)
+
+            End Function
+
+            Private NotInheritable Class CloseModelValidationResult
+
+                Public ReadOnly Issues As New List(Of CloseModelValidationIssue)()
+                Public ValidationError As String
+
+                Public ReadOnly Property HasFailures As Boolean
+                    Get
+                        Return Not String.IsNullOrWhiteSpace(ValidationError) OrElse
+                               Issues.Count > 0
+                    End Get
+                End Property
+
+            End Class
+
+            Private NotInheritable Class CloseModelValidationIssue
+
+                Public CheckRow As Integer
+                Public Label As String
+                Public Status As String
+                Public Message As String
+                Public TargetWorksheet As String
+
+            End Class
             Public Sub CloseModel()
 
                 If IsClosing Then Return

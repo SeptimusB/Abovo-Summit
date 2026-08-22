@@ -765,6 +765,7 @@ Namespace Abovo
                     .Name = "MergeDS" & WSName & "-IEDS-" & IEDSource.ISDName,
                     .IsDirty = False,
                     .RowExpandsByModel = RowExpandsByModel,
+                    .RowExpandByNR = IEDSource.RowExpandByNR,
                     .HasBands = False,
                     .SkipLastRecords = IIf(IEDSource.SkipLastRecords Is Nothing, 0, CInt(IEDSource.SkipLastRecords)),
                     .SourceWorksheet = WSName,

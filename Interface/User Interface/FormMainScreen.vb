@@ -21,7 +21,7 @@ Imports DevExpress.XtraSpreadsheet.Forms
 Public Class FormMainScreen
 
 #If DEBUG Then
-    Private Const DebugAutoOpenModelPath As String = "Z:\Sandbox\SampleTestFileXLSB.xlsb"
+    Private Const DebugAutoOpenModelPath As String = "Z:\Sandbox\TestFileClean.xlsb"
 #End If
 
     Dim rs As New Resizer
