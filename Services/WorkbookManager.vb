@@ -12,25 +12,38 @@ Namespace Abovo
 
 #Region "Worksheet manipulation"
 
-        Private Shared Sub NotifyTransactionalDBStructuralChange(ByVal ModelID As Integer, ByVal TargetNamedRange As String)
+        Private Shared Function NotifyTransactionalDBStructuralChange(ByVal ModelID As Integer,
+                                                                       ByVal TargetNamedRange As String) As AbovoTransaction
+
+            Dim Result As New AbovoTransaction With {.BError = False}
 
             Try
 
-                If ExcelModels Is Nothing Then Return
-                If ModelID < 0 OrElse ModelID >= ExcelModels.Length Then Return
-                If ExcelModels(ModelID) Is Nothing Then Return
-                If ExcelModels(ModelID).TransDBSync Is Nothing Then Return
+                If ExcelModels Is Nothing OrElse
+                   ModelID < 0 OrElse ModelID >= ExcelModels.Length OrElse
+                   ExcelModels(ModelID) Is Nothing OrElse
+                   ExcelModels(ModelID).TransDBSync Is Nothing Then
 
-                ExcelModels(ModelID).TransDBSync.SynchroniseForNamedRange(TargetNamedRange)
+                    Result.BError = True
+                    Result.StringReturn = "Transactional DB synchronisation service is unavailable."
+                    Result.StrResponseMessage = Result.StringReturn
+                    Return Result
+
+                End If
+
+                Return ExcelModels(ModelID).TransDBSync.SynchroniseForNamedRange(TargetNamedRange)
 
             Catch ex As Exception
 
-#If DEBUG Then
-#End If
+                Result.BError = True
+                Result.StringReturn = ex.Message
+                Result.StrResponseMessage = Result.StringReturn
 
             End Try
 
-        End Sub
+            Return Result
+
+        End Function
 
         Public Shared Function DoesNRExist(ModelID As Integer, RangeName As String) As Boolean
 
@@ -299,7 +312,15 @@ Namespace Abovo
             End Try
 
             If Not ThisTrans.BError Then
-                NotifyTransactionalDBStructuralChange(ModelID, TargetNamedRange)
+                Dim SyncResult As AbovoTransaction =
+                    NotifyTransactionalDBStructuralChange(ModelID, TargetNamedRange)
+
+                If SyncResult.BError Then
+                    ThisTrans.BError = True
+                    ThisTrans.StringReturn =
+                        "Rows were inserted, but Transactional DB synchronisation failed: " &
+                        SyncResult.StringReturn
+                End If
             End If
 
             Return ThisTrans
@@ -496,7 +517,15 @@ Namespace Abovo
             End Try
 
             If Not ThisTrans.BError Then
-                NotifyTransactionalDBStructuralChange(ModelID, TargetNamedRange)
+                Dim SyncResult As AbovoTransaction =
+                    NotifyTransactionalDBStructuralChange(ModelID, TargetNamedRange)
+
+                If SyncResult.BError Then
+                    ThisTrans.BError = True
+                    ThisTrans.StringReturn =
+                        "Columns were inserted, but Transactional DB synchronisation failed: " &
+                        SyncResult.StringReturn
+                End If
             End If
 
             Return ThisTrans
@@ -555,7 +584,15 @@ Namespace Abovo
 
             ExcelModels(ModelID).ModelSpreadsheetControl.Options.Clipboard.AllowFormulasInBiff8 = False
 
-            NotifyTransactionalDBStructuralChange(ModelID, TargetNamedRange)
+            Dim SyncResult As AbovoTransaction =
+                NotifyTransactionalDBStructuralChange(ModelID, TargetNamedRange)
+
+            If SyncResult.BError Then
+                ThisTrans.BError = True
+                ThisTrans.StringReturn =
+                    "Rows were deleted, but Transactional DB synchronisation failed: " &
+                    SyncResult.StringReturn
+            End If
 
             Return ThisTrans
 
@@ -611,7 +648,15 @@ Err_Handler_A:
 
             ExcelModels(ModelID).ModelSpreadsheetControl.Options.Clipboard.AllowFormulasInBiff8 = False
 
-            NotifyTransactionalDBStructuralChange(ModelID, TargetNamedRange)
+            Dim SyncResult As AbovoTransaction =
+                NotifyTransactionalDBStructuralChange(ModelID, TargetNamedRange)
+
+            If SyncResult.BError Then
+                ThisTrans.BError = True
+                ThisTrans.StringReturn =
+                    "Columns were deleted, but Transactional DB synchronisation failed: " &
+                    SyncResult.StringReturn
+            End If
 
             Return ThisTrans
 

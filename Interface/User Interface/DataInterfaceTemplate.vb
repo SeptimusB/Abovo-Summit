@@ -114,6 +114,7 @@ Public Class DataInterfaceTemplate
     Private BIsDirty As Boolean
 
     Private ControlsInitialised As Boolean = False
+    Private InterfaceResourcesReleased As Boolean = False
     Private FooterOn As Boolean
     Private FooterDone As Boolean
     Private DIInitialised As Boolean = False
@@ -730,6 +731,81 @@ SkipRefresh:
 
         End If
 
+        ControlsInitialised = False
+
+    End Sub
+
+    Friend Sub ReleaseInterfaceResources()
+
+        If InterfaceResourcesReleased Then Return
+        InterfaceResourcesReleased = True
+        AmActivated = False
+
+        Try
+            ResumeLazyTabTransitionRedraw()
+            EndLazyTabTransitionUpdate()
+            RemoveInterfaceScrollRediverter()
+        Catch
+            'Continue releasing data bindings and controls.
+        End Try
+
+        Try
+            If SectionRebuildTimer IsNot Nothing Then
+                SectionRebuildTimer.Stop()
+                RemoveHandler SectionRebuildTimer.Tick, AddressOf ProcessQueuedSectionRebuilds
+                SectionRebuildTimer.Dispose()
+                SectionRebuildTimer = Nothing
+            End If
+        Catch
+            SectionRebuildTimer = Nothing
+        End Try
+
+        PendingSectionRebuilds.Clear()
+
+        If ExcelModels IsNot Nothing AndAlso
+           ModelID >= 0 AndAlso ModelID < ExcelModels.Length AndAlso
+           ExcelModels(ModelID) IsNot Nothing Then
+
+            Dim model As ExcelModel = ExcelModels(ModelID)
+
+            Try
+                If model.InterfaceDependencies IsNot Nothing Then
+                    model.InterfaceDependencies.UnregisterInterface(Me)
+                End If
+            Catch
+                'Continue with control/data-source disposal.
+            End Try
+
+            Try
+                If model.WBCalcEngine IsNot Nothing Then
+                    model.WBCalcEngine.RemoveActiveObject(CalcEngID)
+                End If
+            Catch
+                'Continue with control/data-source disposal.
+            End Try
+        End If
+
+        'Detach data callbacks before controls, views, or workbook services are
+        'disposed. This prevents DevExpress requesting data from a closing model.
+        ClearAllGrids()
+
+        If RangeDataSources IsNot Nothing Then
+            For Each source As RangeDataSource In RangeDataSources
+                If source Is Nothing Then Continue For
+
+                Try
+                    source.Dispose()
+                Catch
+                    'Other bindings and controls must still be released.
+                End Try
+            Next
+        End If
+
+        RangeDataSources = Nothing
+        RangeDataSourceCount = -1
+
+        ClearAllTPs()
+        DataPres = Nothing
         ControlsInitialised = False
 
     End Sub
@@ -6758,6 +6834,16 @@ NextCell:
 
                 RemoveHandler gc.ProcessGridKey, AddressOf GridControl_ProcessGridKey
 
+                Dim gcSource As AbovoUnboundSource =
+                    TryCast(gc.DataSource, AbovoUnboundSource)
+
+                If gcSource IsNot Nothing Then
+                    RemoveHandler gcSource.ValueNeeded, AddressOf UnboundDS_ValueNeeded
+                    RemoveHandler gcSource.ValuePushed, AddressOf UnboundDS_ValuePushed
+                End If
+
+                gc.DataSource = Nothing
+
                 Dim gcView As GridView = TryCast(gc.FocusedView, GridView)
                 If gcView IsNot Nothing Then
                     gcView.Columns.Clear()
@@ -6768,8 +6854,6 @@ NextCell:
                         bgvView.Bands.Clear()
                     End If
                 End If
-
-                gc.DataSource = Nothing
 
                 gc.Dispose()
                 gc = Nothing
@@ -6801,6 +6885,14 @@ NextCell:
                 RemoveHandler vg.DoubleClick, AddressOf VGrid_Event_DoubleClick
                 RemoveHandler vg.CustomRecordCellEdit, AddressOf VGrid_CustomCellEditor
                 RemoveHandler vg.CustomRecordCellEditForEditing, AddressOf VGrid_CellEditorForEditing
+
+                Dim vgSource As AbovoUnboundSource =
+                    TryCast(vg.DataSource, AbovoUnboundSource)
+
+                If vgSource IsNot Nothing Then
+                    RemoveHandler vgSource.ValueNeeded, AddressOf UnboundDS_ValueNeeded
+                    RemoveHandler vgSource.ValuePushed, AddressOf UnboundDS_ValuePushed
+                End If
 
                 'Disconnect data first, then clear the generated/category rows.
                 'At this point the category extender has already removed any
@@ -9985,15 +10077,33 @@ SectionSelect:
     End Sub
     Private Sub UnboundDS_ValueNeeded(ByVal sender As Object, ByVal e As DevExpress.Data.UnboundSourceValueNeededEventArgs)
         DataCallCount += 1
-        Dim UDSSender As AbovoUnboundSource = sender
+        Dim UDSSender As AbovoUnboundSource = TryCast(sender, AbovoUnboundSource)
 
-        If UDSSender.UBSTag IsNot Nothing AndAlso UDSSender.UBSTag.IsLiveGrid Then
+        If InterfaceResourcesReleased OrElse
+           UDSSender Is Nothing OrElse
+           UDSSender.UBSTag Is Nothing Then
+
+            e.Value = Nothing
+            Return
+        End If
+
+        If UDSSender.UBSTag.IsLiveGrid Then
             Dim LiveTag As AbovoUnboundSourceTag = UDSSender.UBSTag
 
             If LiveTag.LiveGridSourceRows Is Nothing OrElse
                LiveTag.LiveGridSourceColumns Is Nothing OrElse
                e.RowIndex < 0 OrElse e.RowIndex >= LiveTag.LiveGridSourceRows.Count OrElse
                e.PropertyIndex < 0 OrElse e.PropertyIndex >= LiveTag.LiveGridSourceColumns.Count Then
+
+                e.Value = Nothing
+                Return
+            End If
+
+            If ExcelModels Is Nothing OrElse
+               LiveTag.ModelID < 0 OrElse LiveTag.ModelID >= ExcelModels.Length OrElse
+               ExcelModels(LiveTag.ModelID) Is Nothing OrElse
+               ExcelModels(LiveTag.ModelID).IsClosing OrElse
+               ExcelModels(LiveTag.ModelID).WB Is Nothing Then
 
                 e.Value = Nothing
                 Return
@@ -10094,6 +10204,23 @@ SectionSelect:
         'If DataPres.DataSets(SetDSIndex).DataRows(rowIndex).IsControlRow = True Then Return Nothing
         'If DataPres.DataSets(SetDSIndex).DataRows(rowIndex).IsSpacerRow = True Then Return Nothing
 
+        If InterfaceResourcesReleased OrElse
+           DataPres Is Nothing OrElse
+           DataPres.DataSets Is Nothing OrElse
+           SetDSIndex < 0 OrElse SetDSIndex >= DataPres.DataSets.Length OrElse
+           DataPres.DataSets(SetDSIndex) Is Nothing OrElse
+           DataPres.DataSets(SetDSIndex).DataRows Is Nothing OrElse
+           rowIndex < 0 OrElse rowIndex >= DataPres.DataSets(SetDSIndex).DataRows.Length OrElse
+           DataPres.DataSets(SetDSIndex).DataRows(rowIndex) Is Nothing OrElse
+           DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells Is Nothing OrElse
+           PropertyIndex >= DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells.Length OrElse
+           DataPres.DataSets(SetDSIndex).DataColumns Is Nothing OrElse
+           PropertyIndex < 0 OrElse PropertyIndex >= DataPres.DataSets(SetDSIndex).DataColumns.Length OrElse
+           DataPres.DataSets(SetDSIndex).DataColumns(PropertyIndex).ColumnTag Is Nothing Then
+
+            Return Nothing
+        End If
+
         Dim DP As CellDataPoint = DataPres.DataSets(SetDSIndex).DataRows(rowIndex).DataCells(PropertyIndex)
 
         If DP Is Nothing Then Return Nothing
@@ -10122,7 +10249,18 @@ SectionSelect:
             End Select
         End If
 
-        Dim DPC As DevExpress.Spreadsheet.Cell = ExcelModels(ModelID).WB.Worksheets(DP.SourceSheet).Cells(DP.SourceAddress)
+        If ExcelModels Is Nothing OrElse
+           ModelID < 0 OrElse ModelID >= ExcelModels.Length OrElse
+           ExcelModels(ModelID) Is Nothing OrElse
+           ExcelModels(ModelID).IsClosing OrElse
+           ExcelModels(ModelID).WB Is Nothing OrElse
+           Not ExcelModels(ModelID).WB.Worksheets.Contains(DP.SourceSheet) Then
+
+            Return Nothing
+        End If
+
+        Dim DPC As DevExpress.Spreadsheet.Cell =
+            ExcelModels(ModelID).WB.Worksheets(DP.SourceSheet).Cells(DP.SourceAddress)
 
         If DPC.DisplayText = "" Then
 

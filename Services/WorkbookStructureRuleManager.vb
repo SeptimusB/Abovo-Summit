@@ -1179,7 +1179,17 @@ Namespace Abovo
                 Dim PostActionTimer As Stopwatch = Stopwatch.StartNew()
 #End If
 
-                RunPostActions(Rule, ChangedWorksheets)
+                Dim PostActionResult As AbovoTransaction =
+                    RunPostActions(Rule, ChangedWorksheets)
+
+                If PostActionResult.BError Then
+                    Result.BError = True
+                    Result.BSuccess = False
+                    Result.StringReturn =
+                        "Workbook structure changed, but Transactional DB synchronisation failed: " &
+                        PostActionResult.StringReturn
+                    Result.StrResponseMessage = Result.StringReturn
+                End If
 
 #If DEBUG Then
 #End If
@@ -1381,7 +1391,17 @@ Namespace Abovo
                 Dim PostActionTimer As Stopwatch = Stopwatch.StartNew()
 #End If
 
-                RunPostActions(Rule, ChangedWorksheets)
+                Dim PostActionResult As AbovoTransaction =
+                    RunPostActions(Rule, ChangedWorksheets)
+
+                If PostActionResult.BError Then
+                    Result.BError = True
+                    Result.BSuccess = False
+                    Result.StringReturn =
+                        "Workbook structure changed, but Transactional DB synchronisation failed: " &
+                        PostActionResult.StringReturn
+                    Result.StrResponseMessage = Result.StringReturn
+                End If
 
 #If DEBUG Then
 #End If
@@ -1499,8 +1519,10 @@ Namespace Abovo
 
         End Sub
 
-        Private Sub RunPostActions(ByVal Rule As WorkbookStructureRule,
-                                   ByVal ChangedWorksheets As IEnumerable(Of String))
+        Private Function RunPostActions(ByVal Rule As WorkbookStructureRule,
+                                        ByVal ChangedWorksheets As IEnumerable(Of String)) As AbovoTransaction
+
+            Dim Result As New AbovoTransaction With {.BError = False}
 
             'Do TransactionDB once after all linked workbook sheets are structurally
             'consistent.  This avoids synchronising an intermediate half-updated state.
@@ -1511,7 +1533,22 @@ Namespace Abovo
                    ExcelModels(ModelID) IsNot Nothing AndAlso
                    ExcelModels(ModelID).TransDBSync IsNot Nothing Then
 
-                    ExcelModels(ModelID).TransDBSync.SynchroniseForNamedRange(Rule.TransactionDBSyncNamedRange)
+                    Dim SyncResult As AbovoTransaction =
+                        ExcelModels(ModelID).TransDBSync.SynchroniseForNamedRange(Rule.TransactionDBSyncNamedRange)
+
+                    If SyncResult.BError Then
+                        Result.BError = True
+                        Result.BSuccess = False
+                        Result.StringReturn = SyncResult.StringReturn
+                        Result.StrResponseMessage = SyncResult.StrResponseMessage
+                    End If
+
+                Else
+
+                    Result.BError = True
+                    Result.BSuccess = False
+                    Result.StringReturn = "Transactional DB synchronisation service is unavailable."
+                    Result.StrResponseMessage = Result.StringReturn
 
                 End If
 
@@ -1531,7 +1568,9 @@ Namespace Abovo
 
             End If
 
-        End Sub
+            Return Result
+
+        End Function
 
         Private Function SnapshotNamedRange(ByVal WB As IWorkbook,
                                                    ByVal NamedRange As String) As StructuralNamedRangeSnapshot

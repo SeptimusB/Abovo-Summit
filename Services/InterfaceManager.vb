@@ -131,10 +131,18 @@ Namespace Abovo
 
                 For Each IntCheck In GroupInterfaces
 
+                    If IntCheck Is Nothing Then Continue For
+
                     If IntCheck.RenderedForm IsNot Nothing Then
 
-                        IntCheck.RenderedForm.Close()
-                        IntCheck.RenderedForm.Dispose()
+                        'Normal user close is intentionally cancelled so a group
+                        'window can be hidden and reused. Model shutdown is final:
+                        'dispose directly and let child controls detach while the
+                        'model/workbook are still registered.
+                        If Not IntCheck.RenderedForm.IsDisposed Then
+                            IntCheck.RenderedForm.Dispose()
+                        End If
+
                         IntCheck.RenderedForm = Nothing
 
                     End If

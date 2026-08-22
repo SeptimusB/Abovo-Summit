@@ -171,6 +171,7 @@ Namespace Abovo
             Public ExpendAnalyserV2 As BPIncomeExpenditureAnalyserV2
             Public ReadOnly ResourceRegistry As New ModelResourceRegistry
             Public IsDirty As Boolean
+            Public IsClosing As Boolean
             Public ModelID As Integer
             Public ChangeManager As ModelChangeManager
             Public TransDBM As TransDBManager
@@ -182,8 +183,6 @@ Namespace Abovo
             Public RDSM As RDSManager
             Public InterfaceDependencies As InterfaceDependencyManager
             Public TransDBSync As TransactionalDBSynchroniser
-            Public TransDBMaterialiser As TransactionDBMaterialiser
-            Public WorkbookMigrations As WorkbookMigrationManager
             Public WorkbookStructureRules As WorkbookStructureRuleManager
 
             Sub New(
@@ -205,8 +204,6 @@ Namespace Abovo
                     RDSM = New RDSManager(SetModelID)
                     InterfaceDependencies = New InterfaceDependencyManager(SetModelID)
                     TransDBSync = New TransactionalDBSynchroniser(SetModelID)
-                    TransDBMaterialiser = New TransactionDBMaterialiser(SetModelID)
-                    WorkbookMigrations = New WorkbookMigrationManager(SetModelID)
                     WorkbookStructureRules = New WorkbookStructureRuleManager(SetModelID)
                 End If
 
@@ -333,20 +330,6 @@ Namespace Abovo
 
                     HistoryManager.Show()
                     HistoryManager.Hide()
-
-                    If WorkbookMigrations IsNot Nothing Then
-                        'Every full-model load reconciles the workbook to the
-                        'current schema in memory. This must also run in Release
-                        'so an XLSB can round-trip through Summit and Excel
-                        'without leaving production users on an older schema.
-                        'Persistence still requires an explicit user save.
-                        Dim MigrationResult As AbovoTransaction =
-                            WorkbookMigrations.ApplyPendingMigrations()
-
-                        If MigrationResult.BError Then
-                            Return MigrationResult
-                        End If
-                    End If
 
                     Result.BSuccess = True
                     Result.StringReturn = "Workbook services initialized."
@@ -519,23 +502,58 @@ Namespace Abovo
             End Function
             Public Sub CloseModel()
 
-                ResourceRegistry.ReleaseAll()
+                If IsClosing Then Return
+                IsClosing = True
 
-                If ModelSpreadsheetControl IsNot Nothing Then
-                    RemoveHandler ModelSpreadsheetControl.UnhandledException,
-                                  AddressOf SSCUnhandledEvent
-                End If
+                Try
+                    ResourceRegistry.ReleaseAll()
+                Catch ex As Exception
+                    WriteLog("Error releasing registered model resources: " & ex.Message, FileName)
+                End Try
 
-                If WBInterface IsNot Nothing Then WBInterface.CloseInterfaces()
-                If InterfaceDependencies IsNot Nothing Then InterfaceDependencies.Clear()
-                If SSViewer IsNot Nothing Then SSViewer.Dispose()
-                If ModelSpreadsheetControl IsNot Nothing Then
-                    ModelSpreadsheetControl.Dispose()
-                End If
+                Try
+                    If ModelSpreadsheetControl IsNot Nothing Then
+                        RemoveHandler ModelSpreadsheetControl.UnhandledException,
+                                      AddressOf SSCUnhandledEvent
+                    End If
+                Catch ex As Exception
+                    WriteLog("Error detaching spreadsheet handlers: " & ex.Message, FileName)
+                End Try
+
+                'Interfaces must be detached and disposed while this model and its
+                'workbook are still available. DevExpress controls can request one
+                'final unbound value while their bindings are being torn down.
+                Try
+                    If WBInterface IsNot Nothing Then WBInterface.CloseInterfaces()
+                Catch ex As Exception
+                    WriteLog("Error closing model interfaces: " & ex.Message, FileName)
+                End Try
+
+                Try
+                    If InterfaceDependencies IsNot Nothing Then InterfaceDependencies.Clear()
+                Catch ex As Exception
+                    WriteLog("Error clearing interface dependencies: " & ex.Message, FileName)
+                End Try
+
+                Try
+                    If SSViewer IsNot Nothing Then SSViewer.Dispose()
+                Catch ex As Exception
+                    WriteLog("Error disposing spreadsheet viewer: " & ex.Message, FileName)
+                End Try
+
+                Try
+                    If ModelSpreadsheetControl IsNot Nothing Then
+                        ModelSpreadsheetControl.Dispose()
+                    End If
+                Catch ex As Exception
+                    WriteLog("Error disposing spreadsheet control: " & ex.Message, FileName)
+                End Try
 
                 SSViewer = Nothing
                 ModelSpreadsheetControl = Nothing
                 WB = Nothing
+                ExpendAnalyser = Nothing
+                ExpendAnalyserV2 = Nothing
                 WBInterface = Nothing
                 WBData = Nothing
                 WBCalcEngine = Nothing
@@ -549,8 +567,6 @@ Namespace Abovo
                 RDSM = Nothing
                 InterfaceDependencies = Nothing
                 TransDBSync = Nothing
-                TransDBMaterialiser = Nothing
-                WorkbookMigrations = Nothing
                 WorkbookStructureRules = Nothing
                 InstanceInterface = Nothing
 
@@ -652,12 +668,20 @@ Namespace Abovo
                ExcelModels(ModelID) Is Nothing Then Return
 
             Dim ModelToClose As ExcelModel = ExcelModels(ModelID)
-            ExcelModels(ModelID) = Nothing
 
             Try
                 ModelToClose.CloseModel()
             Catch ex As Exception
                 WriteLog("Error while releasing model " & ModelID.ToString() & ": " & ex.Message)
+            Finally
+                'Only remove the model after every interface has detached. Keeping
+                'the slot alive during disposal prevents late grid callbacks from
+                'dereferencing a missing ExcelModels(ModelID).
+                If ExcelModels IsNot Nothing AndAlso
+                   ModelID >= 0 AndAlso ModelID < ExcelModels.Length Then
+
+                    ExcelModels(ModelID) = Nothing
+                End If
             End Try
 
             OpenModelCount = Math.Max(0, OpenModelCount - 1)

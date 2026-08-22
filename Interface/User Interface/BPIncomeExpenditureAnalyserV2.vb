@@ -579,14 +579,19 @@ Public Class BPIncomeExpenditureAnalyserV2
                 column.Visible = False
             Next
 
-            For Each periodColumn As GridColumn In GetPeriodColumns(GV)
-                periodColumn.Visible = True
-            Next
-
             Dim descriptionColumn As GridColumn = RequireColumn(GV, "ItemDesc")
             descriptionColumn.Visible = True
+            descriptionColumn.VisibleIndex = 0
             descriptionColumn.BestFit()
             descriptionColumn.Fixed = FixedStyle.Left
+
+            Dim periodColumns As List(Of GridColumn) = GetPeriodColumns(GV)
+
+            For periodIndex As Integer = 0 To periodColumns.Count - 1
+                Dim periodColumn As GridColumn = periodColumns(periodIndex)
+                periodColumn.Visible = True
+                periodColumn.VisibleIndex = periodIndex + 1
+            Next
 
             '.Columns(12).BestFit()
             '.Columns(13).BestFit()

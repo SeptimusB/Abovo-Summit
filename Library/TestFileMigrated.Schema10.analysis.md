@@ -1,4 +1,6 @@
-# TestFileMigrated.xlsb analysis
+# Historical TestFileMigrated.xlsb schema-10 analysis
+
+> Superseded on 22 August 2026 when `SampleTestFileXLSB.xlsb` became the authoritative master. This analysis is retained only as evidence of the removed migration/materialisation design.
 
 Analysis date: 2026-08-17; full workbook/VBA refresh: 2026-08-18
 
