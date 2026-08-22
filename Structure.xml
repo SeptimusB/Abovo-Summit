@@ -27711,7 +27711,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         <ISDatasource>
           <ISDName>Existing Cashflows</ISDName>
           <ISDID>0</ISDID>
-          <DSType>LiveVGrid</DSType>
+          <DSType>LiveGrid</DSType>
           <DSSource>CR</DSSource>
           <MergeSources>None</MergeSources>
           <RO>TRUE</RO>
@@ -27723,14 +27723,12 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           <CellRangeDataSource>
             <Worksheet>Existing Cashflows</Worksheet>
             <PositID>1</PositID>
-            <DSType>LiveVGrid</DSType>
+            <DSType>LiveGrid</DSType>
             <ColsDefinedBy>None</ColsDefinedBy>
             <RowsDefinedBy>None</RowsDefinedBy>
             <DataRange>A9:AA48</DataRange>
             <LiveGridSourceName>Outputs_ExistingCashflows</LiveGridSourceName>
             <LiveGridHeaderRows>6,7</LiveGridHeaderRows>
-            <LiveVGridCategoryRow>5</LiveVGridCategoryRow>
-            <LiveVGridRecordHeaderColumns>2</LiveVGridRecordHeaderColumns>
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
               <FieldName>Workbook value</FieldName>
@@ -27740,7 +27738,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           </CellRangeDataSource>
         </ISDatasource>
         <IElement>
-          <Type>LiveVGrid</Type>
+          <Type>LiveGrid</Type>
           <DataSource>0</DataSource>
         </IElement>
       </CSInterfaceSection>
@@ -27757,7 +27755,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         <ISDatasource>
           <ISDName>Development Cashflows</ISDName>
           <ISDID>0</ISDID>
-          <DSType>LiveVGrid</DSType>
+          <DSType>LiveGrid</DSType>
           <DSSource>CR</DSSource>
           <MergeSources>None</MergeSources>
           <RO>TRUE</RO>
@@ -27769,14 +27767,12 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           <CellRangeDataSource>
             <Worksheet>Development Cashflows</Worksheet>
             <PositID>1</PositID>
-            <DSType>LiveVGrid</DSType>
+            <DSType>LiveGrid</DSType>
             <ColsDefinedBy>None</ColsDefinedBy>
             <RowsDefinedBy>None</RowsDefinedBy>
             <DataRange>A10:H49</DataRange>
             <LiveGridSourceName>Outputs_DevelopmentCashflows</LiveGridSourceName>
             <LiveGridHeaderRows>6,8</LiveGridHeaderRows>
-            <LiveVGridCategoryRow>5</LiveVGridCategoryRow>
-            <LiveVGridRecordHeaderColumns>2</LiveVGridRecordHeaderColumns>
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
               <FieldName>Workbook value</FieldName>
@@ -27786,7 +27782,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           </CellRangeDataSource>
         </ISDatasource>
         <IElement>
-          <Type>LiveVGrid</Type>
+          <Type>LiveGrid</Type>
           <DataSource>0</DataSource>
         </IElement>
       </CSInterfaceSection>
@@ -27803,7 +27799,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         <ISDatasource>
           <ISDName>Cashflow</ISDName>
           <ISDID>0</ISDID>
-          <DSType>LiveVGrid</DSType>
+          <DSType>LiveGrid</DSType>
           <DSSource>CR</DSSource>
           <MergeSources>None</MergeSources>
           <RO>TRUE</RO>
@@ -27815,14 +27811,12 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           <CellRangeDataSource>
             <Worksheet>Cashflow</Worksheet>
             <PositID>1</PositID>
-            <DSType>LiveVGrid</DSType>
+            <DSType>LiveGrid</DSType>
             <ColsDefinedBy>None</ColsDefinedBy>
             <RowsDefinedBy>None</RowsDefinedBy>
             <DataRange>A11:AA50</DataRange>
             <LiveGridSourceName>Outputs_Cashflow</LiveGridSourceName>
             <LiveGridHeaderRows>6,9</LiveGridHeaderRows>
-            <LiveVGridCategoryRow>5</LiveVGridCategoryRow>
-            <LiveVGridRecordHeaderColumns>2</LiveVGridRecordHeaderColumns>
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
               <FieldName>Workbook value</FieldName>
@@ -27832,7 +27826,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           </CellRangeDataSource>
         </ISDatasource>
         <IElement>
-          <Type>LiveVGrid</Type>
+          <Type>LiveGrid</Type>
           <DataSource>0</DataSource>
         </IElement>
       </CSInterfaceSection>
@@ -27849,7 +27843,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         <ISDatasource>
           <ISDName>Existing Cashflows Detailed</ISDName>
           <ISDID>0</ISDID>
-          <DSType>LiveVGrid</DSType>
+          <DSType>LiveGrid</DSType>
           <DSSource>CR</DSSource>
           <MergeSources>None</MergeSources>
           <RO>TRUE</RO>
@@ -27861,13 +27855,12 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           <CellRangeDataSource>
             <Worksheet>Existing Cashflows Detailed</Worksheet>
             <PositID>1</PositID>
-            <DSType>LiveVGrid</DSType>
+            <DSType>LiveGrid</DSType>
             <ColsDefinedBy>None</ColsDefinedBy>
             <RowsDefinedBy>None</RowsDefinedBy>
             <DataRange>A9:AD48</DataRange>
             <LiveGridSourceName>Outputs_ExistingCashflowsDetailed</LiveGridSourceName>
             <LiveGridHeaderRows>5,7</LiveGridHeaderRows>
-            <LiveVGridRecordHeaderColumns>2</LiveVGridRecordHeaderColumns>
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
               <FieldName>Workbook value</FieldName>
@@ -27877,7 +27870,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           </CellRangeDataSource>
         </ISDatasource>
         <IElement>
-          <Type>LiveVGrid</Type>
+          <Type>LiveGrid</Type>
           <DataSource>0</DataSource>
         </IElement>
       </CSInterfaceSection>
@@ -27894,7 +27887,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         <ISDatasource>
           <ISDName>Development Cashflow Detailed</ISDName>
           <ISDID>0</ISDID>
-          <DSType>LiveVGrid</DSType>
+          <DSType>LiveGrid</DSType>
           <DSSource>CR</DSSource>
           <MergeSources>None</MergeSources>
           <RO>TRUE</RO>
@@ -27906,13 +27899,12 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           <CellRangeDataSource>
             <Worksheet>Development Cashflow Detailed</Worksheet>
             <PositID>1</PositID>
-            <DSType>LiveVGrid</DSType>
+            <DSType>LiveGrid</DSType>
             <ColsDefinedBy>None</ColsDefinedBy>
             <RowsDefinedBy>None</RowsDefinedBy>
             <DataRange>A9:AY48</DataRange>
             <LiveGridSourceName>Outputs_DevelopmentCashflowDetailed</LiveGridSourceName>
             <LiveGridHeaderRows>5,7</LiveGridHeaderRows>
-            <LiveVGridRecordHeaderColumns>2</LiveVGridRecordHeaderColumns>
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
               <FieldName>Workbook value</FieldName>
@@ -27922,7 +27914,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           </CellRangeDataSource>
         </ISDatasource>
         <IElement>
-          <Type>LiveVGrid</Type>
+          <Type>LiveGrid</Type>
           <DataSource>0</DataSource>
         </IElement>
       </CSInterfaceSection>
@@ -27939,7 +27931,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         <ISDatasource>
           <ISDName>Cashflow Detail before Interco</ISDName>
           <ISDID>0</ISDID>
-          <DSType>LiveVGrid</DSType>
+          <DSType>LiveGrid</DSType>
           <DSSource>CR</DSSource>
           <MergeSources>None</MergeSources>
           <RO>TRUE</RO>
@@ -27951,13 +27943,12 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           <CellRangeDataSource>
             <Worksheet>Cashflow det b4 interco</Worksheet>
             <PositID>1</PositID>
-            <DSType>LiveVGrid</DSType>
+            <DSType>LiveGrid</DSType>
             <ColsDefinedBy>None</ColsDefinedBy>
             <RowsDefinedBy>None</RowsDefinedBy>
             <DataRange>A9:AD48</DataRange>
             <LiveGridSourceName>Outputs_Cashflowdetb4interco</LiveGridSourceName>
             <LiveGridHeaderRows>5,7</LiveGridHeaderRows>
-            <LiveVGridRecordHeaderColumns>2</LiveVGridRecordHeaderColumns>
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
               <FieldName>Workbook value</FieldName>
@@ -27967,7 +27958,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           </CellRangeDataSource>
         </ISDatasource>
         <IElement>
-          <Type>LiveVGrid</Type>
+          <Type>LiveGrid</Type>
           <DataSource>0</DataSource>
         </IElement>
       </CSInterfaceSection>
@@ -27984,7 +27975,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         <ISDatasource>
           <ISDName>Cashflow Interco</ISDName>
           <ISDID>0</ISDID>
-          <DSType>LiveVGrid</DSType>
+          <DSType>LiveGrid</DSType>
           <DSSource>CR</DSSource>
           <MergeSources>None</MergeSources>
           <RO>TRUE</RO>
@@ -27996,13 +27987,12 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           <CellRangeDataSource>
             <Worksheet>Cashflow interco</Worksheet>
             <PositID>1</PositID>
-            <DSType>LiveVGrid</DSType>
+            <DSType>LiveGrid</DSType>
             <ColsDefinedBy>None</ColsDefinedBy>
             <RowsDefinedBy>None</RowsDefinedBy>
             <DataRange>A9:AD48</DataRange>
             <LiveGridSourceRanges>A9:AD48;AF9:AR48;AT9:AV48</LiveGridSourceRanges>
             <LiveGridHeaderRows>5,7</LiveGridHeaderRows>
-            <LiveVGridRecordHeaderColumns>2</LiveVGridRecordHeaderColumns>
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
               <FieldName>Workbook value</FieldName>
@@ -28012,7 +28002,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           </CellRangeDataSource>
         </ISDatasource>
         <IElement>
-          <Type>LiveVGrid</Type>
+          <Type>LiveGrid</Type>
           <DataSource>0</DataSource>
         </IElement>
       </CSInterfaceSection>
@@ -28029,7 +28019,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         <ISDatasource>
           <ISDName>Cash Journals Detailed</ISDName>
           <ISDID>0</ISDID>
-          <DSType>LiveVGrid</DSType>
+          <DSType>LiveGrid</DSType>
           <DSSource>CR</DSSource>
           <MergeSources>None</MergeSources>
           <RO>TRUE</RO>
@@ -28041,13 +28031,12 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           <CellRangeDataSource>
             <Worksheet>Cash Journals Detailed</Worksheet>
             <PositID>1</PositID>
-            <DSType>LiveVGrid</DSType>
+            <DSType>LiveGrid</DSType>
             <ColsDefinedBy>None</ColsDefinedBy>
             <RowsDefinedBy>None</RowsDefinedBy>
             <DataRange>A9:AG48</DataRange>
             <LiveGridSourceName>Outputs_CashJournalsDetailed</LiveGridSourceName>
             <LiveGridHeaderRows>5,7</LiveGridHeaderRows>
-            <LiveVGridRecordHeaderColumns>2</LiveVGridRecordHeaderColumns>
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
               <FieldName>Workbook value</FieldName>
@@ -28057,7 +28046,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           </CellRangeDataSource>
         </ISDatasource>
         <IElement>
-          <Type>LiveVGrid</Type>
+          <Type>LiveGrid</Type>
           <DataSource>0</DataSource>
         </IElement>
       </CSInterfaceSection>
@@ -28074,7 +28063,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         <ISDatasource>
           <ISDName>Cashflow Detailed</ISDName>
           <ISDID>0</ISDID>
-          <DSType>LiveVGrid</DSType>
+          <DSType>LiveGrid</DSType>
           <DSSource>CR</DSSource>
           <MergeSources>None</MergeSources>
           <RO>TRUE</RO>
@@ -28086,13 +28075,12 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           <CellRangeDataSource>
             <Worksheet>Cashflow detailed</Worksheet>
             <PositID>1</PositID>
-            <DSType>LiveVGrid</DSType>
+            <DSType>LiveGrid</DSType>
             <ColsDefinedBy>None</ColsDefinedBy>
             <RowsDefinedBy>None</RowsDefinedBy>
             <DataRange>A9:AD48</DataRange>
             <LiveGridSourceName>Outputs_Cashflowdetailed</LiveGridSourceName>
             <LiveGridHeaderRows>5,7</LiveGridHeaderRows>
-            <LiveVGridRecordHeaderColumns>2</LiveVGridRecordHeaderColumns>
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
               <FieldName>Workbook value</FieldName>
@@ -28102,7 +28090,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           </CellRangeDataSource>
         </ISDatasource>
         <IElement>
-          <Type>LiveVGrid</Type>
+          <Type>LiveGrid</Type>
           <DataSource>0</DataSource>
         </IElement>
       </CSInterfaceSection>
@@ -28295,7 +28283,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         <ISDatasource>
           <ISDName>Summary Comp Inc - Alt View</ISDName>
           <ISDID>0</ISDID>
-          <DSType>LiveVGrid</DSType>
+          <DSType>LiveGrid</DSType>
           <DSSource>CR</DSSource>
           <MergeSources>None</MergeSources>
           <RO>TRUE</RO>
@@ -28307,13 +28295,12 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           <CellRangeDataSource>
             <Worksheet>Summary Comp Inc - Alt View</Worksheet>
             <PositID>1</PositID>
-            <DSType>LiveVGrid</DSType>
+            <DSType>LiveGrid</DSType>
             <ColsDefinedBy>None</ColsDefinedBy>
             <RowsDefinedBy>None</RowsDefinedBy>
             <DataRange>A9:AK48</DataRange>
             <LiveGridSourceRanges>A9:AK48</LiveGridSourceRanges>
             <LiveGridHeaderRows>6,7</LiveGridHeaderRows>
-            <LiveVGridRecordHeaderColumns>2</LiveVGridRecordHeaderColumns>
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
               <FieldName>Workbook value</FieldName>
@@ -28323,7 +28310,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           </CellRangeDataSource>
         </ISDatasource>
         <IElement>
-          <Type>LiveVGrid</Type>
+          <Type>LiveGrid</Type>
           <DataSource>0</DataSource>
         </IElement>
       </CSInterfaceSection>
@@ -28340,7 +28327,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         <ISDatasource>
           <ISDName>Detailed Comp Inc - Alt View</ISDName>
           <ISDID>0</ISDID>
-          <DSType>LiveVGrid</DSType>
+          <DSType>LiveGrid</DSType>
           <DSSource>CR</DSSource>
           <MergeSources>None</MergeSources>
           <RO>TRUE</RO>
@@ -28352,13 +28339,12 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           <CellRangeDataSource>
             <Worksheet>Detailed Comp Inc - Alt View</Worksheet>
             <PositID>1</PositID>
-            <DSType>LiveVGrid</DSType>
+            <DSType>LiveGrid</DSType>
             <ColsDefinedBy>None</ColsDefinedBy>
             <RowsDefinedBy>None</RowsDefinedBy>
             <DataRange>A9:CQ48</DataRange>
             <LiveGridSourceRanges>A9:CQ48</LiveGridSourceRanges>
             <LiveGridHeaderRows>6,7</LiveGridHeaderRows>
-            <LiveVGridRecordHeaderColumns>2</LiveVGridRecordHeaderColumns>
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
               <FieldName>Workbook value</FieldName>
@@ -28368,7 +28354,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           </CellRangeDataSource>
         </ISDatasource>
         <IElement>
-          <Type>LiveVGrid</Type>
+          <Type>LiveGrid</Type>
           <DataSource>0</DataSource>
         </IElement>
       </CSInterfaceSection>
@@ -28385,7 +28371,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         <ISDatasource>
           <ISDName>Financial Position - Alt View</ISDName>
           <ISDID>0</ISDID>
-          <DSType>LiveVGrid</DSType>
+          <DSType>LiveGrid</DSType>
           <DSSource>CR</DSSource>
           <MergeSources>None</MergeSources>
           <RO>TRUE</RO>
@@ -28397,14 +28383,12 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           <CellRangeDataSource>
             <Worksheet>Financial Position - Alt View</Worksheet>
             <PositID>1</PositID>
-            <DSType>LiveVGrid</DSType>
+            <DSType>LiveGrid</DSType>
             <ColsDefinedBy>None</ColsDefinedBy>
             <RowsDefinedBy>None</RowsDefinedBy>
             <DataRange>A10:BE50</DataRange>
             <LiveGridSourceRanges>A10:BE50</LiveGridSourceRanges>
             <LiveGridHeaderRows>7,8</LiveGridHeaderRows>
-            <LiveVGridCategoryRow>6</LiveVGridCategoryRow>
-            <LiveVGridRecordHeaderColumns>2</LiveVGridRecordHeaderColumns>
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
               <FieldName>Workbook value</FieldName>
@@ -28414,7 +28398,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           </CellRangeDataSource>
         </ISDatasource>
         <IElement>
-          <Type>LiveVGrid</Type>
+          <Type>LiveGrid</Type>
           <DataSource>0</DataSource>
         </IElement>
       </CSInterfaceSection>
@@ -28431,7 +28415,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         <ISDatasource>
           <ISDName>Cashflow Statement - Alt View</ISDName>
           <ISDID>0</ISDID>
-          <DSType>LiveVGrid</DSType>
+          <DSType>LiveGrid</DSType>
           <DSSource>CR</DSSource>
           <MergeSources>None</MergeSources>
           <RO>TRUE</RO>
@@ -28443,14 +28427,12 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           <CellRangeDataSource>
             <Worksheet>Cashflow Statement - Alt View</Worksheet>
             <PositID>1</PositID>
-            <DSType>LiveVGrid</DSType>
+            <DSType>LiveGrid</DSType>
             <ColsDefinedBy>None</ColsDefinedBy>
             <RowsDefinedBy>None</RowsDefinedBy>
             <DataRange>A9:BE48</DataRange>
             <LiveGridSourceRanges>A9:BE48</LiveGridSourceRanges>
             <LiveGridHeaderRows>6,7</LiveGridHeaderRows>
-            <LiveVGridCategoryRow>5</LiveVGridCategoryRow>
-            <LiveVGridRecordHeaderColumns>2</LiveVGridRecordHeaderColumns>
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
               <FieldName>Workbook value</FieldName>
@@ -28460,7 +28442,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
           </CellRangeDataSource>
         </ISDatasource>
         <IElement>
-          <Type>LiveVGrid</Type>
+          <Type>LiveGrid</Type>
           <DataSource>0</DataSource>
         </IElement>
       </CSInterfaceSection>
@@ -28478,6 +28460,22 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         <IElement>
           <Type>Interface</Type>
           <DataSource>BP_Dashboard</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+    </ChildStructure>
+    <ChildStructure Name="Funding Dashboard">
+      <CSName>Funding Dashboard</CSName>
+      <CSID>21</CSID>
+      <ParentID>2</ParentID>
+      <IsMaster>False</IsMaster>
+      <SpecialElement>FundingDashboard</SpecialElement>
+      <GroupName>Dashboards</GroupName>
+      <DefaultWorksheet>Funding Dashboard</DefaultWorksheet>
+      <CSInterfaceSection Name="Funding Dashboard">
+        <ISName>Funding Dashboard</ISName>
+        <IElement>
+          <Type>Interface</Type>
+          <DataSource>Funding_Dashboard</DataSource>
         </IElement>
       </CSInterfaceSection>
     </ChildStructure>

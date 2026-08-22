@@ -2598,6 +2598,12 @@ SkipRefresh:
                     Next
                 Next
 
+                LiveSourceRows.RemoveAll(
+                    Function(RowIndex) IsLiveProjectionRowBlank(
+                        LiveWorksheet,
+                        RowIndex,
+                        LiveSourceColumns))
+
                 UBSDataSourceCount += 1
                 ReDim Preserve UnboundDataSources(UBSDataSourceCount)
 
@@ -2681,7 +2687,16 @@ SkipRefresh:
                     LiveGridViewInfo.ColumnRowHeight +
                     DefaultTablePanelPadding.Top +
                     DefaultTablePanelPadding.Bottom
-                IdealGridHeight = Math.Min(IdealGridHeight, MaxGridHeight)
+                Dim LiveGridHeightCap As Integer = MaxGridHeight
+                If GSID = 2 Then
+                    'Output statements need enough vertical space for compact
+                    'summary reports. Use the current monitor's working area while
+                    'retaining the established cap for assumptions and Workings.
+                    LiveGridHeightCap = Math.Max(
+                        MaxGridHeight,
+                        Screen.FromControl(Me).WorkingArea.Height - 100)
+                End If
+                IdealGridHeight = Math.Min(IdealGridHeight, LiveGridHeightCap)
                 GridControls(GridCount).Height = IdealGridHeight
 
                 SectionControlsCumlHeight += IdealGridHeight + (2 * DefaultTablePanelPadding.Left)
@@ -2728,6 +2743,12 @@ SkipRefresh:
                         If LiveWorksheet.Columns(ColumnIndex).Visible Then LiveSourceColumns.Add(ColumnIndex)
                     Next
                 Next
+
+                LiveSourceRows.RemoveAll(
+                    Function(RowIndex) IsLiveProjectionRowBlank(
+                        LiveWorksheet,
+                        RowIndex,
+                        LiveSourceColumns))
 
                 UBSDataSourceCount += 1
                 ReDim Preserve UnboundDataSources(UBSDataSourceCount)
@@ -2804,12 +2825,16 @@ SkipRefresh:
 
                 For ColumnOffset As Integer = 0 To Math.Min(LiveSourceColumns.Count, ActiveDataSet.DataColumns.Length) - 1
                     Dim SourceColumnIndex As Integer = LiveSourceColumns(ColumnOffset)
-                    Dim RowCaption As String = BuildLiveGridColumnCaption(
+                    Dim WorkbookRowCaption As String = BuildLiveGridColumnCaption(
                         LiveWorksheet,
                         LiveSourceRanges(0),
                         SourceColumnIndex,
-                        ActiveDataSet.DataColumns(ColumnOffset).ColumnTag.ColumnHeading,
+                        String.Empty,
                         ActiveDataSet.LiveGridHeaderRows)
+                    Dim RowCaption As String = WorkbookRowCaption
+                    If String.IsNullOrWhiteSpace(RowCaption) Then
+                        RowCaption = ActiveDataSet.DataColumns(ColumnOffset).ColumnTag.ColumnHeading
+                    End If
 
                     Dim VRow As New EditorRow("Col_" & ColumnOffset.ToString()) With {
                         .Height = IdealGridRowHeight,
@@ -2819,8 +2844,21 @@ SkipRefresh:
                     VRow.Properties.ReadOnly = True
 
                     If ColumnOffset < RecordHeaderColumnCount Then
-                        VRow.Visible = False
                         LiveVGrid.Rows.Add(VRow)
+                        'Record-header fields belong across the top of a VGrid, not
+                        'as duplicate value rows. Set Visible only after insertion;
+                        'DevExpress resets it when a detached row is first attached.
+                        VRow.Visible = False
+                        Continue For
+                    End If
+
+                    If String.IsNullOrWhiteSpace(WorkbookRowCaption) AndAlso
+                       IsLiveProjectionColumnBlank(
+                           LiveWorksheet,
+                           SourceColumnIndex,
+                           LiveSourceRows) Then
+                        LiveVGrid.Rows.Add(VRow)
+                        VRow.Visible = False
                         Continue For
                     End If
 
@@ -9376,6 +9414,12 @@ SectionSelect:
             Next
         Next
 
+        ViewTag.LiveGridSourceRows.RemoveAll(
+            Function(RowIndex) IsLiveProjectionRowBlank(
+                Worksheet,
+                RowIndex,
+                ViewTag.LiveGridSourceColumns))
+
         View.BeginUpdate()
 
         Try
@@ -9425,13 +9469,23 @@ SectionSelect:
                     LiveDataSet.DataColumns(ColumnOffset).ColumnTag
 
                 GridColumn.Tag = ColumnTag
-                GridColumn.Caption =
+                Dim WorkbookCaption As String =
                     BuildLiveGridColumnCaption(
                         Worksheet,
                         SourceRange,
                         ViewTag.LiveGridSourceColumns(ColumnOffset),
-                        ColumnTag.ColumnHeading,
+                        String.Empty,
                         LiveDataSet.LiveGridHeaderRows)
+                GridColumn.Caption =
+                    If(String.IsNullOrWhiteSpace(WorkbookCaption),
+                       ColumnTag.ColumnHeading,
+                       WorkbookCaption)
+                GridColumn.Visible =
+                    Not (String.IsNullOrWhiteSpace(WorkbookCaption) AndAlso
+                         IsLiveProjectionColumnBlank(
+                             Worksheet,
+                             ViewTag.LiveGridSourceColumns(ColumnOffset),
+                             ViewTag.LiveGridSourceRows))
                 GridColumn.OptionsColumn.AllowEdit = False
                 GridColumn.OptionsColumn.AllowFocus = True
                 GridColumn.OptionsColumn.AllowMerge = DefaultBoolean.False
@@ -9465,6 +9519,51 @@ SectionSelect:
         End Try
 
     End Sub
+
+    Private Shared Function IsLiveProjectionRowBlank(
+        ByVal Worksheet As DevExpress.Spreadsheet.Worksheet,
+        ByVal SourceRowIndex As Integer,
+        ByVal SourceColumnIndexes As IEnumerable(Of Integer)) As Boolean
+
+        For Each SourceColumnIndex As Integer In SourceColumnIndexes
+            If Not String.IsNullOrWhiteSpace(
+                Worksheet.Cells(SourceRowIndex, SourceColumnIndex).DisplayText) Then
+                Return False
+            End If
+        Next
+
+        Return True
+
+    End Function
+
+    Private Shared Function IsLiveProjectionColumnBlank(
+        ByVal Worksheet As DevExpress.Spreadsheet.Worksheet,
+        ByVal SourceColumnIndex As Integer,
+        ByVal SourceRowIndexes As IEnumerable(Of Integer)) As Boolean
+
+        For Each SourceRowIndex As Integer In SourceRowIndexes
+            If Not String.IsNullOrWhiteSpace(
+                Worksheet.Cells(SourceRowIndex, SourceColumnIndex).DisplayText) Then
+                Return False
+            End If
+        Next
+
+        Return True
+
+    End Function
+
+    Private Shared Function IsNegativeWorkbookCell(
+        ByVal SourceCell As DevExpress.Spreadsheet.Cell) As Boolean
+
+        If SourceCell.Value.IsNumeric AndAlso SourceCell.Value.NumericValue < 0 Then
+            Return True
+        End If
+
+        Dim DisplayValue As String = SourceCell.DisplayText.Trim()
+        Return DisplayValue.StartsWith("-", StringComparison.Ordinal) OrElse
+               DisplayValue.StartsWith("(", StringComparison.Ordinal)
+
+    End Function
 
     Private Shared Function BuildLiveGridColumnCaption(
         ByVal Worksheet As DevExpress.Spreadsheet.Worksheet,
@@ -9691,7 +9790,7 @@ SectionSelect:
 
         Dim Foreground As Color = SourceCell.Font.Color
         If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = AbovoBlue
-        If SourceCell.DisplayText.Trim().StartsWith("(", StringComparison.Ordinal) Then
+        If IsNegativeWorkbookCell(SourceCell) Then
             Foreground = Color.Red
         End If
 
@@ -9768,7 +9867,7 @@ SectionSelect:
 
         Dim Foreground As Color = SourceCell.Font.Color
         If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = AbovoBlue
-        If SourceCell.DisplayText.Trim().StartsWith("(", StringComparison.Ordinal) Then
+        If IsNegativeWorkbookCell(SourceCell) Then
             Foreground = Color.Red
         End If
 

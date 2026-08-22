@@ -74,23 +74,23 @@ $children = @(
         (S 'Managed Stock Numbers' 'Stock Numbers' 'LiveGrid' 'A12:B52' 'Outputs_StockNumbers' '3' '2' '6,10' '' ''),
         (S 'Owned Stock Numbers' 'Stock Numbers' 'LiveGrid' 'A12:B52' 'Outputs_StockNumbers' '4' '2' '6,10' '' '')
     )},
-    [pscustomobject]@{ Id=3; Name='Existing Cashflows'; Group='Cashflows'; Sheet='Existing Cashflows'; Sections=@((S 'Existing Cashflows' 'Existing Cashflows' 'LiveVGrid' 'A9:AA48' 'Outputs_ExistingCashflows' '' '' '6,7' '5')) },
-    [pscustomobject]@{ Id=4; Name='Development Cashflows'; Group='Cashflows'; Sheet='Development Cashflows'; Sections=@((S 'Development Cashflows' 'Development Cashflows' 'LiveVGrid' 'A10:H49' 'Outputs_DevelopmentCashflows' '' '' '6,8' '5')) },
-    [pscustomobject]@{ Id=5; Name='Cashflow'; Group='Cashflows'; Sheet='Cashflow'; Sections=@((S 'Cashflow' 'Cashflow' 'LiveVGrid' 'A11:AA50' 'Outputs_Cashflow' '' '' '6,9' '5')) },
-    [pscustomobject]@{ Id=6; Name='Existing Cashflows Detailed'; Group='Cashflows'; Sheet='Existing Cashflows Detailed'; Sections=@((S 'Existing Cashflows Detailed' 'Existing Cashflows Detailed' 'LiveVGrid' 'A9:AD48' 'Outputs_ExistingCashflowsDetailed' '' '' '5,7')) },
-    [pscustomobject]@{ Id=7; Name='Development Cashflow Detailed'; Group='Cashflows'; Sheet='Development Cashflow Detailed'; Sections=@((S 'Development Cashflow Detailed' 'Development Cashflow Detailed' 'LiveVGrid' 'A9:AY48' 'Outputs_DevelopmentCashflowDetailed' '' '' '5,7')) },
-    [pscustomobject]@{ Id=8; Name='Cashflow Detail before Interco'; Group='Cashflows'; Sheet='Cashflow det b4 interco'; Sections=@((S 'Cashflow Detail before Interco' 'Cashflow det b4 interco' 'LiveVGrid' 'A9:AD48' 'Outputs_Cashflowdetb4interco' '' '' '5,7')) },
-    [pscustomobject]@{ Id=9; Name='Cashflow Interco'; Group='Cashflows'; Sheet='Cashflow interco'; Sections=@((S 'Cashflow Interco' 'Cashflow interco' 'LiveVGrid' 'A9:AD48' '' '' '' '5,7' '' '2' 'A9:AD48;AF9:AR48;AT9:AV48')) },
-    [pscustomobject]@{ Id=10; Name='Cash Journals Detailed'; Group='Cashflows'; Sheet='Cash Journals Detailed'; Sections=@((S 'Cash Journals Detailed' 'Cash Journals Detailed' 'LiveVGrid' 'A9:AG48' 'Outputs_CashJournalsDetailed' '' '' '5,7')) },
-    [pscustomobject]@{ Id=11; Name='Cashflow Detailed'; Group='Cashflows'; Sheet='Cashflow detailed'; Sections=@((S 'Cashflow Detailed' 'Cashflow detailed' 'LiveVGrid' 'A9:AD48' 'Outputs_Cashflowdetailed' '' '' '5,7')) },
+    [pscustomobject]@{ Id=3; Name='Existing Cashflows'; Group='Cashflows'; Sheet='Existing Cashflows'; Sections=@((S 'Existing Cashflows' 'Existing Cashflows' 'LiveGrid' 'A9:AA48' 'Outputs_ExistingCashflows' '' '' '6,7' '' '')) },
+    [pscustomobject]@{ Id=4; Name='Development Cashflows'; Group='Cashflows'; Sheet='Development Cashflows'; Sections=@((S 'Development Cashflows' 'Development Cashflows' 'LiveGrid' 'A10:H49' 'Outputs_DevelopmentCashflows' '' '' '6,8' '' '')) },
+    [pscustomobject]@{ Id=5; Name='Cashflow'; Group='Cashflows'; Sheet='Cashflow'; Sections=@((S 'Cashflow' 'Cashflow' 'LiveGrid' 'A11:AA50' 'Outputs_Cashflow' '' '' '6,9' '' '')) },
+    [pscustomobject]@{ Id=6; Name='Existing Cashflows Detailed'; Group='Cashflows'; Sheet='Existing Cashflows Detailed'; Sections=@((S 'Existing Cashflows Detailed' 'Existing Cashflows Detailed' 'LiveGrid' 'A9:AD48' 'Outputs_ExistingCashflowsDetailed' '' '' '5,7' '' '')) },
+    [pscustomobject]@{ Id=7; Name='Development Cashflow Detailed'; Group='Cashflows'; Sheet='Development Cashflow Detailed'; Sections=@((S 'Development Cashflow Detailed' 'Development Cashflow Detailed' 'LiveGrid' 'A9:AY48' 'Outputs_DevelopmentCashflowDetailed' '' '' '5,7' '' '')) },
+    [pscustomobject]@{ Id=8; Name='Cashflow Detail before Interco'; Group='Cashflows'; Sheet='Cashflow det b4 interco'; Sections=@((S 'Cashflow Detail before Interco' 'Cashflow det b4 interco' 'LiveGrid' 'A9:AD48' 'Outputs_Cashflowdetb4interco' '' '' '5,7' '' '')) },
+    [pscustomobject]@{ Id=9; Name='Cashflow Interco'; Group='Cashflows'; Sheet='Cashflow interco'; Sections=@((S 'Cashflow Interco' 'Cashflow interco' 'LiveGrid' 'A9:AD48' '' '' '' '5,7' '' '' 'A9:AD48;AF9:AR48;AT9:AV48')) },
+    [pscustomobject]@{ Id=10; Name='Cash Journals Detailed'; Group='Cashflows'; Sheet='Cash Journals Detailed'; Sections=@((S 'Cash Journals Detailed' 'Cash Journals Detailed' 'LiveGrid' 'A9:AG48' 'Outputs_CashJournalsDetailed' '' '' '5,7' '' '')) },
+    [pscustomobject]@{ Id=11; Name='Cashflow Detailed'; Group='Cashflows'; Sheet='Cashflow detailed'; Sections=@((S 'Cashflow Detailed' 'Cashflow detailed' 'LiveGrid' 'A9:AD48' 'Outputs_Cashflowdetailed' '' '' '5,7' '' '')) },
     [pscustomobject]@{ Id=12; Name='Summary Comp Inc - Trad View'; Group='Accounts'; Sheet='Summary Comp Inc - Trad View'; Sections=@((S 'Summary Comp Inc - Trad View' 'Summary Comp Inc - Trad View' 'LiveGrid' 'A9:AP43' '' '' '' '5,6,7' '' '' 'A9:AP43')) },
     [pscustomobject]@{ Id=13; Name='Detailed Comp Inc - Trad View'; Group='Accounts'; Sheet='Detailed Comp Inc - Trad View'; Sections=@((S 'Detailed Comp Inc - Trad View' 'Detailed Comp Inc - Trad View' 'LiveGrid' 'A9:AP97' '' '' '' '5,6,7' '' '' 'A9:AP97')) },
     [pscustomobject]@{ Id=14; Name='Financial Position - Trad View'; Group='Accounts'; Sheet='Financial Position - Trad View'; Sections=@((S 'Financial Position - Trad View' 'Financial Position - Trad View' 'LiveGrid' 'A9:AQ67' '' '' '' '5,6,7' '' '' 'A9:AQ67')) },
     [pscustomobject]@{ Id=15; Name='Cashflow Statement - Trad View'; Group='Accounts'; Sheet='Cashflow Statement - Trad View'; Sections=@((S 'Cashflow Statement - Trad View' 'Cashflow Statement - Trad View' 'LiveGrid' 'A9:AP67' '' '' '' '5,6,7' '' '' 'A9:AP67')) },
-    [pscustomobject]@{ Id=16; Name='Summary Comp Inc - Alt View'; Group='Accounts'; Sheet='Summary Comp Inc - Alt View'; Sections=@((S 'Summary Comp Inc - Alt View' 'Summary Comp Inc - Alt View' 'LiveVGrid' 'A9:AK48' '' '' '' '6,7' '' '2' 'A9:AK48')) },
-    [pscustomobject]@{ Id=17; Name='Detailed Comp Inc - Alt View'; Group='Accounts'; Sheet='Detailed Comp Inc - Alt View'; Sections=@((S 'Detailed Comp Inc - Alt View' 'Detailed Comp Inc - Alt View' 'LiveVGrid' 'A9:CQ48' '' '' '' '6,7' '' '2' 'A9:CQ48')) },
-    [pscustomobject]@{ Id=18; Name='Financial Position - Alt View'; Group='Accounts'; Sheet='Financial Position - Alt View'; Sections=@((S 'Financial Position - Alt View' 'Financial Position - Alt View' 'LiveVGrid' 'A10:BE50' '' '' '' '7,8' '6' '2' 'A10:BE50')) },
-    [pscustomobject]@{ Id=19; Name='Cashflow Statement - Alt View'; Group='Accounts'; Sheet='Cashflow Statement - Alt View'; Sections=@((S 'Cashflow Statement - Alt View' 'Cashflow Statement - Alt View' 'LiveVGrid' 'A9:BE48' '' '' '' '6,7' '5' '2' 'A9:BE48')) }
+    [pscustomobject]@{ Id=16; Name='Summary Comp Inc - Alt View'; Group='Accounts'; Sheet='Summary Comp Inc - Alt View'; Sections=@((S 'Summary Comp Inc - Alt View' 'Summary Comp Inc - Alt View' 'LiveGrid' 'A9:AK48' '' '' '' '6,7' '' '' 'A9:AK48')) },
+    [pscustomobject]@{ Id=17; Name='Detailed Comp Inc - Alt View'; Group='Accounts'; Sheet='Detailed Comp Inc - Alt View'; Sections=@((S 'Detailed Comp Inc - Alt View' 'Detailed Comp Inc - Alt View' 'LiveGrid' 'A9:CQ48' '' '' '' '6,7' '' '' 'A9:CQ48')) },
+    [pscustomobject]@{ Id=18; Name='Financial Position - Alt View'; Group='Accounts'; Sheet='Financial Position - Alt View'; Sections=@((S 'Financial Position - Alt View' 'Financial Position - Alt View' 'LiveGrid' 'A10:BE50' '' '' '' '7,8' '' '' 'A10:BE50')) },
+    [pscustomobject]@{ Id=19; Name='Cashflow Statement - Alt View'; Group='Accounts'; Sheet='Cashflow Statement - Alt View'; Sections=@((S 'Cashflow Statement - Alt View' 'Cashflow Statement - Alt View' 'LiveGrid' 'A9:BE48' '' '' '' '6,7' '' '' 'A9:BE48')) }
 )
 
 $text = [IO.File]::ReadAllText($structurePath)
@@ -134,17 +134,33 @@ $group.Add('          <DataSource>BP_Dashboard</DataSource>')
 $group.Add('        </IElement>')
 $group.Add('      </CSInterfaceSection>')
 $group.Add('    </ChildStructure>')
+$group.Add('    <ChildStructure Name="Funding Dashboard">')
+$group.Add('      <CSName>Funding Dashboard</CSName>')
+$group.Add('      <CSID>21</CSID>')
+$group.Add('      <ParentID>2</ParentID>')
+$group.Add('      <IsMaster>False</IsMaster>')
+$group.Add('      <SpecialElement>FundingDashboard</SpecialElement>')
+$group.Add('      <GroupName>Dashboards</GroupName>')
+$group.Add('      <DefaultWorksheet>Funding Dashboard</DefaultWorksheet>')
+$group.Add('      <CSInterfaceSection Name="Funding Dashboard">')
+$group.Add('        <ISName>Funding Dashboard</ISName>')
+$group.Add('        <IElement>')
+$group.Add('          <Type>Interface</Type>')
+$group.Add('          <DataSource>Funding_Dashboard</DataSource>')
+$group.Add('        </IElement>')
+$group.Add('      </CSInterfaceSection>')
+$group.Add('    </ChildStructure>')
 $group.Add('  </GroupStructure>')
 
 $replacement = $group -join "`r`n"
 $updated = [regex]::Replace($text, '(?s)  <GroupStructure Name="Outputs">.*?  </GroupStructure>', [Text.RegularExpressions.MatchEvaluator]{ param($m) $replacement }, 1)
 if ($Apply) {
     if ($updated -eq $text) {
-        Write-Output 'Structure.xml Outputs children 0-20 are already current.'
+        Write-Output 'Structure.xml Outputs children 0-21 are already current.'
         return
     }
     [IO.File]::WriteAllText($structurePath, $updated, [Text.UTF8Encoding]::new($false))
-    Write-Output 'Updated Structure.xml Outputs children 0-20.'
+    Write-Output 'Updated Structure.xml Outputs children 0-21.'
 } else {
     Write-Output $replacement
 }

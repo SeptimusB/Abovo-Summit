@@ -2,18 +2,21 @@
 
 ## Delivery approach
 
-Outputs children 0 through 20 are implemented through Business Plan Dashboard.
+Outputs children 0 through 21 are implemented through Funding Dashboard.
 The authoritative contract is `Library/TestFileMigrated.xlsb`; archived
 structure files were used only to recover likely ordering and grouping before
 each child was checked against the current workbook.
 
 All worksheet-backed Output grids are detached read-only projections. Horizontal
-`LiveGrid` is used for stock and traditional statement layouts. `LiveVGrid` is
-used where measures are clearer down the page and workbook periods become
-records across the page. Both refresh from the live workbook after calculation,
-preserve cell multiselect and clipboard copy, and derive visible values and
-formatting from the underlying workbook cells. `BP Dashboard` continues to use
-the existing native `BP_Dashboard` interface.
+`LiveGrid` preserves the source worksheet orientation for stock, cashflow and
+statement layouts, including every traditional and alternative account view.
+The grids refresh from the live workbook after
+calculation, preserve cell multiselect and clipboard copy, and derive visible
+values and formatting from the underlying workbook cells. `BP Dashboard` uses
+the existing native `BP_Dashboard` interface and now rebuilds its workbook-backed
+content after calculation while it remains open. `Funding Dashboard` is a
+dedicated native interface whose selectors and seven visualisations remain
+linked to their authoritative workbook cells and source ranges.
 
 ## Child 0: Existing Stock Numbers
 
@@ -37,40 +40,126 @@ The two row-heading columns and the stock-type headings remain workbook driven,
 so year, tenure, and stock-type formula changes are reflected when the grid is
 refreshed.
 
-## Children 1-20
+## Children 1-21
 
 - Stock Numbers: Development Stock Numbers and Stock Numbers use horizontal
   `LiveGrid` tabs split by the workbook's named-range areas.
-- Cashflows: Existing Cashflows through Cashflow Detailed use `LiveVGrid`, with
-  worksheet measures as rows and year/period records across the page.
+- Cashflows: Existing Cashflows through Cashflow Detailed use horizontal
+  `LiveGrid` and preserve their source worksheet row/column orientation.
 - Traditional accounts: Summary Comprehensive Income, Detailed Comprehensive
   Income, Financial Position, and Cashflow Statement use `LiveGrid`.
-- Alternative accounts: the corresponding four alternative views use
-  `LiveVGrid`.
+- Alternative accounts: Summary Comprehensive Income, Detailed Comprehensive
+  Income, Financial Position and Cashflow Statement all use horizontal
+  `LiveGrid`, matching the stock interfaces and source worksheet orientation.
 - Dashboard: BP Dashboard (`CSID 20`) uses the existing `BP_Dashboard` special
   interface and targets worksheet `BP Dashboard`.
+- Dashboard: Funding Dashboard (`CSID 21`) uses the new `FundingDashboard`
+  special interface and targets worksheet `Funding Dashboard`. Its exact
+  workbook contract is recorded in `Funding_Dashboard_Technical_Audit.md`.
 
 The generated XML is reproducible with
 `Tools/GenerateOutputsStructure.ps1 -Apply`. The generator replaces only the
-`Outputs` group, preserves child 0, and emits the verified child order 0-20.
+`Outputs` group, preserves child 0, and emits the verified child order 0-21.
 
 Version 7.10 passed full Debug and Release rebuilds on 21 August 2026 with zero
 warnings and zero errors. XML parsing confirmed 21 sequential child IDs, all
 worksheet targets and all 11 named sources were present in the read-only XLSB,
 and the generated `Structure.xml` matched both build outputs.
 
+Version 7.11 suppresses fully blank projection rows and hides columns only when
+both their workbook heading and every projected `DisplayText` value are blank.
+LiveVGrid record-header helper fields are hidden after attachment so DevExpress
+cannot reset their visibility and expose fallback names such as `Col_1`.
+Meaningful unlabeled workbook data remains visible. Both LiveGrid orientations
+continue to source cell text from `DisplayText`; numeric, leading-minus, and
+parenthesised negative values are explicitly rendered red. Full Debug and
+Release rebuilds passed on 22 August 2026 with zero warnings and zero errors.
+
+Version 7.12 returns every cashflow-family child (`CSID 3-11`) and Alternative
+Cashflow Statement (`CSID 19`) to horizontal `LiveGrid`, matching the stock
+interfaces and workbook orientation. Output LiveGrids use the current monitor's
+usable height so Summary Comp Inc - Trad View can show its compact report rather
+than being constrained by the general 70% grid cap. An open BP Dashboard is now
+an active calculation consumer: completed workbook calculations rebuild its
+charts and gearing table from current workbook values, and disposal unregisters
+it from the calculation engine. Full Debug and Release rebuilds passed on 22
+August 2026 with zero warnings and zero errors.
+
+Version 7.13 returns the remaining Alternative account views (`CSID 16-18`) to
+horizontal `LiveGrid`; Outputs now contains no `LiveVGrid` elements. It adds the
+native Funding Dashboard at `CSID 21`, including workbook-validation-driven
+funder, facility, covenant and first-year selectors. Accepted selections travel
+through `ModelChangeManager`; completed calculations rebuild all selector lists,
+funding charts, the selected covenant table/chart and both covenant-status
+charts. The read-only workbook inspection retained SHA-256
+`7039BD6E7BAE82C0269F1F9E56D4C28E17EED7599FFB263169798D214AABF044`.
+Full standard Debug and Release rebuilds passed on 22 August 2026 with zero
+warnings and zero errors.
+
+Version 7.15 restores the two lower-right covenant status charts and aligns the
+top-right selected-covenant chart with the XLSB series contract. Status values
+are read from `AO:AP` and `AR:AS`; their workbook value of `1.1` is no longer
+clipped by a `0-1` native axis and marker colour is no longer made transparent.
+The selected chart now uses forecast `AI`, target `AJ` and breach overlay `AL`
+rather than treating the display table's `Q` values as the complete chart
+source.
+Full standard Debug and Release rebuilds passed on 22 August 2026 with zero
+warnings and zero errors.
+
+Version 7.19 disables automatic column population for the selected-covenant
+XtraGrid and explicitly creates only Year, Value and Forecast visual columns.
+Target and Exceeded remain fields in the bound row for custom rendering but no
+longer have GridColumn instances that DevExpress can display.
+Full standard Debug and Release rebuilds passed on 22 August 2026 with zero
+warnings and zero errors.
+
+Version 7.18 removes the selected-covenant grid's Target and Exceeded helper
+fields from both its visible layout and customization surface. Dashboard chart
+cards now reserve a separate layout row for their title bars so legends cannot
+be covered, and the two lower status charts use a fixed centred vertical range
+for the workbook's 1.1 marker values.
+Full standard Debug and Release rebuilds passed on 22 August 2026 with zero
+warnings and zero errors.
+
+Version 7.17 replaces the top-right selected-covenant grid/chart split with a
+single read-only DevExpress XtraGrid. Each workbook year and DisplayText value
+shares its row with a native custom-drawn visual cell sourced from forecast AI,
+target AJ and breach overlay AL. The blue/red data bar and green target marker
+therefore remain aligned and refresh together as one workbook-backed dataset.
+Full standard Debug and Release rebuilds passed on 22 August 2026 with zero
+warnings and zero errors.
+
+Version 7.16 replaces the Funding Dashboard's marker-only line series with
+native DevExpress point series. Target, covenant-met and covenant-breached
+markers retain their workbook-derived data and colours without assigning
+DashStyle.Empty to an ordinary series line, which DevExpress 25.2 rejects at
+runtime.
+Full standard Debug and Release rebuilds passed on 22 August 2026 with zero
+warnings and zero errors.
+
+Version 7.14 corrects the native selected-covenant grid initialisation order.
+Its custom `GridView` is now installed before the `DataSource` is assigned,
+columns are populated explicitly, and workbook column styling is applied only
+after guarded field lookup. This prevents the opening `NullReferenceException`
+caused by DevExpress generating columns on its temporary default view.
+Full standard Debug and Release rebuilds passed on 22 August 2026 with zero
+warnings and zero errors.
+
 ## Required manual validation
 
-- Open Outputs and exercise every child from Existing Stock Numbers through BP
-  Dashboard.
-- Switch repeatedly through all stock tabs and between horizontal and vertical
-  Output children.
+- Open Outputs and exercise every child from Existing Stock Numbers through
+  Funding Dashboard.
+- Switch repeatedly through all stock, cashflow, traditional account and
+  alternative account children and confirm their horizontal orientation.
 - Recalculate while the Output is visible beside editable assumptions and
   confirm values and headings refresh.
 - Rename or add a stock type in the supported model workflow and confirm the
   refreshed headings follow the workbook.
 - Use the worksheet button on every child and confirm the correct underlying
   XLSB worksheet opens, including the abbreviated cashflow sheet names.
-- Confirm formula-driven measure/category headings refresh in every vertical
-  view.
+- Confirm formula-driven headings refresh in all views and that open BP and
+  Funding Dashboards refresh after a substantive assumptions change and
+  calculation.
+- Exercise all four Funding Dashboard selectors and confirm the workbook cells,
+  chart titles, series, selected covenant years/values and status markers update.
 - Confirm cell multiselect and clipboard copy on every grid.

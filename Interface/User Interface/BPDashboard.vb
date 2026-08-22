@@ -71,6 +71,8 @@ Public Class BPDashboard
     Public GridViewCount As Integer = -1
     Public Formatter As ObjectFormatter
     Public CurrChartWS As DevExpress.Spreadsheet.Worksheet
+    Private CalcEngID As Integer = -1
+    Private IsRefreshingDashboard As Boolean
     Public StockChart As ChartControl
     Public IncomePieChart As ChartControl
     Public ExpensesPieChart As ChartControl
@@ -103,12 +105,25 @@ Public Class BPDashboard
 
         'End If
 
+        BuildDashboard()
+
+        CalcEngID = ExcelModels(ModelID).WBCalcEngine.AddActiveObject(Me)
+        ExcelModels(ModelID).WBCalcEngine.AddActiveWorksheet(
+            CalcEngID,
+            ExcelModels(ModelID).WB.Worksheets("BP Dashboard"),
+            False)
+        AddHandler Me.Disposed, AddressOf BPDashboard_Disposed
+        Exit Sub
+
+
+    End Sub
+
+    Private Sub BuildDashboard()
+
         CurrChartWS = ExcelModels(ModelID).WB.Worksheets("OW - Charts Source Data")
-        'ManagementCosts.ManagementCostData.GetStatus()
         AddStocksChart()
         AddBrowserGearingTable()
         AddDebtChart()
-
         AddOperatingIncomeChart()
         AddExpensesPieChart()
         AddCvntChart()
@@ -116,8 +131,53 @@ Public Class BPDashboard
         Add3rdCovChart()
         Add4thCovChart()
         Add5thCovChart()
-        Exit Sub
 
+    End Sub
+
+    Public Sub RefreshData()
+
+        If IsDisposed OrElse Disposing Then Return
+
+        If InvokeRequired Then
+            BeginInvoke(New Action(AddressOf RefreshData))
+            Return
+        End If
+
+        If IsRefreshingDashboard Then Return
+        IsRefreshingDashboard = True
+        SuspendLayout()
+        TablePanelDashboard.SuspendLayout()
+
+        Try
+            For Each DashboardControl As Control In
+                TablePanelDashboard.Controls.Cast(Of Control).ToArray()
+
+                TablePanelDashboard.Controls.Remove(DashboardControl)
+                DashboardControl.Dispose()
+            Next
+
+            BuildDashboard()
+        Finally
+            TablePanelDashboard.ResumeLayout(True)
+            ResumeLayout(True)
+            IsRefreshingDashboard = False
+        End Try
+
+    End Sub
+
+    Private Sub BPDashboard_Disposed(ByVal sender As Object, ByVal e As EventArgs)
+
+        If CalcEngID < 0 Then Return
+
+        If ExcelModels IsNot Nothing AndAlso
+           ModelID >= 0 AndAlso ModelID < ExcelModels.Length AndAlso
+           ExcelModels(ModelID) IsNot Nothing AndAlso
+           ExcelModels(ModelID).WBCalcEngine IsNot Nothing Then
+
+            ExcelModels(ModelID).WBCalcEngine.RemoveActiveObject(CalcEngID)
+        End If
+
+        CalcEngID = -1
 
     End Sub
     Sub AddBrowserGearingTable()

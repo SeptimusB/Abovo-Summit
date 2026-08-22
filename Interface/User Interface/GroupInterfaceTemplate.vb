@@ -491,7 +491,7 @@ Public Class GroupInterfaceTemplate
 
             DataITemp = TryCast(doc.Control, DataInterfaceTemplate)
 
-            If Interfacelink Is Nothing Then
+            If DataITemp IsNot Nothing AndAlso Interfacelink Is Nothing Then
 
                 DataITemp.ClearLinks()
 
@@ -581,6 +581,12 @@ Public Class GroupInterfaceTemplate
 
                     Case "BP_Dashboard"
                         Dim NewSAI As New BPDashboard(MyModelID)
+                        NewSAI.Tag = SetCSID
+                        DocumentManagerAssumptions.View.AddDocument(NewSAI)
+                        DocumentManagerAssumptions.View.ActivateDocument(NewSAI)
+
+                    Case "FundingDashboard"
+                        Dim NewSAI As New FundingDashboard(MyModelID)
                         NewSAI.Tag = SetCSID
                         DocumentManagerAssumptions.View.AddDocument(NewSAI)
                         DocumentManagerAssumptions.View.ActivateDocument(NewSAI)

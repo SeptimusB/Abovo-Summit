@@ -43,7 +43,18 @@ Namespace Abovo
 
                     TryObj.RefreshData()
 
+                    Return
+
                 End If
+
+                Dim TryDashboard As BPDashboard = TryCast(Obj, BPDashboard)
+                If TryDashboard IsNot Nothing Then
+                    TryDashboard.RefreshData()
+                    Return
+                End If
+
+                Dim TryFundingDashboard As FundingDashboard = TryCast(Obj, FundingDashboard)
+                If TryFundingDashboard IsNot Nothing Then TryFundingDashboard.RefreshData()
 
             End Sub
             Public Sub AddWorksheet(ByVal ws As DevExpress.Spreadsheet.Worksheet, SetID As Integer)
@@ -191,7 +202,9 @@ NextWS:
             End If
 
         End Sub
-        Public Function AddActiveWorksheet(ObjectID As Integer, ws As DevExpress.Spreadsheet.Worksheet) As Integer
+        Public Function AddActiveWorksheet(ObjectID As Integer,
+                                           ws As DevExpress.Spreadsheet.Worksheet,
+                                           Optional ByVal CalculateNow As Boolean = True) As Integer
 
             If ActiveObjects(ObjectID) IsNot Nothing Then
 
@@ -200,7 +213,7 @@ NextWS:
                 ActiveWSs(ActiveWSCount) = ws
                 ActiveObjects(ObjectID).AddWorksheet(ws, ActiveWSCount)
 
-                CalculateWSs()
+                If CalculateNow Then CalculateWSs()
 
                 Return ActiveWSCount
 

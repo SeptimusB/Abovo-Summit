@@ -363,6 +363,9 @@
     <Compile Include="Interface\User Interface\BPDashboard.vb">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Interface\User Interface\FundingDashboard.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Interface\User Interface\BPIncomeExpenditureAnalyser.Designer.vb">
       <DependentUpon>BPIncomeExpenditureAnalyser.vb</DependentUpon>
     </Compile>
