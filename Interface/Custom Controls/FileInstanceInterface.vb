@@ -87,8 +87,6 @@ Public Class FileInstanceInterface
 
             Case "GoWorkings"
 
-                MsgBox("Awaiting DevExpress Fix")
-                Return
                 ExcelModels(BPModelID).WBInterface.ShowGroupInterface(BPModelID, 1, "Maximised", "Workings", Me)
 
             Case "GoOutputs"
