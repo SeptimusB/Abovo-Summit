@@ -28479,6 +28479,446 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         </IElement>
       </CSInterfaceSection>
     </ChildStructure>
+    <ChildStructure Name="Covenants">
+      <CSName>Covenants</CSName>
+      <CSID>22</CSID>
+      <ParentID>2</ParentID>
+      <IsMaster>False</IsMaster>
+      <GroupName>Covenants and Other Reports</GroupName>
+      <DefaultWorksheet>Covenants</DefaultWorksheet>
+      <CSInterfaceSection Name="Covenants">
+        <ISName>Covenants</ISName>
+        <ISDatasource>
+          <ISDName>Covenants</ISDName>
+          <ISDID>0</ISDID>
+          <DSType>LiveGrid</DSType>
+          <DSSource>CR</DSSource>
+          <MergeSources>None</MergeSources>
+          <RO>TRUE</RO>
+          <MergedHeader>False</MergedHeader>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <Pivot>TRUE</Pivot>
+          <ColsExpandBy>None</ColsExpandBy>
+          <RowsExpandBy>None</RowsExpandBy>
+          <CellRangeDataSource>
+            <Worksheet>Covenants</Worksheet>
+            <PositID>1</PositID>
+            <DSType>LiveGrid</DSType>
+            <ColsDefinedBy>None</ColsDefinedBy>
+            <RowsDefinedBy>None</RowsDefinedBy>
+            <DataRange>A11:E50</DataRange>
+            <LiveGridSourceName>Outputs_Covenants</LiveGridSourceName>
+            <LiveGridHeaderRows>6,7,8,9</LiveGridHeaderRows>
+            <Pivot>TRUE</Pivot>
+            <DataFieldDefinition>
+              <FieldName>Workbook value</FieldName>
+              <DataFormat>S</DataFormat>
+              <Summary>None</Summary>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>LiveGrid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+    </ChildStructure>
+    <ChildStructure Name="Value for Money Metrics">
+      <CSName>Value for Money Metrics</CSName>
+      <CSID>23</CSID>
+      <ParentID>2</ParentID>
+      <IsMaster>False</IsMaster>
+      <GroupName>Covenants and Other Reports</GroupName>
+      <DefaultWorksheet>Value for Money Metrics</DefaultWorksheet>
+      <CSInterfaceSection Name="Value for Money Metrics">
+        <ISName>Value for Money Metrics</ISName>
+        <ISDatasource>
+          <ISDName>Value for Money Metrics</ISDName>
+          <ISDID>0</ISDID>
+          <DSType>LiveGrid</DSType>
+          <DSSource>CR</DSSource>
+          <MergeSources>None</MergeSources>
+          <RO>TRUE</RO>
+          <MergedHeader>False</MergedHeader>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <Pivot>TRUE</Pivot>
+          <ColsExpandBy>None</ColsExpandBy>
+          <RowsExpandBy>None</RowsExpandBy>
+          <CellRangeDataSource>
+            <Worksheet>Value for Money Metrics</Worksheet>
+            <PositID>1</PositID>
+            <DSType>LiveGrid</DSType>
+            <ColsDefinedBy>None</ColsDefinedBy>
+            <RowsDefinedBy>None</RowsDefinedBy>
+            <DataRange>A9:M171</DataRange>
+            <LiveGridSourceRanges>A9:M171</LiveGridSourceRanges>
+            <LiveGridHeaderRows>5,6</LiveGridHeaderRows>
+            <Pivot>TRUE</Pivot>
+            <DataFieldDefinition>
+              <FieldName>Workbook value</FieldName>
+              <DataFormat>S</DataFormat>
+              <Summary>None</Summary>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>LiveGrid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+    </ChildStructure>
+    <ChildStructure Name="Loan Output Table">
+      <CSName>Loan Output Table</CSName>
+      <CSID>24</CSID>
+      <ParentID>2</ParentID>
+      <IsMaster>False</IsMaster>
+      <GroupName>Covenants and Other Reports</GroupName>
+      <DefaultWorksheet>Loan Output Table</DefaultWorksheet>
+      <CSInterfaceSection Name="Loan Output Table">
+        <ISName>Loan Output Table</ISName>
+        <ISDatasource>
+          <ISDName>Loan Output Table</ISDName>
+          <ISDID>0</ISDID>
+          <DSType>LiveGrid</DSType>
+          <DSSource>CR</DSSource>
+          <MergeSources>None</MergeSources>
+          <RO>TRUE</RO>
+          <MergedHeader>False</MergedHeader>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <Pivot>TRUE</Pivot>
+          <ColsExpandBy>None</ColsExpandBy>
+          <RowsExpandBy>None</RowsExpandBy>
+          <CellRangeDataSource>
+            <Worksheet>Loan Output Table</Worksheet>
+            <PositID>1</PositID>
+            <DSType>LiveGrid</DSType>
+            <ColsDefinedBy>None</ColsDefinedBy>
+            <RowsDefinedBy>None</RowsDefinedBy>
+            <DataRange>C10:K49</DataRange>
+            <LiveGridSourceName>Outputs_LoanOutputTable</LiveGridSourceName>
+            <LiveGridHeaderRows>5,6,7,8</LiveGridHeaderRows>
+            <Pivot>TRUE</Pivot>
+            <DataFieldDefinition>
+              <FieldName>Workbook value</FieldName>
+              <DataFormat>S</DataFormat>
+              <Summary>None</Summary>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>LiveGrid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+    </ChildStructure>
+    <ChildStructure Name="Summary Stock Numbers">
+      <CSName>Summary Stock Numbers</CSName>
+      <CSID>25</CSID>
+      <ParentID>2</ParentID>
+      <IsMaster>False</IsMaster>
+      <GroupName>Covenants and Other Reports</GroupName>
+      <DefaultWorksheet>Summary Stock Numbers</DefaultWorksheet>
+      <CSInterfaceSection Name="Summary Stock Numbers">
+        <ISName>Summary Stock Numbers</ISName>
+        <ISDatasource>
+          <ISDName>Summary Stock Numbers</ISDName>
+          <ISDID>0</ISDID>
+          <DSType>LiveGrid</DSType>
+          <DSSource>CR</DSSource>
+          <MergeSources>None</MergeSources>
+          <RO>TRUE</RO>
+          <MergedHeader>False</MergedHeader>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <Pivot>TRUE</Pivot>
+          <ColsExpandBy>None</ColsExpandBy>
+          <RowsExpandBy>None</RowsExpandBy>
+          <CellRangeDataSource>
+            <Worksheet>Summary Stock Numbers</Worksheet>
+            <PositID>1</PositID>
+            <DSType>LiveGrid</DSType>
+            <ColsDefinedBy>None</ColsDefinedBy>
+            <RowsDefinedBy>None</RowsDefinedBy>
+            <DataRange>A10:B50</DataRange>
+            <LiveGridSourceName>Outputs_SummaryStockNumbers</LiveGridSourceName>
+            <LiveGridHeaderRows>5,6,7,8</LiveGridHeaderRows>
+            <Pivot>TRUE</Pivot>
+            <DataFieldDefinition>
+              <FieldName>Workbook value</FieldName>
+              <DataFormat>S</DataFormat>
+              <Summary>None</Summary>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>LiveGrid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+    </ChildStructure>
+    <ChildStructure Name="Surplus on Sales">
+      <CSName>Surplus on Sales</CSName>
+      <CSID>26</CSID>
+      <ParentID>2</ParentID>
+      <IsMaster>False</IsMaster>
+      <GroupName>Covenants and Other Reports</GroupName>
+      <DefaultWorksheet>Surplus on Sales</DefaultWorksheet>
+      <CSInterfaceSection Name="Surplus on Sales">
+        <ISName>Surplus on Sales</ISName>
+        <ISDatasource>
+          <ISDName>Surplus on Sales</ISDName>
+          <ISDID>0</ISDID>
+          <DSType>LiveGrid</DSType>
+          <DSSource>CR</DSSource>
+          <MergeSources>None</MergeSources>
+          <RO>TRUE</RO>
+          <MergedHeader>False</MergedHeader>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <Pivot>TRUE</Pivot>
+          <ColsExpandBy>None</ColsExpandBy>
+          <RowsExpandBy>None</RowsExpandBy>
+          <CellRangeDataSource>
+            <Worksheet>Surplus on Sales</Worksheet>
+            <PositID>1</PositID>
+            <DSType>LiveGrid</DSType>
+            <ColsDefinedBy>None</ColsDefinedBy>
+            <RowsDefinedBy>None</RowsDefinedBy>
+            <DataRange>A9:B48</DataRange>
+            <LiveGridSourceName>Outputs_SurplusonSales</LiveGridSourceName>
+            <LiveGridHeaderRows>5,6,7</LiveGridHeaderRows>
+            <Pivot>TRUE</Pivot>
+            <DataFieldDefinition>
+              <FieldName>Workbook value</FieldName>
+              <DataFormat>S</DataFormat>
+              <Summary>None</Summary>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>LiveGrid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+    </ChildStructure>
+    <ChildStructure Name="NSH Breakdown">
+      <CSName>NSH Breakdown</CSName>
+      <CSID>27</CSID>
+      <ParentID>2</ParentID>
+      <IsMaster>False</IsMaster>
+      <GroupName>Covenants and Other Reports</GroupName>
+      <DefaultWorksheet>NSH Breakdown</DefaultWorksheet>
+      <CSInterfaceSection Name="NSH Breakdown">
+        <ISName>NSH Breakdown</ISName>
+        <ISDatasource>
+          <ISDName>NSH Breakdown</ISDName>
+          <ISDID>0</ISDID>
+          <DSType>LiveGrid</DSType>
+          <DSSource>CR</DSSource>
+          <MergeSources>None</MergeSources>
+          <RO>TRUE</RO>
+          <MergedHeader>False</MergedHeader>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <Pivot>TRUE</Pivot>
+          <ColsExpandBy>None</ColsExpandBy>
+          <RowsExpandBy>None</RowsExpandBy>
+          <CellRangeDataSource>
+            <Worksheet>NSH Breakdown</Worksheet>
+            <PositID>1</PositID>
+            <DSType>LiveGrid</DSType>
+            <ColsDefinedBy>None</ColsDefinedBy>
+            <RowsDefinedBy>None</RowsDefinedBy>
+            <DataRange>A10:B49</DataRange>
+            <LiveGridSourceName>Outputs_NSHBreakdown</LiveGridSourceName>
+            <LiveGridHeaderRows>5,6,7,8</LiveGridHeaderRows>
+            <Pivot>TRUE</Pivot>
+            <DataFieldDefinition>
+              <FieldName>Workbook value</FieldName>
+              <DataFormat>S</DataFormat>
+              <Summary>None</Summary>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>LiveGrid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+    </ChildStructure>
+    <ChildStructure Name="Hsg Properties Mvmt">
+      <CSName>Hsg Properties Mvmt</CSName>
+      <CSID>28</CSID>
+      <ParentID>2</ParentID>
+      <IsMaster>False</IsMaster>
+      <GroupName>Covenants and Other Reports</GroupName>
+      <DefaultWorksheet>Hsg Properties Mvmt</DefaultWorksheet>
+      <CSInterfaceSection Name="Hsg Properties Mvmt">
+        <ISName>Hsg Properties Mvmt</ISName>
+        <ISDatasource>
+          <ISDName>Hsg Properties Mvmt</ISDName>
+          <ISDID>0</ISDID>
+          <DSType>LiveGrid</DSType>
+          <DSSource>CR</DSSource>
+          <MergeSources>None</MergeSources>
+          <RO>TRUE</RO>
+          <MergedHeader>False</MergedHeader>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <Pivot>TRUE</Pivot>
+          <ColsExpandBy>None</ColsExpandBy>
+          <RowsExpandBy>None</RowsExpandBy>
+          <CellRangeDataSource>
+            <Worksheet>Hsg Properties Mvmt</Worksheet>
+            <PositID>1</PositID>
+            <DSType>LiveGrid</DSType>
+            <ColsDefinedBy>None</ColsDefinedBy>
+            <RowsDefinedBy>None</RowsDefinedBy>
+            <DataRange>A10:B49</DataRange>
+            <LiveGridSourceName>Outputs_HsgPropertiesMvmt</LiveGridSourceName>
+            <LiveGridHeaderRows>5,6,7</LiveGridHeaderRows>
+            <Pivot>TRUE</Pivot>
+            <DataFieldDefinition>
+              <FieldName>Workbook value</FieldName>
+              <DataFormat>S</DataFormat>
+              <Summary>None</Summary>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>LiveGrid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+    </ChildStructure>
+    <ChildStructure Name="BP Input Scheme Cashflows">
+      <CSName>BP Input Scheme Cashflows</CSName>
+      <CSID>29</CSID>
+      <ParentID>2</ParentID>
+      <IsMaster>False</IsMaster>
+      <GroupName>Other Cashflow Outputs</GroupName>
+      <DefaultWorksheet>BP Input Scheme Cashflows</DefaultWorksheet>
+      <CSInterfaceSection Name="BP Input Scheme Cashflows">
+        <ISName>BP Input Scheme Cashflows</ISName>
+        <ISDatasource>
+          <ISDName>BP Input Scheme Cashflows</ISDName>
+          <ISDID>0</ISDID>
+          <DSType>LiveGrid</DSType>
+          <DSSource>CR</DSSource>
+          <MergeSources>None</MergeSources>
+          <RO>TRUE</RO>
+          <MergedHeader>False</MergedHeader>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <Pivot>TRUE</Pivot>
+          <ColsExpandBy>None</ColsExpandBy>
+          <RowsExpandBy>None</RowsExpandBy>
+          <CellRangeDataSource>
+            <Worksheet>BP Input Scheme Cashflows</Worksheet>
+            <PositID>1</PositID>
+            <DSType>LiveGrid</DSType>
+            <ColsDefinedBy>None</ColsDefinedBy>
+            <RowsDefinedBy>None</RowsDefinedBy>
+            <DataRange>A12:Z106</DataRange>
+            <LiveGridSourceName>Outputs_BPInputSchemeCashflows</LiveGridSourceName>
+            <LiveGridHeaderRows>7,8,9,10</LiveGridHeaderRows>
+            <Pivot>TRUE</Pivot>
+            <DataFieldDefinition>
+              <FieldName>Workbook value</FieldName>
+              <DataFormat>S</DataFormat>
+              <Summary>None</Summary>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>LiveGrid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+    </ChildStructure>
+    <ChildStructure Name="5 Yr Monthly Cashflow">
+      <CSName>5 Yr Monthly Cashflow</CSName>
+      <CSID>30</CSID>
+      <ParentID>2</ParentID>
+      <IsMaster>False</IsMaster>
+      <GroupName>Other Cashflow Outputs</GroupName>
+      <DefaultWorksheet>5 Yr Monthly Cashflow</DefaultWorksheet>
+      <CSInterfaceSection Name="5 Yr Monthly Cashflow">
+        <ISName>5 Yr Monthly Cashflow</ISName>
+        <ISDatasource>
+          <ISDName>5 Yr Monthly Cashflow</ISDName>
+          <ISDID>0</ISDID>
+          <DSType>LiveGrid</DSType>
+          <DSSource>CR</DSSource>
+          <MergeSources>None</MergeSources>
+          <RO>TRUE</RO>
+          <MergedHeader>False</MergedHeader>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <Pivot>TRUE</Pivot>
+          <ColsExpandBy>None</ColsExpandBy>
+          <RowsExpandBy>None</RowsExpandBy>
+          <CellRangeDataSource>
+            <Worksheet>5 Yr Monthly Cashflow</Worksheet>
+            <PositID>1</PositID>
+            <DSType>LiveGrid</DSType>
+            <ColsDefinedBy>None</ColsDefinedBy>
+            <RowsDefinedBy>None</RowsDefinedBy>
+            <DataRange>A8:F102</DataRange>
+            <LiveGridSourceName>Outputs_5YrMonthlyCashflow</LiveGridSourceName>
+            <LiveGridHeaderRows>5,6</LiveGridHeaderRows>
+            <Pivot>TRUE</Pivot>
+            <DataFieldDefinition>
+              <FieldName>Workbook value</FieldName>
+              <DataFormat>S</DataFormat>
+              <Summary>None</Summary>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>LiveGrid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+    </ChildStructure>
+    <ChildStructure Name="5 Yr Quarterly Cashflow">
+      <CSName>5 Yr Quarterly Cashflow</CSName>
+      <CSID>31</CSID>
+      <ParentID>2</ParentID>
+      <IsMaster>False</IsMaster>
+      <GroupName>Other Cashflow Outputs</GroupName>
+      <DefaultWorksheet>5 Yr Quarterly Cashflow</DefaultWorksheet>
+      <CSInterfaceSection Name="5 Yr Quarterly Cashflow">
+        <ISName>5 Yr Quarterly Cashflow</ISName>
+        <ISDatasource>
+          <ISDName>5 Yr Quarterly Cashflow</ISDName>
+          <ISDID>0</ISDID>
+          <DSType>LiveGrid</DSType>
+          <DSSource>CR</DSSource>
+          <MergeSources>None</MergeSources>
+          <RO>TRUE</RO>
+          <MergedHeader>False</MergedHeader>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <Pivot>TRUE</Pivot>
+          <ColsExpandBy>None</ColsExpandBy>
+          <RowsExpandBy>None</RowsExpandBy>
+          <CellRangeDataSource>
+            <Worksheet>5 Yr Quarterly Cashflow</Worksheet>
+            <PositID>1</PositID>
+            <DSType>LiveGrid</DSType>
+            <ColsDefinedBy>None</ColsDefinedBy>
+            <RowsDefinedBy>None</RowsDefinedBy>
+            <DataRange>A8:E27</DataRange>
+            <LiveGridSourceName>Outputs_5YrQuarterlyCashflow</LiveGridSourceName>
+            <LiveGridHeaderRows>5,6</LiveGridHeaderRows>
+            <Pivot>TRUE</Pivot>
+            <DataFieldDefinition>
+              <FieldName>Workbook value</FieldName>
+              <DataFormat>S</DataFormat>
+              <Summary>None</Summary>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>LiveGrid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+    </ChildStructure>
   </GroupStructure>
   <DefiningNR>
     <NRName>

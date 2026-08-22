@@ -2,7 +2,9 @@
 
 ## Delivery approach
 
-Outputs children 0 through 21 are implemented through Funding Dashboard.
+Outputs children 0 through 31 are implemented through 5 Yr Quarterly Cashflow.
+Scenario Planning is intentionally omitted because those interfaces are owned
+by Stress Test.
 The authoritative contract is `Library/TestFileMigrated.xlsb`; archived
 structure files were used only to recover likely ordering and grouping before
 each child was checked against the current workbook.
@@ -59,7 +61,24 @@ refreshed.
 
 The generated XML is reproducible with
 `Tools/GenerateOutputsStructure.ps1 -Apply`. The generator replaces only the
-`Outputs` group, preserves child 0, and emits the verified child order 0-21.
+`Outputs` group, preserves child 0, and emits the verified child order 0-31
+without Scenario Planning.
+
+## Children 22-31
+
+- Covenants and Other Reports: Covenants, Value for Money Metrics, Loan Output
+  Table, Summary Stock Numbers, Surplus on Sales, NSH Breakdown, and Hsg
+  Properties Mvmt.
+- Other Cashflow Outputs: BP Input Scheme Cashflows, 5 Yr Monthly Cashflow,
+  and 5 Yr Quarterly Cashflow.
+- All ten children use read-only horizontal LiveGrid, retain workbook
+  DisplayText and formatting, refresh after calculation, and target their
+  identically named worksheet from the worksheet button.
+- Nine children resolve the workbook's existing Outputs_* multi-area defined
+  names. Value for Money Metrics uses its contiguous A9:M171 report block.
+- Macro-disabled read-only Excel validation confirmed every worksheet and
+  source range; the XLSB remained byte-identical at SHA-256
+  7039BD6E7BAE82C0269F1F9E56D4C28E17EED7599FFB263169798D214AABF044.
 
 Version 7.10 passed full Debug and Release rebuilds on 21 August 2026 with zero
 warnings and zero errors. XML parsing confirmed 21 sequential child IDs, all
@@ -106,6 +125,16 @@ source.
 Full standard Debug and Release rebuilds passed on 22 August 2026 with zero
 warnings and zero errors.
 
+Version 7.20 adds Outputs children 22-31 under Covenants and Other Reports and
+Other Cashflow Outputs. Each interface is a workbook-backed horizontal
+LiveGrid using the verified source name/range and workbook header rows.
+Scenario Planning is deliberately excluded because Stress Test already owns
+those interfaces.
+Full standard Debug and Release rebuilds passed on 22 August 2026 with zero
+warnings and zero errors. XML validation confirmed one Outputs group, 32
+unique child IDs/names, exactly ten new children, and no Scenario Planning
+group.
+
 Version 7.19 disables automatic column population for the selected-covenant
 XtraGrid and explicitly creates only Year, Value and Forecast visual columns.
 Target and Exceeded remain fields in the bound row for custom rendering but no
@@ -148,7 +177,7 @@ warnings and zero errors.
 ## Required manual validation
 
 - Open Outputs and exercise every child from Existing Stock Numbers through
-  Funding Dashboard.
+  5 Yr Quarterly Cashflow.
 - Switch repeatedly through all stock, cashflow, traditional account and
   alternative account children and confirm their horizontal orientation.
 - Recalculate while the Output is visible beside editable assumptions and
@@ -163,3 +192,7 @@ warnings and zero errors.
 - Exercise all four Funding Dashboard selectors and confirm the workbook cells,
   chart titles, series, selected covenant years/values and status markers update.
 - Confirm cell multiselect and clipboard copy on every grid.
+- Confirm the two new accordion groups contain exactly seven and three
+  children respectively, with no Scenario Planning group.
+- Confirm the ten new worksheet buttons open their identically named XLSB
+  sheets and that all multi-area reports omit only the source spacer columns.

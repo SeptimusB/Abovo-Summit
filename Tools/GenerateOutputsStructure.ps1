@@ -93,6 +93,39 @@ $children = @(
     [pscustomobject]@{ Id=19; Name='Cashflow Statement - Alt View'; Group='Accounts'; Sheet='Cashflow Statement - Alt View'; Sections=@((S 'Cashflow Statement - Alt View' 'Cashflow Statement - Alt View' 'LiveGrid' 'A9:BE48' '' '' '' '6,7' '' '' 'A9:BE48')) }
 )
 
+$additionalChildren = @(
+    [pscustomobject]@{ Id=22; Name='Covenants'; Group='Covenants and Other Reports'; Sheet='Covenants'; Sections=@(
+        (S 'Covenants' 'Covenants' 'LiveGrid' 'A11:E50' 'Outputs_Covenants' '' '' '6,7,8,9' '' '')
+    )},
+    [pscustomobject]@{ Id=23; Name='Value for Money Metrics'; Group='Covenants and Other Reports'; Sheet='Value for Money Metrics'; Sections=@(
+        (S 'Value for Money Metrics' 'Value for Money Metrics' 'LiveGrid' 'A9:M171' '' '' '' '5,6' '' '' 'A9:M171')
+    )},
+    [pscustomobject]@{ Id=24; Name='Loan Output Table'; Group='Covenants and Other Reports'; Sheet='Loan Output Table'; Sections=@(
+        (S 'Loan Output Table' 'Loan Output Table' 'LiveGrid' 'C10:K49' 'Outputs_LoanOutputTable' '' '' '5,6,7,8' '' '')
+    )},
+    [pscustomobject]@{ Id=25; Name='Summary Stock Numbers'; Group='Covenants and Other Reports'; Sheet='Summary Stock Numbers'; Sections=@(
+        (S 'Summary Stock Numbers' 'Summary Stock Numbers' 'LiveGrid' 'A10:B50' 'Outputs_SummaryStockNumbers' '' '' '5,6,7,8' '' '')
+    )},
+    [pscustomobject]@{ Id=26; Name='Surplus on Sales'; Group='Covenants and Other Reports'; Sheet='Surplus on Sales'; Sections=@(
+        (S 'Surplus on Sales' 'Surplus on Sales' 'LiveGrid' 'A9:B48' 'Outputs_SurplusonSales' '' '' '5,6,7' '' '')
+    )},
+    [pscustomobject]@{ Id=27; Name='NSH Breakdown'; Group='Covenants and Other Reports'; Sheet='NSH Breakdown'; Sections=@(
+        (S 'NSH Breakdown' 'NSH Breakdown' 'LiveGrid' 'A10:B49' 'Outputs_NSHBreakdown' '' '' '5,6,7,8' '' '')
+    )},
+    [pscustomobject]@{ Id=28; Name='Hsg Properties Mvmt'; Group='Covenants and Other Reports'; Sheet='Hsg Properties Mvmt'; Sections=@(
+        (S 'Hsg Properties Mvmt' 'Hsg Properties Mvmt' 'LiveGrid' 'A10:B49' 'Outputs_HsgPropertiesMvmt' '' '' '5,6,7' '' '')
+    )},
+    [pscustomobject]@{ Id=29; Name='BP Input Scheme Cashflows'; Group='Other Cashflow Outputs'; Sheet='BP Input Scheme Cashflows'; Sections=@(
+        (S 'BP Input Scheme Cashflows' 'BP Input Scheme Cashflows' 'LiveGrid' 'A12:Z106' 'Outputs_BPInputSchemeCashflows' '' '' '7,8,9,10' '' '')
+    )},
+    [pscustomobject]@{ Id=30; Name='5 Yr Monthly Cashflow'; Group='Other Cashflow Outputs'; Sheet='5 Yr Monthly Cashflow'; Sections=@(
+        (S '5 Yr Monthly Cashflow' '5 Yr Monthly Cashflow' 'LiveGrid' 'A8:F102' 'Outputs_5YrMonthlyCashflow' '' '' '5,6' '' '')
+    )},
+    [pscustomobject]@{ Id=31; Name='5 Yr Quarterly Cashflow'; Group='Other Cashflow Outputs'; Sheet='5 Yr Quarterly Cashflow'; Sections=@(
+        (S '5 Yr Quarterly Cashflow' '5 Yr Quarterly Cashflow' 'LiveGrid' 'A8:E27' 'Outputs_5YrQuarterlyCashflow' '' '' '5,6' '' '')
+    )}
+)
+
 $text = [IO.File]::ReadAllText($structurePath)
 $existing = [regex]::Match($text, '(?s)    <ChildStructure Name="Existing Stock Numbers">.*?    </ChildStructure>').Value
 if (-not $existing) { throw 'Existing Stock Numbers Output child was not found.' }
@@ -150,17 +183,30 @@ $group.Add('          <DataSource>Funding_Dashboard</DataSource>')
 $group.Add('        </IElement>')
 $group.Add('      </CSInterfaceSection>')
 $group.Add('    </ChildStructure>')
+foreach ($child in $additionalChildren) {
+    $group.Add(('    <ChildStructure Name="{0}">' -f (XmlText $child.Name)))
+    $group.Add(('      <CSName>{0}</CSName>' -f (XmlText $child.Name)))
+    $group.Add(('      <CSID>{0}</CSID>' -f $child.Id))
+    $group.Add('      <ParentID>2</ParentID>')
+    $group.Add('      <IsMaster>False</IsMaster>')
+    $group.Add(('      <GroupName>{0}</GroupName>' -f (XmlText $child.Group)))
+    $group.Add(('      <DefaultWorksheet>{0}</DefaultWorksheet>' -f (XmlText $child.Sheet)))
+    foreach ($section in $child.Sections) {
+        foreach ($line in (New-OutputSection $section)) { $group.Add($line) }
+    }
+    $group.Add('    </ChildStructure>')
+}
 $group.Add('  </GroupStructure>')
 
 $replacement = $group -join "`r`n"
 $updated = [regex]::Replace($text, '(?s)  <GroupStructure Name="Outputs">.*?  </GroupStructure>', [Text.RegularExpressions.MatchEvaluator]{ param($m) $replacement }, 1)
 if ($Apply) {
     if ($updated -eq $text) {
-        Write-Output 'Structure.xml Outputs children 0-21 are already current.'
+        Write-Output 'Structure.xml Outputs children 0-31 (excluding Scenario Planning) are already current.'
         return
     }
     [IO.File]::WriteAllText($structurePath, $updated, [Text.UTF8Encoding]::new($false))
-    Write-Output 'Updated Structure.xml Outputs children 0-21.'
+    Write-Output 'Updated Structure.xml Outputs children 0-31 (excluding Scenario Planning).'
 } else {
     Write-Output $replacement
 }
