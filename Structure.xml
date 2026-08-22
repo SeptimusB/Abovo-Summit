@@ -28919,18 +28919,33 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         </IElement>
       </CSInterfaceSection>
     </ChildStructure>
-    <ChildStructure Name="Analysis">
-      <CSName>Analysis</CSName>
+    <ChildStructure Name="Analysis V1">
+      <CSName>Analysis V1</CSName>
       <CSID>32</CSID>
       <ParentID>2</ParentID>
       <IsMaster>False</IsMaster>
       <SpecialElement>BPIncomeExpenditureAnalyser</SpecialElement>
       <GroupName>Analysis</GroupName>
-      <CSInterfaceSection Name="Analysis">
-        <ISName>Analysis</ISName>
+      <CSInterfaceSection Name="Analysis V1">
+        <ISName>Analysis V1</ISName>
         <IElement>
           <Type>Interface</Type>
           <DataSource>BPIncomeExpenditureAnalyser</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+    </ChildStructure>
+    <ChildStructure Name="Analysis V2">
+      <CSName>Analysis V2</CSName>
+      <CSID>33</CSID>
+      <ParentID>2</ParentID>
+      <IsMaster>False</IsMaster>
+      <SpecialElement>BPIncomeExpenditureAnalyserV2</SpecialElement>
+      <GroupName>Analysis</GroupName>
+      <CSInterfaceSection Name="Analysis V2">
+        <ISName>Analysis V2</ISName>
+        <IElement>
+          <Type>Interface</Type>
+          <DataSource>BPIncomeExpenditureAnalyserV2</DataSource>
         </IElement>
       </CSInterfaceSection>
     </ChildStructure>

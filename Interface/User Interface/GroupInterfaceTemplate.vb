@@ -477,6 +477,87 @@ Public Class GroupInterfaceTemplate
     Public Sub ShowSpreadsheet(ActiveSheet As String)
 
     End Sub
+
+    Private Sub RegisterAnalysisV1(ByVal analyser As BPIncomeExpenditureAnalyser)
+
+        Dim registry As ModelResourceRegistry =
+            ExcelModels(MyModelID).ResourceRegistry
+
+        registry.RegisterExclusive(
+            ModelResourceKeys.TransactionalRecordsRangeDataSource,
+            analyser,
+            Sub()
+                Try
+                    ReleaseAnalysisV1(analyser)
+                Finally
+                    DisposeAnalyserDocument(analyser)
+                End Try
+            End Sub)
+
+        AddHandler analyser.Disposed,
+            Sub()
+                ReleaseAnalysisV1(analyser)
+            End Sub
+
+    End Sub
+
+    Private Sub RegisterAnalysisV2(ByVal analyser As BPIncomeExpenditureAnalyserV2)
+
+        ExcelModels(MyModelID).ResourceRegistry.RegisterExclusive(
+            ModelResourceKeys.TransactionalRecordsRangeDataSource,
+            analyser,
+            Sub()
+                Try
+                    analyser.ReleaseAnalyserResources()
+                Finally
+                    DisposeAnalyserDocument(analyser)
+                End Try
+            End Sub)
+
+    End Sub
+
+    Private Sub ReleaseAnalysisV1(ByVal analyser As BPIncomeExpenditureAnalyser)
+
+        If analyser Is Nothing Then Return
+
+        Try
+            analyser.DisconectRDS()
+        Finally
+            If ExcelModels IsNot Nothing AndAlso
+               MyModelID >= 0 AndAlso MyModelID < ExcelModels.Length AndAlso
+               ExcelModels(MyModelID) IsNot Nothing Then
+
+                Dim model As ExcelModel = ExcelModels(MyModelID)
+
+                model.ResourceRegistry.Release(
+                    ModelResourceKeys.TransactionalRecordsRangeDataSource,
+                    analyser)
+
+                If model.WBCalcEngine IsNot Nothing Then
+                    model.WBCalcEngine.RemoveActiveObject(analyser)
+                End If
+
+                If Object.ReferenceEquals(model.ExpendAnalyser, analyser) Then
+                    model.ExpendAnalyser = Nothing
+                End If
+            End If
+        End Try
+
+    End Sub
+
+    Private Sub DisposeAnalyserDocument(ByVal analyser As System.Windows.Forms.Control)
+
+        If analyser Is Nothing Then Return
+
+        Dim document As BaseDocument =
+            DocumentManagerAssumptions.View.Documents.FirstOrDefault(
+                Function(candidate) Object.ReferenceEquals(candidate.Control, analyser))
+
+        If document IsNot Nothing Then document.Dispose()
+        If Not analyser.IsDisposed Then analyser.Dispose()
+
+    End Sub
+
     Public Sub ShowInterface(SetModelID As Integer, SetCSID As Integer, Optional ByVal ShowSpecial As Boolean = False, Optional ByVal SpecialData As String = "None", Optional ByVal Interfacelink As ElementInterfaceLinkTag = Nothing)
 
 
@@ -592,11 +673,40 @@ Public Class GroupInterfaceTemplate
                         DocumentManagerAssumptions.View.ActivateDocument(NewSAI)
 
                     Case "BPIncomeExpenditureAnalyser"
+                        ExcelModels(MyModelID).ResourceRegistry.ReleaseCurrent(
+                            ModelResourceKeys.TransactionalRecordsRangeDataSource)
+
                         Dim NewSAI As New BPIncomeExpenditureAnalyser(MyModelID, Me)
                         NewSAI.Tag = SetCSID
-                        DocumentManagerAssumptions.View.AddDocument(NewSAI)
-                        DocumentManagerAssumptions.View.ActivateDocument(NewSAI)
                         ExcelModels(MyModelID).ExpendAnalyser = NewSAI
+                        RegisterAnalysisV1(NewSAI)
+
+                        Try
+                            DocumentManagerAssumptions.View.AddDocument(NewSAI)
+                            DocumentManagerAssumptions.View.ActivateDocument(NewSAI)
+                        Catch
+                            ExcelModels(MyModelID).ResourceRegistry.ReleaseCurrent(
+                                ModelResourceKeys.TransactionalRecordsRangeDataSource)
+                            Throw
+                        End Try
+
+                    Case "BPIncomeExpenditureAnalyserV2"
+                        ExcelModels(MyModelID).ResourceRegistry.ReleaseCurrent(
+                            ModelResourceKeys.TransactionalRecordsRangeDataSource)
+
+                        Dim NewSAI As New BPIncomeExpenditureAnalyserV2(MyModelID, Me)
+                        NewSAI.Tag = SetCSID
+                        ExcelModels(MyModelID).ExpendAnalyserV2 = NewSAI
+                        RegisterAnalysisV2(NewSAI)
+
+                        Try
+                            DocumentManagerAssumptions.View.AddDocument(NewSAI)
+                            DocumentManagerAssumptions.View.ActivateDocument(NewSAI)
+                        Catch
+                            ExcelModels(MyModelID).ResourceRegistry.ReleaseCurrent(
+                                ModelResourceKeys.TransactionalRecordsRangeDataSource)
+                            Throw
+                        End Try
 
                     Case "WebInterface"
                         Dim NewSAI As New WebInterfaceTemplate(MyModelID, GSID, SetCSID)

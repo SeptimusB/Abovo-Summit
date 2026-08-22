@@ -168,6 +168,8 @@ Namespace Abovo
             Public WBDataPres As PresentationManager
             Public EventCoordinator As EventManager
             Public ExpendAnalyser As BPIncomeExpenditureAnalyser
+            Public ExpendAnalyserV2 As BPIncomeExpenditureAnalyserV2
+            Public ReadOnly ResourceRegistry As New ModelResourceRegistry
             Public IsDirty As Boolean
             Public ModelID As Integer
             Public ChangeManager As ModelChangeManager
@@ -516,6 +518,8 @@ Namespace Abovo
 
             End Function
             Public Sub CloseModel()
+
+                ResourceRegistry.ReleaseAll()
 
                 If ModelSpreadsheetControl IsNot Nothing Then
                     RemoveHandler ModelSpreadsheetControl.UnhandledException,

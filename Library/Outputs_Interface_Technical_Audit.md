@@ -2,7 +2,7 @@
 
 ## Delivery approach
 
-Outputs children 0 through 32 are implemented through Analysis.
+Outputs children 0 through 33 are implemented through Analysis V2.
 Scenario Planning is intentionally omitted because those interfaces are owned
 by Stress Test.
 The authoritative contract is `Library/TestFileMigrated.xlsb`; archived
@@ -18,10 +18,11 @@ values and formatting from the underlying workbook cells. `BP Dashboard` uses
 the existing native `BP_Dashboard` interface and now rebuilds its workbook-backed
 content after calculation while it remains open. `Funding Dashboard` is a
 dedicated native interface whose selectors and seven visualisations remain
-linked to their authoritative workbook cells and source ranges. `Analysis` is
-a worksheet-free special child that opens the existing
-`BPIncomeExpenditureAnalyser` class; it does not declare a worksheet button
-target or a worksheet-backed interface range.
+linked to their authoritative workbook cells and source ranges. Analysis V1
+is a worksheet-free special child that opens the unchanged
+BPIncomeExpenditureAnalyser class. Analysis V2 opens the independent corrected
+BPIncomeExpenditureAnalyserV2 class. Neither declares a worksheet button target
+or a worksheet-backed interface range.
 
 ## Child 0: Existing Stock Numbers
 
@@ -64,7 +65,7 @@ refreshed.
 
 The generated XML is reproducible with
 `Tools/GenerateOutputsStructure.ps1 -Apply`. The generator replaces only the
-`Outputs` group, preserves child 0, and emits the verified child order 0-32
+`Outputs` group, preserves child 0, and emits the verified child order 0-33
 without Scenario Planning.
 
 ## Children 22-31
@@ -146,6 +147,39 @@ not modified. XML validation confirmed one Outputs group, 33 unique child IDs
 and names, exactly one Analysis child, and no Scenario Planning group.
 Full standard Debug and Release rebuilds passed on 22 August 2026 with zero
 warnings and zero errors.
+
+Version 7.22 renames the unchanged original route to Analysis V1 and adds
+Analysis V2 at CSID 33. V2 is an independent source/designer/resource set with
+corrected Balance Sheet grouping and selection, dynamic named-field and period
+discovery, Balance Sheet export, deterministic binding/calculation cleanup,
+safe rendering resources and explicit read-only cell multiselect/copy. The
+detailed changes and manual checks are recorded in
+BP_Income_Expenditure_Analyser_V2_Technical_Audit.md.
+Full standard Debug and Release rebuilds passed on 22 August 2026 with zero
+warnings and zero errors.
+
+Version 7.23 gives the Transactional_Records RangeDataSource exclusive,
+model-scoped ownership. Opening Analysis V1 or V2 releases the other analyser
+in order before creating the replacement binding; the displaced object is also
+removed from the calculation engine and document manager. The general
+ModelResourceRegistry releases all remaining owners before model shutdown.
+The focused registry behavior test and full standard Debug and Release rebuilds
+passed on 22 August 2026 with zero warnings and zero errors.
+
+Version 7.24 corrects V2 period discovery after the first runtime test exposed
+a stripped regular-expression escape. Periods are now recognized from grid
+field/caption metadata with an authoritative Transactional_Records header-row
+fallback.
+The built matcher behavior test and full standard Debug and Release rebuilds
+passed with zero warnings and zero errors.
+
+Version 7.25 prevents Analysis V2 group-summary metadata from being converted
+directly to Int32. All active expansion, row styling and group custom-draw
+paths now share a guarded numeric parser, so blank or text-valued legacy
+summaries are ignored instead of aborting the interface open. Analysis V1 and
+the authoritative workbook source remain unchanged.
+The focused parser test and full standard Debug and Release rebuilds passed on
+22 August 2026 with zero warnings and zero errors.
 
 Version 7.19 disables automatic column population for the selected-covenant
 XtraGrid and explicitly creates only Year, Value and Forecast visual columns.

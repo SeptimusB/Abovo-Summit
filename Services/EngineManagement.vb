@@ -187,6 +187,8 @@ NextWS:
 
         Public Sub RemoveActiveObject(ObjectID As Integer)
 
+            If ObjectID < 0 OrElse ObjectID >= ActiveObjects.Length Then Return
+
             If ActiveObjects(ObjectID) IsNot Nothing Then
 
                 For Each tws In ActiveObjects(ObjectID).TaggedWorksheets
@@ -200,6 +202,23 @@ NextWS:
                 ActiveObjectCount -= 1
 
             End If
+
+        End Sub
+
+        Public Sub RemoveActiveObject(ByVal pusher As Object)
+
+            If pusher Is Nothing OrElse ActiveObjIndex < 0 Then Return
+
+            For objectIndex As Integer = 0 To ActiveObjects.Length - 1
+                Dim activeObject As ActiveObject = ActiveObjects(objectIndex)
+
+                If activeObject IsNot Nothing AndAlso
+                   Object.ReferenceEquals(activeObject.Obj, pusher) Then
+
+                    RemoveActiveObject(objectIndex)
+                    Return
+                End If
+            Next
 
         End Sub
         Public Function AddActiveWorksheet(ObjectID As Integer,

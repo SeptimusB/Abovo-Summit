@@ -656,6 +656,13 @@
     <Compile Include="Services\WorkbookStructureRuleManager.vb" />
     <Compile Include="TransactionDBMaterialiser.vb" />
     <Compile Include="WorkbookMigrationManager.vb" />
+    <Compile Include="Services/ModelResourceRegistry.vb" />
+    <Compile Include="Interface/User Interface/BPIncomeExpenditureAnalyserV2.Designer.vb">
+      <DependentUpon>BPIncomeExpenditureAnalyserV2.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Interface/User Interface/BPIncomeExpenditureAnalyserV2.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Interface\AssumptionsForm.resx">
@@ -766,6 +773,9 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>StringTemplates.Designer.vb</LastGenOutput>
       <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Interface/User Interface/BPIncomeExpenditureAnalyserV2.resx">
+      <DependentUpon>BPIncomeExpenditureAnalyserV2.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Interface\User Interface\WaitFormA.resx">
       <DependentUpon>WaitFormA.vb</DependentUpon>

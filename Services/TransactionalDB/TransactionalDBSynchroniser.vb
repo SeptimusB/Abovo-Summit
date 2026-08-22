@@ -1758,6 +1758,7 @@ Namespace Abovo
             End If
 
             Dim RDSDisconnected As Boolean = False
+            Dim RDSV2Disconnected As Boolean = False
             Dim PreviousCalculationMode As WorkbookCalculationMode = WB.Options.CalculationMode
             Dim PreviousCalculationEngineType As CalculationEngineType = WB.Options.CalculationEngineType
             Dim CalculationEngineChanged As Boolean = False
@@ -1800,6 +1801,13 @@ Namespace Abovo
                     ExcelModels(ModelID).ExpendAnalyser.DisconectRDS()
                     RDSDisconnected = True
 
+
+                End If
+
+                If ExcelModels(ModelID).ExpendAnalyserV2 IsNot Nothing Then
+
+                    ExcelModels(ModelID).ExpendAnalyserV2.DisconnectRDS()
+                    RDSV2Disconnected = True
 
                 End If
 
@@ -1862,6 +1870,12 @@ Namespace Abovo
                     Dim ReconnectTimer As Stopwatch = Stopwatch.StartNew()
                     ExcelModels(ModelID).ExpendAnalyser.ReconnectRDS()
 
+
+                End If
+
+                If RDSV2Disconnected AndAlso ExcelModels(ModelID).ExpendAnalyserV2 IsNot Nothing Then
+
+                    ExcelModels(ModelID).ExpendAnalyserV2.ReconnectRDS()
 
                 End If
 
