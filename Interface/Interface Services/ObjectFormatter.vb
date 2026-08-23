@@ -74,6 +74,8 @@ Namespace Abovo
 
             With ObjVGrid
 
+                ConfigureVGridCellMultiSelect(ObjVGrid)
+
                 .LookAndFeel.Style = DevExpress.LookAndFeel.LookAndFeelStyle.Flat
                 .LookAndFeel.UseDefaultLookAndFeel = False
                 .BackColor = Color.White

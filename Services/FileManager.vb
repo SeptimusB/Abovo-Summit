@@ -173,7 +173,8 @@ Namespace Abovo
             Public IsDirty As Boolean
             Public IsClosing As Boolean
             Public ModelID As Integer
-            Public ChangeManager As ModelChangeManager
+            Public ChangeManager As ModelChangeManagerV2
+            Public HistoryManager As HistoryManagerV2
             Public TransDBM As TransDBManager
             Public ColourSwatch As Color
             Public SSViewInitialised As Boolean = False
@@ -326,10 +327,8 @@ Namespace Abovo
                         GetType(DevExpress.XtraSpreadsheet.Services.ICustomCalculationService),
                         WBCalculationService)
 
-                    ChangeManager = New ModelChangeManager(ModelID)
-
-                    HistoryManager.Show()
-                    HistoryManager.Hide()
+                    ChangeManager = New ModelChangeManagerV2(ModelID)
+                    HistoryManager = New HistoryManagerV2(ModelID)
 
                     Result.BSuccess = True
                     Result.StringReturn = "Workbook services initialized."
@@ -842,6 +841,12 @@ Namespace Abovo
                 End Try
 
                 Try
+                    If HistoryManager IsNot Nothing Then HistoryManager.CloseForModel()
+                Catch ex As Exception
+                    WriteLog("Error disposing history manager: " & ex.Message, FileName)
+                End Try
+
+                Try
                     If SSViewer IsNot Nothing Then SSViewer.Dispose()
                 Catch ex As Exception
                     WriteLog("Error disposing spreadsheet viewer: " & ex.Message, FileName)
@@ -869,6 +874,7 @@ Namespace Abovo
                 WBDataPres = Nothing
                 EventCoordinator = Nothing
                 ChangeManager = Nothing
+                HistoryManager = Nothing
                 TransDBM = Nothing
                 RDSM = Nothing
                 InterfaceDependencies = Nothing

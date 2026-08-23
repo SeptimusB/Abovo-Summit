@@ -783,8 +783,23 @@ Public Class GroupInterfaceTemplate
 
                 '  Ctrl + Z
             Case Keys.Z And (e.Control And Not e.Shift And Not e.Alt)
+                If FileManager.ExcelModels(MyModelID) IsNot Nothing AndAlso
+                   FileManager.ExcelModels(MyModelID).ChangeManager IsNot Nothing Then
+                    Dim result = FileManager.ExcelModels(MyModelID).ChangeManager.Undo()
+                    If result.BError Then XtraMessageBox.Show(Me, result.StrResponseMessage, "Undo", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                    e.Handled = True
+                    e.SuppressKeyPress = True
+                End If
 
-                MsgBox("Undo GIT")
+            Case Keys.Y And (e.Control And Not e.Shift And Not e.Alt),
+                 Keys.Z And (e.Control And e.Shift And Not e.Alt)
+                If FileManager.ExcelModels(MyModelID) IsNot Nothing AndAlso
+                   FileManager.ExcelModels(MyModelID).ChangeManager IsNot Nothing Then
+                    Dim result = FileManager.ExcelModels(MyModelID).ChangeManager.Redo()
+                    If result.BError Then XtraMessageBox.Show(Me, result.StrResponseMessage, "Redo", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                    e.Handled = True
+                    e.SuppressKeyPress = True
+                End If
 
                 '  Shift and F1
             Case Keys.F1 And (e.Shift And Not e.Control And Not e.Alt)

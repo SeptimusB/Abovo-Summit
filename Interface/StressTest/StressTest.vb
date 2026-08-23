@@ -163,7 +163,7 @@ Public Class StressTest
     Private ExportMode As String
     Private MyColourSwatch As Color
     Private Formatter As ObjectFormatter
-    Private ChangeMan As ModelChangeManager
+    Private ChangeMan As ModelChangeManagerV2
     Private WrapCG_Mits As CustomGridWrapper
     Private View_WrapCG_Mits As CustomGridView
     Private ReadOnly FirstTabGridSources As New Dictionary(Of GridView, DevExpress.Spreadsheet.CellRange)
@@ -2182,14 +2182,119 @@ Public Class StressTest
 
     Private Sub StressTestGridKeyDown(sender As Object, e As KeyEventArgs)
 
-        If Not e.Control OrElse e.KeyCode <> Keys.C Then Return
+        If Not e.Control OrElse e.Alt Then Return
         Dim View As GridView = TryCast(sender, GridView)
         If View Is Nothing Then Return
-        View.CopyToClipboard()
-        e.Handled = True
-        e.SuppressKeyPress = True
+
+        If e.KeyCode = Keys.C Then
+            View.CopyToClipboard()
+            e.Handled = True
+            e.SuppressKeyPress = True
+        ElseIf e.KeyCode = Keys.V AndAlso IsStressTestPasteView(View) Then
+            PasteIntoStressTestGrid(View)
+            e.Handled = True
+            e.SuppressKeyPress = True
+        End If
 
     End Sub
+
+    Private Function IsStressTestPasteView(ByVal view As GridView) As Boolean
+        Return view IsNot Nothing AndAlso
+               (FirstTabGridSources.ContainsKey(view) OrElse
+                Object.ReferenceEquals(view, NativePlannerView) OrElse
+                Object.ReferenceEquals(view, NativeTargetsView))
+    End Function
+
+    Private Sub PasteIntoStressTestGrid(ByVal view As GridView)
+        If view Is Nothing OrElse view.FocusedColumn Is Nothing OrElse view.FocusedRowHandle < 0 Then Return
+        Dim pasteMatrix As List(Of String()) = ReadClipboardMatrix()
+        If pasteMatrix.Count = 0 Then Return
+
+        Dim firstDataRow As Integer = view.GetDataSourceRowIndex(view.FocusedRowHandle)
+        Dim firstVisibleColumn As Integer = -1
+        For visibleIndex As Integer = 0 To view.VisibleColumns.Count - 1
+            If Object.ReferenceEquals(view.VisibleColumns(visibleIndex), view.FocusedColumn) Then
+                firstVisibleColumn = visibleIndex
+                Exit For
+            End If
+        Next
+        If firstDataRow < 0 OrElse firstVisibleColumn < 0 Then Return
+
+        Dim anyChanged As Boolean = False
+        Cursor = Cursors.WaitCursor
+        Try
+            Using ChangeMan.BeginChangeGroup("Paste into Stress Test")
+            For clipboardRow As Integer = 0 To pasteMatrix.Count - 1
+                Dim rowHandle As Integer = view.GetRowHandle(firstDataRow + clipboardRow)
+                If rowHandle < 0 Then Exit For
+
+                For clipboardColumn As Integer = 0 To pasteMatrix(clipboardRow).Length - 1
+                    Dim visibleColumnIndex As Integer = firstVisibleColumn + clipboardColumn
+                    If visibleColumnIndex >= view.VisibleColumns.Count Then Exit For
+                    Dim column As DevExpress.XtraGrid.Columns.GridColumn = view.VisibleColumns(visibleColumnIndex)
+                    Dim sourceCell As DevExpress.Spreadsheet.Cell = Nothing
+                    If Not TryGetStressTestPasteCell(view, rowHandle, column, sourceCell) OrElse
+                       Not IsWorkbookLinkedGridCellEditable(sourceCell) Then Continue For
+
+                    Dim dataFormat As String = GetStressTestPasteDataFormat(view, rowHandle, column, sourceCell)
+                    Dim changedValue As Object = Nothing
+                    If Not TryConvertClipboardValue(pasteMatrix(clipboardRow)(clipboardColumn), dataFormat, changedValue) Then Continue For
+                    If ProcessStressTestCellChange(sourceCell, changedValue, dataFormat,
+                                                   "Stress-test grid values pasted", True) Then anyChanged = True
+                Next
+            Next
+            End Using
+        Finally
+            Cursor = Cursors.Default
+        End Try
+
+        If FirstTabGridSources.ContainsKey(view) Then
+            RefreshFirstTabGridData(view)
+        ElseIf Object.ReferenceEquals(view, NativePlannerView) Then
+            RefreshNativePlanner()
+        ElseIf Object.ReferenceEquals(view, NativeTargetsView) Then
+            RefreshNativeTargets()
+        End If
+    End Sub
+
+    Private Function TryGetStressTestPasteCell(ByVal view As GridView,
+                                               ByVal rowHandle As Integer,
+                                               ByVal column As DevExpress.XtraGrid.Columns.GridColumn,
+                                               ByRef sourceCell As DevExpress.Spreadsheet.Cell) As Boolean
+        If FirstTabGridSources.ContainsKey(view) Then
+            Return TryGetFirstTabSourceCell(view, rowHandle, column, sourceCell)
+        End If
+        If Object.ReferenceEquals(view, NativePlannerView) Then
+            Return TryGetNativePlannerSourceCell(rowHandle, column, sourceCell)
+        End If
+        If Object.ReferenceEquals(view, NativeTargetsView) Then
+            Return TryGetNativeTargetSourceCell(rowHandle, column, sourceCell)
+        End If
+        Return False
+    End Function
+
+    Private Function GetStressTestPasteDataFormat(ByVal view As GridView,
+                                                  ByVal rowHandle As Integer,
+                                                  ByVal column As DevExpress.XtraGrid.Columns.GridColumn,
+                                                  ByVal sourceCell As DevExpress.Spreadsheet.Cell) As String
+        If FirstTabGridSources.ContainsKey(view) Then
+            If column.AbsoluteIndex >= 5 Then Return "I"
+            Return InferDataFormat(sourceCell)
+        End If
+
+        If Object.ReferenceEquals(view, NativeTargetsView) Then
+            If sourceCell.RowIndex = 7 Then Return "S"
+            Return If(sourceCell.NumberFormat.Contains("%"), "P", "N")
+        End If
+
+        If column.FieldName = "Assumption" OrElse column.FieldName = "ShortName" Then Return "S"
+        Dim scenarioIndex As Integer
+        Dim valueOffset As Integer
+        If Not TryGetPlannerScenarioColumn(column, scenarioIndex, valueOffset) Then Return "S"
+        If valueOffset >= 2 Then Return "I"
+        If sourceCell.RowIndex = 34 OrElse sourceCell.RowIndex = 64 OrElse sourceCell.RowIndex = 65 Then Return "S"
+        Return If(sourceCell.NumberFormat.Contains("%"), "P", "N")
+    End Function
 
     Private Sub SimpleButtonQC_Click(sender As Object, e As EventArgs) Handles SimpleButtonQC.Click
 

@@ -8,7 +8,6 @@ Imports Abovo.AbovoAppCls
 Imports Abovo.AbovoExtendedDEControls
 Imports Abovo.AbovoRangeDataSource
 Imports Abovo.AbovoUnboundSource
-Imports Abovo.ChangeLogManager
 Imports Abovo.CustomGrid
 Imports Abovo.DataObject
 Imports Abovo.DefaultHelpers
@@ -102,7 +101,7 @@ Public Class DataInterfaceTemplate
     Private MyData As DataObject
     Private PresentedDS As Abovo.DataObject.DataCellRange
     Private PresentedColumn As Abovo.DataObject.SheetDataColumn
-    Private ChangeMan As ModelChangeManager
+    Private ChangeMan As ModelChangeManagerV2
 
     'Layout Variables
     Private ScaleUnits As Single
@@ -114,6 +113,7 @@ Public Class DataInterfaceTemplate
     Private BIsDirty As Boolean
 
     Private ControlsInitialised As Boolean = False
+    Private SuppressSingleCellPosting As Boolean = False
     Private InterfaceResourcesReleased As Boolean = False
     Private FooterOn As Boolean
     Private FooterDone As Boolean
@@ -446,6 +446,10 @@ Public Class DataInterfaceTemplate
 
     'Interface controls
     Private WindowsUIButtonPanelSaveClose As DevExpress.XtraBars.Docking2010.WindowsUIButtonPanel = New DevExpress.XtraBars.Docking2010.WindowsUIButtonPanel()
+    Private ClipboardContextMenu As ContextMenuStrip
+    Private ClipboardCopyMenuItem As ToolStripMenuItem
+    Private ClipboardPasteMenuItem As ToolStripMenuItem
+    Private LastClipboardTarget As Control
 
     'Development Variables
     Private DataCallCount As Integer = 0
@@ -456,6 +460,7 @@ Public Class DataInterfaceTemplate
         ParentGroupForm = MyParent
 
         InitializeComponent()
+        InitialiseClipboardActions()
 
         If Not IsNothing(MyParent) Then
 
@@ -488,6 +493,7 @@ Public Class DataInterfaceTemplate
         DITName = GetCSName(SetModelID, SetGSID, SetCSID)
 
         ChangeMan = ExcelModels(SetModelID).ChangeManager
+        AddHandler ChangeMan.HistoryChanged, AddressOf ChangeManager_HistoryChanged
         DataPM = ExcelModels(SetModelID).WBDataPres
         Me.ForeColor = ExcelModels(SetModelID).ColourSwatch
 
@@ -635,6 +641,8 @@ Public Class DataInterfaceTemplate
 
         End If
 
+        RefreshSingleCellControlsFromWorkbook()
+
 SkipGridRefresh:
 
         If RefreshableControls Is Nothing Then GoTo SkipRefresh
@@ -654,6 +662,54 @@ SkipRefresh:
 
         UpdateAllRules()
 
+    End Sub
+
+    Private Sub RefreshSingleCellControlsFromWorkbook()
+        SuppressSingleCellPosting = True
+        Try
+            If TextBoxes IsNot Nothing Then
+                For Each editor As AbovoDETextEdit In TextBoxes
+                    If editor IsNot Nothing AndAlso Not editor.IsDisposed Then editor.RefreshData()
+                Next
+            End If
+            If SpinEdits IsNot Nothing Then
+                For Each editor As AbovoDESpinEdit In SpinEdits
+                    If editor IsNot Nothing AndAlso Not editor.IsDisposed Then editor.RefreshData()
+                Next
+            End If
+            If DateBoxes IsNot Nothing Then
+                For Each editor As AbovoDEDateEdit In DateBoxes
+                    If editor IsNot Nothing AndAlso Not editor.IsDisposed Then editor.RefreshData()
+                Next
+            End If
+            If Combos IsNot Nothing Then
+                For Each editor As ComboBoxEdit In Combos
+                    If editor Is Nothing OrElse editor.IsDisposed Then Continue For
+                    Dim dataTag As SingleCellDataTag = TryCast(editor.Tag, SingleCellDataTag)
+                    If dataTag IsNot Nothing AndAlso dataTag.TargetWorksheet IsNot Nothing Then
+                        editor.EditValue = EditorValueFromCell(
+                            dataTag.TargetWorksheet.Cells(dataTag.TargetCell), dataTag.DataType)
+                    End If
+                Next
+            End If
+            If ADETextEdits IsNot Nothing Then
+                For Each editor As AbovoDETextEdit In ADETextEdits
+                    If editor IsNot Nothing AndAlso Not editor.IsDisposed Then editor.RefreshData()
+                Next
+            End If
+            If ADEDateEdits IsNot Nothing Then
+                For Each editor As AbovoDEDateEdit In ADEDateEdits
+                    If editor IsNot Nothing AndAlso Not editor.IsDisposed Then editor.RefreshData()
+                Next
+            End If
+            If ADEComboBoxes IsNot Nothing Then
+                For Each editor As AbovoDEComboBox In ADEComboBoxes
+                    If editor IsNot Nothing AndAlso Not editor.IsDisposed Then editor.RefreshData()
+                Next
+            End If
+        Finally
+            SuppressSingleCellPosting = False
+        End Try
     End Sub
 
 
@@ -834,7 +890,7 @@ SkipRefresh:
         RemoveInterfaceScrollRediverter()
 
         InterfaceScrollRediverter =
-            New ScrollRediverter(XtraTabControlNewGIT)
+            New ScrollRediverter(Me, XtraTabControlNewGIT)
 
         Application.AddMessageFilter(InterfaceScrollRediverter)
 
@@ -2564,6 +2620,9 @@ SkipRefresh:
             If GC IsNot Nothing Then
 
                 RemoveHandler GC.ProcessGridKey, AddressOf GridControl_ProcessGridKey
+                RemoveHandler GC.Enter, AddressOf ClipboardTarget_Enter
+                RemoveHandler GC.MouseDown, AddressOf ClipboardTarget_MouseDown
+                If Object.ReferenceEquals(GC.ContextMenuStrip, ClipboardContextMenu) Then GC.ContextMenuStrip = Nothing
 
                 Dim UBS As AbovoUnboundSource = TryCast(GC.DataSource, AbovoUnboundSource)
                 If UBS IsNot Nothing Then
@@ -2583,6 +2642,9 @@ SkipRefresh:
 
                 RemoveHandler VG.KeyDown, AddressOf VGrid_KeyDown
                 RemoveHandler VG.EditorKeyDown, AddressOf VGrid_KeyDown
+                RemoveHandler VG.Enter, AddressOf ClipboardTarget_Enter
+                RemoveHandler VG.MouseDown, AddressOf ClipboardTarget_MouseDown
+                If Object.ReferenceEquals(VG.ContextMenuStrip, ClipboardContextMenu) Then VG.ContextMenuStrip = Nothing
                 RemoveHandler VG.CustomDrawRowValueCell, AddressOf VGrid_CustomDrawCell
                 RemoveHandler VG.CustomDrawRowValueCell, AddressOf LiveVGrid_CustomDrawCell
                 RemoveHandler VG.ValidatingEditor, AddressOf VGrid_ValidatingEditor
@@ -2755,6 +2817,7 @@ SkipRefresh:
                 }
 
                 CurrentAbovoTabPage.AddGrid(GridControls(GridCount))
+                ConfigureClipboardTarget(GridControls(GridCount))
 
                 GridControls(GridCount).ForceInitialize()
 
@@ -2905,6 +2968,7 @@ SkipRefresh:
                 }
                 VertGridControls(VertGridCount) = LiveVGrid
                 CurrentAbovoTabPage.AddVGrid(LiveVGrid)
+                ConfigureClipboardTarget(LiveVGrid)
                 LiveVGrid.ForceInitialize()
 
                 LiveVGrid.OptionsBehavior.Editable = False
@@ -3117,6 +3181,7 @@ SkipRefresh:
                 GridControls(GridCount).ForceInitialize()
 
                 CurrentAbovoTabPage.AddGrid(GridControls(GridCount))
+                ConfigureClipboardTarget(GridControls(GridCount))
                 AddHandler GridControls(GridCount).ProcessGridKey, AddressOf GridControl_ProcessGridKey
 
                 UnboundDataSources(UBSDataSourceCount).AttachedGrid = GridControls(GridCount)
@@ -4454,6 +4519,10 @@ SkipRefresh:
                 Dim VertGrid As VGridControl = VertGridControls(VertGridCount)
 
                 CurrentAbovoTabPage.AddVGrid(VertGrid)
+                ConfigureClipboardTarget(VertGrid)
+                VertGrid.OptionsSelectionAndFocus.MultiSelect = True
+                VertGrid.OptionsSelectionAndFocus.MultiSelectMode = MultiSelectMode.CellSelect
+                VertGrid.OptionsBehavior.CopyToClipboardWithRowHeaders = False
                 AddHandler VertGrid.KeyDown, AddressOf VGrid_KeyDown
                 AddHandler VertGrid.EditorKeyDown, AddressOf VGrid_KeyDown
 
@@ -5651,6 +5720,7 @@ SkipRefresh:
                     ReDim Preserve SpinEdits(SpinEditCount)
                     SpinEdits(SpinEditCount) = New AbovoDESpinEdit With {
                                                 .Name = "SpinEdit_" & SpinEditCount.ToString,
+                                                        .ModelID = ModelID,
                                                         .Tag = SCDT
                                             }
 
@@ -6931,6 +7001,9 @@ NextCell:
                 If gc Is Nothing Then Continue For
 
                 RemoveHandler gc.ProcessGridKey, AddressOf GridControl_ProcessGridKey
+                RemoveHandler gc.Enter, AddressOf ClipboardTarget_Enter
+                RemoveHandler gc.MouseDown, AddressOf ClipboardTarget_MouseDown
+                If Object.ReferenceEquals(gc.ContextMenuStrip, ClipboardContextMenu) Then gc.ContextMenuStrip = Nothing
 
                 Dim gcSource As AbovoUnboundSource =
                     TryCast(gc.DataSource, AbovoUnboundSource)
@@ -6975,6 +7048,9 @@ NextCell:
                 'breaking the VGrid row/data-source structure.
                 RemoveHandler vg.KeyDown, AddressOf VGrid_KeyDown
                 RemoveHandler vg.EditorKeyDown, AddressOf VGrid_KeyDown
+                RemoveHandler vg.Enter, AddressOf ClipboardTarget_Enter
+                RemoveHandler vg.MouseDown, AddressOf ClipboardTarget_MouseDown
+                If Object.ReferenceEquals(vg.ContextMenuStrip, ClipboardContextMenu) Then vg.ContextMenuStrip = Nothing
                 RemoveHandler vg.CustomDrawRowValueCell, AddressOf VGrid_CustomDrawCell
                 RemoveHandler vg.CustomDrawRowValueCell, AddressOf LiveVGrid_CustomDrawCell
                 RemoveHandler vg.ValidatingEditor, AddressOf VGrid_ValidatingEditor
@@ -7210,10 +7286,7 @@ SectionSelect:
 
             Case "History"
 
-                ' Close the model and dispose of the interface
-                HistoryManager.Visible = True
-                HistoryManager.Show()
-                HistoryManager.BringToFront()
+                ExcelModels(ModelID).HistoryManager.ShowForUser(Me)
 
             Case "Spreadsheet"
 
@@ -7247,6 +7320,14 @@ SectionSelect:
                     .LinkReturnName = DITName
                 }
                 ExcelModels(ModelID).EventCoordinator.TriggerEvent("Link", LinkTag, ParentGroupForm)
+
+            Case "Copy"
+
+                PerformClipboardCopy()
+
+            Case "Paste"
+
+                PerformClipboardPaste()
 
 
         End Select
@@ -7445,7 +7526,12 @@ SectionSelect:
                 '  Ctrl + Z
             Case Keys.Z And (e.Control And Not e.Shift And Not e.Alt)
 
-                MsgBox("Undo DIT")
+                ExecuteHistoryUndoRedo(False)
+
+            Case Keys.Y And (e.Control And Not e.Shift And Not e.Alt),
+                 Keys.Z And (e.Control And e.Shift And Not e.Alt)
+
+                ExecuteHistoryUndoRedo(True)
 
                 '  Shift and F1
             Case Keys.F1 And (e.Shift And Not e.Control And Not e.Alt)
@@ -7501,10 +7587,17 @@ SectionSelect:
 
     Private Sub VGrid_KeyDown(ByVal sender As Object, ByVal e As KeyEventArgs)
 
-        If e.KeyCode <> Keys.V OrElse Not e.Control OrElse e.Alt Then Return
-
         Dim VG As VGridControl = TryCast(sender, VGridControl)
         If VG Is Nothing Then Return
+
+        If e.Control AndAlso Not e.Alt AndAlso e.KeyCode = Keys.C Then
+            VG.CopyToClipboard()
+            e.Handled = True
+            e.SuppressKeyPress = True
+            Return
+        End If
+
+        If e.KeyCode <> Keys.V OrElse Not e.Control OrElse e.Alt Then Return
 
         e.Handled = True
         e.SuppressKeyPress = True
@@ -7754,6 +7847,8 @@ SectionSelect:
 
         Try
 
+            Using PasteGroup As IDisposable = ChangeMan.BeginChangeGroup("Paste into " & DITName)
+
             For ClipboardRowIndex As Integer = 0 To PasteMatrix.Count - 1
 
                 Dim ClipboardRow() As String = PasteMatrix(ClipboardRowIndex)
@@ -7806,6 +7901,8 @@ SectionSelect:
                 Next
 
             Next
+
+            End Using
 
             If AnyChanged Then
                 CustomPastePostProcess(DSIndex, StartDataRow, StartDataColumn)
@@ -8132,6 +8229,7 @@ SectionSelect:
         }
         VertGridControls(VertGridCount) = Grid
         CurrentAbovoTabPage.AddVGrid(Grid)
+        ConfigureClipboardTarget(Grid)
         JointVentureTables(Grid) = Table
         JointVentureBindings(Grid) = New Dictionary(Of String, JointVentureCellBinding)(StringComparer.Ordinal)
 
@@ -8389,6 +8487,9 @@ SectionSelect:
         Grid.RecordWidth = 145
         Grid.RowHeaderWidth = 220
         Grid.OptionsBehavior.Editable = True
+        Grid.OptionsSelectionAndFocus.MultiSelect = True
+        Grid.OptionsSelectionAndFocus.MultiSelectMode = MultiSelectMode.CellSelect
+        Grid.OptionsBehavior.CopyToClipboardWithRowHeaders = False
         Grid.ScrollVisibility = DevExpress.XtraVerticalGrid.ScrollVisibility.Horizontal
 
         AddHandler Grid.CustomRecordCellEdit, AddressOf JointVenture_CustomRecordCellEdit
@@ -8454,6 +8555,7 @@ SectionSelect:
         Dim Grid As VGridControl = TryCast(sender, VGridControl)
 
         If Grid Is Nothing OrElse e.Row Is Nothing Then Return
+        Try
 
         '--------------------------------------------------------------
         ' Synthetic category footer
@@ -8634,6 +8736,9 @@ SectionSelect:
         End If
 
         'Do not set Handled. DevExpress still performs the normal cell paint.
+        Finally
+            ApplyVGridSelectedCellAppearance(e)
+        End Try
 
     End Sub
 
@@ -8779,6 +8884,7 @@ SectionSelect:
 
         If VG Is Nothing Then Return
         If e.Row Is Nothing Then Return
+        Try
 
         Dim ColTag As DataColumnTag =
             GetVGridColumnTag(e.Row, e.CellIndex)
@@ -8917,6 +9023,9 @@ SectionSelect:
         '
         'We've changed Appearance/CellText and allow DevExpress to
         'paint the cell normally.
+        Finally
+            ApplyVGridSelectedCellAppearance(e)
+        End Try
 
     End Sub
 
@@ -9204,6 +9313,160 @@ SectionSelect:
 
     End Sub
 
+    Private Sub InitialiseClipboardActions()
+        ClipboardContextMenu = New ContextMenuStrip()
+        ClipboardCopyMenuItem = New ToolStripMenuItem("Copy", Nothing, AddressOf ClipboardCopyMenuItem_Click) With {
+            .ShortcutKeyDisplayString = "Ctrl+C"
+        }
+        ClipboardPasteMenuItem = New ToolStripMenuItem("Paste", Nothing, AddressOf ClipboardPasteMenuItem_Click) With {
+            .ShortcutKeyDisplayString = "Ctrl+V"
+        }
+        ClipboardContextMenu.Items.AddRange(New ToolStripItem() {ClipboardCopyMenuItem, ClipboardPasteMenuItem})
+        AddHandler ClipboardContextMenu.Opening, AddressOf ClipboardContextMenu_Opening
+        AddHandler Me.Disposed, AddressOf DisposeClipboardActions
+
+        For Each button As Object In WindowsUIButtonPanelActions.Buttons
+            Dim windowsButton As WindowsUIButton = TryCast(button, WindowsUIButton)
+            If windowsButton Is Nothing OrElse windowsButton.Tag Is Nothing Then Continue For
+            Dim tag As String = windowsButton.Tag.ToString()
+            If tag = "Copy" OrElse tag = "Paste" Then
+                windowsButton.Visible = True
+                windowsButton.Enabled = False
+            End If
+        Next
+    End Sub
+
+    Private Sub ConfigureClipboardTarget(ByVal target As Control)
+        If target Is Nothing Then Return
+        Dim verticalGrid As VGridControl = TryCast(target, VGridControl)
+        If verticalGrid IsNot Nothing Then ConfigureVGridCellMultiSelect(verticalGrid)
+        RemoveHandler target.Enter, AddressOf ClipboardTarget_Enter
+        RemoveHandler target.MouseDown, AddressOf ClipboardTarget_MouseDown
+        AddHandler target.Enter, AddressOf ClipboardTarget_Enter
+        AddHandler target.MouseDown, AddressOf ClipboardTarget_MouseDown
+        target.ContextMenuStrip = ClipboardContextMenu
+    End Sub
+
+    Private Sub ClipboardTarget_Enter(ByVal sender As Object, ByVal e As EventArgs)
+        SetClipboardTarget(TryCast(sender, Control))
+    End Sub
+
+    Private Sub ClipboardTarget_MouseDown(ByVal sender As Object, ByVal e As MouseEventArgs)
+        Dim target As Control = TryCast(sender, Control)
+        If target Is Nothing Then Return
+        SetClipboardTarget(target)
+        If e.Button <> MouseButtons.Right Then Return
+
+        Dim grid As GridControl = TryCast(target, GridControl)
+        If grid IsNot Nothing Then
+            Dim view As GridView = TryCast(grid.FocusedView, GridView)
+            If view IsNot Nothing Then
+                Dim hitInfo As GridHitInfo = view.CalcHitInfo(e.Location)
+                If hitInfo IsNot Nothing AndAlso hitInfo.InRowCell Then
+                    view.FocusedRowHandle = hitInfo.RowHandle
+                    view.FocusedColumn = hitInfo.Column
+                End If
+            End If
+            Return
+        End If
+
+        Dim verticalGrid As VGridControl = TryCast(target, VGridControl)
+        If verticalGrid Is Nothing Then Return
+        Dim verticalHit As VGridHitInfo = verticalGrid.CalcHitInfo(e.Location)
+        If verticalHit IsNot Nothing AndAlso verticalHit.Row IsNot Nothing AndAlso verticalHit.RecordIndex >= 0 Then
+            verticalGrid.FocusedRow = verticalHit.Row
+            verticalGrid.FocusedRecord = verticalHit.RecordIndex
+        End If
+    End Sub
+
+    Private Sub SetClipboardTarget(ByVal target As Control)
+        If target Is Nothing OrElse target.IsDisposed Then Return
+        LastClipboardTarget = target
+        UpdateClipboardActionState()
+    End Sub
+
+    Private Sub UpdateClipboardActionState()
+        Dim canCopy As Boolean = LastClipboardTarget IsNot Nothing AndAlso Not LastClipboardTarget.IsDisposed
+        Dim canPasteTarget As Boolean = canCopy AndAlso CanPasteIntoClipboardTarget(LastClipboardTarget)
+        Dim canPaste As Boolean = canPasteTarget AndAlso Clipboard.ContainsText()
+
+        If ClipboardCopyMenuItem IsNot Nothing Then ClipboardCopyMenuItem.Enabled = canCopy
+        If ClipboardPasteMenuItem IsNot Nothing Then ClipboardPasteMenuItem.Enabled = canPaste
+        For Each button As Object In WindowsUIButtonPanelActions.Buttons
+            Dim windowsButton As WindowsUIButton = TryCast(button, WindowsUIButton)
+            If windowsButton Is Nothing OrElse windowsButton.Tag Is Nothing Then Continue For
+            Select Case windowsButton.Tag.ToString()
+                Case "Copy"
+                    windowsButton.Enabled = canCopy
+                Case "Paste"
+                    'The system clipboard can change while focus remains in the
+                    'grid, and WindowsUIButtonPanel has no clipboard-change event.
+                    'Keep the command available for editable targets; the invoked
+                    'paste routine still validates the clipboard contents.
+                    windowsButton.Enabled = canPasteTarget
+            End Select
+        Next
+    End Sub
+
+    Private Function CanPasteIntoClipboardTarget(ByVal target As Control) As Boolean
+        Dim dataSource As AbovoUnboundSource = Nothing
+        Dim grid As GridControl = TryCast(target, GridControl)
+        If grid IsNot Nothing Then dataSource = TryCast(grid.DataSource, AbovoUnboundSource)
+        Dim verticalGrid As VGridControl = TryCast(target, VGridControl)
+        If verticalGrid IsNot Nothing Then dataSource = TryCast(verticalGrid.DataSource, AbovoUnboundSource)
+        If dataSource Is Nothing OrElse dataSource.UBSTag Is Nothing Then Return False
+
+        Dim dataSetIndex As Integer = dataSource.UBSTag.DSIndex
+        Return DataPres IsNot Nothing AndAlso dataSetIndex >= 0 AndAlso
+               dataSetIndex < DataPres.DataSets.Count AndAlso Not DataPres.DataSets(dataSetIndex).RO
+    End Function
+
+    Private Sub PerformClipboardCopy()
+        If LastClipboardTarget Is Nothing OrElse LastClipboardTarget.IsDisposed Then Return
+        Dim grid As GridControl = TryCast(LastClipboardTarget, GridControl)
+        If grid IsNot Nothing Then
+            Dim view As GridView = TryCast(grid.FocusedView, GridView)
+            If view IsNot Nothing Then view.CopyToClipboard()
+            Return
+        End If
+        Dim verticalGrid As VGridControl = TryCast(LastClipboardTarget, VGridControl)
+        If verticalGrid IsNot Nothing Then verticalGrid.CopyToClipboard()
+    End Sub
+
+    Private Sub PerformClipboardPaste()
+        If LastClipboardTarget Is Nothing OrElse LastClipboardTarget.IsDisposed OrElse
+           Not CanPasteIntoClipboardTarget(LastClipboardTarget) Then Return
+        Dim grid As GridControl = TryCast(LastClipboardTarget, GridControl)
+        If grid IsNot Nothing Then
+            CustomPasteIntoDataGrid(grid)
+            Return
+        End If
+        Dim verticalGrid As VGridControl = TryCast(LastClipboardTarget, VGridControl)
+        If verticalGrid IsNot Nothing Then CustomPasteIntoVGrid(verticalGrid)
+        UpdateClipboardActionState()
+    End Sub
+
+    Private Sub ClipboardCopyMenuItem_Click(ByVal sender As Object, ByVal e As EventArgs)
+        PerformClipboardCopy()
+    End Sub
+
+    Private Sub ClipboardPasteMenuItem_Click(ByVal sender As Object, ByVal e As EventArgs)
+        PerformClipboardPaste()
+    End Sub
+
+    Private Sub ClipboardContextMenu_Opening(ByVal sender As Object, ByVal e As CancelEventArgs)
+        UpdateClipboardActionState()
+        e.Cancel = LastClipboardTarget Is Nothing OrElse LastClipboardTarget.IsDisposed
+    End Sub
+
+    Private Sub DisposeClipboardActions(ByVal sender As Object, ByVal e As EventArgs)
+        LastClipboardTarget = Nothing
+        If ClipboardContextMenu Is Nothing Then Return
+        RemoveHandler ClipboardContextMenu.Opening, AddressOf ClipboardContextMenu_Opening
+        ClipboardContextMenu.Dispose()
+        ClipboardContextMenu = Nothing
+    End Sub
+
     Private Sub RegisterGridActionExtender(
         ByVal SectionIndex As Integer,
         ByVal Extender As CombinedColumnBandButton_HeaderFooterDrawer)
@@ -9241,6 +9504,8 @@ SectionSelect:
 
         If VG Is Nothing Then Return
         If VG.ActiveEditor Is Nothing Then Return
+        SetClipboardTarget(VG)
+        VG.ActiveEditor.ContextMenuStrip = ClipboardContextMenu
 
 
         If TypeOf VG.ActiveEditor Is DevExpress.XtraEditors.CalcEdit Then
@@ -9657,6 +9922,7 @@ SectionSelect:
             For Each AreaReference As String In LiveDataSet.LiveGridSourceAreaReferences
                 SourceRanges.Add(Worksheet.Range(AreaReference))
             Next
+
         Else
             SourceRanges.Add(Worksheet.Range(LiveDataSet.DataRange))
         End If
@@ -9785,6 +10051,36 @@ SectionSelect:
         End Try
 
     End Sub
+
+    Private Sub ExecuteHistoryUndoRedo(ByVal redo As Boolean)
+        If ChangeMan Is Nothing Then Return
+        Dim result As AbovoTransaction = If(redo, ChangeMan.Redo(), ChangeMan.Undo())
+        If result IsNot Nothing AndAlso result.BError Then
+            XtraMessageBox.Show(Me, result.StrResponseMessage, "Change History", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        End If
+    End Sub
+
+    Private Sub ChangeManager_HistoryChanged(ByVal sender As Object,
+                                             ByVal e As ChangeHistoryChangedEventArgsV2)
+        If Not e.IsUndoRedo OrElse IsDisposed OrElse Not IsHandleCreated Then Return
+        BeginInvoke(New MethodInvoker(Sub()
+            If Not IsDisposed Then RefreshData()
+        End Sub))
+    End Sub
+
+    Protected Overrides Function ProcessCmdKey(ByRef msg As Message,
+                                                ByVal keyData As Keys) As Boolean
+        If keyData = (Keys.Control Or Keys.Z) Then
+            ExecuteHistoryUndoRedo(False)
+            Return True
+        End If
+        If keyData = (Keys.Control Or Keys.Y) OrElse
+           keyData = (Keys.Control Or Keys.Shift Or Keys.Z) Then
+            ExecuteHistoryUndoRedo(True)
+            Return True
+        End If
+        Return MyBase.ProcessCmdKey(msg, keyData)
+    End Function
 
     Private Shared Function IsLiveProjectionRowBlank(
         ByVal Worksheet As DevExpress.Spreadsheet.Worksheet,
@@ -10117,6 +10413,7 @@ SectionSelect:
 
         If LiveSource Is Nothing OrElse LiveSource.UBSTag Is Nothing OrElse
            ValueTag Is Nothing Then Return
+        Try
 
         Dim LiveTag As AbovoUnboundSourceTag = LiveSource.UBSTag
         If LiveTag.LiveGridSourceRows Is Nothing OrElse
@@ -10176,6 +10473,9 @@ SectionSelect:
             e.Appearance.Font.Size,
             SourceFontStyle)
         e.Appearance.Options.UseFont = True
+        Finally
+            ApplyVGridSelectedCellAppearance(e)
+        End Try
 
     End Sub
 
@@ -10183,6 +10483,8 @@ SectionSelect:
 
 #Region "Data and Date Event Handlers"
     Sub SingleCellDirtyMarker(ByVal sender As Object, ByVal e As Object)
+
+        If SuppressSingleCellPosting Then Return
 
         Try
 
@@ -10600,7 +10902,7 @@ SectionSelect:
     End Sub
     Sub SingleCell_Value_Push(ByVal sender As Object, ByVal e As Object)
 
-        If sender.editvalue = Nothing Then Exit Sub
+        If SuppressSingleCellPosting Then Return
 
         Me.Cursor = Cursors.WaitCursor
 
@@ -10608,7 +10910,9 @@ SectionSelect:
         Dim OldValue As DevExpress.Spreadsheet.CellValue = DataTag.TargetWorksheet.Cells(DataTag.TargetCell).Value
         Dim OldValueString As String = OldValue.ToString
 
-        If sender.editvalue.ToString = OldValueString Then
+        Dim NewValueText As String = Convert.ToString(sender.editvalue)
+
+        If NewValueText = OldValueString Then
 
             Try
 
@@ -10643,7 +10947,7 @@ SectionSelect:
 
         Dim DCM As New DataChangeEvent With {
                         .ModelID = ModelID,
-                        .Description = DataTag.Label & " updated from " & OldValueString & " to " & sender.editvalue.ToString,
+                        .Description = DataTag.Label & " updated",
                         .WSName = DataTag.TargetWorksheet.Name,
                         .CellAddress = DataTag.TargetCell,
                         .ChangedValue = sender.editvalue,
@@ -10976,6 +11280,8 @@ SectionSelect:
     Private Sub GridView_ShownEditor(ByVal sender As Object, ByVal e As EventArgs)
 
         Dim gv As GridView = sender
+        If gv.GridControl IsNot Nothing Then SetClipboardTarget(gv.GridControl)
+        If gv.ActiveEditor IsNot Nothing Then gv.ActiveEditor.ContextMenuStrip = ClipboardContextMenu
 
         If TypeOf gv.ActiveEditor Is DevExpress.XtraEditors.CalcEdit Then
 
@@ -11647,16 +11953,24 @@ SectionSelect:
 #Region "Interface Extensions"
     Public Class ScrollRediverter : Implements IMessageFilter
 
+        Private ReadOnly OwnerInterface As DataInterfaceTemplate
         Private ReadOnly OwnerTabControl As XtraTabControl
 
-        Public Sub New(ByVal TabControl As XtraTabControl)
+        Public Sub New(ByVal InterfaceOwner As DataInterfaceTemplate,
+                       ByVal TabControl As XtraTabControl)
 
+            OwnerInterface = InterfaceOwner
             OwnerTabControl = TabControl
 
         End Sub
 
         Public Function PreFilterMessage(
             ByRef m As Message) As Boolean Implements IMessageFilter.PreFilterMessage
+
+            Const WM_KEYDOWN As Integer = &H100
+            If m.Msg = WM_KEYDOWN AndAlso TryProcessHistoryShortcut(m) Then
+                Return True
+            End If
 
             If m.Msg <> DevExpress.Utils.Drawing.Helpers.MSG.WM_MOUSEWHEEL Then
                 Return False
@@ -11763,6 +12077,40 @@ SectionSelect:
 
             Return False
 
+        End Function
+
+        Private Function TryProcessHistoryShortcut(ByVal m As Message) As Boolean
+            If OwnerInterface Is Nothing OrElse OwnerInterface.IsDisposed OrElse
+               Not OwnerInterface.Visible Then Return False
+
+            Dim messageControl As Control = Control.FromHandle(m.HWnd)
+            If messageControl Is Nothing Then
+                messageControl = Control.FromChildHandle(m.HWnd)
+            End If
+            If Not IsOwnedControl(messageControl) Then Return False
+
+            Dim modifiers As Keys = Control.ModifierKeys
+            If (modifiers And Keys.Control) <> Keys.Control OrElse
+               (modifiers And Keys.Alt) = Keys.Alt Then Return False
+
+            Dim keyCode As Keys = CType(m.WParam.ToInt32(), Keys) And Keys.KeyCode
+            If keyCode = Keys.Z Then
+                OwnerInterface.ExecuteHistoryUndoRedo((modifiers And Keys.Shift) = Keys.Shift)
+                Return True
+            End If
+            If keyCode = Keys.Y AndAlso (modifiers And Keys.Shift) <> Keys.Shift Then
+                OwnerInterface.ExecuteHistoryUndoRedo(True)
+                Return True
+            End If
+            Return False
+        End Function
+
+        Private Function IsOwnedControl(ByVal candidate As Control) As Boolean
+            While candidate IsNot Nothing
+                If Object.ReferenceEquals(candidate, OwnerInterface) Then Return True
+                candidate = candidate.Parent
+            End While
+            Return False
         End Function
 
         Private Shared Function FindGridScrollOwnerAtScreenPoint(
@@ -12678,6 +13026,10 @@ TPans:
         'IMessageFilter registrations are Application-wide and outlive the form
         'unless explicitly removed. Do this BEFORE any early-return paths.
         RemoveInterfaceScrollRediverter()
+
+        If ChangeMan IsNot Nothing Then
+            RemoveHandler ChangeMan.HistoryChanged, AddressOf ChangeManager_HistoryChanged
+        End If
 
         If ExcelModels Is Nothing OrElse ModelID < 0 OrElse ModelID >= ExcelModels.Length Then Return
         If ExcelModels(ModelID) Is Nothing OrElse ExcelModels(ModelID).InterfaceDependencies Is Nothing Then Return

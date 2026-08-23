@@ -421,7 +421,7 @@
     </Compile>
     <Compile Include="Interface\Interface Services\ActionManager.vb" />
     <Compile Include="Interface\Interface Services\AppConstants.vb" />
-    <Compile Include="Interface\Interface Services\ChangeLogManager.vb" />
+    <Compile Include="Interface\Interface Services\CellDrawHelper.vb" />
     <Compile Include="Interface\Interface Services\ColumnButtonExtender.vb" />
     <Compile Include="Interface\Interface Services\ColumnInPlaceEditor.vb" />
     <Compile Include="Interface\Interface Services\CustomGrid\CustomGridControl.vb">
@@ -445,6 +445,8 @@
     <Compile Include="Interface\Interface Services\FontManager.vb" />
     <Compile Include="Interface\Interface Services\FormSplashScreen.vb" />
     <Compile Include="Interface\Interface Services\GeneralFunctions.vb" />
+    <Compile Include="Interface\Interface Services\WorkbookGridClipboardSupport.vb" />
+    <Compile Include="Interface\Interface Services\ModelPostingChangeSupport.vb" />
     <Compile Include="Interface\Interface Services\HelpManager.vb" />
     <Compile Include="Interface\Interface Services\InColumnEditorTag.vb" />
     <Compile Include="Interface\Interface Services\ObjectMiddler.vb" />
@@ -475,10 +477,7 @@
     <Compile Include="Interface\Custom Controls\FileInstanceInterface.vb">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="Interface\Custom Controls\HistoryManager.Designer.vb">
-      <DependentUpon>HistoryManager.vb</DependentUpon>
-    </Compile>
-    <Compile Include="Interface\Custom Controls\HistoryManager.vb">
+    <Compile Include="Interface\Custom Controls\HistoryManagerV2.vb">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Interface\Custom Controls\ModelPostingComboBox.vb">
@@ -577,7 +576,8 @@
     <Compile Include="Services\BPEvents\SummitSync.vb" />
     <Compile Include="Services\Calculation Engine and Custom Functions\CustomCalcEngine.vb" />
     <Compile Include="Services\CustomFormPainter.vb" />
-    <Compile Include="Services\DataService\ChangeManager.vb" />
+    <Compile Include="Services\DataService\ChangeLogModels.vb" />
+    <Compile Include="Services\DataService\ChangeManagerV2.vb" />
     <Compile Include="Services\DataService\RDSManager.vb" />
     <Compile Include="Services\DataService\DataClasses\AssumptionsCollection.vb" />
     <Compile Include="Services\DataService\DataClasses\BPStockCollection.vb" />
@@ -621,12 +621,6 @@
       <DependentUpon>InitialRateVariationsInterface.vb</DependentUpon>
     </Compile>
     <Compile Include="Interface\Custom Controls\InitialRateVariationsInterface.vb">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Interface\DataInterfaceTemplateOld.Designer.vb">
-      <DependentUpon>DataInterfaceTemplateOld.vb</DependentUpon>
-    </Compile>
-    <Compile Include="Interface\DataInterfaceTemplateOld.vb">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Interface\Custom Controls\SpecificIncomeAssumptionsInterface.Designer.vb">
@@ -711,9 +705,6 @@
     <EmbeddedResource Include="Interface\Custom Controls\FFRProcessing.resx">
       <DependentUpon>FFRProcessing.vb</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Interface\Custom Controls\HistoryManager.resx">
-      <DependentUpon>HistoryManager.vb</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Interface\Custom Controls\MainModelViewer.resx">
       <DependentUpon>MainModelViewer.vb</DependentUpon>
     </EmbeddedResource>
@@ -753,9 +744,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Interface\Custom Controls\InitialRateVariationsInterface.resx">
       <DependentUpon>InitialRateVariationsInterface.vb</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Interface\DataInterfaceTemplateOld.resx">
-      <DependentUpon>DataInterfaceTemplateOld.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Interface\Custom Controls\SpecificIncomeAssumptionsInterface.resx">
       <DependentUpon>SpecificIncomeAssumptionsInterface.vb</DependentUpon>

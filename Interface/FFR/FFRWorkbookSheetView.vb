@@ -36,7 +36,7 @@ Public Class FFRWorkbookSheetView
     Private ReadOnly CompactRows As Boolean
     Private ReadOnly CompactWorksheetLayout As Boolean
     Private ReadOnly Workbook As IWorkbook
-    Private ReadOnly ChangeManager As ModelChangeManager
+    Private ReadOnly ChangeManager As ModelChangeManagerV2
     Private ReadOnly SheetGrid As New GridControl()
     Private ReadOnly SheetView As New GridView()
     Private ReadOnly CellToolTips As New ToolTipController()

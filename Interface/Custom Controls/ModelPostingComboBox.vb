@@ -12,6 +12,8 @@ Public Class ModelPostingComboBox
     Private TargetCell As String
     Private CurrList As List(Of String)
     Private LitmitToList As Boolean = True
+    Private SuppressPosting As Boolean
+    Private HistoryBinding As ModelPostingHistoryBinding
     Public Property SuppressAutomaticPosting As Boolean = False
 
     Public Property SetLimitToList As Boolean
@@ -36,7 +38,7 @@ Public Class ModelPostingComboBox
         Dim ListItems As List(Of String) = RepositaryItems.GetListFromNR(NRName, ModelID)
         Properties.Items.AddRange(ListItems)
         CurrList = ListItems
-        AddHandler MyBase.EditValueChanged, AddressOf ProcessChange
+        ConfigurePosting()
 
     End Sub
     Public Sub InitialiseStandard(RepID As String)
@@ -46,20 +48,11 @@ Public Class ModelPostingComboBox
         Dim ListItems As List(Of String) = RepositaryItems.GetList(RepID, ModelID)
         Properties.Items.AddRange(ListItems)
         CurrList = ListItems
-        AddHandler MyBase.EditValueChanged, AddressOf ProcessChange
+        ConfigurePosting()
 
     End Sub
     Sub ProcesDefValue()
-
-        Try
-
-            EditValue = ExcelModels(ModelID).WB.Worksheets(TargetWorksheet).Cells(TargetCell).DisplayText
-
-        Catch ex As Exception
-
-        End Try
-
-
+        RefreshFromWorkbook()
     End Sub
     Public Property SetTargetCell As String
         Get
@@ -93,17 +86,38 @@ Public Class ModelPostingComboBox
     End Sub
     Protected Sub ProcessChange(ByVal sender As Object, ByVal e As System.EventArgs)
 
-        If SuppressAutomaticPosting Then Return
-
-        Dim NewVal As String = SelectedText
-
-        If Not String.IsNullOrEmpty(NewVal) Then
-
-            ExcelModels(ModelID).WB.Worksheets(TargetWorksheet).Cells(TargetCell).Value = NewVal
-
-        End If
+        If SuppressAutomaticPosting OrElse SuppressPosting Then Return
+        Dim result = PostModelCellValue(ModelID, TargetWorksheet, TargetCell,
+                                        If(EditValue Is Nothing OrElse Convert.IsDBNull(EditValue), Nothing, EditValue),
+                                        "S", "Selection updated")
+        If result.BError Then RefreshFromWorkbook()
 
     End Sub
+
+    Private Sub ConfigurePosting()
+        RemoveHandler MyBase.EditValueChanged, AddressOf ProcessChange
+        AddHandler MyBase.EditValueChanged, AddressOf ProcessChange
+        If HistoryBinding Is Nothing Then
+            HistoryBinding = New ModelPostingHistoryBinding(Me, ModelID, TargetWorksheet, AddressOf RefreshFromWorkbook)
+        End If
+    End Sub
+
+    Private Sub RefreshFromWorkbook()
+        If String.IsNullOrWhiteSpace(TargetWorksheet) OrElse String.IsNullOrWhiteSpace(TargetCell) Then Return
+        SuppressPosting = True
+        Try
+            Dim cell = ExcelModels(ModelID).WB.Worksheets(TargetWorksheet).Cells(TargetCell)
+            EditValue = EditorValueFromCell(cell, "S")
+        Finally
+            SuppressPosting = False
+        End Try
+    End Sub
+
+    Protected Overrides Function ProcessCmdKey(ByRef msg As Message,
+                                               ByVal keyData As Keys) As Boolean
+        If TryProcessModelHistoryShortcut(Me, ModelID, keyData) Then Return True
+        Return MyBase.ProcessCmdKey(msg, keyData)
+    End Function
 
 
 End Class

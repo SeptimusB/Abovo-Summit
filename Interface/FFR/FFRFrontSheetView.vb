@@ -33,7 +33,7 @@ Public Class FFRFrontSheetView
 
     Private ReadOnly ModelID As Integer
     Private ReadOnly Workbook As IWorkbook
-    Private ReadOnly ChangeManager As ModelChangeManager
+    Private ReadOnly ChangeManager As ModelChangeManagerV2
     Private ReadOnly ScrollHost As New XtraScrollableControl()
     Private ReadOnly Workspace As New TableLayoutPanel()
 

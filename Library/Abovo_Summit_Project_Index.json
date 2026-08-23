@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-22T18:45:00+01:00",
+  "generatedAt": "2026-08-23T17:23:39+01:00",
   "purpose": "Compact current contract index for the TestFileClean authoritative master and its Summit integration.",
   "security": {
     "containsWorkbook": false,
@@ -41,13 +41,17 @@
   "application": {
     "project": "Abovo Business Suite.vbproj",
     "compiledFileCount": 155,
-    "testVersion": "7.34",
-    "structureXmlSha256": "BDEA84C46626521475C3AD811E6A1FF27C405F1BB5AA977E0629729EA8FFAF9B",
-    "projectSha256": "D57E3E0F9CEBB584A69646D079008BF0EFE9C965A16B056AEB493C490BE78EA7",
+    "testVersion": "7.45",
+    "structureXmlSha256": "EDB514FC8182FAF0332D8D1B9D8B2A0FE9D37C7E5D41A8C5BF02A196B9ADF9CA",
+    "projectSha256": "2DBA20298A15F38992947B46F9DD7BCA7A7DD4AF5368EEEBDFE7A33D8B2B83CD",
     "keyFiles": [
       "Services/TransactionalDB/TransactionalDBSynchroniser.vb",
       "Services/WorkbookStructureRuleManager.vb",
       "Services/WorkbookManager.vb",
+      "Services/DataService/ChangeManagerV2.vb",
+      "Services/DataService/ChangeLogModels.vb",
+      "Interface/Custom Controls/HistoryManagerV2.vb",
+      "Interface/Interface Services/ModelPostingChangeSupport.vb",
       "Interface/User Interface/BPIncomeExpenditureAnalyser.vb",
       "Interface/User Interface/BPIncomeExpenditureAnalyserV2.vb",
       "Services/ModelResourceRegistry.vb",

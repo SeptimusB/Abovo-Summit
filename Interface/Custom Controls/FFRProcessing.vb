@@ -9,7 +9,6 @@ Imports Abovo.DataObject
 Imports Abovo.DefaultHelpers
 Imports Abovo.LogDebugDev
 Imports Abovo.FontManager
-Imports Abovo.ChangeLogManager
 
 Imports DevExpress.Spreadsheet
 

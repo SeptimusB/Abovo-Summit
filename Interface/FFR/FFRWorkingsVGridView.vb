@@ -29,7 +29,7 @@ Public Class FFRWorkingsVGridView
     Private Const LastPresentationRow As Integer = 545
     Private ReadOnly ModelID As Integer
     Private ReadOnly Workbook As IWorkbook
-    Private ReadOnly ChangeManager As ModelChangeManager
+    Private ReadOnly ChangeManager As ModelChangeManagerV2
     Private ReadOnly Host As New Panel()
     Private ReadOnly Workspace As New Panel()
     Private ReadOnly Grid As New VGridControl()
@@ -77,6 +77,7 @@ Public Class FFRWorkingsVGridView
         'through GridCellValueChanged and ModelChangeManager.
         Grid.OptionsSelectionAndFocus.MultiSelect = True
         Grid.OptionsSelectionAndFocus.MultiSelectMode = MultiSelectMode.CellSelect
+        Grid.OptionsBehavior.CopyToClipboardWithRowHeaders = False
         Grid.ScrollVisibility = ScrollVisibility.Vertical
         Grid.RowHeaderWidth = 410
         Grid.RecordWidth = 78
@@ -86,6 +87,7 @@ Public Class FFRWorkingsVGridView
         AddHandler Grid.CellValueChanged, AddressOf GridCellValueChanged
         AddHandler Grid.MouseWheel, AddressOf GridMouseWheel
         AddHandler Grid.KeyDown, AddressOf GridKeyDown
+        AddHandler Grid.EditorKeyDown, AddressOf GridKeyDown
         Workspace.Controls.Add(Grid)
         ResizeWorkspaceToHost()
     End Sub
@@ -246,14 +248,70 @@ Public Class FFRWorkingsVGridView
     End Sub
 
     Private Sub GridKeyDown(ByVal sender As Object, ByVal e As KeyEventArgs)
-        If Not e.Control OrElse e.Alt OrElse e.KeyCode <> Keys.C Then Return
+        If Not e.Control OrElse e.Alt Then Return
 
-        'VGridControl has native tabular clipboard output for its selected
-        'cell range.  Explicitly invoke it so Ctrl+C works consistently for
-        'read-only and editable workbook cells alike.
-        Grid.CopyToClipboard()
-        e.Handled = True
-        e.SuppressKeyPress = True
+        If e.KeyCode = Keys.C Then
+            'VGridControl has native tabular clipboard output for its selected
+            'cell range.  Explicitly invoke it so Ctrl+C works consistently for
+            'read-only and editable workbook cells alike.
+            Grid.CopyToClipboard()
+            e.Handled = True
+            e.SuppressKeyPress = True
+        ElseIf e.KeyCode = Keys.V Then
+            PasteIntoGrid()
+            e.Handled = True
+            e.SuppressKeyPress = True
+        End If
+    End Sub
+
+    Private Sub PasteIntoGrid()
+        If Grid.FocusedRow Is Nothing OrElse Grid.FocusedRecord < 0 Then Return
+        Dim pasteMatrix As List(Of String()) = ReadClipboardMatrix()
+        If pasteMatrix.Count = 0 Then Return
+
+        Dim orderedFields As List(Of String) = SourceRows.Keys.ToList()
+        Dim firstField As Integer = orderedFields.IndexOf(Grid.FocusedRow.Properties.FieldName)
+        If firstField < 0 Then Return
+
+        Dim anyChanged As Boolean = False
+        Cursor = Cursors.WaitCursor
+        Try
+            Using ChangeManager.BeginChangeGroup("Paste into FFR workings")
+            For clipboardRow As Integer = 0 To pasteMatrix.Count - 1
+                Dim targetFieldIndex As Integer = firstField + clipboardRow
+                If targetFieldIndex >= orderedFields.Count Then Exit For
+                Dim sourceRow As Integer = SourceRows(orderedFields(targetFieldIndex))
+
+                For clipboardColumn As Integer = 0 To pasteMatrix(clipboardRow).Length - 1
+                    Dim recordIndex As Integer = Grid.FocusedRecord + clipboardColumn
+                    Dim table As DataTable = TryCast(Grid.DataSource, DataTable)
+                    If table Is Nothing OrElse recordIndex >= table.Rows.Count Then Exit For
+
+                    Dim cell As Cell = Workbook.Worksheets(SheetName).Cells(sourceRow, SourceColumn(recordIndex))
+                    If Not IsEditable(cell) Then Continue For
+
+                    Dim dataFormat As String = InferDataFormat(cell)
+                    Dim changedValue As Object = Nothing
+                    If Not TryConvertClipboardValue(pasteMatrix(clipboardRow)(clipboardColumn), dataFormat, changedValue) Then Continue For
+
+                    Dim change As New DataChangeEvent With {.ModelID = ModelID, .Description = "FFR workings values pasted", .WSName = SheetName, .CellAddress = cell.GetReferenceA1(), .OriginalValue = CellValue(cell), .ChangedValue = changedValue, .DataFormat = dataFormat, .TimeStamp = Now(), .UserName = Environment.UserName}
+                    If Not ChangeManager.ProcessChange(change).BError Then
+                        LastChangedAddress = cell.GetReferenceA1()
+                        anyChanged = True
+                    End If
+                Next
+            Next
+            End Using
+        Finally
+            Cursor = Cursors.Default
+        End Try
+
+        If anyChanged Then
+            BeginInvoke(New MethodInvoker(AddressOf RefreshAfterWorkbookCalculation))
+            RaiseEvent WorkbookCellChanged(Me, EventArgs.Empty)
+        Else
+            RefreshFromWorkbook()
+        End If
     End Sub
 
     Private Sub ResizeWorkspaceToHost()
@@ -304,6 +362,7 @@ Public Class FFRWorkingsVGridView
         e.Appearance.BackColor = If(cell.FillColor.IsEmpty, Color.White, cell.FillColor)
         e.Appearance.ForeColor = DisplayForeground(cell)
         e.Appearance.Font = New Font(Font, If(cell.Font.Bold, FontStyle.Bold, FontStyle.Regular))
+        ApplyVGridSelectedCellAppearance(e)
     End Sub
 
     Private Sub GridCustomDrawRowHeaderCell(ByVal sender As Object, ByVal e As CustomDrawRowHeaderCellEventArgs)

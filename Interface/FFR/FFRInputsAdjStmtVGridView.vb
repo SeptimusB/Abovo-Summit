@@ -23,7 +23,7 @@ Public Class FFRInputsAdjStmtVGridView
     Private Const SheetName As String = "FFR Inputs Adj Stmt"
     Private ReadOnly ModelID As Integer
     Private ReadOnly Workbook As IWorkbook
-    Private ReadOnly ChangeManager As ModelChangeManager
+    Private ReadOnly ChangeManager As ModelChangeManagerV2
     Private ReadOnly Host As New XtraScrollableControl()
     Private ReadOnly Workspace As New Panel()
     Private ReadOnly ActualGrid As New VGridControl()
@@ -84,6 +84,9 @@ Public Class FFRInputsAdjStmtVGridView
     Private Sub ConfigureGrid(ByVal grid As VGridControl)
         grid.OptionsBehavior.Editable = True
         grid.OptionsBehavior.ResizeRowHeaders = False
+        grid.OptionsBehavior.CopyToClipboardWithRowHeaders = False
+        grid.OptionsSelectionAndFocus.MultiSelect = True
+        grid.OptionsSelectionAndFocus.MultiSelectMode = MultiSelectMode.CellSelect
         grid.OptionsView.ShowButtons = False
         grid.ScrollVisibility = ScrollVisibility.Horizontal
         grid.RowHeaderWidth = 390
@@ -91,6 +94,8 @@ Public Class FFRInputsAdjStmtVGridView
         AddHandler grid.CustomDrawRowValueCell, AddressOf GridCustomDrawRowValueCell
         AddHandler grid.ShowingEditor, AddressOf GridShowingEditor
         AddHandler grid.CellValueChanged, AddressOf GridCellValueChanged
+        AddHandler grid.KeyDown, AddressOf GridKeyDown
+        AddHandler grid.EditorKeyDown, AddressOf GridKeyDown
     End Sub
 
     Public Sub RefreshFromWorkbook()
@@ -238,6 +243,64 @@ Public Class FFRInputsAdjStmtVGridView
         RaiseEvent WorkbookCellChanged(Me, EventArgs.Empty)
     End Sub
 
+    Private Sub GridKeyDown(ByVal sender As Object, ByVal e As KeyEventArgs)
+        If Not e.Control OrElse e.Alt Then Return
+        Dim grid As VGridControl = TryCast(sender, VGridControl)
+        If grid Is Nothing Then Return
+
+        If e.KeyCode = Keys.C Then
+            grid.CopyToClipboard()
+            e.Handled = True
+            e.SuppressKeyPress = True
+        ElseIf e.KeyCode = Keys.V Then
+            PasteIntoGrid(grid)
+            e.Handled = True
+            e.SuppressKeyPress = True
+        End If
+    End Sub
+
+    Private Sub PasteIntoGrid(ByVal grid As VGridControl)
+        Dim source As PivotSource = SourceFor(grid)
+        If source Is Nothing OrElse grid.FocusedRow Is Nothing OrElse grid.FocusedRecord < 0 Then Return
+        Dim pasteMatrix As List(Of String()) = ReadClipboardMatrix()
+        If pasteMatrix.Count = 0 Then Return
+
+        Dim orderedFields As List(Of String) = source.Rows.Keys.ToList()
+        Dim firstField As Integer = orderedFields.IndexOf(grid.FocusedRow.Properties.FieldName)
+        If firstField < 0 Then Return
+
+        Dim anyChanged As Boolean = False
+        Cursor = Cursors.WaitCursor
+        Try
+            Using ChangeManager.BeginChangeGroup("Paste into FFR inputs and adjustments")
+            For clipboardRow As Integer = 0 To pasteMatrix.Count - 1
+                Dim targetFieldIndex As Integer = firstField + clipboardRow
+                If targetFieldIndex >= orderedFields.Count Then Exit For
+                Dim sourceRow As Integer = source.Rows(orderedFields(targetFieldIndex))
+
+                For clipboardColumn As Integer = 0 To pasteMatrix(clipboardRow).Length - 1
+                    Dim recordIndex As Integer = grid.FocusedRecord + clipboardColumn
+                    Dim table As DataTable = TryCast(grid.DataSource, DataTable)
+                    If table Is Nothing OrElse recordIndex >= table.Rows.Count Then Exit For
+                    Dim cell As Cell = Workbook.Worksheets(SheetName).Cells(sourceRow, SourceColumn(grid, recordIndex))
+                    If Not IsEditable(cell) Then Continue For
+
+                    Dim dataFormat As String = InferDataFormat(cell)
+                    Dim changedValue As Object = Nothing
+                    If Not TryConvertClipboardValue(pasteMatrix(clipboardRow)(clipboardColumn), dataFormat, changedValue) Then Continue For
+                    Dim change As New DataChangeEvent With {.ModelID = ModelID, .Description = "FFR input values pasted", .WSName = SheetName, .CellAddress = cell.GetReferenceA1(), .OriginalValue = CellValue(cell), .ChangedValue = changedValue, .DataFormat = dataFormat, .TimeStamp = Now(), .UserName = Environment.UserName}
+                    If Not ChangeManager.ProcessChange(change).BError Then anyChanged = True
+                Next
+            Next
+            End Using
+        Finally
+            Cursor = Cursors.Default
+        End Try
+
+        RefreshFromWorkbook()
+        If anyChanged Then RaiseEvent WorkbookCellChanged(Me, EventArgs.Empty)
+    End Sub
+
     Private Sub GridCustomDrawRowValueCell(ByVal sender As Object, ByVal e As CustomDrawRowValueCellEventArgs)
         Dim grid As VGridControl = TryCast(sender, VGridControl)
         Dim source As PivotSource = SourceFor(grid)
@@ -249,6 +312,7 @@ Public Class FFRInputsAdjStmtVGridView
         e.Appearance.BackColor = If(cell.FillColor.IsEmpty, Color.White, cell.FillColor)
         e.Appearance.ForeColor = DisplayForeground(cell)
         e.Appearance.Font = New Font(Font, If(cell.Font.Bold, FontStyle.Bold, FontStyle.Regular))
+        ApplyVGridSelectedCellAppearance(e)
     End Sub
 
     Private Function SourceFor(ByVal grid As VGridControl) As PivotSource

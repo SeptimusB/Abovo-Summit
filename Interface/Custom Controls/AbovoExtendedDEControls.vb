@@ -72,10 +72,20 @@ Namespace Abovo
                 End Try
 
                 PriorVal = EditValue
+                IsDirty = False
 
                 Refresh()
 
             End Sub
+
+            Protected Overrides Function ProcessCmdKey(
+                ByRef msg As System.Windows.Forms.Message,
+                ByVal keyData As System.Windows.Forms.Keys) As Boolean
+
+                If TryProcessModelHistoryShortcut(Me, ModelID, keyData) Then Return True
+                Return MyBase.ProcessCmdKey(msg, keyData)
+
+            End Function
 
         End Class
         Public Class AbovoDETextEdit
@@ -258,10 +268,20 @@ Namespace Abovo
                 End Try
 
                 PriorVal = EditValue
+                IsDirty = False
 
                 Refresh()
 
             End Sub
+
+            Protected Overrides Function ProcessCmdKey(
+                ByRef msg As System.Windows.Forms.Message,
+                ByVal keyData As System.Windows.Forms.Keys) As Boolean
+
+                If TryProcessModelHistoryShortcut(Me, ModelID, keyData) Then Return True
+                Return MyBase.ProcessCmdKey(msg, keyData)
+
+            End Function
 
         End Class
 
@@ -403,6 +423,7 @@ Namespace Abovo
                     MsgBox("Error refreshing label data for cell " & TargetCell & " - " & ex.Message)
 
                 End Try
+                IsDirty = False
 
                 Refresh()
 
@@ -494,15 +515,21 @@ Namespace Abovo
             End Sub
             Protected Sub ProcessChange(ByVal sender As Object, ByVal e As System.EventArgs)
 
-                Dim NewVal As String = SelectedText
-
-                If Not String.IsNullOrEmpty(NewVal) Then
-
-                    TargetWorksheet.Cells(TargetCell).Value = NewVal
-
-                End If
+                Dim Result = PostModelCellValue(ModelID, TargetWorksheet.Name, TargetCell,
+                                                If(EditValue Is Nothing OrElse Convert.IsDBNull(EditValue), Nothing, EditValue),
+                                                "S", "Selection updated")
+                If Result.BError Then RefreshData()
 
             End Sub
+
+            Protected Overrides Function ProcessCmdKey(
+                ByRef msg As System.Windows.Forms.Message,
+                ByVal keyData As System.Windows.Forms.Keys) As Boolean
+
+                If TryProcessModelHistoryShortcut(Me, ModelID, keyData) Then Return True
+                Return MyBase.ProcessCmdKey(msg, keyData)
+
+            End Function
 
         End Class
         Public Class AbovoDEHeaderDateBox
@@ -547,6 +574,7 @@ Namespace Abovo
                     MsgBox("Error refreshing label data for cell " & TargetCell & " - " & ex.Message)
 
                 End Try
+                IsDirty = False
 
                 Refresh()
 
@@ -620,13 +648,10 @@ Namespace Abovo
 
             Protected Sub ProcessChange(ByVal sender As Object, ByVal e As System.EventArgs)
 
-                Dim NewVal As String = SelectedText
-
-                If Not String.IsNullOrEmpty(NewVal) Then
-
-                    TargetWorksheet.Cells(TargetCell).Value = NewVal
-
-                End If
+                Dim Result = PostModelCellValue(ModelID, TargetWorksheet.Name, TargetCell,
+                                                If(EditValue Is Nothing OrElse Convert.IsDBNull(EditValue), Nothing, EditValue),
+                                                "D", "Date header updated")
+                If Result.BError Then RefreshData()
 
             End Sub
 
@@ -686,6 +711,7 @@ Namespace Abovo
                     MsgBox("Error refreshing label data for cell " & TargetCell & " - " & ex.Message)
 
                 End Try
+                IsDirty = False
 
                 Refresh()
 
@@ -781,13 +807,10 @@ Namespace Abovo
             End Sub
             Protected Sub ProcessChange(ByVal sender As Object, ByVal e As System.EventArgs)
 
-                Dim NewVal As String = SelectedText
-
-                If Not String.IsNullOrEmpty(NewVal) Then
-
-                    TargetWorksheet.Cells(TargetCell).Value = NewVal
-
-                End If
+                Dim Result = PostModelCellValue(ModelID, TargetWorksheet.Name, TargetCell,
+                                                If(EditValue Is Nothing OrElse Convert.IsDBNull(EditValue), Nothing, EditValue),
+                                                "S", "Header selection updated")
+                If Result.BError Then RefreshData()
 
             End Sub
 
@@ -952,10 +975,20 @@ Namespace Abovo
                 End Try
 
                 PriorVal = EditValue
+                IsDirty = False
 
                 Refresh()
 
             End Sub
+
+            Protected Overrides Function ProcessCmdKey(
+                ByRef msg As System.Windows.Forms.Message,
+                ByVal keyData As System.Windows.Forms.Keys) As Boolean
+
+                If TryProcessModelHistoryShortcut(Me, ModelID, keyData) Then Return True
+                Return MyBase.ProcessCmdKey(msg, keyData)
+
+            End Function
 
         End Class
 

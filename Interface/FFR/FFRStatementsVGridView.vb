@@ -81,12 +81,14 @@ Public Class FFRStatementsVGridView
         Grid.OptionsView.ShowButtons = False
         Grid.OptionsSelectionAndFocus.MultiSelect = True
         Grid.OptionsSelectionAndFocus.MultiSelectMode = MultiSelectMode.CellSelect
+        Grid.OptionsBehavior.CopyToClipboardWithRowHeaders = False
         Grid.ScrollVisibility = ScrollVisibility.Vertical
         Grid.RowHeaderWidth = If(EditableColumnC, 720, 410)
         Grid.RecordWidth = If(EditableColumnC, 360, 78)
         AddHandler Grid.CustomDrawRowValueCell, AddressOf GridCustomDrawRowValueCell
         AddHandler Grid.CustomDrawRowHeaderCell, AddressOf GridCustomDrawRowHeaderCell
         AddHandler Grid.KeyDown, AddressOf GridKeyDown
+        AddHandler Grid.EditorKeyDown, AddressOf GridKeyDown
         AddHandler Grid.ShowingEditor, AddressOf GridShowingEditor
         AddHandler Grid.CellValueChanged, AddressOf GridCellValueChanged
         Workspace.Controls.Add(Grid)
@@ -210,10 +212,49 @@ Public Class FFRStatementsVGridView
     End Property
 
     Private Sub GridKeyDown(ByVal sender As Object, ByVal e As KeyEventArgs)
-        If Not e.Control OrElse e.Alt OrElse e.KeyCode <> Keys.C Then Return
-        Grid.CopyToClipboard()
-        e.Handled = True
-        e.SuppressKeyPress = True
+        If Not e.Control OrElse e.Alt Then Return
+        If e.KeyCode = Keys.C Then
+            Grid.CopyToClipboard()
+            e.Handled = True
+            e.SuppressKeyPress = True
+        ElseIf e.KeyCode = Keys.V AndAlso EditableColumnC Then
+            PasteIntoGrid()
+            e.Handled = True
+            e.SuppressKeyPress = True
+        End If
+    End Sub
+
+    Private Sub PasteIntoGrid()
+        If Not EditableColumnC OrElse Grid.FocusedRow Is Nothing OrElse Grid.FocusedRecord < 0 Then Return
+        Dim pasteMatrix As List(Of String()) = ReadClipboardMatrix()
+        If pasteMatrix.Count = 0 Then Return
+
+        Dim orderedFields As List(Of String) = SourceRows.Keys.ToList()
+        Dim firstField As Integer = orderedFields.IndexOf(Grid.FocusedRow.Properties.FieldName)
+        If firstField < 0 Then Return
+
+        Dim anyChanged As Boolean = False
+        Cursor = Cursors.WaitCursor
+        Try
+            Using ExcelModels(ModelID).ChangeManager.BeginChangeGroup("Paste into FFR key definitions")
+            For clipboardRow As Integer = 0 To pasteMatrix.Count - 1
+                Dim targetFieldIndex As Integer = firstField + clipboardRow
+                If targetFieldIndex >= orderedFields.Count Then Exit For
+                'Key Definitions exposes one workbook record (Column C). Ignore
+                'additional clipboard columns rather than crossing into hidden data.
+                Dim sourceRow As Integer = SourceRows(orderedFields(targetFieldIndex))
+                Dim cell As Cell = Workbook.Worksheets(SheetName).Cells(sourceRow, 2)
+                If cell.Protection.Locked Then Continue For
+                Dim changedValue As Object = Nothing
+                If Not TryConvertClipboardValue(pasteMatrix(clipboardRow)(0), "S", changedValue) Then Continue For
+                Dim change As New DataChangeEvent With {.ModelID = ModelID, .Description = "FFR key definitions pasted", .WSName = SheetName, .CellAddress = cell.GetReferenceA1(), .OriginalValue = CellValue(cell), .ChangedValue = changedValue, .DataFormat = "S", .TimeStamp = Now(), .UserName = Environment.UserName}
+                If Not ExcelModels(ModelID).ChangeManager.ProcessChange(change).BError Then anyChanged = True
+            Next
+            End Using
+        Finally
+            Cursor = Cursors.Default
+        End Try
+        RefreshFromWorkbook()
     End Sub
 
     Private Sub GridShowingEditor(ByVal sender As Object, ByVal e As System.ComponentModel.CancelEventArgs)
@@ -243,6 +284,7 @@ Public Class FFRStatementsVGridView
         e.Appearance.BackColor = If(cell.FillColor.IsEmpty, Color.White, cell.FillColor)
         e.Appearance.ForeColor = DisplayForeground(cell)
         e.Appearance.Font = New Font(Font, If(cell.Font.Bold, FontStyle.Bold, FontStyle.Regular))
+        ApplyVGridSelectedCellAppearance(e)
     End Sub
 
     Private Sub GridCustomDrawRowHeaderCell(ByVal sender As Object, ByVal e As CustomDrawRowHeaderCellEventArgs)
