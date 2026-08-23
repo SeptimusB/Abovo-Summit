@@ -131,6 +131,18 @@ Namespace Abovo
 
                     ReturnList = New List(Of String)({"Repayment", "Annuity"})
 
+                Case "Rep_FundingRateType"
+
+                    ReturnList = New List(Of String)({"Fixed", "RPI", "Cap", "Variable", "Collar", "Index"})
+
+                Case "Rep_FundingCompounding"
+
+                    ReturnList = New List(Of String)({"Compounding", "Flat rate"})
+
+                Case "Rep_FundingAmortisation"
+
+                    ReturnList = New List(Of String)({"Straight-line", "Manual"})
+
                 Case "Rep_YesNo"
 
                     ReturnList = New List(Of String)({"Yes", "No"})
@@ -320,6 +332,18 @@ SkipNOS:
                 Case "Rep_RepayAnnu"
 
                     ListReturn = New List(Of String)({"Repayment", "Annuity"})
+
+                Case "Rep_FundingRateType"
+
+                    ListReturn = New List(Of String)({"Fixed", "RPI", "Cap", "Variable", "Collar", "Index"})
+
+                Case "Rep_FundingCompounding"
+
+                    ListReturn = New List(Of String)({"Compounding", "Flat rate"})
+
+                Case "Rep_FundingAmortisation"
+
+                    ListReturn = New List(Of String)({"Straight-line", "Manual"})
 
                 Case "Rep_CMCats"
 

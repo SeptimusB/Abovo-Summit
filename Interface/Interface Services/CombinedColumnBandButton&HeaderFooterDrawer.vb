@@ -133,6 +133,11 @@ Namespace Abovo
 
             CreateButtonInfoArgs(ActiveButtons(ActiveButtonCount))
 
+            'The view can already have completed its first paint while a lazy DIT
+            'section is being assembled. Request another header/footer paint now;
+            'DIT repeats this after the section receives its real visible bounds.
+            RefreshActionButtonSurfaces()
+
         End Sub
         Public Sub AddCustomBandAddColumsButton(Band As GridBand, ActionToken As ActionToken)
 
@@ -157,6 +162,64 @@ Namespace Abovo
         Private Sub CreateButtonInfoArgs(ActionButton As ActionButton)
 
             ActionButton.InfoArgs = New EditorButtonObjectInfoArgs(ActionButton.Button, New DevExpress.Utils.AppearanceObject())
+
+        End Sub
+
+        Public Sub RefreshActionButtonSurfaces()
+
+            If BandedMode Then
+
+                If bgview Is Nothing OrElse
+                   bgview.GridControl Is Nothing OrElse
+                   bgview.GridControl.IsDisposed Then Return
+
+                bgview.LayoutChanged()
+                bgview.GridControl.ForceInitialize()
+                bgview.GridControl.PerformLayout()
+
+                If ActiveColumns IsNot Nothing Then
+                    For Each ButtonColumn As ButtonedColumn In ActiveColumns
+                        If ButtonColumn Is Nothing OrElse ButtonColumn.Column Is Nothing Then Continue For
+                        ButtonColumn.ActionButton.HeaderRect = Rectangle.Empty
+                        ButtonColumn.ActionButton.FooterRect = Rectangle.Empty
+                        bgview.InvalidateColumnHeader(ButtonColumn.Column)
+                    Next
+                End If
+
+                If ActiveBands IsNot Nothing Then
+                    For Each ButtonBand As ButtonedBand In ActiveBands
+                        If ButtonBand Is Nothing OrElse ButtonBand.Band Is Nothing Then Continue For
+                        ButtonBand.ActionButton.BandRect = Rectangle.Empty
+                        bgview.InvalidateBandHeader(ButtonBand.Band)
+                    Next
+                End If
+
+                bgview.InvalidateFooter()
+                If bgview.GridControl IsNot Nothing Then bgview.GridControl.Invalidate(True)
+
+            Else
+
+                If view Is Nothing OrElse
+                   view.GridControl Is Nothing OrElse
+                   view.GridControl.IsDisposed Then Return
+
+                view.LayoutChanged()
+                view.GridControl.ForceInitialize()
+                view.GridControl.PerformLayout()
+
+                If ActiveColumns IsNot Nothing Then
+                    For Each ButtonColumn As ButtonedColumn In ActiveColumns
+                        If ButtonColumn Is Nothing OrElse ButtonColumn.Column Is Nothing Then Continue For
+                        ButtonColumn.ActionButton.HeaderRect = Rectangle.Empty
+                        ButtonColumn.ActionButton.FooterRect = Rectangle.Empty
+                        view.InvalidateColumnHeader(ButtonColumn.Column)
+                    Next
+                End If
+
+                view.InvalidateFooter()
+                If view.GridControl IsNot Nothing Then view.GridControl.Invalidate(True)
+
+            End If
 
         End Sub
 

@@ -185,6 +185,9 @@ Namespace Abovo
         Public ActionType As String
         Public ActionDescription As String
         Public ActionNR As String
+        Public StructureRuleID As String
+        Public StructureAddCommand As String
+        Public StructureDeleteCommand As String
         Public ActionStrData1 As String
         Public ActionStrData2 As String
         Public ActionStrData3 As String

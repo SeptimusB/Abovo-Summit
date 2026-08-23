@@ -335,30 +335,31 @@ Namespace Abovo
                 .Description = "Capital Expenditure records",
                 .Axis = WorkbookStructureAxis.Columns,
                 .InsertAnchorNamedRange = "LastCapExpendCol",
+                .InsertIndexOffset = -1,
                 .DeleteAnchorNamedRange = "Rep_CapExpend_010",
                 .RecordCountNamedRange = "Rep_CapExpend_010",
                 .RecordCountAdjustment = -1,
                 .MinimumRecordCount = 3,
                 .TransactionDBSyncNamedRange = "Rep_CapExpend_010"
             }
-            'Capital Expenditure Assumptions has two zero-width columns at
-            'the right-hand end of the current test workbook.  The immediate
-            'template column (-1) is still the correct source for formulas and
-            'formats, but its width must not be propagated to newly-added records.
+            'Insert before the immediate zero-width template column. This keeps
+            'the insertion inside both the assumptions ranges and the linked
+            'OFA Additions E:I formula ranges, allowing workbook dependencies to
+            'expand before Transactional DB mirror rows are added.
             '
-            'Use the preceding visible logical record (-2) as the width template
-            'for this sheet only.  OFA Additions retains the normal -1 behaviour.
+            'Use that template for formulas/formats, but the preceding visible
+            'logical record for the assumptions column width.
             CapExRule.Targets.Add(New WorkbookStructureTarget With {
                 .WorksheetName = "Capital Expenditure Assumptions",
                 .CopyMode = WorkbookStructureCopyMode.AllAndColumnWidth,
-                .TemplateOffset = -1,
-                .ColumnWidthTemplateOffset = -2
+                .TemplateOffset = 0,
+                .ColumnWidthTemplateOffset = -1
             })
 
             CapExRule.Targets.Add(New WorkbookStructureTarget With {
                 .WorksheetName = "OFA Additions",
                 .CopyMode = WorkbookStructureCopyMode.AllAndColumnWidth,
-                .TemplateOffset = -1
+                .TemplateOffset = 0
             })
 
             RetRules.Add(CapExRule.RuleID, CapExRule)
@@ -372,6 +373,7 @@ Namespace Abovo
                 .Description = "Capital Grant records",
                 .Axis = WorkbookStructureAxis.Columns,
                 .InsertAnchorNamedRange = "LastCapGrantCol",
+                .InsertIndexOffset = -1,
                 .DeleteAnchorNamedRange = "Rep_CapGrant_010",
                 .RecordCountNamedRange = "CapGrantInclusion",
                 .RecordCountAdjustment = -1,
@@ -379,24 +381,25 @@ Namespace Abovo
                 .TransactionDBSyncNamedRange = "CapGrantInclusion"
             }
 
-            'The XLSB follows the same structural pattern as Capital Expenditure:
-            'the final column in the logical record range is a hidden/template
-            'record.  Its formulas/formats are the correct insertion template,
-            'but its width/hidden state must not be propagated to new user records.
+            'Insert immediately before the final hidden/template grant column.
+            'That places the insertion inside the workbook-owned D:H grant ranges,
+            'so Excel/DevExpress expands dependent workings names and Transactional
+            'DB formula references naturally.  Inserting after the template leaves
+            'those references at D:H and new mirror rows then return #REF!.
             '
-            'Use the preceding visible record as the width template on the
-            'assumptions sheet; the workings sheet retains normal -1 behaviour.
+            'Use the hidden template for formulas/formats and the preceding visible
+            'record for the assumptions column width.
             CapGrantRule.Targets.Add(New WorkbookStructureTarget With {
                 .WorksheetName = "Capital Grant Assumptions",
                 .CopyMode = WorkbookStructureCopyMode.AllAndColumnWidth,
-                .TemplateOffset = -1,
-                .ColumnWidthTemplateOffset = -2
+                .TemplateOffset = 0,
+                .ColumnWidthTemplateOffset = -1
             })
 
             CapGrantRule.Targets.Add(New WorkbookStructureTarget With {
                 .WorksheetName = "Capital Grant Workings",
                 .CopyMode = WorkbookStructureCopyMode.AllAndColumnWidth,
-                .TemplateOffset = -1
+                .TemplateOffset = 0
             })
 
             RetRules.Add(CapGrantRule.RuleID, CapGrantRule)
@@ -415,8 +418,17 @@ Namespace Abovo
                 .MinimumRecordCount = 5,
                 .TransactionDBSyncNamedRange = "StockCondCats"
             }
+            'StockCondCats ends with a zero-width template column immediately
+            'before the Q calculation-total column. Keep that column as the
+            'formula/format template, but use the preceding visible category for
+            'the width of newly-added assumption columns.
+            RepairsRule.Targets.Add(New WorkbookStructureTarget With {
+                .WorksheetName = "Repairs & Maint. Assumptions",
+                .CopyMode = WorkbookStructureCopyMode.AllAndColumnWidth,
+                .TemplateOffset = -1,
+                .ColumnWidthTemplateOffset = -2
+            })
             AddColumnTargets(RepairsRule,
-                             "Repairs & Maint. Assumptions",
                              "Stock Condition Inputs",
                              "Repairs & Maint. Rates",
                              "Stock Condition Results",
@@ -437,6 +449,7 @@ Namespace Abovo
                 .Description = "Housing Asset component records",
                 .Axis = WorkbookStructureAxis.Columns,
                 .InsertAnchorNamedRange = "LastCompCol",
+                .InsertIndexOffset = -1,
                 .DeleteAnchorNamedRange = "DepnType",
                 .RecordCountNamedRange = "DepnType",
                 .RecordCountAdjustment = -1,
@@ -459,6 +472,13 @@ Namespace Abovo
                              "Component 11",
                              "Component 12",
                              "Component Totals")
+
+            'Every component sheet uses the final DepnType column as its copy
+            'template. Because insertion now occurs before that column, resolve
+            'the template at the insertion point (it shifts right during insert).
+            For Each Target As WorkbookStructureTarget In ComponentsRule.Targets
+                Target.TemplateOffset = 0
+            Next
             RetRules.Add(ComponentsRule.RuleID, ComponentsRule)
 
             '-----------------------------------------------------------------
@@ -1075,6 +1095,14 @@ Namespace Abovo
 
             End Select
 
+            InsertIndex += Rule.InsertIndexOffset
+
+            If InsertIndex < 0 Then
+                Result.BError = True
+                Result.StringReturn = "The insertion position for '" & Rule.Description & "' is invalid."
+                Return Result
+            End If
+
             'Snapshot the logical record-count range before the structural edit.
             '
             'DevExpress does not always expand a named range when columns/rows are
@@ -1417,9 +1445,10 @@ Namespace Abovo
                                            ByVal RecordCount As Integer,
                                            ByVal Target As WorkbookStructureTarget)
 
-            Dim TemplateColumnIndex As Integer = InsertIndex + Target.TemplateOffset
+            Dim TemplateColumnIndexBeforeInsert As Integer =
+                InsertIndex + Target.TemplateOffset
 
-            If TemplateColumnIndex < 0 Then
+            If TemplateColumnIndexBeforeInsert < 0 Then
                 Throw New InvalidOperationException("The template column for worksheet '" & WS.Name & "' is invalid.")
             End If
 
@@ -1449,6 +1478,13 @@ Namespace Abovo
 #End If
 
             WS.Columns.Insert(InsertIndex, RecordCount)
+
+            'A template at or to the right of the insertion point moves with the
+            'worksheet insertion. Resolve its post-insert coordinate before copying.
+            Dim TemplateColumnIndex As Integer = TemplateColumnIndexBeforeInsert
+            If TemplateColumnIndex >= InsertIndex Then
+                TemplateColumnIndex += RecordCount
+            End If
 
             Dim SourceTemplate As CellRange =
                 WS.Range.FromLTRB(TemplateColumnIndex, UsedTop, TemplateColumnIndex, UsedBottom)
@@ -1484,18 +1520,24 @@ Namespace Abovo
                                         ByVal RecordCount As Integer,
                                         ByVal Target As WorkbookStructureTarget)
 
-            Dim TemplateRowIndex As Integer = InsertIndex + Target.TemplateOffset
+            Dim TemplateRowIndexBeforeInsert As Integer =
+                InsertIndex + Target.TemplateOffset
 
-            If TemplateRowIndex < 0 Then
+            If TemplateRowIndexBeforeInsert < 0 Then
                 Throw New InvalidOperationException("The template row for worksheet '" & WS.Name & "' is invalid.")
             End If
 
             Dim UsedRange As CellRange = WS.GetUsedRange()
             Dim UsedLeft As Integer = UsedRange.LeftColumnIndex
             Dim UsedRight As Integer = UsedRange.RightColumnIndex
-            Dim TemplateHeight As Single = WS.Rows(TemplateRowIndex).Height
+            Dim TemplateHeight As Single = WS.Rows(TemplateRowIndexBeforeInsert).Height
 
             WS.Rows.Insert(InsertIndex, RecordCount)
+
+            Dim TemplateRowIndex As Integer = TemplateRowIndexBeforeInsert
+            If TemplateRowIndex >= InsertIndex Then
+                TemplateRowIndex += RecordCount
+            End If
 
             Dim SourceTemplate As CellRange =
                 WS.Range.FromLTRB(UsedLeft, TemplateRowIndex, UsedRight, TemplateRowIndex)
@@ -1793,6 +1835,10 @@ Namespace Abovo
         Public Description As String
         Public Axis As WorkbookStructureAxis
         Public InsertAnchorNamedRange As String
+
+        'Optional offset from the named insertion anchor. A value of -1 is used
+        'when the anchor identifies a sentinel immediately after the real template.
+        Public InsertIndexOffset As Integer = 0
 
         'Normally InsertAnchorNamedRange identifies the exact insertion column/row
         'and its left/top edge is used. Some workbook structures instead expose

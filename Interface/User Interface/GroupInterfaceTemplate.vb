@@ -617,7 +617,7 @@ Public Class GroupInterfaceTemplate
 
             DocumentManagerAssumptions.View.ActivateDocument(doc.Control)
 
-            Me.BarStaticItemDescription.Caption = " " & AbovoBP.BPDetails.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ChildStructures(SetCSID).CSName
+            Me.BarStaticItemDescription.Caption = " " & AbovoBP.BPDetails.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ResolveChildStructure(SetCSID).CSName
 
         Else
 
@@ -729,8 +729,8 @@ Public Class GroupInterfaceTemplate
             DocumentManagerAssumptions.View.AddDocument(DataInterfaces(DataInterfaceCount))
             DocumentManagerAssumptions.View.ActivateDocument(DataInterfaces(DataInterfaceCount))
             ActiveInterface = DataInterfaces(DataInterfaceCount)
-            Me.BarStaticItemDescription.Caption = " " & AbovoBP.BPDetails.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ChildStructures(SetCSID).CSName
-            Me.Text = " " & AbovoBP.BPDetails.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ChildStructures(SetCSID).CSName
+            Me.BarStaticItemDescription.Caption = " " & AbovoBP.BPDetails.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ResolveChildStructure(SetCSID).CSName
+            Me.Text = " " & AbovoBP.BPDetails.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ResolveChildStructure(SetCSID).CSName
 
 
 

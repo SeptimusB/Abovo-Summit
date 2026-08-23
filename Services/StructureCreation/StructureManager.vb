@@ -148,6 +148,47 @@ Namespace Abovo
         <XmlElement("FirstChild")> Public FirstChild As String
         <XmlElement("ChildStructure")> Public Property ChildStructures As New List(Of ChildStructure)
 
+        Public Function ResolveChildStructure(ByVal SetCSID As Integer) As ChildStructure
+
+            Dim PositionalCandidate As ChildStructure = Nothing
+
+            If SetCSID >= 0 AndAlso SetCSID < ChildStructures.Count Then
+                PositionalCandidate = ChildStructures(SetCSID)
+
+                Dim PositionalID As Integer
+                If PositionalCandidate IsNot Nothing AndAlso
+                   Integer.TryParse(PositionalCandidate.CSID, PositionalID) AndAlso
+                   PositionalID = SetCSID Then
+
+                    Return PositionalCandidate
+
+                End If
+            End If
+
+            For Each Candidate As ChildStructure In ChildStructures
+                If Candidate Is Nothing Then Continue For
+
+                Dim CandidateID As Integer
+                If Integer.TryParse(Candidate.CSID, CandidateID) AndAlso
+                   CandidateID = SetCSID Then
+
+                    Return Candidate
+
+                End If
+            Next
+
+            'Retain compatibility with old structures whose CSID was blank or
+            'non-numeric and which therefore could only be addressed by position.
+            If PositionalCandidate IsNot Nothing Then Return PositionalCandidate
+
+            Throw New ArgumentOutOfRangeException(
+                NameOf(SetCSID),
+                SetCSID,
+                "The requested child structure does not exist in group " &
+                If(GSName, String.Empty) & ".")
+
+        End Function
+
     End Class
 
     <Serializable()>
@@ -201,6 +242,9 @@ Namespace Abovo
         <XmlElement("SourceDataFormat")> Public SourceDataFormat As String
         <XmlElement("Pivot")> Public Pivot As String
         <XmlElement("RowExpandByNR")> Public RowExpandByNR As String
+        <XmlElement("StructureRuleID")> Public StructureRuleID As String
+        <XmlElement("StructureAddCommand")> Public StructureAddCommand As String
+        <XmlElement("StructureDeleteCommand")> Public StructureDeleteCommand As String
         <XmlElement("RowsExpandModel")> Public RowsExpandModel As String
         <XmlElement("SkipLastRecords")> Public SkipLastRecords As String
         <XmlElement("RO")> Public RO As String

@@ -149,15 +149,15 @@ Namespace Abovo
                 ModelID = SetModelID
                 GridTag = TryCast(SetGridTag, AttachedGridCommandButton)
 
-
-                'If GridTag = Nothing Then
-                '    GridTransaction.BError = True
-                '    GridTransaction.EventCancelled = True
-                '    MsgBox("Sorry, this grid button is not properly configured")
-                '    Exit Sub
-                'End If
-
                 GridTransaction = SetGridTransaction
+
+                If GridTag Is Nothing Then
+                    GridTransaction.BError = True
+                    GridTransaction.EventCancelled = True
+                    GridTransaction.StringReturn = "The grid button event is not properly configured."
+                    Exit Sub
+                End If
+
                 ProcessEvent(ActioningForm)
 
             End Sub
@@ -212,6 +212,24 @@ Namespace Abovo
 
                     Case "ProcessDeleteDevelopmentMultiYearRecords"
                         SpecificRowColumnEvents.DeleteDevelopmentMultiYearColumns(ModelID, GridTag, GridTransaction, ActioningForm)
+
+                    Case "ProcessAddJournalRecords"
+                        SpecificRowColumnEvents.InsertJournalRows(ModelID, GridTag, GridTransaction, ActioningForm)
+
+                    Case "ProcessDeleteJournalRecords"
+                        SpecificRowColumnEvents.DeleteJournalRows(ModelID, GridTag, GridTransaction, ActioningForm)
+
+                    Case "ProcessAddStockConversionRecords"
+                        SpecificRowColumnEvents.InsertStockConversionRows(ModelID, GridTag, GridTransaction, ActioningForm)
+
+                    Case "ProcessDeleteStockConversionRecords"
+                        SpecificRowColumnEvents.DeleteStockConversionRows(ModelID, GridTag, GridTransaction, ActioningForm)
+
+                    Case Else
+                        GridTransaction.BError = True
+                        GridTransaction.EventCancelled = True
+                        GridTransaction.StringReturn =
+                            "Unknown grid event command '" & GridTag.CommandData & "'."
 
                 End Select
 

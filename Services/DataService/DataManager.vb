@@ -143,7 +143,7 @@ Namespace Abovo
 
             Dim Trans As New AbovoTransaction
             Dim g = ExcelModels(ModelID)
-            Dim IEDSource As ISEDatasource = ExcelModels(ModelID).WBStructure.GroupStructures(SetGSID).ChildStructures(SetCSID).InterfaceSections(SetIntSecID).ISDatasources(SetISDID)
+            Dim IEDSource As ISEDatasource = ExcelModels(ModelID).WBStructure.GroupStructures(SetGSID).ResolveChildStructure(SetCSID).InterfaceSections(SetIntSecID).ISDatasources(SetISDID)
             Dim CellExamine As DevExpress.Spreadsheet.Cell
             Dim CellExamineRight As DevExpress.Spreadsheet.Cell
 
@@ -163,6 +163,9 @@ Namespace Abovo
                 DataSets(DataSetIndex) = New DataCellRange(DataSetIndex, ModelID) With {
                     .Name = "Sheet" & WSName & "-IEDS-" & WSName,
                     .IsDirty = False,
+                    .StructureRuleID = IEDSource.StructureRuleID,
+                    .StructureAddCommand = IEDSource.StructureAddCommand,
+                    .StructureDeleteCommand = IEDSource.StructureDeleteCommand,
                     .SourceWorksheet = WSName,
                     .DataRange = CRSource.DataRange,
                     .RO = IIf(IEDSource.RO = "TRUE", True, False),
@@ -365,6 +368,9 @@ Namespace Abovo
                     DataSets(DataSetIndex) = New DataCellRange(DataSetIndex, ModelID) With {
                         .Name = "Sheet" & WSName & "-IEDS-" & WSName,
                         .IsDirty = False,
+                        .StructureRuleID = IEDSource.StructureRuleID,
+                        .StructureAddCommand = IEDSource.StructureAddCommand,
+                        .StructureDeleteCommand = IEDSource.StructureDeleteCommand,
                         .SourceWorksheet = WSName,
                         .RO = IIf(IEDSource.RO = "TRUE", True, False),
                         .FormatMap = CRSource.DataFieldDefinitions(0).DataFormat
@@ -764,6 +770,9 @@ Namespace Abovo
                 DataSets(DataSetIndex) = New DataCellRange(DataSetIndex, ModelID) With {
                     .Name = "MergeDS" & WSName & "-IEDS-" & IEDSource.ISDName,
                     .IsDirty = False,
+                    .StructureRuleID = IEDSource.StructureRuleID,
+                    .StructureAddCommand = IEDSource.StructureAddCommand,
+                    .StructureDeleteCommand = IEDSource.StructureDeleteCommand,
                     .RowExpandsByModel = RowExpandsByModel,
                     .RowExpandByNR = IEDSource.RowExpandByNR,
                     .HasBands = False,
@@ -1351,6 +1360,9 @@ NextDFD:
                 DataSets(DataSetIndex) = New DataCellRange(DataSetIndex, ModelID) With {
                 .Name = "SingleCellDS" & WSName & "-IEDS-" & IEDSource.ISDName,
                 .IsDirty = False,
+                .StructureRuleID = IEDSource.StructureRuleID,
+                .StructureAddCommand = IEDSource.StructureAddCommand,
+                .StructureDeleteCommand = IEDSource.StructureDeleteCommand,
                 .SourceWorksheet = WSName,
                 .RO = IIf(IEDSource.RO = "TRUE", True, False)
             }
@@ -1471,6 +1483,9 @@ NextDFD:
                 DataSets(DataSetIndex) = New DataCellRange(DataSetIndex, ModelID) With {
                     .Name = "MergeAcrossDS" & WSName & "-IEDS: " & IEDSource.ISDName,
                     .IsDirty = False,
+                    .StructureRuleID = IEDSource.StructureRuleID,
+                    .StructureAddCommand = IEDSource.StructureAddCommand,
+                    .StructureDeleteCommand = IEDSource.StructureDeleteCommand,
                     .SourceWorksheet = WSName,
                     .HasBands = False,
                     .SkipLastRecords = IIf(IEDSource.SkipLastRecords Is Nothing, 0, CInt(IEDSource.SkipLastRecords)),
@@ -2238,7 +2253,7 @@ NextDFD2:
             Dim Trans As New AbovoTransaction
             Dim g = ExcelModels(ModelID)
 
-            Dim IEDSource As ISEDatasource = ExcelModels(ModelID).WBStructure.GroupStructures(SetGSID).ChildStructures(SetCSID).InterfaceSections(SetIntSecID).ISDatasources(SetISDID)
+            Dim IEDSource As ISEDatasource = ExcelModels(ModelID).WBStructure.GroupStructures(SetGSID).ResolveChildStructure(SetCSID).InterfaceSections(SetIntSecID).ISDatasources(SetISDID)
             Dim CellExamine As DevExpress.Spreadsheet.Cell
 
             If IEDSource.DSType = "SimpleGrid" Then
@@ -3704,7 +3719,7 @@ ErrorHandler:
             MsgBox("CallContext")
 
             Dim Trans As New AbovoTransaction
-            Dim IEDSource As ISEDatasource = ExcelModels(ModelID).WBStructure.GroupStructures(SetGSID).ChildStructures(SetCSID).InterfaceSections(SetIntSecID).ISDatasources(SetISDID)
+            Dim IEDSource As ISEDatasource = ExcelModels(ModelID).WBStructure.GroupStructures(SetGSID).ResolveChildStructure(SetCSID).InterfaceSections(SetIntSecID).ISDatasources(SetISDID)
             Dim CellExamine As DevExpress.Spreadsheet.Cell
             Dim CellExamineRight As DevExpress.Spreadsheet.Cell
 
@@ -3722,6 +3737,9 @@ ErrorHandler:
                     DataSets(DataSetIndex) = New DataCellRange(DataSetIndex, ModelID) With {
                         .Name = "Sheet" & WSName & "-IEDS-" & WSName,
                         .IsDirty = False,
+                        .StructureRuleID = IEDSource.StructureRuleID,
+                        .StructureAddCommand = IEDSource.StructureAddCommand,
+                        .StructureDeleteCommand = IEDSource.StructureDeleteCommand,
                         .SourceWorksheet = WSName,
                         .RO = IIf(IEDSource.RO = "TRUE", True, False),
                         .FormatMap = CRSource.DataFieldDefinitions(0).DataFormat
@@ -4276,6 +4294,9 @@ ErrorHandler:
             Public NewDataModel As String
             Public RowExpandsByModel As String
             Public RowExpandByNR As String
+            Public StructureRuleID As String
+            Public StructureAddCommand As String
+            Public StructureDeleteCommand As String
             Public ColExpandByNR As String
             Public DefaultDataNR As String
             Public RepeatingNR As String

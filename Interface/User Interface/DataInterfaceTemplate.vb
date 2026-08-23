@@ -135,6 +135,7 @@ Public Class DataInterfaceTemplate
     'Private ColExtenders() As ColumnButtonExtender
     'Private ColExtenderCount As Integer = -1
     Private BandExtenders() As BandButtonExtender
+    Private GridActionExtendersBySection As New Dictionary(Of Integer, List(Of CombinedColumnBandButton_HeaderFooterDrawer))
     Private VGridCategoryExtenders As New List(Of VGridCategoryButtonExtender)
     Private VGridCategoryExtendersBySection As New Dictionary(Of Integer, List(Of VGridCategoryButtonExtender))
     Private VGridInplaceEditorHelpersBySection As New Dictionary(Of Integer, List(Of VGridRowInplaceEditorHelper))
@@ -143,6 +144,7 @@ Public Class DataInterfaceTemplate
 
         Public TableRowIndex As Integer = -1
         Public IsLiveGrid As Boolean = False
+        Public UseInternalVerticalScroll As Boolean = False
 
     End Class
 
@@ -822,6 +824,7 @@ SkipRefresh:
 
         AcElementlist = New List(Of AccordionControlElement)
         SectionRuntimeStates.Clear()
+        GridActionExtendersBySection.Clear()
         VGridCategoryExtendersBySection.Clear()
         VGridInplaceEditorHelpersBySection.Clear()
 
@@ -1114,6 +1117,8 @@ SkipRefresh:
             XTP.ResumeLayout(True)
             XtraTabControlNewGIT.EndUpdate()
 
+            RefreshGridActionExtenders(SectionIndex)
+
             'The first sizing pass occurs while XTP is suspended and the
             'XtraTabControl is still inside BeginUpdate. On the large display
             'that pass sees an old page geometry (~1236 px high).
@@ -1398,6 +1403,7 @@ SkipRefresh:
 
             If GC Is Nothing OrElse GC.IsDisposed Then Continue For
 
+            If GC.MainView IsNot Nothing Then GC.MainView.LayoutChanged()
             GC.ForceInitialize()
             GC.PerformLayout()
 
@@ -1453,6 +1459,13 @@ SkipRefresh:
 
             If VG Is Nothing OrElse VG.IsDisposed Then Continue For
 
+            Dim ThisVGridLayout As VGridLayoutTag =
+                TryCast(VG.Tag, VGridLayoutTag)
+
+            Dim UseInternalVerticalScroll As Boolean =
+                ThisVGridLayout IsNot Nothing AndAlso
+                ThisVGridLayout.UseInternalVerticalScroll
+
             VG.Font = NewFont
             VG.ForceInitialize()
             VG.BestFit()
@@ -1486,11 +1499,13 @@ SkipRefresh:
                 VG.RowHeaderWidth = MinimumRowHeaderWidth
             End If
 
-            'For VGrid interfaces the XtraTabPage owns VERTICAL scrolling.
-            'Keep horizontal scrolling available for wide record sets, but never
-            'show a competing VGrid vertical scrollbar.
+            'Most VGrid interfaces use the XtraTabPage as their vertical scroll
+            'owner. Funding Assumptions V2 is intentionally different: its native
+            'fixed Funding Details rows require the VGrid to own vertical scrolling.
             VG.ScrollVisibility =
-                DevExpress.XtraVerticalGrid.ScrollVisibility.Horizontal
+                If(UseInternalVerticalScroll,
+                   DevExpress.XtraVerticalGrid.ScrollVisibility.Both,
+                   DevExpress.XtraVerticalGrid.ScrollVisibility.Horizontal)
 
             Dim AvailableVGridWidth As Integer =
                 Math.Max(1, RootControl.ClientSize.Width -
@@ -1548,9 +1563,11 @@ SkipRefresh:
             '   short VGrid -> fill remaining viewport
             '   tall VGrid  -> expand to full content height; XtraTabPage scrolls
             Dim AppliedVGridHeight As Integer =
-                Math.Max(
-                    AvailableVGridHeight,
-                    PreferredVGridHeight)
+                If(UseInternalVerticalScroll,
+                   AvailableVGridHeight,
+                   Math.Max(
+                       AvailableVGridHeight,
+                       PreferredVGridHeight))
 
             VG.Height = AppliedVGridHeight
 
@@ -1559,9 +1576,6 @@ SkipRefresh:
             'content, so changing only VG.Height cannot make the cell fill the
             'viewport. Convert this VGrid's owning row to Absolute and set the
             'same viewport height explicitly.
-            Dim ThisVGridLayout As VGridLayoutTag =
-                TryCast(VG.Tag, VGridLayoutTag)
-
             Dim VGridTablePanel As TablePanel =
                 TryCast(VG.Parent, TablePanel)
 
@@ -2448,6 +2462,22 @@ SkipRefresh:
 
         If SectionIndex < 0 Then Return
 
+        Dim GridActionExtenders As List(Of CombinedColumnBandButton_HeaderFooterDrawer) = Nothing
+
+        If GridActionExtendersBySection.TryGetValue(SectionIndex, GridActionExtenders) Then
+
+            For Each Extender As CombinedColumnBandButton_HeaderFooterDrawer In GridActionExtenders
+                If Extender Is Nothing Then Continue For
+                Try
+                    Extender.RemoveCustomButton()
+                Catch
+                End Try
+            Next
+
+            GridActionExtendersBySection.Remove(SectionIndex)
+
+        End If
+
         Dim VGridEditorHelpers As List(Of VGridRowInplaceEditorHelper) = Nothing
 
         If VGridInplaceEditorHelpersBySection.TryGetValue(SectionIndex, VGridEditorHelpers) Then
@@ -3034,8 +3064,11 @@ SkipRefresh:
                         Case "S"
                             PropType = GetType(String)
 
-                        Case "I", "Y", "D"
+                        Case "I", "Y"
                             PropType = GetType(Integer)
+
+                        Case "D"
+                            PropType = GetType(DateTime)
 
                         Case "N", "P", "C", "M", "SM", "R"
                             PropType = GetType(Double)
@@ -3284,6 +3317,21 @@ SkipRefresh:
                             GVcolumn.DisplayFormat.FormatType = DevExpress.Utils.FormatType.None
                             ColTag.ShowDefaultmask = -1
 
+                        Case "D"
+
+                            GVcolumn.AppearanceCell.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Center
+                            GVcolumn.AppearanceHeader.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Center
+                            GVcolumn.DisplayFormat.FormatType = DevExpress.Utils.FormatType.DateTime
+                            GVcolumn.DisplayFormat.FormatString = "dd-MMM-yyyy"
+
+                            Dim DateEditor As New RepositoryItemDateEdit()
+                            DateEditor.Mask.MaskType = DevExpress.XtraEditors.Mask.MaskType.DateTime
+                            DateEditor.Mask.EditMask = "dd-MMM-yyyy"
+                            DateEditor.Mask.UseMaskAsDisplayFormat = True
+                            GridControls(GridCount).RepositoryItems.Add(DateEditor)
+                            GVcolumn.ColumnEdit = DateEditor
+                            ColTag.DefaultTextEditor = DateEditor
+
                         Case "M"
 
                             GVcolumn.AppearanceCell.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
@@ -3477,6 +3525,7 @@ SkipRefresh:
                     }
 
                     BandColumButtonsAndDrawing = New CombinedColumnBandButton_HeaderFooterDrawer(UsedBANDedGridVIEWS(BandGridViewsCount), Me, SetSectionID)
+                    RegisterGridActionExtender(SetSectionID, BandColumButtonsAndDrawing)
 
                     UsedBANDedGridVIEWS(BandGridViewsCount).BeginUpdate()
 
@@ -4031,6 +4080,7 @@ SkipRefresh:
                 If Not ApplyBands Then
 
                     BandColumButtonsAndDrawing = New CombinedColumnBandButton_HeaderFooterDrawer(UsedGridVIEWS(GridViewCount), Me, SetSectionID)
+                    RegisterGridActionExtender(SetSectionID, BandColumButtonsAndDrawing)
 
                 End If
 
@@ -4046,6 +4096,9 @@ SkipRefresh:
 
                     Dim Actor As New ActionToken With {
                         .ActionType = ActiveDataSet.RowExpandsByModel,
+                        .StructureRuleID = ActiveDataSet.StructureRuleID,
+                        .StructureAddCommand = ActiveDataSet.StructureAddCommand,
+                        .StructureDeleteCommand = ActiveDataSet.StructureDeleteCommand,
                         .ActionStrData1 = FooterActionData,
                         .ActionNumber1 = SetSectionID,
                         .ActionDescription = "Edit " & FooterActionData
@@ -4345,8 +4398,11 @@ SkipRefresh:
                         Case "S"
                             PropType = GetType(String)
 
-                        Case "I", "Y", "D"
+                        Case "I", "Y"
                             PropType = GetType(Integer)
+
+                        Case "D"
+                            PropType = GetType(DateTime)
 
                         Case "N", "P", "C", "M", "SM", "R"
                             PropType = GetType(Double)
@@ -4644,7 +4700,6 @@ SkipRefresh:
                 Dim IndexPos As Integer = 0
                 Dim LastColour As Color = Color.Red
                 Dim VGridCategories As New List(Of CategoryRow)
-                Dim VGridInEditorAddingMode As Boolean = False
 
                 'The rows have already been generated by ForceInitialize().
                 'Find each row by its bound field name rather than relying upon Rows(0).
@@ -4669,12 +4724,6 @@ SkipRefresh:
                     If IndexPos = 0 OrElse Not String.Equals(ColTag.BandID, LastBandID, StringComparison.Ordinal) Then
 
                         LastBandID = ColTag.BandID
-
-                        'Mirror the XtraGrid in-header editor behaviour at band level.
-                        'If the first field in a band carries EditRepNRHere, each
-                        'repeating field/row in that band gets an editor in its row
-                        'header (the first visual VGrid column).
-                        VGridInEditorAddingMode = ColTag.EditRepNRHere
 
                         'Do not leave an unbanded row attached to the previous category.
                         If String.IsNullOrEmpty(ColTag.BandID) Then
@@ -4710,6 +4759,20 @@ SkipRefresh:
                             If ColTag.BandID = "FixedLeft" Then CategoryCaption = " "
 
                             CatRow.Properties.Caption = CategoryCaption
+
+                            'Funding Assumptions V2 keeps its complete facility
+                            'identity/detail section visible while the remaining
+                            'assumption categories scroll beneath it.
+                            If CSID = 138 AndAlso
+                               String.Equals(
+                                   ColTag.BandID,
+                                   "Funding Details",
+                                   StringComparison.Ordinal) Then
+
+                                CatRow.Fixed =
+                                    DevExpress.XtraVerticalGrid.Rows.FixedStyle.Top
+
+                            End If
 
                             Dim NewCategoryTag As New BandTag With {
                                 .ID = VertGridCount,
@@ -4762,6 +4825,20 @@ SkipRefresh:
                         End With
 
                     End With
+
+                    'Fix the complete Funding Details block, not only its category
+                    'caption. This keeps facility identity and Opening Balance in
+                    'view while the remaining funding assumptions scroll beneath it.
+                    If CSID = 138 AndAlso
+                       String.Equals(
+                           ColTag.BandID,
+                           "Funding Details",
+                           StringComparison.Ordinal) Then
+
+                        VRow.Fixed =
+                            DevExpress.XtraVerticalGrid.Rows.FixedStyle.Top
+
+                    End If
 
                     '-------------------------------------------------------------
                     ' Category/band action - VGrid equivalent of the XtraGrid
@@ -4907,6 +4984,26 @@ SkipRefresh:
                 DevExpress.Utils.FormatType.None
 
                             ColTag.ShowDefaultmask = -1
+
+                        Case "D"
+
+                            VRow.AppearanceCell.TextOptions.HAlignment =
+                DevExpress.Utils.HorzAlignment.Center
+
+                            VRow.Properties.DisplayFormat.FormatType =
+                DevExpress.Utils.FormatType.DateTime
+
+                            VRow.Properties.DisplayFormat.FormatString =
+                "dd-MMM-yyyy"
+
+                            Dim DateEditor As New RepositoryItemDateEdit()
+                            DateEditor.Mask.MaskType =
+                DevExpress.XtraEditors.Mask.MaskType.DateTime
+                            DateEditor.Mask.EditMask = "dd-MMM-yyyy"
+                            DateEditor.Mask.UseMaskAsDisplayFormat = True
+                            VertGrid.RepositoryItems.Add(DateEditor)
+                            VRow.Properties.RowEdit = DateEditor
+                            ColTag.DefaultTextEditor = DateEditor
 
 
                         Case "M"
@@ -5099,7 +5196,7 @@ SkipRefresh:
                     '-------------------------------------------------------------
                     ' Repeating-NR editor in the VGrid row header
                     '-------------------------------------------------------------
-                    If VGridInEditorAddingMode AndAlso
+                    If ColTag.EditRepNRHere AndAlso
                        Not ColTag.EditRepNRHereROColumn AndAlso
                        Not String.IsNullOrEmpty(ColTag.BandID) Then
 
@@ -5432,7 +5529,8 @@ SkipRefresh:
                 'pass will replace this provisional height with the actual remaining
                 'tab-page viewport height.
                 VertGrid.Tag = New VGridLayoutTag With {
-                    .TableRowIndex = TPRowCount
+                    .TableRowIndex = TPRowCount,
+                    .UseInternalVerticalScroll = (CSID = 138)
                 }
 
                 VertGrid.Height = IdealGridHeight
@@ -7510,7 +7608,32 @@ SectionSelect:
                 End If
                 Return False
 
-            Case "N", "C", "M", "SM", "R", "P", "D"
+            Case "D"
+                Dim DateValue As DateTime
+                If DateTime.TryParse(
+                    RawValue,
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    System.Globalization.DateTimeStyles.AllowWhiteSpaces,
+                    DateValue) Then
+
+                    ConvertedValue = DateValue
+                    Return True
+                End If
+
+                Dim DateSerial As Double
+                If Double.TryParse(
+                    RawValue,
+                    System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    DateSerial) Then
+
+                    ConvertedValue = DateSerial
+                    Return True
+                End If
+
+                Return False
+
+            Case "N", "C", "M", "SM", "R", "P"
                 Dim NumericText As String = RawValue.Trim()
                 Dim IsPercent As Boolean = NumericText.EndsWith("%", StringComparison.Ordinal)
 
@@ -8852,6 +8975,28 @@ SectionSelect:
                 e.Valid = True
                 Return
 
+            Case "D"
+
+                If TypeOf e.Value Is DateTime Then
+                    e.Valid = True
+                    Return
+                End If
+
+                Dim ParsedDate As DateTime
+                e.Valid = DateTime.TryParse(
+                    Convert.ToString(
+                        e.Value,
+                        System.Globalization.CultureInfo.CurrentCulture),
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    System.Globalization.DateTimeStyles.AllowWhiteSpaces,
+                    ParsedDate)
+
+                If Not e.Valid Then
+                    e.ErrorText = ColTag.ColumnHeading & " must be a valid date."
+                End If
+
+                Return
+
 
             Case Else
 
@@ -9059,6 +9204,35 @@ SectionSelect:
 
     End Sub
 
+    Private Sub RegisterGridActionExtender(
+        ByVal SectionIndex As Integer,
+        ByVal Extender As CombinedColumnBandButton_HeaderFooterDrawer)
+
+        If Extender Is Nothing Then Return
+
+        Dim SectionExtenders As List(Of CombinedColumnBandButton_HeaderFooterDrawer) = Nothing
+
+        If Not GridActionExtendersBySection.TryGetValue(SectionIndex, SectionExtenders) Then
+            SectionExtenders = New List(Of CombinedColumnBandButton_HeaderFooterDrawer)
+            GridActionExtendersBySection(SectionIndex) = SectionExtenders
+        End If
+
+        SectionExtenders.Add(Extender)
+
+    End Sub
+
+    Private Sub RefreshGridActionExtenders(ByVal SectionIndex As Integer)
+
+        Dim SectionExtenders As List(Of CombinedColumnBandButton_HeaderFooterDrawer) = Nothing
+        If Not GridActionExtendersBySection.TryGetValue(SectionIndex, SectionExtenders) Then Return
+
+        For Each Extender As CombinedColumnBandButton_HeaderFooterDrawer In SectionExtenders
+            If Extender Is Nothing Then Continue For
+            Extender.RefreshActionButtonSurfaces()
+        Next
+
+    End Sub
+
     Private Sub VGrid_ShownEditor(
     ByVal sender As Object,
     ByVal e As EventArgs)
@@ -9197,7 +9371,7 @@ SectionSelect:
         'settings from CustomRecordCellEditForEditing.
         Select Case ColTag.DataType
 
-            Case "S", "P"
+            Case "S", "P", "D"
 
                 'Use the row's normal editor.
 
@@ -10242,7 +10416,10 @@ SectionSelect:
                     Return DP.BoolValue
                 Case "N", "P", "C", "M", "R", "SM"
                     Return DP.RealValue
-                Case "I", "Y", "D"
+                Case "D"
+                    If DP.IsEmpty Then Return Nothing
+                    Return DateTime.FromOADate(DP.RealValue)
+                Case "I", "Y"
                     Return DP.IntValue
                 Case Else
                     Return Nothing
@@ -10295,6 +10472,12 @@ SectionSelect:
             Case "N", "P", "C", "M", "R", "SM"
                 DP.RealValue = DPC.Value.NumericValue
                 Return DPC.Value.NumericValue
+                Exit Function
+
+            Case "D"
+
+                DP.RealValue = DPC.Value.NumericValue
+                Return DateTime.FromOADate(DPC.Value.NumericValue)
                 Exit Function
 
             Case "I", "Y"
@@ -10536,6 +10719,28 @@ SectionSelect:
 
             Case "S"
                 e.Valid = True
+                Return
+
+            Case "D"
+
+                If TypeOf e.Value Is DateTime Then
+                    e.Valid = True
+                    Return
+                End If
+
+                Dim ParsedDate As DateTime
+                e.Valid = DateTime.TryParse(
+                    Convert.ToString(
+                        e.Value,
+                        System.Globalization.CultureInfo.CurrentCulture),
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    System.Globalization.DateTimeStyles.AllowWhiteSpaces,
+                    ParsedDate)
+
+                If Not e.Valid Then
+                    e.ErrorText = ColTag.ColumnHeading & " must be a valid date."
+                End If
+
                 Return
 
             Case Else
@@ -11019,11 +11224,68 @@ SectionSelect:
                 'through the original code below when ActionStrData1 is not a
                 'WorkbookStructureRule ID.
                 Dim StructuralRuleID As String = Nothing
+                Dim DeclaredStructureRuleID As String =
+                    If(ActToken.StructureRuleID, String.Empty).Trim()
+                Dim DeclaredAddCommand As String =
+                    If(ActToken.StructureAddCommand, String.Empty).Trim()
+                Dim DeclaredDeleteCommand As String =
+                    If(ActToken.StructureDeleteCommand, String.Empty).Trim()
+                Dim StructureRuleManager As WorkbookStructureRuleManager =
+                    ExcelModels(ModelID).WorkbookStructureRules
 
-                If ExcelModels(ModelID).WorkbookStructureRules IsNot Nothing Then
+                If Not String.IsNullOrWhiteSpace(DeclaredStructureRuleID) Then
+
+                    If StructureRuleManager Is Nothing Then
+
+                        XtraMessageBox.Show(
+                            "This grid declares workbook structure rule '" &
+                            DeclaredStructureRuleID &
+                            "', but the structure-rule service is unavailable. " &
+                            "No workbook ranges were changed.",
+                            "Abovo Summit",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error)
+
+                        Return
+                    End If
 
                     StructuralRuleID =
-                        ExcelModels(ModelID).WorkbookStructureRules.ResolveRuleID(
+                        StructureRuleManager.ResolveRuleID(
+                            DeclaredStructureRuleID)
+
+                    If String.IsNullOrWhiteSpace(StructuralRuleID) Then
+
+                        XtraMessageBox.Show(
+                            "This grid declares unknown workbook structure rule '" &
+                            DeclaredStructureRuleID &
+                            "'. No workbook ranges were changed.",
+                            "Abovo Summit",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error)
+
+                        Return
+                    End If
+
+                    If String.IsNullOrWhiteSpace(DeclaredAddCommand) OrElse
+                       String.IsNullOrWhiteSpace(DeclaredDeleteCommand) Then
+
+                        XtraMessageBox.Show(
+                            "This grid declares workbook structure rule '" &
+                            DeclaredStructureRuleID &
+                            "', but its add/delete event commands are incomplete. " &
+                            "No workbook ranges were changed.",
+                            "Abovo Summit",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error)
+
+                        Return
+                    End If
+
+                ElseIf StructureRuleManager IsNot Nothing Then
+
+                    'Compatibility path for older Structure.xml definitions.
+                    StructuralRuleID =
+                        StructureRuleManager.ResolveRuleID(
                             ActToken.ActionStrData1)
 
                 End If
@@ -11138,17 +11400,35 @@ SectionSelect:
                         Me.Cursor = Cursors.WaitCursor
                         Cursor.Current = Cursors.WaitCursor
 
-                        If LineAdjustment > 0 Then
+                        If Not String.IsNullOrWhiteSpace(DeclaredStructureRuleID) Then
+
+                            Dim GridEventTag As New AttachedGridCommandButton With {
+                                .CommandType = "Process",
+                                .CommandData = If(LineAdjustment > 0,
+                                                  DeclaredAddCommand,
+                                                  DeclaredDeleteCommand),
+                                .RequestedRecordCount = Math.Abs(LineAdjustment),
+                                .DeleteLastRecords = LineAdjustment < 0
+                            }
 
                             StructureResult =
-                                ExcelModels(ModelID).WorkbookStructureRules.AddRecords(
+                                ExcelModels(ModelID).EventCoordinator.TriggerEvent(
+                                    "GridButton",
+                                    GridEventTag,
+                                    ParentGroupForm)
+
+                        ElseIf LineAdjustment > 0 Then
+
+                            'Compatibility path for legacy implicit rule aliases.
+                            StructureResult =
+                                StructureRuleManager.AddRecords(
                                     StructuralRuleID,
                                     LineAdjustment)
 
                         Else
 
                             StructureResult =
-                                ExcelModels(ModelID).WorkbookStructureRules.DeleteLastRecords(
+                                StructureRuleManager.DeleteLastRecords(
                                     StructuralRuleID,
                                     Math.Abs(LineAdjustment))
 
@@ -11437,8 +11717,18 @@ SectionSelect:
                     RecipientPage,
                     MouseScreenPoint)
 
+            Dim InternalScrollVGrid As VGridControl =
+                TryCast(GridScrollOwner, VGridControl)
+
+            Dim InternalScrollLayout As VGridLayoutTag =
+                If(InternalScrollVGrid Is Nothing,
+                   Nothing,
+                   TryCast(InternalScrollVGrid.Tag, VGridLayoutTag))
+
             If GridScrollOwner IsNot Nothing AndAlso
-               TypeOf GridScrollOwner Is GridControl AndAlso
+               (TypeOf GridScrollOwner Is GridControl OrElse
+                (InternalScrollLayout IsNot Nothing AndAlso
+                 InternalScrollLayout.UseInternalVerticalScroll)) AndAlso
                Not GridScrollOwner.IsDisposed AndAlso
                GridScrollOwner.IsHandleCreated Then
 
@@ -12498,6 +12788,7 @@ TPans:
         If SelectedTP IsNot Nothing AndAlso
            Not SelectedTP.IsDisposed Then
 
+            RefreshGridActionExtenders(SectionIndex)
             SelectedTP.PerformLayout()
             ApplySectionFontAndGridLayout(SelectedTP)
             SelectedTP.PerformLayout()
@@ -12517,6 +12808,7 @@ TPans:
         'what remains visible during that work.
         EndLazyTabTransitionUpdate()
         ResumeLazyTabTransitionRedraw()
+        RefreshGridActionExtenders(SectionIndex)
 
 #If DEBUG Then
 #End If
@@ -12589,11 +12881,14 @@ TPans:
             If SelectedTP IsNot Nothing AndAlso
                Not SelectedTP.IsDisposed Then
 
+                RefreshGridActionExtenders(SelectedIndex)
                 SelectedTP.PerformLayout()
                 ApplySectionFontAndGridLayout(SelectedTP)
                 SelectedTP.PerformLayout()
 
             End If
+
+            RefreshGridActionExtenders(SelectedIndex)
 
 #If DEBUG Then
 

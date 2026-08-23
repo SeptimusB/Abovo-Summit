@@ -117,7 +117,7 @@ CreatePresentation:
                 DSIndex = -1
 
 
-                DPCS = FileManager.ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ChildStructures(CSID)
+                DPCS = FileManager.ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ResolveChildStructure(CSID)
 
                 PresName = DPCS.CSName
 
@@ -449,6 +449,8 @@ CreatePresentation:
             Public CommandText As String
             Public CommandData As String
             Public CommandTip As String
+            Public RequestedRecordCount As Integer
+            Public DeleteLastRecords As Boolean
 
             'Normal XtraGrid owner.
             Public AttachedGrid As DevExpress.XtraGrid.GridControl

@@ -296,6 +296,50 @@ Namespace Abovo
 
         End Sub
 
+        Public Shared Sub InsertJournalRows(ModelID As Integer, ByRef GridCommandTag As AttachedGridCommandButton, SetTransaction As AbovoTransaction, ActioningForm As Form)
+
+            InsertRecordsByRule(ModelID,
+                                WorkbookStructureRuleManager.RuleJournalRecords,
+                                "Journal",
+                                GridCommandTag,
+                                SetTransaction,
+                                ActioningForm)
+
+        End Sub
+
+        Public Shared Sub DeleteJournalRows(ModelID As Integer, ByRef GridCommandTag As AttachedGridCommandButton, SetTransaction As AbovoTransaction, ActioningForm As Form)
+
+            DeleteRecordsByRule(ModelID,
+                                WorkbookStructureRuleManager.RuleJournalRecords,
+                                "Journal",
+                                GridCommandTag,
+                                SetTransaction,
+                                ActioningForm)
+
+        End Sub
+
+        Public Shared Sub InsertStockConversionRows(ModelID As Integer, ByRef GridCommandTag As AttachedGridCommandButton, SetTransaction As AbovoTransaction, ActioningForm As Form)
+
+            InsertRecordsByRule(ModelID,
+                                WorkbookStructureRuleManager.RuleStockConversionRecords,
+                                "Stock Conversion",
+                                GridCommandTag,
+                                SetTransaction,
+                                ActioningForm)
+
+        End Sub
+
+        Public Shared Sub DeleteStockConversionRows(ModelID As Integer, ByRef GridCommandTag As AttachedGridCommandButton, SetTransaction As AbovoTransaction, ActioningForm As Form)
+
+            DeleteRecordsByRule(ModelID,
+                                WorkbookStructureRuleManager.RuleStockConversionRecords,
+                                "Stock Conversion",
+                                GridCommandTag,
+                                SetTransaction,
+                                ActioningForm)
+
+        End Sub
+
         Private Shared Sub InsertRecordsByRule(ByVal ModelID As Integer,
                                                ByVal RuleID As String,
                                                ByVal RecordDescription As String,
@@ -303,10 +347,18 @@ Namespace Abovo
                                                ByVal SetTransaction As AbovoTransaction,
                                                ByVal ActioningForm As Form)
 
-            Dim InsertRecordCount As Integer =
-                GetNumericalIntegerInput("How many records do you wish to add?",
-                                         "Insert " & RecordDescription & " Records",
-                                         3, 0, 100)
+            Dim InsertRecordCount As Integer = 0
+
+            If GridCommandTag IsNot Nothing Then
+                InsertRecordCount = GridCommandTag.RequestedRecordCount
+            End If
+
+            If InsertRecordCount <= 0 Then
+                InsertRecordCount =
+                    GetNumericalIntegerInput("How many records do you wish to add?",
+                                             "Insert " & RecordDescription & " Records",
+                                             3, 0, 100)
+            End If
 
             If InsertRecordCount <= 0 Then
                 SetTransaction.BError = True
@@ -343,6 +395,36 @@ Namespace Abovo
                                                ByRef GridCommandTag As AttachedGridCommandButton,
                                                ByVal SetTransaction As AbovoTransaction,
                                                ByVal ActioningForm As Form)
+
+            If GridCommandTag IsNot Nothing AndAlso
+               GridCommandTag.DeleteLastRecords AndAlso
+               GridCommandTag.RequestedRecordCount > 0 Then
+
+                Try
+
+                    ActioningForm.Cursor = Cursors.WaitCursor
+
+                    Dim Result As AbovoTransaction =
+                        ExcelModels(ModelID).WorkbookStructureRules.DeleteLastRecords(
+                            RuleID,
+                            GridCommandTag.RequestedRecordCount)
+
+                    CopyTransactionResult(Result, SetTransaction)
+
+                    If Result.BError AndAlso
+                       Not String.IsNullOrWhiteSpace(Result.StringReturn) Then
+
+                        XtraMessageBox.Show(Result.StringReturn)
+                    End If
+
+                Finally
+
+                    ActioningForm.Cursor = Cursors.Default
+
+                End Try
+
+                Return
+            End If
 
             If GridCommandTag Is Nothing OrElse GridCommandTag.AttachedGrid Is Nothing Then
                 SetTransaction.BError = True

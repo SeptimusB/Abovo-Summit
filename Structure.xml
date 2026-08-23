@@ -1639,6 +1639,9 @@
           <MergedHeader>False</MergedHeader>
           <RowsExpandModel>NRRI</RowsExpandModel>
           <RowExpandByNR>IR_StockDispAss_01</RowExpandByNR>
+          <StructureRuleID>STOCK_CONVERSION_RECORDS</StructureRuleID>
+          <StructureAddCommand>ProcessAddStockConversionRecords</StructureAddCommand>
+          <StructureDeleteCommand>ProcessDeleteStockConversionRecords</StructureDeleteCommand>
           <Pivot>FALSE</Pivot>
           <ExpandsBy>ROW</ExpandsBy>
           <CellRangeDataSource>
@@ -2470,6 +2473,9 @@
           <SkipLastRecords>1</SkipLastRecords>
           <RowsExpandModel>NRRI</RowsExpandModel>
           <RowExpandByNR>Rep_CapGrant_010</RowExpandByNR>
+          <StructureRuleID>CAPGRANT_RECORDS</StructureRuleID>
+          <StructureAddCommand>ProcessAddCapGrantRecords</StructureAddCommand>
+          <StructureDeleteCommand>ProcessDeleteCapGrantRecords</StructureDeleteCommand>
           <RO>FALSE</RO>
           <RowsExpandBy>NRRI</RowsExpandBy>
           <DSType>MergeDownAndPivot</DSType>
@@ -3196,6 +3202,9 @@
           <RO>FALSE</RO>
           <RowsExpandModel>NRRI</RowsExpandModel>
           <RowExpandByNR>StockCondCats</RowExpandByNR>
+          <StructureRuleID>REPAIRS_RECORDS</StructureRuleID>
+          <StructureAddCommand>ProcessAddRepairsRecords</StructureAddCommand>
+          <StructureDeleteCommand>ProcessDeleteRepairsRecords</StructureDeleteCommand>
           <RowsExpandBy>NRRI</RowsExpandBy>
           <DSType>MergeDownAndPivot</DSType>
           <MergeSources>Down</MergeSources>
@@ -3991,6 +4000,9 @@
           <RO>FALSE</RO>
           <RowsExpandModel>NRRI</RowsExpandModel>
           <RowExpandByNR>Rep_CapExpend_010</RowExpandByNR>
+          <StructureRuleID>CAPEX_RECORDS</StructureRuleID>
+          <StructureAddCommand>ProcessAddCapExRecords</StructureAddCommand>
+          <StructureDeleteCommand>ProcessDeleteCapExRecords</StructureDeleteCommand>
           <RowsExpandBy>NRRI</RowsExpandBy>
           <DSType>MergeDownAndPivot</DSType>
           <MergeSources>Down</MergeSources>
@@ -4789,6 +4801,9 @@
           <RO>FALSE</RO>
           <RowsExpandModel>NRRI</RowsExpandModel>
           <RowExpandByNR>HouseTypeInID</RowExpandByNR>
+          <StructureRuleID>DEVELOPMENT_IDENTIFIED_RECORDS</StructureRuleID>
+          <StructureAddCommand>ProcessAddDevelopmentIdentifiedRecords</StructureAddCommand>
+          <StructureDeleteCommand>ProcessDeleteDevelopmentIdentifiedRecords</StructureDeleteCommand>
           <RowsExpandBy>NRRI</RowsExpandBy>
           <DSType>MergeDownAndPivot</DSType>
           <MergeSources>Down</MergeSources>
@@ -6559,6 +6574,9 @@
           <RO>FALSE</RO>
           <RowsExpandModel>NRRI</RowsExpandModel>
           <RowExpandByNR>HouseTypeInMY</RowExpandByNR>
+          <StructureRuleID>DEVELOPMENT_MULTIYEAR_RECORDS</StructureRuleID>
+          <StructureAddCommand>ProcessAddDevelopmentMultiYearRecords</StructureAddCommand>
+          <StructureDeleteCommand>ProcessDeleteDevelopmentMultiYearRecords</StructureDeleteCommand>
           <RowsExpandBy>NRRI</RowsExpandBy>
           <DSType>MergeDownAndPivot</DSType>
           <MergeSources>Down</MergeSources>
@@ -11863,6 +11881,824 @@
 
 
     </ChildStructure>
+    <ChildStructure Name="Funding Assumptions V2">
+      <DefaultWorksheet>Funding Assumptions</DefaultWorksheet>
+      <CSName>Funding Assumptions V2</CSName>
+      <CSID>138</CSID>
+      <ParentID>1</ParentID>
+      <IsMaster>False</IsMaster>
+      <GroupName>Funding Assumptions</GroupName>
+      <CSInterfaceSection Name="Facilities and Loans">
+        <ISName>Facilities and Loans</ISName>
+        <ISDatasource>
+          <ISDName>Facilities and Loans</ISDName>
+          <ISDID>0</ISDID>
+          <DSSource>NR</DSSource>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <ColsExpandBy>NR</ColsExpandBy>
+          <RO>FALSE</RO>
+          <RowsExpandBy>None</RowsExpandBy>
+          <DSType>MergeDownAndPivot</DSType>
+          <MergeSources>Down</MergeSources>
+          <MergedHeader>False</MergedHeader>
+          <Pivot>TRUE</Pivot>
+          <ExpandsBy>CC</ExpandsBy>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>FacilityNames</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Funding Details</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Facility vblf Name</FieldName>
+              <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_Facility</RepositaryItemID>
+              <Fixed>TRUE</Fixed>
+              <TipText>Select the facility category used by the workbook.</TipText>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_03</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Funding Details</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Funder</FieldName>
+              <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_Funders</RepositaryItemID>
+              <Fixed>TRUE</Fixed>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>LoanDescs</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Funding Details</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Loan vblf Description</FieldName>
+              <DataFormat>S</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_03B</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Funding Details</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Debt vblf Type</FieldName>
+              <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_ExistNew</RepositaryItemID>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_04</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Funding Details</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Facility vblf Type</FieldName>
+              <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_RepayAnnu</RepositaryItemID>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_05</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Funding Details</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Facility changes with vblf Drawdowns/Repayments</FieldName>
+              <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_YesNo</RepositaryItemID>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_08</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Funding Details</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Opening Balance vblf &#163;'000</FieldName>
+              <DataFormat>M</DataFormat>
+              <TipText>Opening loan balance from row 81 of Funding Assumptions.</TipText>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_06</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Facility Increases</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
+              <DataFormat>M</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_Fac_Inc</RepeatingNR>
+              <BandEditDescription>Add facility increase rows</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_07</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Facility Decreases</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
+              <DataFormat>M</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_Fac_Dec</RepeatingNR>
+              <BandEditDescription>Add facility decrease rows</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_09</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Drawdowns</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
+              <DataFormat>M</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_Draw</RepeatingNR>
+              <BandEditDescription>Add drawdown rows</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_10</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Repayments</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
+              <DataFormat>M</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_Repay</RepeatingNR>
+              <BandEditDescription>Add repayment rows</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_11</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Annuity</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date from</FieldName>
+              <DataFormat>D</DataFormat>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Term vblf Years</FieldName>
+              <DataFormat>I</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_12</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Annuity</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Principal repayment from</FieldName>
+              <DataFormat>D</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_13</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Interest Rates</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Fixed / Variable / RPI / Cap / Collar / Index</FieldName>
+              <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_FundingRateType</RepositaryItemID>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>E130:R130</DataRange>
+            <PositID>1</PositID>
+            <BandID>Interest Rates</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Compounding / Flat Rate</FieldName>
+              <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_FundingCompounding</RepositaryItemID>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_15</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Interest Rates</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Fixed until and including</FieldName>
+              <DataFormat>D</DataFormat>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Fixed / Real / Cap / Index Rate</FieldName>
+              <DataFormat>P</DataFormat>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Floor Rate</FieldName>
+              <DataFormat>P</DataFormat>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Indexation to date</FieldName>
+              <DataFormat>P</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>E135:R135</DataRange>
+            <PositID>1</PositID>
+            <BandID>Interest Rates</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Interest Payment Frequency</FieldName>
+              <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_InterestPayFreq</RepositaryItemID>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>E136:R136</DataRange>
+            <PositID>1</PositID>
+            <BandID>Interest Rates</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Opening Interest Accrued vblf &#163;'000</FieldName>
+              <DataFormat>M</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>E137:R137</DataRange>
+            <PositID>1</PositID>
+            <BandID>Interest Rates</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>First Interest Payment Month</FieldName>
+              <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_FundMonthDesc</RepositaryItemID>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_17</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Forward Fix</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Forward Fix Interest Rate</FieldName>
+              <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_YesNo</RepositaryItemID>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_18</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Forward Fix</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Forward fix date from and including</FieldName>
+              <DataFormat>D</DataFormat>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Forward fix rate</FieldName>
+              <DataFormat>P</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_19</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Margins</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
+              <DataFormat>P</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_Marg</RepeatingNR>
+              <BandEditDescription>Add margin rows</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_20</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Adjustment Spread</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
+              <DataFormat>P</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_MLA</RepeatingNR>
+              <BandEditDescription>Add adjustment spread rows</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_21</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Arrangement Fees</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Arrangement Fees</FieldName>
+              <DataFormat>P</DataFormat>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date payable</FieldName>
+              <DataFormat>D</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_27</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Arrangement Fees</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Capitalise Arrangement fee?</FieldName>
+              <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_YesNo</RepositaryItemID>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_28</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Arrangement Fees</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Opening Balance of Fees vblf &#163;'000</FieldName>
+              <DataFormat>M</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>E183:R183</DataRange>
+            <PositID>1</PositID>
+            <BandID>Arrangement Fees</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Loan Fee Amortisation method</FieldName>
+              <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_FundingAmortisation</RepositaryItemID>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>E186:R187</DataRange>
+            <PositID>1</PositID>
+            <BandID>Arrangement Fees</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Loan Start date</FieldName>
+              <DataFormat>D</DataFormat>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Loan End date</FieldName>
+              <DataFormat>D</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_28a</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Bond Premium</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Bond Premium?</FieldName>
+              <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_YesNo</RepositaryItemID>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_28b</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Bond Premium</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Bond Premium vblf &#163;'000</FieldName>
+              <DataFormat>M</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>E200:R200</DataRange>
+            <PositID>1</PositID>
+            <BandID>Bond Premium</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date receivable</FieldName>
+              <DataFormat>D</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_28c</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Bond Premium</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Opening Balance of Premium vblf &#163;'000</FieldName>
+              <DataFormat>M</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>E204:R204</DataRange>
+            <PositID>1</PositID>
+            <BandID>Bond Premium</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Premium Amortisation method</FieldName>
+              <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_FundingAmortisation</RepositaryItemID>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>E207:R208</DataRange>
+            <PositID>1</PositID>
+            <BandID>Bond Premium</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Bond Start date</FieldName>
+              <DataFormat>D</DataFormat>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Bond End date</FieldName>
+              <DataFormat>D</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_22a</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Commitment Fees</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Calculation Method</FieldName>
+              <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_YEByP</RepositaryItemID>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_22</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Commitment Fees</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
+              <DataFormat>P</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_Fees</RepeatingNR>
+              <BandEditDescription>Add commitment fee rows</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>VGrid</Type>
+          <DataSource>0</DataSource>
+          <GridControlButton>
+            <ButtonData>ProcessAddFundingRecords</ButtonData>
+            <ButtonTxt>Add Funding Columns</ButtonTxt>
+            <ButtonType>Process</ButtonType>
+            <ButtonTip>Add funding facility columns</ButtonTip>
+          </GridControlButton>
+        </IElement>
+      </CSInterfaceSection>
+      <CSInterfaceSection Name="Variable and Cash Rates">
+        <ISName>Variable and Cash Rates</ISName>
+        <ISDatasource>
+          <ISDName>Variable and Cash Rates</ISDName>
+          <ISDID>0</ISDID>
+          <DSSource>NR</DSSource>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <ColsExpandBy>NR</ColsExpandBy>
+          <RO>FALSE</RO>
+          <RowsExpandBy>None</RowsExpandBy>
+          <DSType>MergeDownAndPivot</DSType>
+          <MergeSources>Down</MergeSources>
+          <MergedHeader>False</MergedHeader>
+          <Pivot>TRUE</Pivot>
+          <ExpandsBy>CC</ExpandsBy>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_16</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Variable Rate</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
+              <DataFormat>P</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_Var_Int</RepeatingNR>
+              <BandEditDescription>Add variable rate rows</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_23</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Cash on Deposit / Overdraft</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Opening Balance vblf &#163;'000</FieldName>
+              <DataFormat>M</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_24</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Minimum Balance</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
+              <DataFormat>M</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_Min_Bal</RepeatingNR>
+              <BandEditDescription>Add minimum balance rows</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_25</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Interest Receivable</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
+              <DataFormat>P</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_Int_Rec</RepeatingNR>
+              <BandEditDescription>Add interest receivable rows</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_26</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Interest Payable</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
+              <DataFormat>P</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_Int_Pay</RepeatingNR>
+              <BandEditDescription>Add interest payable rows</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement><Type>VGrid</Type><DataSource>0</DataSource></IElement>
+      </CSInterfaceSection>
+      <CSInterfaceSection Name="Other Fees">
+        <ISName>Other Fees</ISName>
+        <ISDatasource>
+          <ISDName>Other Fees</ISDName>
+          <ISDID>0</ISDID>
+          <DSSource>NR</DSSource>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <ColsExpandBy>NR</ColsExpandBy>
+          <RO>FALSE</RO>
+          <RowsExpandBy>None</RowsExpandBy>
+          <DSType>MergeDownAndPivot</DSType>
+          <MergeSources>Down</MergeSources>
+          <MergedHeader>False</MergedHeader>
+          <Pivot>TRUE</Pivot>
+          <ExpandsBy>CC</ExpandsBy>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>D230:D233</DataRange>
+            <PositID>1</PositID>
+            <BandID>Annual Fees</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Annual Fee</FieldName>
+              <DataFormat>M</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_An_Fees</RepeatingNR>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>D238:D240</DataRange>
+            <PositID>1</PositID>
+            <BandID>One-off Fees</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>One-off Fee</FieldName>
+              <DataFormat>M</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_One_Fees</RepeatingNR>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>C238:C240</DataRange>
+            <PositID>1</PositID>
+            <BandID>One-off Fee Dates</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
+              <DataFormat>D</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_One_Fees</RepeatingNR>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement><Type>VGrid</Type><DataSource>0</DataSource></IElement>
+      </CSInterfaceSection>
+      <CSInterfaceSection Name="Investments">
+        <ISName>Investments</ISName>
+        <ISDatasource>
+          <ISDName>Investments</ISDName>
+          <ISDID>0</ISDID>
+          <DSSource>NR</DSSource>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <ColsExpandBy>NR</ColsExpandBy>
+          <RO>FALSE</RO>
+          <RowsExpandBy>None</RowsExpandBy>
+          <DSType>MergeDownAndPivot</DSType>
+          <MergeSources>Down</MergeSources>
+          <MergedHeader>False</MergedHeader>
+          <Pivot>TRUE</Pivot>
+          <ExpandsBy>CC</ExpandsBy>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>E276:R276</DataRange>
+            <PositID>1</PositID>
+            <BandID>Investment Details</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Investment Name</FieldName>
+              <DataFormat>S</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_29</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Investment Details</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Opening Balance vblf &#163;'000</FieldName>
+              <DataFormat>M</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_31</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Investment Increases</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
+              <DataFormat>M</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_Inv_Inc</RepeatingNR>
+              <BandEditDescription>Add investment increase rows</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_32</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Investment Decreases</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
+              <DataFormat>M</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_Inv_Dec</RepeatingNR>
+              <BandEditDescription>Add investment decrease rows</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Rep_Fund_30</NRDSName>
+            <PositID>1</PositID>
+            <BandID>Investment Interest Rate</BandID>
+            <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
+              <DataFormat>P</DataFormat>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>IR_Fund_Inv_Rate</RepeatingNR>
+              <BandEditDescription>Add investment interest rate rows</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement><Type>VGrid</Type><DataSource>0</DataSource></IElement>
+      </CSInterfaceSection>
+    </ChildStructure>
     <ChildStructure Name="Interco Funding Assumptions">
       <CSName>Interco Funding Assumptions</CSName>
       <DefaultWorksheet>Interco Funding Assumptions</DefaultWorksheet>
@@ -14346,6 +15182,9 @@
           <SkipLastRecords>1</SkipLastRecords>
           <RowsExpandModel>NRRI</RowsExpandModel>
           <RowExpandByNR>DepnType</RowExpandByNR>
+          <StructureRuleID>HOUSING_COMPONENT_RECORDS</StructureRuleID>
+          <StructureAddCommand>ProcessAddHARecords</StructureAddCommand>
+          <StructureDeleteCommand>ProcessDeleteHARecords</StructureDeleteCommand>
           <RowsExpandBy>CC</RowsExpandBy>
           <DSType>MergeDownAndPivot</DSType>
           <MergeSources>Down</MergeSources>
@@ -14976,6 +15815,9 @@
           <SkipLastRecords>1</SkipLastRecords>
           <RowsExpandModel>NRRI</RowsExpandModel>
           <RowExpandByNR>Rep_OFA_010</RowExpandByNR>
+          <StructureRuleID>OFA_RECORDS</StructureRuleID>
+          <StructureAddCommand>ProcessAddOFARecords</StructureAddCommand>
+          <StructureDeleteCommand>ProcessDeleteOFARecords</StructureDeleteCommand>
           <RowsExpandBy>NRCI</RowsExpandBy>
           <DSType>MergeDownAndPivot</DSType>
           <MergeSources>Down</MergeSources>
@@ -15292,6 +16134,9 @@
           <SourceDataFormat>Cols</SourceDataFormat>
           <RowsExpandModel>NRRI</RowsExpandModel>
           <RowExpandByNR>Rep_Jour_01</RowExpandByNR>
+          <StructureRuleID>JOURNAL_RECORDS</StructureRuleID>
+          <StructureAddCommand>ProcessAddJournalRecords</StructureAddCommand>
+          <StructureDeleteCommand>ProcessDeleteJournalRecords</StructureDeleteCommand>
           <RO>FALSE</RO>
           <RowsExpandBy>NRRI</RowsExpandBy>
           <DSType>MergeAcross</DSType>

@@ -41,8 +41,8 @@
   "application": {
     "project": "Abovo Business Suite.vbproj",
     "compiledFileCount": 155,
-    "testVersion": "7.30",
-    "structureXmlSha256": "FA30906F0F8077B3B65BE0B4CB83AFEA6ADFAE29BDA3EDF075BB954119E04A12",
+    "testVersion": "7.34",
+    "structureXmlSha256": "BDEA84C46626521475C3AD811E6A1FF27C405F1BB5AA977E0629729EA8FFAF9B",
     "projectSha256": "D57E3E0F9CEBB584A69646D079008BF0EFE9C965A16B056AEB493C490BE78EA7",
     "keyFiles": [
       "Services/TransactionalDB/TransactionalDBSynchroniser.vb",
