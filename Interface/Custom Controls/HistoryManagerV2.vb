@@ -32,6 +32,8 @@ Public NotInheritable Class HistoryManagerV2
     Private ReadOnly CloseButton As New SimpleButton()
     Private ReadOnly UndoRowEditor As New RepositoryItemButtonEdit()
     Private ReadOnly RedoRowEditor As New RepositoryItemButtonEdit()
+    Private PendingRowActionGroupID As Integer = -1
+    Private ExecutingHistoryCommand As Boolean = False
     Private ClosingForModel As Boolean
 
     Public Sub New(ByVal setModelID As Integer)
@@ -85,6 +87,7 @@ Public NotInheritable Class HistoryManagerV2
         AddHandler HistoryView.FocusedRowChanged, AddressOf HistorySelectionChanged
         AddHandler HistoryView.CustomRowCellEdit, AddressOf HistoryCustomRowCellEdit
         AddHandler HistoryView.ShowingEditor, AddressOf HistoryShowingEditor
+        AddHandler HistoryGrid.MouseDown, AddressOf HistoryGrid_MouseDown
         Root.Controls.Add(HistoryGrid, 0, 1)
 
         StatusLabel.Dock = DockStyle.Fill
@@ -138,11 +141,11 @@ Public NotInheritable Class HistoryManagerV2
 
     Private Sub Manager_HistoryChanged(ByVal sender As Object,
                                        ByVal e As ChangeHistoryChangedEventArgsV2)
-        If IsDisposed Then Return
+        If IsDisposed OrElse ExecutingHistoryCommand Then Return
         If InvokeRequired Then
             BeginInvoke(New MethodInvoker(AddressOf RefreshHistory))
         Else
-            RefreshHistory()
+            BeginInvoke(New MethodInvoker(AddressOf RefreshHistory))
         End If
     End Sub
 
@@ -209,14 +212,42 @@ Public NotInheritable Class HistoryManagerV2
             Convert.ToString(HistoryView.GetFocusedRowCellValue("Action")))
     End Sub
 
+    Private Sub HistoryGrid_MouseDown(ByVal sender As Object, ByVal e As MouseEventArgs)
+        PendingRowActionGroupID = -1
+        Dim hitInfo = HistoryView.CalcHitInfo(e.Location)
+        If hitInfo Is Nothing OrElse Not hitInfo.InRowCell OrElse hitInfo.Column Is Nothing OrElse
+           hitInfo.Column.FieldName <> "Action" Then Return
+
+        HistoryView.FocusedRowHandle = hitInfo.RowHandle
+        HistoryView.FocusedColumn = hitInfo.Column
+        Dim value As Object = HistoryView.GetRowCellValue(hitInfo.RowHandle, "GroupID")
+        If value Is Nothing OrElse value Is DBNull.Value Then Return
+        Integer.TryParse(value.ToString(), PendingRowActionGroupID)
+    End Sub
+
+    Private Function ConsumeRowActionGroupID() As Integer
+        Dim groupID As Integer = PendingRowActionGroupID
+        PendingRowActionGroupID = -1
+        If groupID >= 0 Then Return groupID
+        Return FocusedGroupID()
+    End Function
+
+    Private Sub QueueHistoryCommand(ByVal command As Func(Of AbovoAppCls.AbovoTransaction))
+        If command Is Nothing OrElse ExecutingHistoryCommand OrElse IsDisposed Then Return
+        HistoryView.CloseEditor()
+        BeginInvoke(New MethodInvoker(Sub()
+            If Not IsDisposed Then ExecuteHistoryCommand(command)
+        End Sub))
+    End Sub
+
     Private Sub UndoRowButton_Click(ByVal sender As Object, ByVal e As ButtonPressedEventArgs)
-        Dim groupID As Integer = FocusedGroupID()
-        If groupID >= 0 Then ExecuteHistoryCommand(Function() Manager.UndoTo(groupID))
+        Dim groupID As Integer = ConsumeRowActionGroupID()
+        If groupID >= 0 Then QueueHistoryCommand(Function() Manager.UndoTo(groupID))
     End Sub
 
     Private Sub RedoRowButton_Click(ByVal sender As Object, ByVal e As ButtonPressedEventArgs)
-        Dim groupID As Integer = FocusedGroupID()
-        If groupID >= 0 Then ExecuteHistoryCommand(Function() Manager.RedoTo(groupID))
+        Dim groupID As Integer = ConsumeRowActionGroupID()
+        If groupID >= 0 Then QueueHistoryCommand(Function() Manager.RedoTo(groupID))
     End Sub
 
     Private Sub UpdateCommandState()
@@ -245,10 +276,19 @@ Public NotInheritable Class HistoryManagerV2
     End Sub
 
     Private Sub ExecuteHistoryCommand(ByVal command As Func(Of AbovoAppCls.AbovoTransaction))
-        Dim result As AbovoAppCls.AbovoTransaction = command()
+        If command Is Nothing OrElse ExecutingHistoryCommand Then Return
+        Dim result As AbovoAppCls.AbovoTransaction = Nothing
+        ExecutingHistoryCommand = True
+        Try
+            result = command()
+        Finally
+            ExecutingHistoryCommand = False
+        End Try
         If result Is Nothing Then Return
         If result.BError Then
             XtraMessageBox.Show(Me, result.StrResponseMessage, "Change History", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        ElseIf Not result.BSuccess Then
+            XtraMessageBox.Show(Me, result.StrResponseMessage, "Change History", MessageBoxButtons.OK, MessageBoxIcon.Information)
         End If
         RefreshHistory()
     End Sub

@@ -114,6 +114,9 @@ Public Class DataInterfaceTemplate
 
     Private ControlsInitialised As Boolean = False
     Private SuppressSingleCellPosting As Boolean = False
+    Private SuppressGridPosting As Boolean = False
+    Private WorkbookPostingDepth As Integer = 0
+    Private WorkbookRefreshQueued As Boolean = False
     Private InterfaceResourcesReleased As Boolean = False
     Private FooterOn As Boolean
     Private FooterDone As Boolean
@@ -602,13 +605,35 @@ Public Class DataInterfaceTemplate
 
     Public Sub RefreshData()
 
+        'DevExpress completes its editor commit after Leave/ValuePushed handlers
+        'return. Refreshing a datasource from inside that event lets its stale
+        'editor buffer overwrite the newly displayed workbook value. Defer the
+        'refresh until the current edit message has finished.
+        If WorkbookPostingDepth > 0 Then
+            QueueWorkbookRefresh()
+            Return
+        End If
+
         If Not IsNothing(DataPres) AndAlso GridControls IsNot Nothing Then
 
             For Each gridControl In GridControls
 
                 If Not IsNothing(gridControl) AndAlso Not gridControl.IsDisposed Then
-
-                    gridControl.RefreshDataSource()
+                    Dim previousGridSuppression As Boolean = SuppressGridPosting
+                    SuppressGridPosting = True
+                    Try
+                        Dim unboundSource As AbovoUnboundSource =
+                            TryCast(gridControl.DataSource, AbovoUnboundSource)
+                        If unboundSource IsNot Nothing Then
+                            'RefreshDataSource does not invalidate values already supplied
+                            'by DevExpress UnboundSource. Reset at the existing row count so
+                            'ValueNeeded rereads the authoritative workbook cells.
+                            unboundSource.Reset(unboundSource.Count)
+                        End If
+                        gridControl.RefreshDataSource()
+                    Finally
+                        SuppressGridPosting = previousGridSuppression
+                    End Try
 
                     'LiveGrid headings are workbook formula results too. Refresh
                     'their captions in place after calculation so a renamed stock
@@ -633,7 +658,18 @@ Public Class DataInterfaceTemplate
             For Each vertGridControl As VGridControl In VertGridControls
 
                 If vertGridControl IsNot Nothing AndAlso Not vertGridControl.IsDisposed Then
-                    vertGridControl.RefreshDataSource()
+                    Dim previousGridSuppression As Boolean = SuppressGridPosting
+                    SuppressGridPosting = True
+                    Try
+                        Dim unboundSource As AbovoUnboundSource =
+                            TryCast(vertGridControl.DataSource, AbovoUnboundSource)
+                        If unboundSource IsNot Nothing Then
+                            unboundSource.Reset(unboundSource.Count)
+                        End If
+                        vertGridControl.RefreshDataSource()
+                    Finally
+                        SuppressGridPosting = previousGridSuppression
+                    End Try
                     RefreshLiveVGridHeaders(vertGridControl)
                 End If
 
@@ -664,7 +700,17 @@ SkipRefresh:
 
     End Sub
 
+    Private Sub QueueWorkbookRefresh()
+        If WorkbookRefreshQueued OrElse IsDisposed OrElse Not IsHandleCreated Then Return
+        WorkbookRefreshQueued = True
+        BeginInvoke(New MethodInvoker(Sub()
+            WorkbookRefreshQueued = False
+            If Not IsDisposed Then RefreshData()
+        End Sub))
+    End Sub
+
     Private Sub RefreshSingleCellControlsFromWorkbook()
+        Dim previousSuppression As Boolean = SuppressSingleCellPosting
         SuppressSingleCellPosting = True
         Try
             If TextBoxes IsNot Nothing Then
@@ -708,7 +754,44 @@ SkipRefresh:
                 Next
             End If
         Finally
-            SuppressSingleCellPosting = False
+            SuppressSingleCellPosting = previousSuppression
+        End Try
+    End Sub
+
+    Private Sub RegisterSingleCellHistoryRefresh(ByVal editor As Control,
+                                                 ByVal worksheet As DevExpress.Spreadsheet.Worksheet)
+        If editor Is Nothing OrElse worksheet Is Nothing Then Return
+        Dim binding As New ModelPostingHistoryBinding(
+            editor,
+            ModelID,
+            worksheet.Name,
+            Sub() RefreshSingleCellEditorFromWorkbook(editor))
+        GC.KeepAlive(binding)
+    End Sub
+
+    Private Sub RefreshSingleCellEditorFromWorkbook(ByVal editor As Control)
+        If editor Is Nothing OrElse editor.IsDisposed Then Return
+        Dim previousSuppression As Boolean = SuppressSingleCellPosting
+        SuppressSingleCellPosting = True
+        Try
+            If TypeOf editor Is AbovoDETextEdit Then
+                DirectCast(editor, AbovoDETextEdit).RefreshData()
+            ElseIf TypeOf editor Is AbovoDESpinEdit Then
+                DirectCast(editor, AbovoDESpinEdit).RefreshData()
+            ElseIf TypeOf editor Is AbovoDEDateEdit Then
+                DirectCast(editor, AbovoDEDateEdit).RefreshData()
+            ElseIf TypeOf editor Is AbovoDEComboBox Then
+                DirectCast(editor, AbovoDEComboBox).RefreshData()
+            ElseIf TypeOf editor Is ComboBoxEdit Then
+                Dim combo As ComboBoxEdit = DirectCast(editor, ComboBoxEdit)
+                Dim dataTag As SingleCellDataTag = TryCast(combo.Tag, SingleCellDataTag)
+                If dataTag IsNot Nothing AndAlso dataTag.TargetWorksheet IsNot Nothing Then
+                    combo.EditValue = EditorValueFromCell(
+                        dataTag.TargetWorksheet.Cells(dataTag.TargetCell), dataTag.DataType)
+                End If
+            End If
+        Finally
+            SuppressSingleCellPosting = previousSuppression
         End Try
     End Sub
 
@@ -3973,10 +4056,14 @@ SkipRefresh:
 
                                     'GridControls(GridCount).RepositoryItems.Add(RetComb)
 
-                                    AddHandler RetComb.EditValueChanged, AddressOf ColumnHeaderEmbededComboChanged
                                     OriginColTag.InColumnEditorCombo = EditControl
                                     OriginColTag.HasIncolumnEditor = True
-                                    Dim helper As ColumnInplaceEditorHelper = New ColumnInplaceEditorHelper(BGC, RetComb)
+                                    Dim helper As ColumnInplaceEditorHelper =
+                                        New ColumnInplaceEditorHelper(
+                                            BGC,
+                                            RetComb,
+                                            AddressOf ColumnHeaderEmbededComboChanged,
+                                            AddressOf ColumnHeaderInplaceEditorDoubleClicked)
                                     InColumnEditorTag.InPlaceColumnHelper = helper
                                     EditControl.Tag = InColumnEditorTag
                                     helper.Tag = InColumnEditorTag
@@ -4067,10 +4154,14 @@ SkipRefresh:
 
                                     'GridControls(GridCount).RepositoryItems.Add(RetComb)
 
-                                    AddHandler RetComb.EditValueChanged, AddressOf ColumnHeaderEmbededDateEChanged
                                     OriginColTag.InColumnEditorDate = EditControl
                                     OriginColTag.HasIncolumnEditor = True
-                                    Dim helper As ColumnInplaceEditorHelper = New ColumnInplaceEditorHelper(BGC, RetComb)
+                                    Dim helper As ColumnInplaceEditorHelper =
+                                        New ColumnInplaceEditorHelper(
+                                            BGC,
+                                            RetComb,
+                                            AddressOf ColumnHeaderEmbededDateEChanged,
+                                            AddressOf ColumnHeaderInplaceEditorDoubleClicked)
                                     InColumnEditorTag.InPlaceColumnHelper = helper
                                     EditControl.Tag = InColumnEditorTag
                                     helper.Tag = InColumnEditorTag
@@ -5755,6 +5846,7 @@ SkipRefresh:
                         AddHandler SpinEdits(SpinEditCount).Validating, AddressOf SingleCellControlValidatingEditor
                         AddHandler SpinEdits(SpinEditCount).EditValueChanged, AddressOf SingleCellDirtyMarker
                         AddHandler SpinEdits(SpinEditCount).Leave, AddressOf SingleCell_Value_Push
+                        RegisterSingleCellHistoryRefresh(SpinEdits(SpinEditCount), SCDT.TargetWorksheet)
 
                     End If
 
@@ -5821,6 +5913,7 @@ SkipRefresh:
                         AddHandler TextBoxes(TextEditCount).Validating, AddressOf SingleCellControlValidatingEditor
                         AddHandler TextBoxes(TextEditCount).EditValueChanged, AddressOf SingleCellDirtyMarker
                         AddHandler TextBoxes(TextEditCount).Leave, AddressOf SingleCell_Value_Push
+                        RegisterSingleCellHistoryRefresh(TextBoxes(TextEditCount), SCDT.TargetWorksheet)
 
                     End If
 
@@ -5909,6 +6002,7 @@ SkipRefresh:
 
                         AddHandler Combos(CombosCount).Enter, AddressOf ComboOpen
                         AddHandler Combos(CombosCount).EditValueChanged, AddressOf SingleCell_Value_Push
+                        RegisterSingleCellHistoryRefresh(Combos(CombosCount), SCDT.TargetWorksheet)
 
                     End If
 
@@ -5982,6 +6076,7 @@ SkipRefresh:
                 End If
 
                 AddHandler DateBoxes(DateEditCount).EditValueChanged, AddressOf SingleCell_Value_Push
+                RegisterSingleCellHistoryRefresh(DateBoxes(DateEditCount), SCDT.TargetWorksheet)
 
                 SectionControlsCumlHeight += DateBoxes(DateEditCount).Height + (DefaultTablePanelPadding.Top + DefaultTablePanelPadding.Bottom)
 
@@ -6323,6 +6418,7 @@ SkipRefresh:
                             ADEComboBoxesCount += 1
                             ReDim Preserve ADEComboBoxes(ADEComboBoxesCount)
                             ADEComboBoxes(ADEComboBoxesCount) = New AbovoDEComboBox With {
+                            .ModelID = ModelID,
                             .Tag = SCDT,
                             .RepID = TECB.RepID,
                             .Dock = DockStyle.Fill,
@@ -6335,6 +6431,7 @@ SkipRefresh:
 
                             ADEComboBoxes(ADEComboBoxesCount).InitialiseStandard(TECB.RepID)
                             AddHandler ADEComboBoxes(ADEComboBoxesCount).EditValueChanged, AddressOf SingleCell_Value_Push
+                            RegisterSingleCellHistoryRefresh(ADEComboBoxes(ADEComboBoxesCount), SCDT.TargetWorksheet)
                             CurrControl = ADEComboBoxes(ADEComboBoxesCount)
 
                         ElseIf MTE.Type = "Label" Then
@@ -6549,6 +6646,7 @@ SkipRefresh:
                             AddHandler ADETextEdits(ADETextEditsCount).Validating, AddressOf SingleCellControlValidatingEditor
                             AddHandler ADETextEdits(ADETextEditsCount).EditValueChanged, AddressOf SingleCellDirtyMarker
                             AddHandler ADETextEdits(ADETextEditsCount).Leave, AddressOf SingleCell_Value_Push
+                            RegisterSingleCellHistoryRefresh(ADETextEdits(ADETextEditsCount), SCDataDag.TargetWorksheet)
 
                         ElseIf MTE.Type = "Hyperlink" Then
 
@@ -6631,6 +6729,7 @@ SkipRefresh:
                             AddHandler ADETextEdits(ADETextEditsCount).Validating, AddressOf SingleCellControlValidatingEditor
                             AddHandler ADETextEdits(ADETextEditsCount).EditValueChanged, AddressOf SingleCellDirtyMarker
                             AddHandler ADETextEdits(ADETextEditsCount).Leave, AddressOf SingleCell_Value_Push
+                            RegisterSingleCellHistoryRefresh(ADETextEdits(ADETextEditsCount), SCDataDag.TargetWorksheet)
 
                         End If
 
@@ -10063,9 +10162,11 @@ SectionSelect:
     Private Sub ChangeManager_HistoryChanged(ByVal sender As Object,
                                              ByVal e As ChangeHistoryChangedEventArgsV2)
         If Not e.IsUndoRedo OrElse IsDisposed OrElse Not IsHandleCreated Then Return
-        BeginInvoke(New MethodInvoker(Sub()
-            If Not IsDisposed Then RefreshData()
-        End Sub))
+        'RaiseHistoryChanged occurs after the workbook snapshots, calculation and
+        'history stacks have all reached their final state. Refresh synchronously
+        'here so controls cannot remain on a stale cached value while the history
+        'window already reports the action as complete.
+        RefreshData()
     End Sub
 
     Protected Overrides Function ProcessCmdKey(ByRef msg As Message,
@@ -10796,39 +10897,33 @@ SectionSelect:
 
     End Function
     Private Sub UnboundDS_ValuePushed(ByVal sender As Object, ByVal e As DevExpress.Data.UnboundSourceValuePushedEventArgs)
+        If SuppressGridPosting Then Return
 
-
+        WorkbookPostingDepth += 1
         Me.Cursor = Cursors.WaitCursor
+        Try
+            Dim UDSSender As AbovoUnboundSource = sender
+            Dim ColSent As Integer = Microsoft.VisualBasic.Right(e.PropertyName, Len(e.PropertyName) - 4)
 
-        Dim UDSSender As AbovoUnboundSource = sender
-        Dim ColSent As Integer = Microsoft.VisualBasic.Right(e.PropertyName, Len(e.PropertyName) - 4)
+            PushDSData(UDSSender.UBSTag.DSIndex, e.RowIndex, ColSent, e.Value)
 
-        PushDSData(UDSSender.UBSTag.DSIndex, e.RowIndex, ColSent, e.Value)
+            If UDSSender.InBandedMode Then
+                UDSSender.ActiveGridBandedView.Columns(ColSent).BestFit()
+                UDSSender.ActiveGridBandedView.Columns(ColSent).Width = UDSSender.ActiveGridBandedView.Columns(ColSent).Width * 1.15
+            ElseIf Not UDSSender.InVertMode Then
+                Try
+                    UDSSender.ActiveGridView.Columns(ColSent).BestFit()
+                    UDSSender.ActiveGridView.Columns(ColSent).Width = UDSSender.ActiveGridView.Columns(ColSent).Width * 1.15
+                Catch
+                End Try
+            End If
 
-        'On Error Resume Next
-
-        If UDSSender.InBandedMode Then
-
-            UDSSender.ActiveGridBandedView.Columns(ColSent).BestFit()
-            UDSSender.ActiveGridBandedView.Columns(ColSent).Width = UDSSender.ActiveGridBandedView.Columns(ColSent).Width * 1.15
-
-        ElseIf UDSSender.InVertMode Then
-
-        Else
-
-            Try
-                UDSSender.ActiveGridView.Columns(ColSent).BestFit()
-                UDSSender.ActiveGridView.Columns(ColSent).Width = UDSSender.ActiveGridView.Columns(ColSent).Width * 1.15
-            Catch ex As Exception
-
-            End Try
-
-
-        End If
-
-        UpdateRules(UDSSender.UBSTag.DSIndex)
-
-        Me.Cursor = Cursors.Default
+            UpdateRules(UDSSender.UBSTag.DSIndex)
+        Finally
+            WorkbookPostingDepth = Math.Max(0, WorkbookPostingDepth - 1)
+            Me.Cursor = Cursors.Default
+            QueueWorkbookRefresh()
+        End Try
 
     End Sub
     Private Sub PushDSData(ByVal SetDSIndex As Integer, ByVal rowIndex As Integer, ByVal ColSent As Integer, Value As Object, Optional ByVal RefreshAfter As Boolean = True)
@@ -10957,46 +11052,39 @@ SectionSelect:
                         .UserName = Environment.UserName
                     }
 
-        If ChangeMan.ProcessChange(DCM).BError = True Then
-
-            Try
-
-                Select Case DataTag.DataType
-
-                    Case "S"
-
-                        sender.editvalue = OldValue.TextValue
-                        Me.Cursor = Cursors.Default
-                        Return
-
-                    Case "D"
-
-                        sender.editvalue = DateTime.FromOADate(OldValue.NumericValue)
-                        Me.Cursor = Cursors.Default
-                        Return
-
-                    Case Else
-
-                        sender.editvalue = OldValue.NumericValue
-                        Me.Cursor = Cursors.Default
-                        Return
-
-                End Select
-
-            Catch ex As Exception
-
-            End Try
-
-        End If
+        Dim previousSuppression As Boolean = SuppressSingleCellPosting
+        SuppressSingleCellPosting = True
+        WorkbookPostingDepth += 1
 
         Try
-            sender.ClearDirtyFlag()
+            'Calculation refreshes every active interface synchronously.  Mark the
+            'editor clean before entering that refresh and suppress its change
+            'events until the workbook transaction has reached its final value.
+            Try
+                sender.ClearDirtyFlag()
+            Catch
+            End Try
 
-        Catch ex As Exception
+            Dim changeResult As AbovoAppCls.AbovoTransaction = ChangeMan.ProcessChange(DCM)
 
+            If changeResult.BError Then
+                Select Case DataTag.DataType
+                    Case "S"
+                        sender.editvalue = OldValue.TextValue
+                    Case "D"
+                        sender.editvalue = DateTime.FromOADate(OldValue.NumericValue)
+                    Case Else
+                        sender.editvalue = OldValue.NumericValue
+                End Select
+                Return
+            End If
+
+        Finally
+            SuppressSingleCellPosting = previousSuppression
+            WorkbookPostingDepth = Math.Max(0, WorkbookPostingDepth - 1)
+            Me.Cursor = Cursors.Default
+            QueueWorkbookRefresh()
         End Try
-
-        Me.Cursor = Cursors.Default
 
     End Sub
 
@@ -12216,15 +12304,173 @@ SectionSelect:
 
     End Function
 
+    Private Shared Function NormalizeInColumnEditorValue(ByVal value As Object) As Object
+
+        Dim textValue As String = TryCast(value, String)
+
+        If textValue IsNot Nothing AndAlso
+           textValue.Trim().Equals("<Blank>", StringComparison.OrdinalIgnoreCase) Then
+
+            Return Nothing
+        End If
+
+        Return value
+
+    End Function
+
+    Private Shared Function GetInColumnEditorValue(ByVal ColumnTag As DataColumnTag) As Object
+
+        If ColumnTag Is Nothing OrElse Not ColumnTag.HasIncolumnEditor Then Return Nothing
+
+        If ColumnTag.InColumnEditorCombo IsNot Nothing AndAlso
+           ColumnTag.InColumnEditorCombo.InPlaceColumnHelper IsNot Nothing Then
+
+            Return NormalizeInColumnEditorValue(
+                ColumnTag.InColumnEditorCombo.InPlaceColumnHelper.EditValue)
+        End If
+
+        If ColumnTag.InColumnEditorDate IsNot Nothing AndAlso
+           ColumnTag.InColumnEditorDate.InPlaceColumnHelper IsNot Nothing Then
+
+            Return NormalizeInColumnEditorValue(
+                ColumnTag.InColumnEditorDate.InPlaceColumnHelper.EditValue)
+        End If
+
+        Return Nothing
+
+    End Function
+
+    Private Shared Function IsPopulatedInColumnEditorValue(ByVal value As Object) As Boolean
+
+        If value Is Nothing OrElse value Is DBNull.Value Then Return False
+
+        Dim TextValue As String = TryCast(value, String)
+        If TextValue IsNot Nothing Then Return Not String.IsNullOrWhiteSpace(TextValue)
+
+        Return True
+
+    End Function
+
+    Private Sub ColumnHeaderInplaceEditorDoubleClicked(ByVal sender As Object, ByVal e As EventArgs)
+
+        Dim TargetColumn As BandedGridColumn = Nothing
+        Dim SourceTagCombo As InColumnEditorTagCombo = TryCast(GetInColumnEditorTag(sender), InColumnEditorTagCombo)
+        Dim SourceTagDate As InColumnEditorTagDateEdit = TryCast(GetInColumnEditorTag(sender), InColumnEditorTagDateEdit)
+
+        If SourceTagCombo IsNot Nothing Then
+            TargetColumn = SourceTagCombo.ParentBandedGridColumn
+        ElseIf SourceTagDate IsNot Nothing Then
+            TargetColumn = SourceTagDate.ParentBandedGridColumn
+        End If
+
+        If TargetColumn Is Nothing Then Return
+
+        Dim View As BandedGridView = TryCast(TargetColumn.View, BandedGridView)
+        If View Is Nothing OrElse View.GridControl Is Nothing Then Return
+
+        Dim UBS As AbovoUnboundSource = TryCast(View.GridControl.DataSource, AbovoUnboundSource)
+        If UBS Is Nothing Then Return
+
+        Dim DSIndex As Integer = UBS.UBSTag.DSIndex
+        If DataPres Is Nothing OrElse DataPres.DataSets Is Nothing OrElse
+           DSIndex < 0 OrElse DSIndex >= DataPres.DataSets.Count Then Return
+
+        Dim TargetDataSet As DataCellRange = DataPres.DataSets(DSIndex)
+        If TargetDataSet Is Nothing OrElse TargetDataSet.RO Then Return
+
+        Dim TargetColumnIndex As Integer = GetGridColumnIndex(TargetColumn)
+        If TargetColumnIndex < 0 OrElse TargetColumnIndex >= TargetDataSet.DataColumns.Count Then Return
+
+        'A defining row represents time from left to right. Select the nearest
+        'earlier column whose defining editor is populated: this is the most
+        'recent available period before the double-clicked target column.
+        Dim SourceColumn As BandedGridColumn = Nothing
+        Dim SourceAbsoluteIndex As Integer = Integer.MinValue
+
+        For Each CandidateGridColumn As GridColumn In View.Columns
+
+            Dim Candidate As BandedGridColumn = TryCast(CandidateGridColumn, BandedGridColumn)
+            If Candidate Is Nothing OrElse Candidate Is TargetColumn OrElse Not Candidate.Visible Then Continue For
+            If Candidate.AbsoluteIndex >= TargetColumn.AbsoluteIndex OrElse
+               Candidate.AbsoluteIndex <= SourceAbsoluteIndex Then Continue For
+
+            Dim CandidateTag As DataColumnTag = TryCast(Candidate.Tag, DataColumnTag)
+            If CandidateTag Is Nothing OrElse Not CandidateTag.HasIncolumnEditor Then Continue For
+            If Not IsPopulatedInColumnEditorValue(GetInColumnEditorValue(CandidateTag)) Then Continue For
+
+            SourceColumn = Candidate
+            SourceAbsoluteIndex = Candidate.AbsoluteIndex
+
+        Next
+
+        If SourceColumn Is Nothing Then
+            DevExpress.XtraEditors.XtraMessageBox.Show(
+                "There is no populated earlier column to copy from.",
+                "Copy most recent column",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information)
+            Return
+        End If
+
+        Dim SourceColumnIndex As Integer = GetGridColumnIndex(SourceColumn)
+        If SourceColumnIndex < 0 OrElse SourceColumnIndex >= TargetDataSet.DataColumns.Count Then Return
+
+        Dim PendingCopies As New List(Of KeyValuePair(Of Integer, Object))
+
+        'Snapshot the complete source column before making any workbook change.
+        'Each ProcessChange recalculates the model, so reading lazily while writing
+        'could otherwise copy a moving formula result into later rows.
+        For RowIndex As Integer = 0 To TargetDataSet.DataRows.Count - 1
+
+            If Not CanPasteToDataPoint(TargetDataSet, RowIndex, TargetColumnIndex) Then Continue For
+
+            Dim SourceValue As Object = GetDSData(0, DSIndex, RowIndex, SourceColumnIndex)
+            Dim TargetValue As Object = GetDSData(0, DSIndex, RowIndex, TargetColumnIndex)
+
+            If Object.Equals(SourceValue, TargetValue) Then Continue For
+            PendingCopies.Add(New KeyValuePair(Of Integer, Object)(RowIndex, SourceValue))
+
+        Next
+
+        If PendingCopies.Count = 0 Then Return
+
+        Dim SourceHeader As String = Convert.ToString(GetInColumnEditorValue(TryCast(SourceColumn.Tag, DataColumnTag)))
+        Dim TargetHeader As String = Convert.ToString(GetInColumnEditorValue(TryCast(TargetColumn.Tag, DataColumnTag)))
+
+        Me.Cursor = Cursors.WaitCursor
+
+        Try
+            Using CopyGroup As IDisposable =
+                ChangeMan.BeginChangeGroup(
+                    "Copy column " & SourceHeader & " to " & TargetHeader & " in " & DITName)
+
+                For Each PendingCopy As KeyValuePair(Of Integer, Object) In PendingCopies
+                    PushDSData(DSIndex,
+                               PendingCopy.Key,
+                               TargetColumnIndex,
+                               PendingCopy.Value,
+                               False)
+                Next
+            End Using
+
+            UpdateRules(DSIndex)
+            UpdateCalcs(DSIndex)
+            RefreshData()
+        Finally
+            Me.Cursor = Cursors.Default
+        End Try
+
+    End Sub
+
     Private Sub ColumnHeaderEmbededComboChanged(ByVal sender As Object, ByVal e As EventArgs)
 
         Dim SourceTag As InColumnEditorTagCombo = TryCast(GetInColumnEditorTag(sender), InColumnEditorTagCombo)
 
         If SourceTag Is Nothing Then Exit Sub
 
-        Dim NewVal As Object = sender.editvalue
+        Dim NewVal As Object = NormalizeInColumnEditorValue(sender.editvalue)
 
-        If sender.editvalue = SourceTag.LastEditorValue Then Return
+        If Object.Equals(NewVal, SourceTag.LastEditorValue) Then Return
 
 
 
@@ -12295,7 +12541,7 @@ SectionSelect:
 
         If SourceTag Is Nothing Then Exit Sub
 
-        Dim NewVal As Object = sender.editvalue
+        Dim NewVal As Object = NormalizeInColumnEditorValue(sender.editvalue)
 
         Dim RevColumn As Integer = -1
 
@@ -12312,7 +12558,7 @@ SectionSelect:
 
         Else
 
-            If sender.editvalue = SourceTag.LastEditorValue Then
+            If Object.Equals(NewVal, SourceTag.LastEditorValue) Then
                 Return
             Else
                 RevColumn = 2

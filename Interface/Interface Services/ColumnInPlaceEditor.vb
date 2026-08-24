@@ -47,6 +47,12 @@ Namespace Abovo
         Private _Column As BandedGridColumn
         Private bgview As GridView
         Private _EditorHeight As Integer = -1
+        Private _AdvanceScheduled As Boolean = False
+        Private _ValueChangedHandler As EventHandler
+        Private _DoubleClickHandler As EventHandler
+        Private _CommitInProgress As Boolean = False
+        Private _ClosingEditor As Boolean = False
+        Private _DoubleClickScheduled As Boolean = False
 
         'Exact editor rectangle used by the most recent custom header paint.
         'Mouse interaction must use the same rectangle rather than trying to
@@ -57,9 +63,14 @@ Namespace Abovo
         Public LinkedDateEdit As AbovoDEHeaderDateBox
         Public Tag As Object
 
-        Public Sub New(ByVal column As BandedGridColumn, ByVal inplaceEditor As RepositoryItem)
+        Public Sub New(ByVal column As BandedGridColumn,
+                       ByVal inplaceEditor As RepositoryItem,
+                       Optional ByVal valueChangedHandler As EventHandler = Nothing,
+                       Optional ByVal doubleClickHandler As EventHandler = Nothing)
             _Column = column
             _Item = inplaceEditor
+            _ValueChangedHandler = valueChangedHandler
+            _DoubleClickHandler = doubleClickHandler
             bgview = TryCast(column.View, BandedGridView)
 
             InplaceEditorFormatting.ApplyStandardDateFormat(_Item)
@@ -73,7 +84,7 @@ Namespace Abovo
         End Sub
 
         Private Sub view_Layout(ByVal sender As Object, ByVal e As EventArgs)
-            CloseEditor()
+            CommitAndCloseEditor()
 
             'The next CustomDrawColumnHeader will replace this with the new
             'authoritative painted rectangle.
@@ -151,10 +162,13 @@ Namespace Abovo
             End If
         End Function
         Private Sub view_MouseDown(ByVal sender As Object, ByVal e As MouseEventArgs)
-            CloseEditor()
+            CommitAndCloseEditor()
             Dim editorBounds As Rectangle
             If ClickInEditor(e, editorBounds) Then
                 ShowEditor(editorBounds)
+                If e.Button = MouseButtons.Left AndAlso e.Clicks >= 2 Then
+                    RaiseEditorDoubleClick(ActiveEditor)
+                End If
                 DXMouseEventArgs.GetMouseArgs(e).Handled = True
             End If
         End Sub
@@ -207,6 +221,105 @@ Namespace Abovo
 
         End Function
 
+        Private Function GetCurrentEditorBounds() As Rectangle
+
+            If Not _LastPaintedEditorBounds.IsEmpty Then
+                Return _LastPaintedEditorBounds
+            End If
+
+            Dim vi As BandedGridViewInfo =
+                TryCast(bgview.GetViewInfo(), BandedGridViewInfo)
+
+            If vi Is Nothing Then Return Rectangle.Empty
+
+            For Each columnInfo As GridColumnInfoArgs In vi.ColumnsInfo
+
+                If columnInfo IsNot Nothing AndAlso
+                   columnInfo.Column Is _Column AndAlso
+                   Not columnInfo.Bounds.IsEmpty Then
+
+                    Return DrawEditorHelper.GetEditorBounds(
+                        columnInfo.Bounds,
+                        GetRightIndent(),
+                        _EditorHeight)
+
+                End If
+
+            Next
+
+            Return Rectangle.Empty
+
+        End Function
+
+        Private Shared Function GetHelper(ByVal column As BandedGridColumn) As ColumnInplaceEditorHelper
+
+            If column Is Nothing Then Return Nothing
+
+            Dim columnTag As DataColumnTag = TryCast(column.Tag, DataColumnTag)
+
+            If columnTag Is Nothing OrElse Not columnTag.HasIncolumnEditor Then
+                Return Nothing
+            End If
+
+            If columnTag.InColumnEditorCombo IsNot Nothing Then
+                Return columnTag.InColumnEditorCombo.InPlaceColumnHelper
+            End If
+
+            If columnTag.InColumnEditorDate IsNot Nothing Then
+                Return columnTag.InColumnEditorDate.InPlaceColumnHelper
+            End If
+
+            Return Nothing
+
+        End Function
+
+        Private Function GetAdjacentVisibleHelper(ByVal movePrevious As Boolean) As ColumnInplaceEditorHelper
+
+            'BandedGridColumn.VisibleIndex is not a stable traversal key when
+            'columns occupy band rows; AbsoluteIndex follows the defining-row
+            'source order used when these header editors are constructed.
+            Dim currentColumnIndex As Integer = _Column.AbsoluteIndex
+            Dim adjacentColumnIndex As Integer =
+                If(movePrevious, Integer.MinValue, Integer.MaxValue)
+            Dim adjacentHelper As ColumnInplaceEditorHelper = Nothing
+
+            For Each gridColumn As GridColumn In bgview.Columns
+
+                Dim candidate As BandedGridColumn = TryCast(gridColumn, BandedGridColumn)
+
+                If candidate Is Nothing OrElse Not candidate.Visible Then Continue For
+
+                If movePrevious Then
+
+                    If candidate.AbsoluteIndex >= currentColumnIndex OrElse
+                       candidate.AbsoluteIndex <= adjacentColumnIndex Then
+
+                        Continue For
+                    End If
+
+                Else
+
+                    If candidate.AbsoluteIndex <= currentColumnIndex OrElse
+                       candidate.AbsoluteIndex >= adjacentColumnIndex Then
+
+                        Continue For
+                    End If
+
+                End If
+
+                Dim candidateHelper As ColumnInplaceEditorHelper = GetHelper(candidate)
+
+                If candidateHelper IsNot Nothing Then
+                    adjacentColumnIndex = candidate.AbsoluteIndex
+                    adjacentHelper = candidateHelper
+                End If
+
+            Next
+
+            Return adjacentHelper
+
+        End Function
+
         Protected Overridable Function CalcColumnHitInfo(ByVal pt As Point, ByVal cols As GridColumnsInfo) As GridColumnInfoArgs
 
             'BandedGridView can contain more than one column at the same X
@@ -251,7 +364,8 @@ Namespace Abovo
             Return (x >= left AndAlso x < right)
         End Function
 
-        Private Sub ShowEditor(ByVal bounds As Rectangle)
+        Private Sub ShowEditor(ByVal bounds As Rectangle,
+                               Optional ByVal activateWithMouse As Boolean = True)
 
             ActiveEditor = _Item.CreateEditor()
             ActiveEditor.Properties.LockEvents()
@@ -260,6 +374,7 @@ Namespace Abovo
             'to use exactly the same fixed rectangle as the custom-painted version.
             ActiveEditor.Properties.Assign(_Item)
             ActiveEditor.Properties.AutoHeight = False
+            ActiveEditor.EnterMoveNextControl = False
 
             ActiveEditor.Properties.Appearance.Options.UseBackColor = True
             ActiveEditor.Properties.Appearance.BackColor = _Item.Appearance.BackColor
@@ -274,22 +389,186 @@ Namespace Abovo
             ActiveEditor.EditValue = EditValue
 
             AddHandler ActiveEditor.Leave, AddressOf editor_Leave
+            AddHandler ActiveEditor.KeyDown, AddressOf editor_KeyDown
+            AddHandler ActiveEditor.PreviewKeyDown, AddressOf editor_PreviewKeyDown
+            AddHandler ActiveEditor.DoubleClick, AddressOf editor_DoubleClick
 
-            ActiveEditor.SendMouse(ActiveEditor.PointToClient(Control.MousePosition), Control.MouseButtons)
             ActiveEditor.Properties.UnLockEvents()
+
+            If activateWithMouse Then
+                ActiveEditor.SendMouse(ActiveEditor.PointToClient(Control.MousePosition), Control.MouseButtons)
+            Else
+                ActiveEditor.Focus()
+            End If
 
         End Sub
 
         Private Sub CloseEditor()
-            If ActiveEditor IsNot Nothing Then
+
+            If ActiveEditor IsNot Nothing AndAlso Not _ClosingEditor Then
+
+                _ClosingEditor = True
+
+                Try
                 EditValue = ActiveEditor.EditValue
                 RemoveHandler ActiveEditor.Leave, AddressOf editor_Leave
+                RemoveHandler ActiveEditor.KeyDown, AddressOf editor_KeyDown
+                RemoveHandler ActiveEditor.PreviewKeyDown, AddressOf editor_PreviewKeyDown
+                RemoveHandler ActiveEditor.DoubleClick, AddressOf editor_DoubleClick
                 ActiveEditor.Dispose()
                 ActiveEditor = Nothing
+                Finally
+                    _ClosingEditor = False
+                End Try
+
             End If
+
         End Sub
-        Private Sub editor_Leave(ByVal sender As Object, ByVal e As EventArgs)
+
+        Private Sub CommitActiveEditorValue()
+
+            If ActiveEditor Is Nothing OrElse _CommitInProgress Then Return
+
+            Dim editor As BaseEdit = ActiveEditor
+            _CommitInProgress = True
+
+            Try
+                EditValue = editor.EditValue
+
+                If _ValueChangedHandler IsNot Nothing Then
+                    _ValueChangedHandler.Invoke(editor, EventArgs.Empty)
+                End If
+            Finally
+                _CommitInProgress = False
+            End Try
+
+        End Sub
+
+        Private Sub CommitAndCloseEditor()
+
+            If ActiveEditor Is Nothing OrElse _ClosingEditor Then Return
+
+            If Not _CommitInProgress Then
+
+                If Not ActiveEditor.DoValidate(PopupCloseMode.Normal) Then Return
+                CommitActiveEditorValue()
+
+            End If
+
             CloseEditor()
+
+        End Sub
+
+        Private Sub editor_PreviewKeyDown(ByVal sender As Object, ByVal e As PreviewKeyDownEventArgs)
+
+            If e.KeyCode = Keys.Tab Then e.IsInputKey = True
+
+        End Sub
+
+        Private Sub editor_KeyDown(ByVal sender As Object, ByVal e As KeyEventArgs)
+
+            If e.KeyCode <> Keys.Enter AndAlso e.KeyCode <> Keys.Tab Then Return
+
+            e.Handled = True
+            e.SuppressKeyPress = True
+
+            Dim editor As BaseEdit = TryCast(sender, BaseEdit)
+
+            If editor Is Nothing OrElse
+               Not editor.DoValidate(PopupCloseMode.Normal) Then
+
+                Return
+
+            End If
+
+            CommitActiveEditorValue()
+            ScheduleAdvanceToEditor(
+                GetAdjacentVisibleHelper(e.KeyCode = Keys.Tab AndAlso e.Shift))
+
+        End Sub
+
+        Private Sub ScheduleAdvanceToEditor(ByVal adjacentHelper As ColumnInplaceEditorHelper)
+
+            If _AdvanceScheduled Then Return
+
+            If bgview Is Nothing OrElse
+               bgview.GridControl Is Nothing OrElse
+               bgview.GridControl.IsDisposed Then
+
+                Return
+
+            End If
+
+            _AdvanceScheduled = True
+
+            'Repository-item change handlers calculate and relayout the grid
+            'synchronously. Queue one navigation request that survives Layout
+            'closing the current temporary editor, then reacquire the next
+            'header bounds after UpdateAllRules has completed.
+            bgview.GridControl.BeginInvoke(
+                New MethodInvoker(
+                    Sub()
+                        _AdvanceScheduled = False
+                        CloseEditor()
+
+                        If adjacentHelper IsNot Nothing Then
+                            adjacentHelper.ShowEditorFromKeyboard()
+                        End If
+                    End Sub))
+
+        End Sub
+
+        Private Sub ShowEditorFromKeyboard()
+
+            If bgview Is Nothing OrElse
+               bgview.GridControl Is Nothing OrElse
+               bgview.GridControl.IsDisposed OrElse
+               Not _Column.Visible Then
+
+                Return
+
+            End If
+
+            'A calculation/layout pass clears the cached custom-draw rectangle.
+            'Force the pending paint now so the next helper can use the exact
+            'same bounds as its visible header editor.
+            If _LastPaintedEditorBounds.IsEmpty Then
+                bgview.GridControl.Refresh()
+            End If
+
+            Dim bounds As Rectangle = GetCurrentEditorBounds()
+            If bounds.IsEmpty Then Return
+
+            ShowEditor(bounds, False)
+
+        End Sub
+
+        Private Sub editor_Leave(ByVal sender As Object, ByVal e As EventArgs)
+            CommitAndCloseEditor()
+        End Sub
+
+        Private Sub editor_DoubleClick(ByVal sender As Object, ByVal e As EventArgs)
+            RaiseEditorDoubleClick(sender)
+        End Sub
+
+        Private Sub RaiseEditorDoubleClick(ByVal sender As Object)
+
+            If _DoubleClickHandler Is Nothing OrElse _DoubleClickScheduled Then Return
+            If bgview Is Nothing OrElse bgview.GridControl Is Nothing OrElse bgview.GridControl.IsDisposed Then Return
+
+            'The second click can be reported by both the painted header and the
+            'temporary BaseEdit. Queue one action after that mouse sequence has
+            'finished so a resulting calculation/layout may safely close the editor.
+            _DoubleClickScheduled = True
+            bgview.GridControl.BeginInvoke(
+                New MethodInvoker(
+                    Sub()
+                        _DoubleClickScheduled = False
+                        If _DoubleClickHandler IsNot Nothing Then
+                            _DoubleClickHandler.Invoke(_Item, EventArgs.Empty)
+                        End If
+                    End Sub))
+
         End Sub
     End Class
 

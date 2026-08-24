@@ -86,6 +86,32 @@ Version 7.44 makes model undo/redo reliable while a DevExpress single-cell edito
 
 Version 7.45 corrects the Global Assumptions single-cell undo path. Its controls are AbovoDETextEdit/DateEdit derivatives rather than ModelPosting editors, so those extended controls now route Ctrl+Z/Ctrl+Y directly to model history. DIT history refresh now reloads editable single-cell text, date, spin and combo controls as well as grids and read-only controls. A scoped suppression flag prevents the resulting EditValueChanged events from reposting the restored workbook value as a new action.
 
+Version 7.46 corrects HistoryManagerV2 row undo/redo actions. Mouse hit-testing captures the group represented by the clicked action cell before its in-place ButtonEdit opens, and the command is deferred until that editor has closed. HistoryChanged notifications are suppressed while the manager is executing the requested stack transition, followed by one authoritative grid refresh; the row therefore changes from Undo/Applied to Redo/Undone (or back again) without an active editor restoring stale display data. Non-error no-action results are now reported rather than silently ignored.
+
+Version 7.47 makes the restored workbook value propagate directly to live DIT single-cell editors. Writable text, date, spin and combo controls, including mapped-table text/combo editors, now hold a model-history refresh binding scoped to their source worksheet. After undo/redo each affected control reloads its own workbook cell under nested posting suppression, in addition to the containing DIT's general refresh. This removes reliance on the form-level deferred refresh reaching every dynamically-created editor and prevents refresh-generated EditValueChanged events from creating replacement history entries.
+
+Version 7.48 makes the original DIT single-cell commit and its history record atomic from the user's perspective. The editor is marked clean and posting is suppressed while calculation performs its synchronous active-interface refresh, then the editor explicitly reloads the authoritative calculated workbook cell. ModelChangeManagerV2 now captures the history after-snapshot after calculation, so the Applied value, subsequent undo validation and visible editor cannot describe different workbook states.
+
+Version 7.49 corrects the shared DIT undo/redo presentation refresh. History completion now refreshes its owning DIT synchronously after workbook snapshots, calculation and stack state are final. XtraGrid and VGrid controls backed by DevExpress UnboundSource reset that source at its existing row count before refreshing, invalidating values previously supplied through ValueNeeded; single-cell controls are reread in the same pass. The restored workbook state is therefore visible immediately across both entity editors and grids.
+
+Version 7.50 closes refresh-time re-entry during undo and redo. DIT suppresses UnboundSource ValuePushed callbacks while XtraGrid and VGrid datasources are being reset or refreshed, and ModelChangeManagerV2 rejects any ordinary posting attempt while a history snapshot group is being applied. After calculation, every affected workbook cell is verified against its intended snapshot before the stack and log can report success; a re-overwritten cell now fails and rolls back the action instead of presenting a false Undone or Applied state.
+
+Version 7.51 aligns workbook refresh with the DevExpress editor commit lifecycle. Single-cell Leave and grid/vertical-grid UnboundSource ValuePushed handlers now keep a posting-depth scope while ModelChangeManager writes and calculates. Any calculation-driven or explicit DIT refresh encountered in that scope is coalesced through BeginInvoke and runs only after DevExpress has completed the current edit message, preventing its pre-refresh editor buffer from restoring the previous visible value after a successful journalled change.
+
+Version 7.52 separates model-history notification from the workbook transaction. HistoryChanged subscribers are invoked individually under exception isolation, so a stale, disposed or otherwise failing presentation subscriber cannot escape back into ProcessResolvedChange after the change group has been committed. This prevents the former inconsistent outcome where the history row remained Applied but the transaction catch restored the workbook's old value; one subscriber failure also no longer prevents the remaining DIT, grid and single-cell refresh subscribers from receiving the notification.
+
+Version 7.53 adds keyboard progression for DIT XtraGrid defining-row editors. Pressing Enter in a ColumnInplaceEditorHelper validates and commits the active DevExpress header editor, then moves focus to the next visible column-header editor in the same BandedGridView after any synchronous workbook calculation or layout refresh. The final editor closes normally when no later header editor exists. Ordinary grid cell editors and VGrid row-header editors are unchanged.
+
+Version 7.54 corrects ColumnInplaceEditor Enter traversal for banded headers. Navigation now uses each BandedGridColumn's source-order AbsoluteIndex rather than the unreliable band-relative VisibleIndex, and the temporary DevExpress editor explicitly disables EnterMoveNextControl so the form cannot transfer focus to the next grid while the helper is selecting the following header editor.
+
+Version 7.55 preserves ColumnInplaceEditor traversal across workbook calculation and rule refresh. Successful combo/date header changes now queue one deduplicated advance request from the DIT change handler after UpdateAllRules; Enter without a changed value uses the same request. The helper closes any surviving current editor, forces the post-layout header paint to reacquire authoritative bounds, and focuses the next source-order header editor. This applies to accepted keyboard and popup/mouse edits in XtraGrid only.
+
+Version 7.56 separates XtraGrid defining-row typing from commit. ColumnInplaceEditorHelper no longer posts on each RepositoryItem EditValueChanged event, allowing multi-character values such as 13 to be entered without a transient 1 being calculated and advancing focus. Enter and Tab validate, commit through the existing DIT ModelChangeManager handler, and move to the next header editor; Shift+Tab moves to the previous header editor. Genuine focus loss commits while respecting the control selected by the user. VGrid behavior is unchanged.
+
+Version 7.57 normalises the in-column editor display sentinel `<Blank>` to Nothing before creating its DataChangeEvent. ModelChangeManager therefore clears the authoritative target cell through its established typed clear-contents path instead of storing the literal sentinel text. Successful UI state, history and rule refreshes receive the resulting blank value consistently; the rule applies to both XtraGrid and VGrid defining-row handlers that expose the sentinel.
+
+Version 7.58 adds a most-recent-period fill action to DIT XtraGrid defining-row editors. Double-clicking a ColumnInplaceEditor copies a pre-write snapshot of the nearest populated defining column to its left into the editable cells beneath the selected column. Read-only, calculated, dummy, locked, spacer and control cells are skipped; all accepted writes use ModelChangeManager and appear as one grouped undo operation before the normal rules, calculations and interface refresh run. VGrid defining-row editors are unchanged.
+
 Completed automated/static validation:
 
 - Exact source/library hash comparison
@@ -93,7 +119,7 @@ Completed automated/static validation:
 - All canonical Transactional DB mirror geometries
 - Capital Grant assumptions/workings/Transactional DB five-column expansion geometry
 - V1/V2 datasource field and period contract review
-- Debug and Release MSBuild passed with zero build errors on 23 August 2026
+- Debug and Release MSBuild passed with zero build errors on 24 August 2026
 
 Required manual integration validation remains:
 

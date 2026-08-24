@@ -79,6 +79,7 @@ Namespace Abovo
         End Sub
 
         Public Function ProcessChange(ByVal sentEvent As DataChangeEvent) As AbovoAppCls.AbovoTransaction
+            If IsApplyingHistory Then Return SuccessfulNoAction("A refresh-time post was ignored while history was being applied.")
             Dim worksheetName As String = NormalizeIdentifier(sentEvent.WSName)
             Dim address As String = NormalizeIdentifier(sentEvent.CellAddress)
             Try
@@ -89,6 +90,7 @@ Namespace Abovo
         End Function
 
         Public Function ProcessChangeByNRAddressing(ByVal sentEvent As DataChangeEvent) As AbovoAppCls.AbovoTransaction
+            If IsApplyingHistory Then Return SuccessfulNoAction("A refresh-time post was ignored while history was being applied.")
             Try
                 Dim targetRange As CellRange = WB.Range(NormalizeIdentifier(sentEvent.TargetNR))
                 Dim targetCell As Cell = If(sentEvent.NROrientation = Orientation.Horizontal,
@@ -112,6 +114,11 @@ Namespace Abovo
             Dim group As ChangeHistoryGroupV2 = If(ActiveGroup, CreateGroup(sentEvent.Description))
             Try
                 WriteTypedValue(targetCell, sentEvent.ChangedValue, sentEvent.DataFormat)
+                FileManager.ExcelModels(ModelID).WBCalcEngine.CalculateWSs()
+
+                'Calculation is allowed to normalise a posted value.  History must
+                'therefore describe the authoritative post-calculation cell, not
+                'the transient value written immediately before calculation.
                 Dim after As CellSnapshotV2 = CellSnapshotV2.Capture(targetCell)
                 If before.Matches(targetCell) Then
                     result.BSuccess = True
@@ -125,7 +132,6 @@ Namespace Abovo
                     .AfterSnapshot = after, .OriginalDisplay = before.DisplayText,
                     .ChangedDisplay = after.DisplayText, .UserName = sentEvent.UserName,
                     .DataFormat = sentEvent.DataFormat}
-                FileManager.ExcelModels(ModelID).WBCalcEngine.CalculateWSs()
                 group.Entries.Add(entry)
                 MasterChangeLog.AddChangeLogEvent(ToLogEvent(entry, 1, "Apply"))
                 If automaticGroup Then CommitNewGroup(group)
@@ -214,6 +220,19 @@ Namespace Abovo
                     applied.Add(entry)
                 Next
                 FileManager.ExcelModels(ModelID).WBCalcEngine.CalculateWSs()
+
+                'Calculation and control refresh are capable of raising editor
+                'events. Do not report success unless the workbook still contains
+                'every snapshot that this undo/redo intended to apply.
+                For Each entry As ChangeHistoryEntryV2 In ordered
+                    Dim cell As Cell = WB.Worksheets(entry.WorksheetName).Cells(entry.CellAddress)
+                    Dim targetSnapshot As CellSnapshotV2 = If(redo, entry.AfterSnapshot, entry.BeforeSnapshot)
+                    If Not targetSnapshot.Matches(cell) Then
+                        Throw New InvalidOperationException(
+                            entry.WorksheetName & "!" & entry.CellAddress &
+                            " was changed again while history was being applied.")
+                    End If
+                Next
             Catch ex As Exception
                 For Each entry As ChangeHistoryEntryV2 In applied.AsEnumerable().Reverse()
                     Try
@@ -306,6 +325,10 @@ Namespace Abovo
             Return New AbovoAppCls.AbovoTransaction With {.BSuccess = False, .BError = False, .StrResponseMessage = message}
         End Function
 
+        Private Shared Function SuccessfulNoAction(ByVal message As String) As AbovoAppCls.AbovoTransaction
+            Return New AbovoAppCls.AbovoTransaction With {.BSuccess = True, .BError = False, .StrResponseMessage = message}
+        End Function
+
         Private Function ToLogEvent(ByVal entry As ChangeHistoryEntryV2,
                                     ByVal status As Integer,
                                     ByVal operation As String) As ChangeLogEvent
@@ -320,8 +343,25 @@ Namespace Abovo
 
         Private Sub RaiseHistoryChanged(ByVal undoRedo As Boolean,
                                         ByVal worksheets As IEnumerable(Of String))
-            RaiseEvent HistoryChanged(Me, New ChangeHistoryChangedEventArgsV2(
-                undoRedo, worksheets.Where(Function(name) Not String.IsNullOrWhiteSpace(name)).Distinct(StringComparer.OrdinalIgnoreCase)))
+            Dim args As New ChangeHistoryChangedEventArgsV2(
+                undoRedo,
+                worksheets.Where(Function(name) Not String.IsNullOrWhiteSpace(name)).Distinct(StringComparer.OrdinalIgnoreCase))
+
+            'History notification is presentation work, not part of the workbook
+            'transaction. A stale/disposed UI subscriber must not escape into
+            'ProcessResolvedChange after its group has already been committed and
+            'cause the workbook cell to be rolled back while history stays Applied.
+            Dim subscribers As EventHandler(Of ChangeHistoryChangedEventArgsV2) = HistoryChangedEvent
+            If subscribers Is Nothing Then Return
+
+            For Each subscriber As [Delegate] In subscribers.GetInvocationList()
+                Try
+                    DirectCast(subscriber, EventHandler(Of ChangeHistoryChangedEventArgsV2)).Invoke(Me, args)
+                Catch ex As Exception
+                    System.Diagnostics.Debug.WriteLine(
+                        "HistoryChanged subscriber failed: " & ex.ToString())
+                End Try
+            Next
         End Sub
 
         Private Shared Function NormalizeIdentifier(ByVal value As String) As String
