@@ -19,128 +19,23 @@ Namespace Abovo
 
         Public Shared Sub InsertOFAColumns(ModelID As Integer, ByRef GridCommandTag As AttachedGridCommandButton, SetTransaction As AbovoTransaction, ActioningForm As Form)
 
-            Dim InsertRecordCount As Integer =
-                GetNumericalIntegerInput("How many records do you wish to add?",
-                                         "Insert Other Fixed Asset Records",
-                                         3, 0, 20)
-
-            If InsertRecordCount <= 0 Then
-
-                ActioningForm.Cursor = Cursors.Default
-                SetTransaction.BError = True
-                SetTransaction.EventCancelled = True
-                Return
-
-            End If
-
-            Try
-
-                ActioningForm.Cursor = Cursors.WaitCursor
-
-                Dim Result As AbovoTransaction =
-                    ExcelModels(ModelID).WorkbookStructureRules.AddRecords(
-                        WorkbookStructureRuleManager.RuleOFARecords,
-                        InsertRecordCount)
-
-                SetTransaction.BError = Result.BError
-                SetTransaction.EventCancelled = Result.EventCancelled
-                SetTransaction.StringReturn = Result.StringReturn
-
-                If Result.BError Then
-                    XtraMessageBox.Show("An error occurred while trying to add the Other Fixed Asset records." &
-                                        Environment.NewLine & Result.StringReturn)
-                End If
-
-            Finally
-
-                ActioningForm.Cursor = Cursors.Default
-
-            End Try
+            InsertRecordsByRule(ModelID,
+                                WorkbookStructureRuleManager.RuleOFARecords,
+                                "Other Fixed Asset",
+                                GridCommandTag,
+                                SetTransaction,
+                                ActioningForm)
 
         End Sub
 
         Public Shared Sub DeleteOFAColumns(ModelID As Integer, ByRef GridCommandTag As AttachedGridCommandButton, SetTransaction As AbovoTransaction, ActioningForm As Form)
 
-            Dim GC As GridControl = GridCommandTag.AttachedGrid
-            Dim GV As DevExpress.XtraGrid.Views.Grid.GridView = TryCast(GC.FocusedView, DevExpress.XtraGrid.Views.Grid.GridView)
-
-            If GV Is Nothing Then
-                SetTransaction.BError = True
-                SetTransaction.EventCancelled = True
-                Return
-            End If
-
-            Dim SelectedRecordIndexes As New List(Of Integer)
-            Dim SelectedRowsString As String = ""
-
-            For Each RowHandle As Integer In GV.GetSelectedRows()
-
-                If RowHandle >= 0 Then
-
-                    Dim DataSourceIndex As Integer = GV.GetDataSourceRowIndex(RowHandle)
-
-                    If DataSourceIndex >= 0 Then
-                        SelectedRecordIndexes.Add(DataSourceIndex)
-                        SelectedRowsString &= (DataSourceIndex + 1).ToString & ", "
-                    End If
-
-                End If
-
-            Next
-
-            If SelectedRecordIndexes.Count = 0 Then
-
-                XtraMessageBox.Show("Please select at least one record to delete.")
-                SetTransaction.BError = True
-                SetTransaction.EventCancelled = True
-                Return
-
-            End If
-
-            SelectedRowsString = SelectedRowsString.TrimEnd(", ".ToCharArray())
-
-            Dim MsgText As String =
-                "You have selected " & SelectedRecordIndexes.Count.ToString &
-                " rows for deletion. Row numbers: " & SelectedRowsString &
-                ". Do you want to delete these records?"
-
-            Dim Args As New XtraMessageBoxArgs With {
-                .Caption = "Confirm deletion",
-                .Text = MsgText,
-                .Buttons = New DialogResult() {DialogResult.Yes, DialogResult.No}
-            }
-
-            If XtraMessageBox.Show(Args) = DialogResult.No Then
-
-                SetTransaction.BError = True
-                SetTransaction.EventCancelled = True
-                Return
-
-            End If
-
-            Try
-
-                ActioningForm.Cursor = Cursors.WaitCursor
-
-                Dim Result As AbovoTransaction =
-                    ExcelModels(ModelID).WorkbookStructureRules.DeleteRecords(
-                        WorkbookStructureRuleManager.RuleOFARecords,
-                        SelectedRecordIndexes)
-
-                SetTransaction.BError = Result.BError
-                SetTransaction.EventCancelled = Result.EventCancelled
-                SetTransaction.StringReturn = Result.StringReturn
-
-                If Result.BError Then
-                    XtraMessageBox.Show("An error occurred while trying to delete the selected Other Fixed Asset records." &
-                                        Environment.NewLine & Result.StringReturn)
-                End If
-
-            Finally
-
-                ActioningForm.Cursor = Cursors.Default
-
-            End Try
+            DeleteRecordsByRule(ModelID,
+                                WorkbookStructureRuleManager.RuleOFARecords,
+                                "Other Fixed Asset",
+                                GridCommandTag,
+                                SetTransaction,
+                                ActioningForm)
 
         End Sub
         Public Shared Sub InsertHAColumns(ModelID As Integer, ByRef GridCommandTag As AttachedGridCommandButton, SetTransaction As AbovoTransaction, ActioningForm As Form)

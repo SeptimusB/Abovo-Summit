@@ -114,6 +114,8 @@ Version 7.58 adds a most-recent-period fill action to DIT XtraGrid defining-row 
 
 Version 7.59 preserves the legacy grouped-sheet dependency semantics when Development identified or multi-year columns are expanded. DevExpress performs the seven worksheet insertions sequentially, so `Dvpt Component Depn` is now expanded before its dependent `Dvpt NonCash` sheet. This prevents freshly copied NonCash formulas from being shifted onto existing multi-year depreciation data by the later source-sheet insertion. A read-only comparison of the reported five-column failure showed that all fourteen Development Transactional DB mirrors had expanded correctly; the sole material error was 160 new NonCash formulas referring five columns to the right. Replacing only those references in a disposable copy and running Excel full calculation restored both the Statement of Financial Position and Transactional DB Check Sheet results to `OK`.
 
+Version 7.60 completes the Other Fixed Asset semantic event conversion. The DIT add/delete dialog remains the sole prompt and its `RequestedRecordCount` now flows through the shared rule helpers into `OFA_RECORDS`; the legacy OFA handler no longer opens a second add-record dialog with its own default. Negative DIT adjustments also use the shared delete-last rule path, while direct selected-row commands retain the established selected-record fallback.
+
 Completed automated/static validation:
 
 - Exact source/library hash comparison
