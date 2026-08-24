@@ -118,6 +118,8 @@ Version 7.60 completes the Other Fixed Asset semantic event conversion. The DIT 
 
 Version 7.61 adds an editable, context-sensitive Summit HTML help library. Every DataInterfaceTemplate now exposes a tagged Help WindowsUIButton that routes the current GroupStructure ID, ChildStructure ID, active tab and worksheet to an integrated modeless help viewer. The initial searchable reference covers all 217 configured interfaces and is generated from `Structure.xml`, the workbook User Guide and 777 legacy cell comments read from `Z:\Sandbox\TestFileClean.xlsb` with Excel macros/events disabled and without saving. Generated facts remain separate from `Help/data/overrides.js`, where durable client-authored HTML can be maintained without being overwritten by regeneration. The Help folder is copied to both application configurations, and the viewer also provides a direct Open Help Folder action.
 
+Version 7.62 routes the existing bottom-left Help button on `FormMainScreen` to the local Summit HTML help home page through the shared `HelpManager`. This replaces the obsolete external website launch while retaining the established `GetHelp` WindowsUIButton tag and shared modeless viewer lifecycle.
+
 Completed automated/static validation:
 
 - Exact source/library hash comparison

@@ -540,8 +540,7 @@ Public Class FormMainScreen
 
             Case "GetHelp"
 
-                ' Navigate to page B 
-                Process.Start("https://www.abovo-consult.co.uk/summit/help")
+                Abovo.HelpManager.ShowHelpHome(Me)
 
         End Select
     End Sub

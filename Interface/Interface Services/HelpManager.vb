@@ -22,6 +22,10 @@ Namespace Abovo
             Return superTip
         End Function
 
+        Public Shared Sub ShowHelpHome(Owner As Form)
+            ShowDITHelp(Owner, -1, -1, String.Empty, String.Empty, String.Empty)
+        End Sub
+
         Public Shared Sub ShowDITHelp(Owner As Form,
                                       GSID As Integer,
                                       CSID As Integer,
