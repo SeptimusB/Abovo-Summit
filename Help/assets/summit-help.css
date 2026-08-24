@@ -1,0 +1,31 @@
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { color: #253247; background: #f4f6f9; font: 15px/1.5 "Segoe UI", Arial, sans-serif; }
+.topbar { height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 24px; background: #005baa; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+.brand { font-weight: 800; letter-spacing: .16em; margin-right: 14px; }
+.product { font-size: 21px; }
+#search { width: 50%; max-width: 520px; border: 0; border-radius: 4px; padding: 10px 12px; font: inherit; }
+.layout { height: calc(100% - 72px); display: flex; }
+.navigation { width: 310px; flex: 0 0 310px; overflow: auto; border-right: 1px solid #d8dee8; background: #fff; padding: 14px; }
+.nav-home, .nav-item { width: 100%; border: 0; border-radius: 3px; background: transparent; color: #263951; cursor: pointer; padding: 8px 10px; text-align: left; font: inherit; }
+.nav-home { color: #005baa; font-weight: 700; margin-bottom: 8px; }
+.nav-group { margin: 12px 0 5px; padding: 0 10px; color: #65758b; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.nav-item:hover, .nav-item.active, .nav-home:hover { background: #eaf3fb; color: #005baa; }
+main { min-width: 0; flex: 1 1 auto; overflow: auto; padding: 32px 5% 64px; }
+.page { max-width: 1080px; margin: 0 auto; }
+h1 { color: #005baa; font-size: 32px; line-height: 1.2; margin: 0 0 8px; }
+h2 { color: #233b59; font-size: 21px; margin-top: 30px; border-bottom: 1px solid #dce2e9; padding-bottom: 7px; }
+h3 { color: #314b6b; font-size: 17px; margin: 22px 0 8px; }
+.eyebrow { color: #687990; font-weight: 600; margin-bottom: 24px; }
+.intro, .notice, .section, .source-note { background: #fff; border: 1px solid #dce2e9; border-radius: 5px; padding: 18px 20px; margin: 14px 0; }
+.notice { border-left: 5px solid #f1b434; }
+.source-note { border-left: 5px solid #50a7d8; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.pill { background: #eaf3fb; border-radius: 999px; color: #005baa; padding: 4px 10px; font-size: 13px; }
+.field { margin: 12px 0; padding-left: 14px; border-left: 3px solid #d6e7f5; }
+.field-name { font-weight: 700; }
+.muted { color: #6d7888; }
+ul { padding-left: 22px; }
+.empty { color: #6d7888; font-style: italic; }
+@media (max-width: 780px) { .navigation { display: none; } .topbar { height: auto; flex-direction: column; align-items: stretch; } #search { width: 100%; } }

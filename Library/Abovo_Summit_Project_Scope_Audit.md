@@ -116,6 +116,8 @@ Version 7.59 preserves the legacy grouped-sheet dependency semantics when Develo
 
 Version 7.60 completes the Other Fixed Asset semantic event conversion. The DIT add/delete dialog remains the sole prompt and its `RequestedRecordCount` now flows through the shared rule helpers into `OFA_RECORDS`; the legacy OFA handler no longer opens a second add-record dialog with its own default. Negative DIT adjustments also use the shared delete-last rule path, while direct selected-row commands retain the established selected-record fallback.
 
+Version 7.61 adds an editable, context-sensitive Summit HTML help library. Every DataInterfaceTemplate now exposes a tagged Help WindowsUIButton that routes the current GroupStructure ID, ChildStructure ID, active tab and worksheet to an integrated modeless help viewer. The initial searchable reference covers all 217 configured interfaces and is generated from `Structure.xml`, the workbook User Guide and 777 legacy cell comments read from `Z:\Sandbox\TestFileClean.xlsb` with Excel macros/events disabled and without saving. Generated facts remain separate from `Help/data/overrides.js`, where durable client-authored HTML can be maintained without being overwritten by regeneration. The Help folder is copied to both application configurations, and the viewer also provides a direct Open Help Folder action.
+
 Completed automated/static validation:
 
 - Exact source/library hash comparison
@@ -125,8 +127,11 @@ Completed automated/static validation:
 - Disposable five-column Development repair recalculated in Excel with Financial Position and Transactional DB checks both returning OK
 - V1/V2 datasource field and period contract review
 - Debug and Release MSBuild passed with zero build errors on 24 August 2026
+- Generated Summit Help data parsed with 3 groups and 217 interfaces; a contextual Global Assumptions page rendered successfully through a hidden WinForms WebBrowser with its interface and field guidance present
 
 Required manual integration validation remains:
+
+- Open several Assumptions, Workings and Outputs DIT instances, select different tabs, and confirm Help opens the matching interface and scrolls to the active section; edit one `Help/data/overrides.js` entry and confirm it takes precedence after reopening Help
 
 - Open Funding Assumptions V2, verify all four tabs, confirm Funding Details and its Opening Balance line remain fixed while scrolling, and exercise a Commitment Fees date-header add/edit/remove round trip
 - Open the TestFileClean master in Summit and open Analysis V1 and V2 in both orders

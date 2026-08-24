@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Summit Help</title>
+  <link rel="stylesheet" href="assets/summit-help.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><span class="brand">ABOVO</span><span class="product">Summit Help</span></div>
+    <input id="search" type="search" placeholder="Search interfaces, sections and guidance" aria-label="Search help">
+  </header>
+  <div class="layout">
+    <nav class="navigation" aria-label="Help contents">
+      <button id="home-link" class="nav-home" type="button">Help home</button>
+      <div id="navigation"></div>
+    </nav>
+    <main id="content" tabindex="-1"></main>
+  </div>
+  <script src="data/interfaces.js"></script>
+  <script src="data/overrides.js"></script>
+  <script src="assets/summit-help.js"></script>
+</body>
+</html>

@@ -7428,6 +7428,16 @@ SectionSelect:
 
                 PerformClipboardPaste()
 
+            Case "Help"
+
+                Dim SectionName As String = String.Empty
+                If XtraTabControlNewGIT.SelectedTabPage IsNot Nothing Then SectionName = XtraTabControlNewGIT.SelectedTabPage.Text
+
+                Dim WorksheetName As String = String.Empty
+                If ActiveSpreadsheet IsNot Nothing Then WorksheetName = ActiveSpreadsheet.Name
+
+                Abovo.HelpManager.ShowDITHelp(Me, GSID, CSID, DITName, SectionName, WorksheetName)
+
 
         End Select
 
