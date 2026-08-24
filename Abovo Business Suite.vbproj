@@ -18,7 +18,7 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
-    <PublishUrl>C:\Sandbox\Deploy\Version A1\</PublishUrl>
+    <PublishUrl>Z:\Sandbox\Deploy\Summit Test 1.00\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
     <UpdateEnabled>false</UpdateEnabled>
@@ -29,8 +29,12 @@
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
     <AutorunEnabled>true</AutorunEnabled>
-    <ApplicationRevision>2</ApplicationRevision>
-    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.0</ApplicationVersion>
+    <PublisherName>Abovo</PublisherName>
+    <ProductName>Abovo Summit Test</ProductName>
+    <SuiteName>Abovo</SuiteName>
+    <CreateDesktopShortcut>true</CreateDesktopShortcut>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
     <BootstrapperEnabled>true</BootstrapperEnabled>
@@ -835,6 +839,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <None Include="Tools\Generate-SummitHelp.ps1" />
+    <None Include="Tools\Publish-ClientTest.ps1" />
     <None Include="Resources\stretch_32x32.png" />
     <None Include="Resources\apply_32x32.png" />
     <None Include="Resources\open_32x32.png" />
@@ -858,9 +863,67 @@
     <Folder Include="Services\Import and Export\" />
   </ItemGroup>
   <ItemGroup>
-    <BootstrapperPackage Include=".NETFramework,Version=v4.7.2">
+    <PublishFile Include="Structure.xml">
       <Visible>False</Visible>
-      <ProductName>Microsoft .NET Framework 4.7.2 %28x86 and x64%29</ProductName>
+      <Group />
+      <TargetPath>Structure.xml</TargetPath>
+      <PublishState>Include</PublishState>
+      <IncludeHash>True</IncludeHash>
+      <FileType>File</FileType>
+    </PublishFile>
+    <PublishFile Include="Help\index.html">
+      <Visible>False</Visible>
+      <Group />
+      <TargetPath>Help\index.html</TargetPath>
+      <PublishState>Include</PublishState>
+      <IncludeHash>True</IncludeHash>
+      <FileType>File</FileType>
+    </PublishFile>
+    <PublishFile Include="Help\README.md">
+      <Visible>False</Visible>
+      <Group />
+      <TargetPath>Help\README.md</TargetPath>
+      <PublishState>Include</PublishState>
+      <IncludeHash>True</IncludeHash>
+      <FileType>File</FileType>
+    </PublishFile>
+    <PublishFile Include="Help\assets\summit-help.css">
+      <Visible>False</Visible>
+      <Group />
+      <TargetPath>Help\assets\summit-help.css</TargetPath>
+      <PublishState>Include</PublishState>
+      <IncludeHash>True</IncludeHash>
+      <FileType>File</FileType>
+    </PublishFile>
+    <PublishFile Include="Help\assets\summit-help.js">
+      <Visible>False</Visible>
+      <Group />
+      <TargetPath>Help\assets\summit-help.js</TargetPath>
+      <PublishState>Include</PublishState>
+      <IncludeHash>True</IncludeHash>
+      <FileType>File</FileType>
+    </PublishFile>
+    <PublishFile Include="Help\data\interfaces.js">
+      <Visible>False</Visible>
+      <Group />
+      <TargetPath>Help\data\interfaces.js</TargetPath>
+      <PublishState>Include</PublishState>
+      <IncludeHash>True</IncludeHash>
+      <FileType>File</FileType>
+    </PublishFile>
+    <PublishFile Include="Help\data\overrides.js">
+      <Visible>False</Visible>
+      <Group />
+      <TargetPath>Help\data\overrides.js</TargetPath>
+      <PublishState>Include</PublishState>
+      <IncludeHash>True</IncludeHash>
+      <FileType>File</FileType>
+    </PublishFile>
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include=".NETFramework,Version=v4.8">
+      <Visible>False</Visible>
+      <ProductName>Microsoft .NET Framework 4.8 %28x86 and x64%29</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
     <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">

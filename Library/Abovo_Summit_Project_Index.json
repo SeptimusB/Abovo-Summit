@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-24T14:24:24+01:00",
+  "generatedAt": "2026-08-24T14:50:01+01:00",
   "purpose": "Compact current contract index for the TestFileClean authoritative master and its Summit integration.",
   "security": {
     "containsWorkbook": false,
@@ -41,9 +41,21 @@
   "application": {
     "project": "Abovo Business Suite.vbproj",
     "compiledFileCount": 155,
-    "testVersion": "7.62",
+    "testVersion": "1.00",
     "structureXmlSha256": "EDB514FC8182FAF0332D8D1B9D8B2A0FE9D37C7E5D41A8C5BF02A196B9ADF9CA",
-    "projectSha256": "664C235F4BF9273FC4804A5586859CC88E756EEB62B4687F3EBBB2B822897279",
+    "projectSha256": "837CC4ABA9031BAF0D4B429E3E33FA92FE645BA850A422D0B61BC129276420B3",
+    "clientTestPackage": {
+      "type": "ClickOnce offline install",
+      "version": "1.0.0.0",
+      "product": "Abovo Summit Test",
+      "targetFramework": ".NET Framework 4.8",
+      "signed": false,
+      "updatesEnabled": false,
+      "structureAtStartup": true,
+      "helpAtStartup": true,
+      "archive": "Z:/Sandbox/Deploy/Abovo-Summit-Test-1.00-ClickOnce.zip",
+      "archiveSha256": "63691F5F0C5CEDE7FC8DF31CF7E0DD32BBF734A4034935A3E3EF3EA41C504219"
+    },
     "keyFiles": [
       "Services/TransactionalDB/TransactionalDBSynchroniser.vb",
       "Services/WorkbookStructureRuleManager.vb",
@@ -57,6 +69,7 @@
       "Interface/User Interface/BPIncomeExpenditureAnalyserV2.vb",
       "Services/ModelResourceRegistry.vb",
       "Tools/Generate-SummitHelp.ps1",
+      "Tools/Publish-ClientTest.ps1",
       "Help/index.html",
       "Structure.xml"
     ]

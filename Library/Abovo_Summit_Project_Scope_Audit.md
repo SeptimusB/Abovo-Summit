@@ -120,6 +120,8 @@ Version 7.61 adds an editable, context-sensitive Summit HTML help library. Every
 
 Version 7.62 routes the existing bottom-left Help button on `FormMainScreen` to the local Summit HTML help home page through the shared `HelpManager`. This replaces the obsolete external website launch while retaining the established `GetHelp` WindowsUIButton tag and shared modeless viewer lifecycle.
 
+Test Release 1.00 resets the client-facing Summit version and configures a repeatable offline ClickOnce package for initial functional testing. The separate installed product identity is `Abovo Summit Test`, the application/deployment version is `1.0.0.0`, automatic updates are disabled, and the bootstrapper prerequisite now matches the application target of .NET Framework 4.8. `Structure.xml` is explicitly included at the installed application startup root and the complete editable `Help` tree is explicitly included beneath it. `Tools/Publish-ClientTest.ps1` refuses to overwrite an existing versioned destination, invokes the project ClickOnce target, validates the required staged files and application-manifest entries, writes client installation notes, and produces the delivery ZIP. The available legacy test certificate is not installed in the certificate store, so this initial package is deliberately unsigned and the client README explains the expected Windows `Unknown Publisher` warning.
+
 Completed automated/static validation:
 
 - Exact source/library hash comparison
@@ -130,6 +132,9 @@ Completed automated/static validation:
 - V1/V2 datasource field and period contract review
 - Debug and Release MSBuild passed with zero build errors on 24 August 2026
 - Generated Summit Help data parsed with 3 groups and 217 interfaces; a contextual Global Assumptions page rendered successfully through a hidden WinForms WebBrowser with its interface and field guidance present
+- Release ClickOnce publish produced `Abovo Summit Test` version `1.0.0.0` with 89 files; exact SHA-256 comparisons confirmed the staged `Structure.xml` and all six Help files match their repository sources
+- Application manifest contains the startup-root `Structure.xml` and nested Help paths; the delivery ZIP contains `setup.exe`, deployment/application manifests, client test README and all staged application files
+- Client delivery archive `Z:\Sandbox\Deploy\Abovo-Summit-Test-1.00-ClickOnce.zip` SHA-256 is `63691F5F0C5CEDE7FC8DF31CF7E0DD32BBF734A4034935A3E3EF3EA41C504219`; Windows PowerShell reflection confirmed the compiled UI version text is exactly `1.00`
 
 Required manual integration validation remains:
 
