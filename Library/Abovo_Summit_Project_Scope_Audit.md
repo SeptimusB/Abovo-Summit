@@ -112,12 +112,15 @@ Version 7.57 normalises the in-column editor display sentinel `<Blank>` to Nothi
 
 Version 7.58 adds a most-recent-period fill action to DIT XtraGrid defining-row editors. Double-clicking a ColumnInplaceEditor copies a pre-write snapshot of the nearest populated defining column to its left into the editable cells beneath the selected column. Read-only, calculated, dummy, locked, spacer and control cells are skipped; all accepted writes use ModelChangeManager and appear as one grouped undo operation before the normal rules, calculations and interface refresh run. VGrid defining-row editors are unchanged.
 
+Version 7.59 preserves the legacy grouped-sheet dependency semantics when Development identified or multi-year columns are expanded. DevExpress performs the seven worksheet insertions sequentially, so `Dvpt Component Depn` is now expanded before its dependent `Dvpt NonCash` sheet. This prevents freshly copied NonCash formulas from being shifted onto existing multi-year depreciation data by the later source-sheet insertion. A read-only comparison of the reported five-column failure showed that all fourteen Development Transactional DB mirrors had expanded correctly; the sole material error was 160 new NonCash formulas referring five columns to the right. Replacing only those references in a disposable copy and running Excel full calculation restored both the Statement of Financial Position and Transactional DB Check Sheet results to `OK`.
+
 Completed automated/static validation:
 
 - Exact source/library hash comparison
 - Read-only Excel workbook/name/range checks
 - All canonical Transactional DB mirror geometries
 - Capital Grant assumptions/workings/Transactional DB five-column expansion geometry
+- Disposable five-column Development repair recalculated in Excel with Financial Position and Transactional DB checks both returning OK
 - V1/V2 datasource field and period contract review
 - Debug and Release MSBuild passed with zero build errors on 24 August 2026
 
@@ -128,6 +131,7 @@ Required manual integration validation remains:
 - Add/remove a record in each structural domain and verify `Transactional DB` mirrors and analyser refresh
 - In particular, add five Capital Grant records and verify both `Capital Grant Assumptions` and `Capital Grant Workings` expand by five records
 - Verify Capital Expenditure, OFA, Repairs, Housing Components, Development Details, Development Multi Year, Journals and Stock Conversion use their declared semantic rules rather than the generic single-range path
+- Add five Development Details records from the clean master and confirm the Financial Position and Transactional DB Check Sheet rows remain OK; repeat for Development Multi Year
 - Close a passing model and confirm the normal Save/Discard/Cancel flow follows the completed full calculation
 - Trigger a Check Sheet failure, confirm Cancel returns to the open model, and confirm OK requires a differently named XLSB copy before close
 - Save a copy in Summit, open/save/recalculate it in Microsoft Excel/VBA, then reopen it in Summit

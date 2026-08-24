@@ -1009,14 +1009,21 @@ Namespace Abovo
 
         Private Sub AddDevelopmentTargets(ByVal Rule As WorkbookStructureRule)
 
+            'The legacy Excel routine inserted these columns while all seven
+            'worksheets were grouped, so cross-sheet references moved as one
+            'structural operation. DevExpress inserts one worksheet at a time.
+            'Keep source sheets ahead of their dependants to preserve the same
+            'result. In particular, Dvpt NonCash reads Dvpt Component Depn; if
+            'NonCash is copied first, the later Component Depn insertion shifts
+            'the freshly copied formulas onto the pre-existing multi-year data.
             AddColumnTargets(Rule,
                              "Development BP Assumptions",
                              "Development Stock",
                              "Development Capital",
                              "Development Revenue",
                              "Development Expenditure",
-                             "Dvpt NonCash",
-                             "Dvpt Component Depn")
+                             "Dvpt Component Depn",
+                             "Dvpt NonCash")
 
         End Sub
 
