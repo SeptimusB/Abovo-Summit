@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-24T14:50:01+01:00",
+  "generatedAt": "2026-08-24T18:43:40+01:00",
   "purpose": "Compact current contract index for the TestFileClean authoritative master and its Summit integration.",
   "security": {
     "containsWorkbook": false,
@@ -72,6 +72,33 @@
       "Tools/Publish-ClientTest.ps1",
       "Help/index.html",
       "Structure.xml"
+    ]
+  },
+  "workbookHealthAudit": {
+    "auditDate": "2026-08-24",
+    "contractSha256": "B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE",
+    "report": "Library/Contract_XLSB_Audit_2026-08-24.pdf",
+    "summary": "Library/Contract_XLSB_Audit_2026-08-24.md",
+    "evidence": "Library/Contract_XLSB_Audit_Evidence_2026-08-24.json",
+    "assessment": "Structurally healthy and natively fast; prioritise cross-engine correctness and structural safeguards over broad formula rewrites.",
+    "metrics": {
+      "formulaCells": 638360,
+      "fullRebuildSeconds": 2.152,
+      "warmFullCalculationSeconds": 0.423,
+      "threeDReferenceFormulaCells": 35920,
+      "volatileFunctionOccurrences": 1313,
+      "brokenDefinedNames": 0,
+      "externalFormulaReferences": 0
+    },
+    "highFindings": [
+      "PMCOST workbook calls preserve eight compatibility positions but only seven inputs affect the result because FinalYear is unused; Summit metadata exposes only seven positions.",
+      "PMCOST and RESPCOST require an Excel/VBA-versus-Summit parity harness across all 760 call cells before implementation changes."
+    ],
+    "requiredReviewBefore": [
+      "Workbook formula or calculation-engine changes",
+      "Transactional DB or structural range changes",
+      "Custom-function changes",
+      "Workbook validation or Check Sheet changes"
     ]
   },
   "historicalSchema10Evidence": [

@@ -1,0 +1,685 @@
+{
+  "schemaVersion": 1,
+  "auditDate": "2026-08-24",
+  "purpose": "Persistent contract workbook health, correctness-risk and calculation-performance evidence.",
+  "security": {
+    "containsWorkbook": false,
+    "containsVbaSource": false,
+    "containsPasswords": false
+  },
+  "authority": {
+    "master": "Z:/Sandbox/TestFileClean.xlsb",
+    "repositoryCopy": "Library/TestFileMigrated.xlsb",
+    "sizeBytes": 11841039,
+    "sha256": "B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE",
+    "exactCopyVerified": true
+  },
+  "method": {
+    "sourceMasterModified": false,
+    "sourceMasterOpenedByExcel": false,
+    "disposableExactCopyUsed": true,
+    "disposableCopySaved": false,
+    "macrosExecuted": false,
+    "eventsEnabled": false,
+    "externalLinksUpdated": false,
+    "protectedSheetsUnlockedInMemory": 35,
+    "excelTimingScope": "Native Excel calculation only; excludes Summit UI, datasource refresh and DevExpress custom-function timing."
+  },
+  "workbook": {
+    "fileFormat": 50,
+    "worksheets": 281,
+    "protectedWorksheets": 35,
+    "visibleWorksheets": 279,
+    "definedNames": 1758,
+    "formulas": 638360,
+    "constants": 87287,
+    "distinctR1C1Patterns": 5625,
+    "formulaLength500Plus": 6582,
+    "maximumFormulaLength": 901,
+    "threeDimensionalReferenceFormulas": 35920,
+    "fullColumnReferenceFormulas": 0,
+    "volatileFunctionOccurrences": 1313,
+    "savedFormulaErrorCells": 467,
+    "savedCheckSheetNonOkRows": 0,
+    "externalLinkSources": 0,
+    "connections": 0,
+    "circularReference": null,
+    "charts": 36,
+    "shapes": 1076,
+    "conditionalFormatRules": 947,
+    "validationCells": 16053,
+    "packageEntries": 1361,
+    "packageUncompressedBytes": 76251205
+  },
+  "calculation": {
+    "savedMode": "Automatic",
+    "calculateBeforeSave": true,
+    "forceFullCalculation": false,
+    "fullCalculationOnLoad": false,
+    "openReadOnlySeconds": 2.371,
+    "fullWarm1Seconds": 0.433,
+    "fullRebuildSeconds": 2.152,
+    "fullWarm2Seconds": 0.412
+  },
+  "definedNames": {
+    "total": 1758,
+    "broken": 0,
+    "external": 0,
+    "volatile": 0,
+    "hidden": 15,
+    "worksheetScoped": 82,
+    "multiArea": 262,
+    "maximumAreaCount": 28
+  },
+  "udfCalls": [
+    {
+      "Function": "PMCOST",
+      "Worksheet": "Development Expenditure",
+      "Count": 380,
+      "Sample": "S519"
+    },
+    {
+      "Function": "RESPCOST",
+      "Worksheet": "Development Expenditure",
+      "Count": 380,
+      "Sample": "S417"
+    }
+  ],
+  "topFormulaSheets": [
+    {
+      "worksheet": "Transactional DB",
+      "formulaCells": 78404,
+      "percentOfWorkbook": 12.28
+    },
+    {
+      "worksheet": "Dvpt NonCash",
+      "formulaCells": 34953,
+      "percentOfWorkbook": 5.48
+    },
+    {
+      "worksheet": "Development Capital",
+      "formulaCells": 30033,
+      "percentOfWorkbook": 4.7
+    },
+    {
+      "worksheet": "FFR Workings",
+      "formulaCells": 12983,
+      "percentOfWorkbook": 2.03
+    },
+    {
+      "worksheet": "Hidden - Tenure Totals Start",
+      "formulaCells": 11112,
+      "percentOfWorkbook": 1.74
+    },
+    {
+      "worksheet": "Development Revenue",
+      "formulaCells": 10677,
+      "percentOfWorkbook": 1.67
+    },
+    {
+      "worksheet": "Component 2",
+      "formulaCells": 10446,
+      "percentOfWorkbook": 1.64
+    },
+    {
+      "worksheet": "Development Expenditure",
+      "formulaCells": 10276,
+      "percentOfWorkbook": 1.61
+    },
+    {
+      "worksheet": "Component Totals",
+      "formulaCells": 9793,
+      "percentOfWorkbook": 1.53
+    },
+    {
+      "worksheet": "Development Stock",
+      "formulaCells": 9034,
+      "percentOfWorkbook": 1.42
+    },
+    {
+      "worksheet": "Component 1",
+      "formulaCells": 8885,
+      "percentOfWorkbook": 1.39
+    },
+    {
+      "worksheet": "Component 3",
+      "formulaCells": 8030,
+      "percentOfWorkbook": 1.26
+    },
+    {
+      "worksheet": "Component 4",
+      "formulaCells": 8030,
+      "percentOfWorkbook": 1.26
+    },
+    {
+      "worksheet": "Component 5",
+      "formulaCells": 8030,
+      "percentOfWorkbook": 1.26
+    },
+    {
+      "worksheet": "Component 6",
+      "formulaCells": 8030,
+      "percentOfWorkbook": 1.26
+    },
+    {
+      "worksheet": "Component 7",
+      "formulaCells": 8030,
+      "percentOfWorkbook": 1.26
+    },
+    {
+      "worksheet": "Component 8",
+      "formulaCells": 8030,
+      "percentOfWorkbook": 1.26
+    },
+    {
+      "worksheet": "Component 9",
+      "formulaCells": 8030,
+      "percentOfWorkbook": 1.26
+    },
+    {
+      "worksheet": "Component 10",
+      "formulaCells": 8030,
+      "percentOfWorkbook": 1.26
+    },
+    {
+      "worksheet": "Component 11",
+      "formulaCells": 8030,
+      "percentOfWorkbook": 1.26
+    },
+    {
+      "worksheet": "Component 12",
+      "formulaCells": 8030,
+      "percentOfWorkbook": 1.26
+    },
+    {
+      "worksheet": "Hidden - Funds Available",
+      "formulaCells": 7339,
+      "percentOfWorkbook": 1.15
+    },
+    {
+      "worksheet": "Dvpt Component Depn",
+      "formulaCells": 7033,
+      "percentOfWorkbook": 1.1
+    },
+    {
+      "worksheet": "Dvpt Imp FFR Info",
+      "formulaCells": 6622,
+      "percentOfWorkbook": 1.04
+    },
+    {
+      "worksheet": "All Schemes FFR",
+      "formulaCells": 5962,
+      "percentOfWorkbook": 0.93
+    },
+    {
+      "worksheet": "Development Inflation Factors",
+      "formulaCells": 5341,
+      "percentOfWorkbook": 0.84
+    },
+    {
+      "worksheet": "Dvpt Factors",
+      "formulaCells": 5287,
+      "percentOfWorkbook": 0.83
+    },
+    {
+      "worksheet": "Total Non Cash Trial Balance",
+      "formulaCells": 5276,
+      "percentOfWorkbook": 0.83
+    },
+    {
+      "worksheet": "Hidden - Investments",
+      "formulaCells": 5215,
+      "percentOfWorkbook": 0.82
+    },
+    {
+      "worksheet": "Hidden - Year Table",
+      "formulaCells": 5067,
+      "percentOfWorkbook": 0.79
+    }
+  ],
+  "topFunctions": [
+    {
+      "Name": "IF",
+      "Count": 346371
+    },
+    {
+      "Name": "INDEX",
+      "Count": 153584
+    },
+    {
+      "Name": "SUM",
+      "Count": 118403
+    },
+    {
+      "Name": "SUMIF",
+      "Count": 115908
+    },
+    {
+      "Name": "AND",
+      "Count": 64404
+    },
+    {
+      "Name": "MATCH",
+      "Count": 56785
+    },
+    {
+      "Name": "OR",
+      "Count": 41434
+    },
+    {
+      "Name": "ISBLANK",
+      "Count": 17029
+    },
+    {
+      "Name": "ROUND",
+      "Count": 12815
+    },
+    {
+      "Name": "AVERAGE",
+      "Count": 11368
+    },
+    {
+      "Name": "IFNA",
+      "Count": 10925
+    },
+    {
+      "Name": "MONTH",
+      "Count": 9138
+    },
+    {
+      "Name": "EOMONTH",
+      "Count": 6795
+    },
+    {
+      "Name": "COUNTIF",
+      "Count": 5505
+    },
+    {
+      "Name": "MAX",
+      "Count": 5055
+    },
+    {
+      "Name": "SUMIFS",
+      "Count": 5025
+    },
+    {
+      "Name": "DATE",
+      "Count": 4934
+    },
+    {
+      "Name": "YEAR",
+      "Count": 4544
+    },
+    {
+      "Name": "MOD",
+      "Count": 4286
+    },
+    {
+      "Name": "MIN",
+      "Count": 2961
+    },
+    {
+      "Name": "DAY",
+      "Count": 2533
+    },
+    {
+      "Name": "CUMIPMT",
+      "Count": 1544
+    },
+    {
+      "Name": "CUMPRINC",
+      "Count": 1544
+    },
+    {
+      "Name": "NA",
+      "Count": 1426
+    },
+    {
+      "Name": "CELL",
+      "Count": 1313
+    },
+    {
+      "Name": "SUMPRODUCT",
+      "Count": 1212
+    },
+    {
+      "Name": "SEARCH",
+      "Count": 984
+    },
+    {
+      "Name": "ROW",
+      "Count": 894
+    },
+    {
+      "Name": "ISNA",
+      "Count": 727
+    },
+    {
+      "Name": "ISERROR",
+      "Count": 604
+    },
+    {
+      "Name": "IPMT",
+      "Count": 600
+    },
+    {
+      "Name": "COLUMN",
+      "Count": 548
+    },
+    {
+      "Name": "ADDRESS",
+      "Count": 519
+    },
+    {
+      "Name": "ROWS",
+      "Count": 455
+    },
+    {
+      "Name": "COLUMNS",
+      "Count": 429
+    },
+    {
+      "Name": "TEXT",
+      "Count": 427
+    },
+    {
+      "Name": "RESPCOST",
+      "Count": 380
+    },
+    {
+      "Name": "PMCOST",
+      "Count": 380
+    },
+    {
+      "Name": "SUBSTITUTE",
+      "Count": 328
+    },
+    {
+      "Name": "MID",
+      "Count": 328
+    },
+    {
+      "Name": "ABS",
+      "Count": 328
+    },
+    {
+      "Name": "LEN",
+      "Count": 265
+    },
+    {
+      "Name": "SMALL",
+      "Count": 257
+    },
+    {
+      "Name": "COUNT",
+      "Count": 224
+    },
+    {
+      "Name": "RIGHT",
+      "Count": 175
+    },
+    {
+      "Name": "LEFT",
+      "Count": 135
+    },
+    {
+      "Name": "PERCENTILE",
+      "Count": 100
+    },
+    {
+      "Name": "IFERROR",
+      "Count": 96
+    },
+    {
+      "Name": "PROPER",
+      "Count": 66
+    },
+    {
+      "Name": "ROUNDUP",
+      "Count": 60
+    }
+  ],
+  "formulaConcentration": {
+    "top1Percent": 12.3,
+    "top10Percent": 34.1,
+    "top40Percent": 62.9,
+    "top100Percent": 87.1
+  },
+  "usedRangeCandidates": [
+    {
+      "name": "5 Yr Monthly Cashflow",
+      "used": "337 x 44",
+      "actual": "102 x 44",
+      "excess": 10340
+    },
+    {
+      "name": "5 Yr Quarterly Cashflow",
+      "used": "262 x 41",
+      "actual": "27 x 41",
+      "excess": 9635
+    },
+    {
+      "name": "Transactional DB",
+      "used": "1910 x 78",
+      "actual": "1909 x 74",
+      "excess": 7714
+    },
+    {
+      "name": "Dvpt Component Depn",
+      "used": "469 x 37",
+      "actual": "468 x 23",
+      "excess": 6589
+    },
+    {
+      "name": "Component 1",
+      "used": "1695 x 15",
+      "actual": "1693 x 13",
+      "excess": 3416
+    },
+    {
+      "name": "Component 2",
+      "used": "1695 x 15",
+      "actual": "1693 x 13",
+      "excess": 3416
+    },
+    {
+      "name": "Component 3",
+      "used": "1695 x 15",
+      "actual": "1693 x 13",
+      "excess": 3416
+    },
+    {
+      "name": "Component 4",
+      "used": "1695 x 15",
+      "actual": "1693 x 13",
+      "excess": 3416
+    },
+    {
+      "name": "Component 5",
+      "used": "1695 x 15",
+      "actual": "1693 x 13",
+      "excess": 3416
+    },
+    {
+      "name": "Component 6",
+      "used": "1695 x 15",
+      "actual": "1693 x 13",
+      "excess": 3416
+    },
+    {
+      "name": "Component 7",
+      "used": "1695 x 15",
+      "actual": "1693 x 13",
+      "excess": 3416
+    },
+    {
+      "name": "Component 8",
+      "used": "1695 x 15",
+      "actual": "1693 x 13",
+      "excess": 3416
+    },
+    {
+      "name": "Component 9",
+      "used": "1695 x 15",
+      "actual": "1693 x 13",
+      "excess": 3416
+    },
+    {
+      "name": "Component 10",
+      "used": "1695 x 15",
+      "actual": "1693 x 13",
+      "excess": 3416
+    },
+    {
+      "name": "Component 11",
+      "used": "1695 x 15",
+      "actual": "1693 x 13",
+      "excess": 3416
+    },
+    {
+      "name": "Component 12",
+      "used": "1695 x 15",
+      "actual": "1693 x 13",
+      "excess": 3416
+    },
+    {
+      "name": "Component Totals",
+      "used": "1695 x 15",
+      "actual": "1693 x 13",
+      "excess": 3416
+    },
+    {
+      "name": "OW - Covenant Calculation",
+      "used": "93 x 109",
+      "actual": "63 x 109",
+      "excess": 3270
+    },
+    {
+      "name": "Development BP Assumptions",
+      "used": "665 x 28",
+      "actual": "651 x 24",
+      "excess": 2996
+    },
+    {
+      "name": "Dvpt Cashflows",
+      "used": "102 x 49",
+      "actual": "47 x 49",
+      "excess": 2695
+    },
+    {
+      "name": "User Guide",
+      "used": "288 x 12",
+      "actual": "288 x 4",
+      "excess": 2304
+    },
+    {
+      "name": "Multivariable Planner",
+      "used": "106 x 71",
+      "actual": "76 x 71",
+      "excess": 2130
+    },
+    {
+      "name": "Specific Income Drivers",
+      "used": "53 x 38",
+      "actual": "52 x 9",
+      "excess": 1546
+    },
+    {
+      "name": "Hidden - BP Menu Sheet",
+      "used": "288 x 13",
+      "actual": "288 x 8",
+      "excess": 1440
+    },
+    {
+      "name": "Funding Dashboard",
+      "used": "68 x 23",
+      "actual": "24 x 22",
+      "excess": 1036
+    }
+  ],
+  "savedFormulaErrors": {
+    "total": 467,
+    "intentionalChartNA": 466,
+    "unclassifiedOrUnguarded": 1,
+    "unguardedSample": {
+      "worksheet": "Hidden - Tenure Totals Start",
+      "cell": "B6",
+      "error": "#N/A",
+      "context": "INDEX/MATCH against ImportedSchemes without an IFNA guard"
+    }
+  },
+  "macroDisabledRebuildLimitation": {
+    "postRebuildNonOkCheckRows": 7,
+    "status": "Not a workbook defect finding",
+    "reason": "Embedded VBA/UDF logic was deliberately not executed during the audit."
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "High",
+      "title": "Summit PMCOST metadata does not match the eight-position compatibility signature",
+      "evidence": "The workbook has 380 PMCOST calls and passes eight compatibility arguments, but FinalYear is deliberately unused, so seven inputs affect the result. clsPMCost.vb lines 20-27 advertises five value parameters plus two references (seven positions), while lines 85-92 accepts parameters 0 through 7 (eight positions).",
+      "implication": "DevExpress validation, parsing, or evaluation may diverge from Excel even when current sample values appear to calculate.",
+      "recommendation": "Preserve the eight-position compatibility signature, document that FinalYear is unused, advertise six required value positions plus two required references, and add parity tests before relying on Summit recalculation."
+    },
+    {
+      "id": "F2",
+      "severity": "High",
+      "title": "Cross-engine UDF parity is not regression-tested",
+      "evidence": "Development Expenditure contains 380 PMCOST and 380 RESPCOST calls. Summit registers native replacements, but a macro-disabled Excel full rebuild makes seven Check Sheet rows #NAME? while the saved workbook checks are all OK.",
+      "implication": "Excel/VBA and Summit may produce different values or error behaviour for missing matches, invalid periods, or malformed ranges.",
+      "recommendation": "Create an automated parity harness comparing the 760 call results and key outputs after Excel/VBA and DevExpress recalculation. Make RESPCOST parameters required if they are unconditionally dereferenced and add explicit error guards."
+    },
+    {
+      "id": "F3",
+      "severity": "Medium",
+      "title": "35,920 formulas depend on worksheet ordering through 3-D references",
+      "evidence": "Examples include SUM('Component 1:Component 12'!...) and grouped Development/All Schemes blocks.",
+      "implication": "Moving or inserting a sheet inside or outside a boundary can silently change results without producing a broken reference.",
+      "recommendation": "Retain these efficient formulas for now, but add an expected sheet-order/block-membership manifest and validate it on open, save, and structural commands."
+    },
+    {
+      "id": "F4",
+      "severity": "Medium",
+      "title": "Custom functions perform repeated formula-engine MATCH evaluations",
+      "evidence": "Both Summit UDF implementations build and evaluate a MATCH expression inside a loop for every call. With 760 workbook calls and up to 40 periods, this can create thousands of nested FormulaEngine evaluations.",
+      "implication": "This is the most credible Summit-specific calculation hotspot even though native Excel recalculation is already fast.",
+      "recommendation": "Replace repeated Engine.Evaluate calls with direct range reads and an indexed year-to-rate lookup, preserving Excel MATCH semantics and testing parity."
+    },
+    {
+      "id": "F5",
+      "severity": "Medium",
+      "title": "Formula complexity is concentrated and highly repetitive",
+      "evidence": "There are 6,582 formulas of 500-901 characters, mainly on Development Capital and Development Expenditure. INDEX/MATCH and IF logic dominate the workbook.",
+      "implication": "Maintenance and structural-change risk are greater than the current timing impact.",
+      "recommendation": "Refactor only measured hotspots using helper rows/columns or cached match indices. Do not introduce LET/XLOOKUP until the minimum supported Excel version is agreed."
+    },
+    {
+      "id": "F6",
+      "severity": "Low-Medium",
+      "title": "Volatile CELL calls are duplicated",
+      "evidence": "1,313 CELL occurrences exist: 924 on Hidden - BP Menu Sheet, 388 on Hidden - Sheet Lists, and one on Stress Sensitivity List. The menu formulas call CELL four times per formula to derive a sheet name.",
+      "implication": "Every recalculation revisits workbook metadata unnecessarily; the current measured impact is modest.",
+      "recommendation": "Evaluate each CELL result once in a helper cell (or LET only if supported) and reuse it, reducing the menu occurrences by about 75%."
+    },
+    {
+      "id": "F7",
+      "severity": "Low-Medium",
+      "title": "Several sheets have inflated used ranges",
+      "evidence": "5 Yr Monthly Cashflow uses 337 rows although the last populated row is 102; 5 Yr Quarterly Cashflow uses 262 versus 27. Transactional DB extends to 78 columns while populated content ends at 74.",
+      "implication": "This can increase rendering, navigation, print, and file-maintenance overhead more than formula calculation time.",
+      "recommendation": "On a disposable copy, remove only demonstrably obsolete formatting/objects beyond the real model area, then run full Excel/VBA/Summit round-trip tests."
+    },
+    {
+      "id": "F8",
+      "severity": "Low",
+      "title": "One unguarded #N/A remains outside intentional chart suppression",
+      "evidence": "Of 467 saved formula-error cells, 466 are deliberate NA() chart gaps. Hidden - Tenure Totals Start!B6 is an unguarded INDEX/MATCH #N/A.",
+      "implication": "The error is currently latent because the saved Check Sheet is OK, but it can leak into future imports or interfaces.",
+      "recommendation": "Confirm the expected blank-state behaviour and use IFNA/validation if absence from ImportedSchemes is normal."
+    }
+  ],
+  "requiredFutureReview": {
+    "instruction": "Review this evidence and Contract_XLSB_Audit_2026-08-24.md before workbook, calculation engine, Transactional DB, custom-function, structural range, or validation changes."
+  }
+}

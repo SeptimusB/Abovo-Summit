@@ -156,3 +156,19 @@ Required manual integration validation remains:
 - Edit text, numeric, date, percentage, blank and formula-backed cells, then verify Ctrl+Z/Ctrl+Y and the History V2 buttons restore exact workbook values and displayed formulas after recalculation
 - Paste rectangles in DIT, FFR and Stress Test and confirm each paste is one undo group; create a new edit after undo and confirm the discarded redo branch is marked superseded
 - Modify a journalled cell externally before undo and confirm conflict detection refuses to overwrite it; confirm structural add/remove commands are not presented as automatically reversible
+
+## Contract XLSB health and calculation audit - 24 August 2026
+
+The authoritative `Z:\Sandbox\TestFileClean.xlsb` and repository compatibility copy remain byte-for-byte identical at SHA-256 `B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE`. The audit inspected an exact disposable copy through Excel with macros and events disabled and made no workbook or code remediation.
+
+The workbook is structurally healthy and natively fast on the audit workstation: 638,360 formula cells completed a full dependency rebuild in 2.152 seconds and warm full calculations averaged about 0.42 seconds. No broken defined names, external formula references, workbook connections, circular reference, or true full-column calculation formulas were found. Broad formula replacement is therefore not justified.
+
+The primary confirmed integration issue is the Summit `PMCOST` parameter contract. The XLSB deliberately calls eight compatibility positions, but only seven inputs affect the result because `FinalYear` is unused. Summit accepts positions 0 through 7 while exposing seven `ParameterInfo` entries. Preserve the eight-position workbook signature, document the unused position, correct the metadata, and require Excel/VBA-versus-Summit parity across all 380 `PMCOST` and 380 `RESPCOST` calls before changing evaluation logic.
+
+The main workbook robustness risk is positional dependency: 35,920 formulas use 3-D worksheet references. Structural commands must validate the exact membership and order of every bounded sheet block. Multi-area names, used-range cleanup candidates, volatile `CELL` formulas and the single unguarded `Hidden - Tenure Totals Start!B6` lookup are targeted review items, not evidence for a wholesale redesign.
+
+Future workbook, calculation-engine, Transactional DB, custom-function, structural-range and validation work must first review:
+
+- `Library/Contract_XLSB_Audit_2026-08-24.pdf`
+- `Library/Contract_XLSB_Audit_2026-08-24.md`
+- `Library/Contract_XLSB_Audit_Evidence_2026-08-24.json`

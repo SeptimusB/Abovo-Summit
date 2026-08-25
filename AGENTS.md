@@ -10,6 +10,7 @@
 - Do not make any change to a utilised XLSB or XLSM that could impair its standalone Microsoft Excel or VBA functionality.
 - Treat `Z:\Sandbox\TestFileClean.xlsb` as the authoritative master. `Library/TestFileMigrated.xlsb` is its exact repository compatibility copy; its embedded VBA, workbook names/formulas/locks, and `Structure.xml` are the behavioral contract. Do not infer parity from similarly named VB methods alone.
 - Read `Library/Abovo_Summit_Project_Scope_Audit.md` and `Library/Abovo_Summit_Project_Index.json` before broad workbook, migration, Transactional DB, or Stress Test changes.
+- Read `Library/Contract_XLSB_Audit_2026-08-24.md` and `Library/Contract_XLSB_Audit_Evidence_2026-08-24.json` before workbook, calculation-engine, Transactional DB, custom-function, structural-range, or validation changes.
 
 ## Workbook editing and calculation
 
