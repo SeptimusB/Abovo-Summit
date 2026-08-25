@@ -122,6 +122,10 @@ Version 7.62 routes the existing bottom-left Help button on `FormMainScreen` to 
 
 Test Release 1.00 resets the client-facing Summit version and configures a repeatable offline ClickOnce package for initial functional testing. The separate installed product identity is `Abovo Summit Test`, the application/deployment version is `1.0.0.0`, automatic updates are disabled, and the bootstrapper prerequisite now matches the application target of .NET Framework 4.8. `Structure.xml` is explicitly included at the installed application startup root and the complete editable `Help` tree is explicitly included beneath it. `Tools/Publish-ClientTest.ps1` refuses to overwrite an existing versioned destination, invokes the project ClickOnce target, validates the required staged files and application-manifest entries, writes client installation notes, and produces the delivery ZIP. The available legacy test certificate is not installed in the certificate store, so this initial package is deliberately unsigned and the client README explains the expected Windows `Unknown Publisher` warning.
 
+Test Version 1.01 restores the first `Funder` tab to both Funding Assumptions V1 (CSID 33) and Funding Assumptions V2 (CSID 138). Each tab presents the workbook's vertical `Funders` and `Facility` named ranges as one editable, non-pivoted `MergeAcross` grid. The `Funders` range is the NRRI expansion master, so an Add Lines operation inserts complete worksheet rows and keeps the aligned `Facility` range synchronized. Read-only inspection confirmed both contract ranges contain seven rows on `Funding Assumptions` (`B35:B41` and `D35:D41`), and Debug/Release builds both passed with the regenerated `Structure.xml` copied exactly to their startup folders.
+
+Test Version 1.02 assigns the visually first row of both Funding Details vertical grids a dynamic combo editor backed by the workbook `Funders` named range. The editor uses the existing `Rep_Funders` resolver, so its choices are reread from the authoritative workbook rather than duplicated in application code.
+
 Completed automated/static validation:
 
 - Exact source/library hash comparison
@@ -138,6 +142,7 @@ Completed automated/static validation:
 
 Required manual integration validation remains:
 
+- Open Funding Assumptions V1 and V2, confirm `Funder` is Tab #1, edit both columns, add rows, and verify `Funders` and `Facility` remain aligned and feed the Funding Details dropdowns after calculation and reopen
 - Open several Assumptions, Workings and Outputs DIT instances, select different tabs, and confirm Help opens the matching interface and scrolls to the active section; edit one `Help/data/overrides.js` entry and confirm it takes precedence after reopening Help
 
 - Open Funding Assumptions V2, verify all four tabs, confirm Funding Details and its Opening Balance line remain fixed while scrolling, and exercise a Commitment Fees date-header add/edit/remove round trip

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-24T18:43:40+01:00",
+  "generatedAt": "2026-08-25T10:58:37+01:00",
   "purpose": "Compact current contract index for the TestFileClean authoritative master and its Summit integration.",
   "security": {
     "containsWorkbook": false,
@@ -41,8 +41,8 @@
   "application": {
     "project": "Abovo Business Suite.vbproj",
     "compiledFileCount": 155,
-    "testVersion": "1.00",
-    "structureXmlSha256": "EDB514FC8182FAF0332D8D1B9D8B2A0FE9D37C7E5D41A8C5BF02A196B9ADF9CA",
+    "testVersion": "1.02",
+    "structureXmlSha256": "338875A0B01D8E19BAB1D934D2909FB89D64EABCF4D15D7B271E9AB555BF2E35",
     "projectSha256": "837CC4ABA9031BAF0D4B429E3E33FA92FE645BA850A422D0B61BC129276420B3",
     "clientTestPackage": {
       "type": "ClickOnce offline install",

@@ -11660,6 +11660,52 @@
       <IsMaster>False</IsMaster>
       <GroupName>Funding Assumptions</GroupName>
 
+      <CSInterfaceSection Name="Funder">
+        <ISName>Funder</ISName>
+        <ISDatasource>
+          <ISDName>Funders and Facilities</ISDName>
+          <ISDID>0</ISDID>
+          <DSSource>NR</DSSource>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <ColsExpandBy>NR</ColsExpandBy>
+          <RO>FALSE</RO>
+          <RowsExpandBy>NRRI</RowsExpandBy>
+          <RowsExpandModel>NRRI</RowsExpandModel>
+          <RowExpandByNR>Funders</RowExpandByNR>
+          <DSType>MergeAcross</DSType>
+          <MergeSources>Across</MergeSources>
+          <MasterNR>Funders</MasterNR>
+          <MergedHeader>False</MergedHeader>
+          <Pivot>FALSE</Pivot>
+          <ExpandsBy>ROW</ExpandsBy>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Funders</NRDSName>
+            <PositID>1</PositID>
+            <DataFieldDefinition>
+              <FieldName>Funder</FieldName>
+              <DataFormat>S</DataFormat>
+              <MinWidthChars>24</MinWidthChars>
+              <TipText>Enter the funder name. Funding Dashboard outputs can be grouped by funder.</TipText>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Facility</NRDSName>
+            <PositID>1</PositID>
+            <DataFieldDefinition>
+              <FieldName>Facility</FieldName>
+              <DataFormat>S</DataFormat>
+              <MinWidthChars>16</MinWidthChars>
+              <TipText>Enter the facility identifier used to group the related funding records.</TipText>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>Grid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
+      </CSInterfaceSection>
 
       <CSInterfaceSection Name="Funding Details">
 
@@ -11685,8 +11731,10 @@
             <NRDSName>FacilityNames</NRDSName>
             <PositID>1</PositID>
             <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
               <FieldName>Facility vblf Name</FieldName>
               <DataFormat>S</DataFormat>
+              <RepositaryItemID>Rep_Funders</RepositaryItemID>
               <Fixed>TRUE</Fixed>
               <TipText>Facility Name Select description of each funding facility from the dropdown</TipText>
             </DataFieldDefinition>
@@ -11888,6 +11936,52 @@
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Funding Assumptions</GroupName>
+      <CSInterfaceSection Name="Funder">
+        <ISName>Funder</ISName>
+        <ISDatasource>
+          <ISDName>Funders and Facilities</ISDName>
+          <ISDID>0</ISDID>
+          <DSSource>NR</DSSource>
+          <SourceDataFormat>Cols</SourceDataFormat>
+          <ColsExpandBy>NR</ColsExpandBy>
+          <RO>FALSE</RO>
+          <RowsExpandBy>NRRI</RowsExpandBy>
+          <RowsExpandModel>NRRI</RowsExpandModel>
+          <RowExpandByNR>Funders</RowExpandByNR>
+          <DSType>MergeAcross</DSType>
+          <MergeSources>Across</MergeSources>
+          <MasterNR>Funders</MasterNR>
+          <MergedHeader>False</MergedHeader>
+          <Pivot>FALSE</Pivot>
+          <ExpandsBy>ROW</ExpandsBy>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Funders</NRDSName>
+            <PositID>1</PositID>
+            <DataFieldDefinition>
+              <FieldName>Funder</FieldName>
+              <DataFormat>S</DataFormat>
+              <MinWidthChars>24</MinWidthChars>
+              <TipText>Enter the funder name. Funding Dashboard outputs can be grouped by funder.</TipText>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Funding Assumptions</Worksheet>
+            <NRDSName>Facility</NRDSName>
+            <PositID>1</PositID>
+            <DataFieldDefinition>
+              <FieldName>Facility</FieldName>
+              <DataFormat>S</DataFormat>
+              <MinWidthChars>16</MinWidthChars>
+              <TipText>Enter the facility identifier used to group the related funding records.</TipText>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>Grid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
+      </CSInterfaceSection>
       <CSInterfaceSection Name="Facilities and Loans">
         <ISName>Facilities and Loans</ISName>
         <ISDatasource>
@@ -11912,7 +12006,7 @@
               <HasRule>TRUE</HasRule>
               <FieldName>Facility vblf Name</FieldName>
               <DataFormat>S</DataFormat>
-              <RepositaryItemID>Rep_Facility</RepositaryItemID>
+              <RepositaryItemID>Rep_Funders</RepositaryItemID>
               <Fixed>TRUE</Fixed>
               <TipText>Select the facility category used by the workbook.</TipText>
             </DataFieldDefinition>
