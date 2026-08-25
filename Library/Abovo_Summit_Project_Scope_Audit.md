@@ -126,6 +126,12 @@ Test Version 1.01 restores the first `Funder` tab to both Funding Assumptions V1
 
 Test Version 1.02 assigns the visually first row of both Funding Details vertical grids a dynamic combo editor backed by the workbook `Funders` named range. The editor uses the existing `Rep_Funders` resolver, so its choices are reread from the authoritative workbook rather than duplicated in application code.
 
+Test Version 1.03 reconciles both Interco Funding Assumptions tabs to the authoritative workbook. Loans Received uses `IC_IntercoFunding_01` with `Rep_IntercoFunding_010/030/050/070`; Investments Made uses `IC_IntercoFunding_02` with `Rep_IntercoFunding_020/040/060/080`. This removes the erroneous Capital Grant and loan-side references from the investment tab, restores monetary formatting to Drawdowns, fixes the description/opening columns during horizontal scrolling, and gives all drawdown, repayment, investment movement and interest-rate bands workbook-backed date editors and expansion actions through `DateInterF01/02/03`.
+
+Test Version 1.04 makes the first repeated date in every Interco Funding movement and interest-rate band editable. Each band now creates a `ColumnInPlaceEditor` date editor from record zero instead of suppressing the first header editor as a legacy read-only initial line.
+
+Test Version 1.05 prevents the model-scoped History Manager from calling `BeginInvoke` before its WinForms handle has been created, or while that handle is being destroyed during model close. Pre-display notifications need no queued refresh because `ShowForUser` refreshes from the complete journal before showing the window; close-time races are safely ignored after the workbook transaction has already committed.
+
 Completed automated/static validation:
 
 - Exact source/library hash comparison

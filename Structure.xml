@@ -12821,8 +12821,10 @@
             <NRDSName>IC_IntercoFunding_01</NRDSName>
             <PositID>0</PositID>
             <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
               <FieldName>Loan vblf Description</FieldName>
               <DataFormat>S</DataFormat>
+              <Fixed>TRUE</Fixed>
               <TipText>Loan Description Enter description of each Inter company loan</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
@@ -12834,6 +12836,8 @@
               <FieldName>Opening vblf Balance (£'000)</FieldName>
               <DataFormat>I</DataFormat>
               <HasRule>TRUE</HasRule>
+              <Fixed>TRUE</Fixed>
+              <TipText>Enter the opening balance for each intercompany loan received.</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
           <CellRangeDataSource>
@@ -12842,28 +12846,22 @@
             <PositID>1</PositID>
             <BandID>Drawdowns £'000</BandID>
             <DataFieldDefinition>
-
-
               <HasRule>TRUE</HasRule>
-              <FieldName>Year</FieldName>
-              <DataFormat>P</DataFormat>
+              <FieldName>Date</FieldName>
+              <DataFormat>I</DataFormat>
               <RepeatsByNR>TRUE</RepeatsByNR>
               <RepeatingNR>DateInterF01</RepeatingNR>
-              <RepeatingHeaderText>Void Rate</RepeatingHeaderText>
-              <BandEditDescription>Add date columns</BandEditDescription>
+              <RepeatingHeaderText>Drawdown £'000</RepeatingHeaderText>
+              <BandEditDescription>Add drawdown dates</BandEditDescription>
               <EditRepNRHere>TRUE</EditRepNRHere>
               <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
-              <EditRepNRHereROInitialLines>1</EditRepNRHereROInitialLines>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
               <EditRepNRHereROPreNRLines/>
               <EditRepNRHereROEndLines/>
               <EditRepNRHereROPostNRLines/>
-              <EditRepNRHereEditor>Date</EditRepNRHereEditor>
-              <EditRepNRHereComboRepository>Rep_OrdinalYearsLess1</EditRepNRHereComboRepository>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
               <EditRepNRHereExpansionMethod>NRRIbyCOL</EditRepNRHereExpansionMethod>
-
-
-
-              <TipText>Date Input Drawdown or Investment increase date</TipText>
+              <TipText>Enter drawdowns received on each selected date.</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
           <CellRangeDataSource>
@@ -12871,35 +12869,41 @@
             <NRDSName>Rep_IntercoFunding_050</NRDSName>
             <PositID>1</PositID>
             <BandID>Repayments £'000</BandID>
-
             <DataFieldDefinition>
-
-
-
-
-
               <HasRule>TRUE</HasRule>
-              <FieldName/>
+              <FieldName>Date</FieldName>
               <DataFormat>I</DataFormat>
               <RepeatsByNR>TRUE</RepeatsByNR>
               <RepeatingNR>DateInterF02</RepeatingNR>
-              <RepeatingHeaderText/>
-
-
-
-
+              <RepeatingHeaderText>Repayment £'000</RepeatingHeaderText>
+              <BandEditDescription>Add repayment dates</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRIbyCOL</EditRepNRHereExpansionMethod>
+              <TipText>Enter repayments made on each selected date.</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
           <CellRangeDataSource>
             <Worksheet>Interco Funding Assumptions</Worksheet>
             <NRDSName>Rep_IntercoFunding_070</NRDSName>
             <PositID>1</PositID>
+            <BandID>Interest Rate</BandID>
             <DataFieldDefinition>
-              <FieldName/>
+              <HasRule>TRUE</HasRule>
+              <FieldName>From Date</FieldName>
               <DataFormat>P</DataFormat>
               <RepeatsByNR>TRUE</RepeatsByNR>
               <RepeatingNR>DateInterF03</RepeatingNR>
               <RepeatingHeaderText>Interest vblf Rate</RepeatingHeaderText>
+              <BandEditDescription>Add interest-rate dates</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRIbyCOL</EditRepNRHereExpansionMethod>
+              <TipText>Enter the interest rate applying from each selected date.</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
 
@@ -12931,54 +12935,86 @@
             <NRDSName>IC_IntercoFunding_02</NRDSName>
             <PositID>0</PositID>
             <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
               <FieldName>Investment vblf Description</FieldName>
               <DataFormat>S</DataFormat>
+              <Fixed>TRUE</Fixed>
               <TipText>Investment Description Enter description of each Intercompany investment</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
           <CellRangeDataSource>
             <Worksheet>Interco Funding Assumptions</Worksheet>
-            <NRDSName>Rep_CapGrant_020</NRDSName>
+            <NRDSName>Rep_IntercoFunding_020</NRDSName>
             <PositID>1</PositID>
             <DataFieldDefinition>
+              <HasRule>TRUE</HasRule>
               <FieldName>Opening vblf Balance (£'000)</FieldName>
               <DataFormat>I</DataFormat>
+              <Fixed>TRUE</Fixed>
+              <TipText>Enter the opening balance for each intercompany investment made.</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
           <CellRangeDataSource>
             <Worksheet>Interco Funding Assumptions</Worksheet>
-            <NRDSName>Rep_IntercoFunding_030</NRDSName>
+            <NRDSName>Rep_IntercoFunding_040</NRDSName>
             <PositID>1</PositID>
+            <BandID>Investment Increases £'000</BandID>
             <DataFieldDefinition>
-              <FieldName/>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
               <DataFormat>I</DataFormat>
               <RepeatsByNR>TRUE</RepeatsByNR>
               <RepeatingNR>DateInterF01</RepeatingNR>
-              <RepeatingHeaderText>Investment £'000</RepeatingHeaderText>
+              <RepeatingHeaderText>Investment Increase £'000</RepeatingHeaderText>
+              <BandEditDescription>Add investment-increase dates</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRIbyCOL</EditRepNRHereExpansionMethod>
+              <TipText>Enter investment increases made on each selected date.</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
           <CellRangeDataSource>
             <Worksheet>Interco Funding Assumptions</Worksheet>
             <NRDSName>Rep_IntercoFunding_060</NRDSName>
             <PositID>1</PositID>
+            <BandID>Investment Decreases £'000</BandID>
             <DataFieldDefinition>
-              <FieldName/>
+              <HasRule>TRUE</HasRule>
+              <FieldName>Date</FieldName>
               <DataFormat>I</DataFormat>
               <RepeatsByNR>TRUE</RepeatsByNR>
               <RepeatingNR>DateInterF02</RepeatingNR>
-              <RepeatingHeaderText>Decrease £'000</RepeatingHeaderText>
+              <RepeatingHeaderText>Investment Decrease £'000</RepeatingHeaderText>
+              <BandEditDescription>Add investment-decrease dates</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRIbyCOL</EditRepNRHereExpansionMethod>
+              <TipText>Enter investment decreases made on each selected date.</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
           <CellRangeDataSource>
             <Worksheet>Interco Funding Assumptions</Worksheet>
             <NRDSName>Rep_IntercoFunding_080</NRDSName>
             <PositID>1</PositID>
+            <BandID>Interest Rate</BandID>
             <DataFieldDefinition>
-              <FieldName/>
+              <HasRule>TRUE</HasRule>
+              <FieldName>From Date</FieldName>
               <DataFormat>P</DataFormat>
               <RepeatsByNR>TRUE</RepeatsByNR>
               <RepeatingNR>DateInterF03</RepeatingNR>
               <RepeatingHeaderText>Interest vblf Rate</RepeatingHeaderText>
+              <BandEditDescription>Add interest-rate dates</BandEditDescription>
+              <EditRepNRHere>TRUE</EditRepNRHere>
+              <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
+              <EditRepNRHereROInitialLines>0</EditRepNRHereROInitialLines>
+              <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
+              <EditRepNRHereExpansionMethod>NRRIbyCOL</EditRepNRHereExpansionMethod>
+              <TipText>Enter the interest rate applying from each selected date.</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
 

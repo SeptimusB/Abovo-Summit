@@ -141,12 +141,24 @@ Public NotInheritable Class HistoryManagerV2
 
     Private Sub Manager_HistoryChanged(ByVal sender As Object,
                                        ByVal e As ChangeHistoryChangedEventArgsV2)
-        If IsDisposed OrElse ExecutingHistoryCommand Then Return
-        If InvokeRequired Then
+        If IsDisposed OrElse Disposing OrElse ExecutingHistoryCommand Then Return
+
+        'The model-scoped history manager can receive changes before this
+        'modeless window is first shown. BeginInvoke is invalid until a native
+        'window handle exists; ShowForUser performs a full refresh before the
+        'first display, so there is nothing to marshal in that state.
+        If Not IsHandleCreated Then Return
+
+        Try
             BeginInvoke(New MethodInvoker(AddressOf RefreshHistory))
-        Else
-            BeginInvoke(New MethodInvoker(AddressOf RefreshHistory))
-        End If
+        Catch ex As ObjectDisposedException
+            'Closing a model can dispose the form concurrently with a final
+            'history notification.
+        Catch ex As InvalidOperationException
+            'The handle may be destroyed between the lifecycle check and the
+            'marshal request while the model is closing. The window is either
+            'about to refresh on its next ShowForUser call or be disposed.
+        End Try
     End Sub
 
     Private Sub RefreshHistory()
