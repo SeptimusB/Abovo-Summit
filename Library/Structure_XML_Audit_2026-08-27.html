@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Abovo Summit Core BP Structure.xml Audit</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #25313c;
+      --muted: #5d6975;
+      --line: #d9e0e6;
+      --blue: #006bb6;
+      --blue-soft: #eaf4fb;
+      --amber: #9a6500;
+      --amber-soft: #fff5d8;
+      --red: #a52828;
+      --red-soft: #fcecec;
+      --green: #237347;
+      --green-soft: #eaf6ef;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #f4f6f8;
+      color: var(--ink);
+      font: 15px/1.55 "Segoe UI", Arial, sans-serif;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 40px));
+      margin: 32px auto;
+      padding: 42px 52px;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: 0 8px 28px rgba(31, 45, 58, .08);
+    }
+
+    h1, h2, h3 { line-height: 1.2; }
+    h1 { margin: 0 0 8px; color: var(--blue); font-size: 30px; }
+    h2 { margin: 34px 0 14px; padding-bottom: 7px; border-bottom: 2px solid var(--line); font-size: 21px; }
+    h3 { margin: 24px 0 8px; font-size: 17px; }
+    p { margin: 8px 0 14px; }
+    ul, ol { margin: 8px 0 16px 24px; padding: 0; }
+    li { margin: 6px 0; }
+    code { font-family: Consolas, "Courier New", monospace; font-size: .94em; }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 26px;
+      margin: 20px 0 26px;
+      padding: 16px 18px;
+      background: var(--blue-soft);
+      border-left: 5px solid var(--blue);
+    }
+
+    .meta dt { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; }
+    .meta dd { margin: 2px 0 0; font-weight: 600; }
+
+    .notice, .finding, .passed {
+      margin: 14px 0;
+      padding: 14px 17px;
+      border: 1px solid var(--line);
+      border-left-width: 5px;
+      break-inside: avoid;
+    }
+
+    .notice { background: var(--amber-soft); border-left-color: var(--amber); }
+    .finding { background: var(--red-soft); border-left-color: var(--red); }
+    .passed { background: var(--green-soft); border-left-color: var(--green); }
+    .finding h3, .passed h3 { margin-top: 0; }
+
+    table {
+      width: 100%;
+      margin: 14px 0 22px;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td { padding: 9px 11px; border: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: #edf1f4; }
+    tbody tr:nth-child(even) { background: #fafbfc; }
+
+    .path { color: var(--blue); font-family: Consolas, "Courier New", monospace; }
+    .muted { color: var(--muted); }
+    .footer { margin-top: 38px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+
+    @media (max-width: 720px) {
+      main { width: 100%; margin: 0; padding: 24px 20px; border: 0; }
+      .meta { grid-template-columns: 1fr; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      main { width: auto; margin: 0; padding: 0; border: 0; box-shadow: none; }
+      h2 { break-after: avoid; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Core BP Structure.xml Audit</h1>
+    <p class="muted">Read-only consistency review of the Abovo Summit business-plan interface definition.</p>
+  </header>
+
+  <dl class="meta">
+    <div><dt>Audit date</dt><dd>27 August 2026</dd></div>
+    <div><dt>Source</dt><dd class="path">C:\Repos\Abovo Summit\Structure.xml</dd></div>
+    <div><dt>Contract workbook</dt><dd class="path">Library\TestFileMigrated.xlsb</dd></div>
+    <div><dt>Scope</dt><dd>XML structure and workbook-reference consistency</dd></div>
+  </dl>
+
+  <div class="notice">
+    <strong>No corrections were made.</strong> This report lists confirmed inconsistencies and lower-confidence anomalies for review.
+  </div>
+
+  <p>The XML is well-formed and contains 3 groups, 217 child structures, 490 interface sections, 529 datasources and 959 cell-range sources.</p>
+
+  <h2>High-confidence inconsistencies</h2>
+
+  <div class="finding">
+    <h3>1. Incorrect worksheet ownership for named ranges</h3>
+    <ul>
+      <li><code>ImpairmentDirect</code> is assigned to <code>Development Consol Options</code> twice, but the workbook name refers to <code>Development BP Assumptions</code>: lines 5975–5976 and 7364–7365.</li>
+      <li><code>Rep_Annual_Non_Tenure_Specific_Expenditure</code> is assigned to <code>Stock Disposal Assumptions</code>, but belongs to <code>Non Tenure Capital Assumptions</code>: lines 9722–9723.</li>
+      <li><code>Rep_Periodic_Non_Tenure_Specific_Expenditure</code> has the same incorrect worksheet: lines 9761–9762.</li>
+    </ul>
+  </div>
+
+  <div class="finding">
+    <h3>2. Incomplete Other Current Asset expansion definition</h3>
+    <p>The datasource declares <code>RowsExpandBy=NRRI</code> at line 16106 but has neither <code>RowsExpandModel</code> nor <code>RowExpandByNR</code>. DataManager derives operational expansion behaviour from <code>RowsExpandModel</code>, so this datasource is currently treated as non-expanding.</p>
+  </div>
+
+  <div class="finding">
+    <h3>3. Contradictory expansion metadata</h3>
+    <ul>
+      <li>Other Fixed Asset: <code>RowsExpandModel=NRRI</code> at line 15946, but <code>RowsExpandBy=NRCI</code> at line 15951.</li>
+      <li>Housing Asset: <code>RowsExpandModel=NRRI</code> at line 15313, but <code>RowsExpandBy=CC</code> at line 15318.</li>
+      <li><code>RowsExpandBy</code> is not represented in the current <code>ISEDatasource</code> serializer; <code>RowsExpandModel</code> is the operative value. The conflicting values are therefore stale or misleading metadata.</li>
+    </ul>
+  </div>
+
+  <div class="finding">
+    <h3>4. Repairs expansion master is absent from its local child definition</h3>
+    <p><code>RowExpandByNR</code> is <code>StockCondCats</code> at line 3204, but that named range is not an <code>NRDSName</code> anywhere within the <code>Repairs &amp; Maint Assumptions</code> child. The workbook range exists and the custom multi-range rule may deliberately use an external master, but this is the only <code>RowExpandByNR</code> without a local datasource representation.</p>
+  </div>
+
+  <div class="finding">
+    <h3>5. Case-sensitive tags ignored by the serializer</h3>
+    <p>There are 38 noncanonical tags:</p>
+    <table>
+      <thead><tr><th>Incorrect tag</th><th>Count</th><th>Expected tag</th><th>Principal areas</th></tr></thead>
+      <tbody>
+        <tr><td><code>MINVAL</code></td><td>26</td><td><code>MinVal</code></td><td>RTB, Development Details, Development Multi-Year, Non-Tenure Capital and Taxation</td></tr>
+        <tr><td><code>MAXVAL</code></td><td>9</td><td><code>MaxVal</code></td><td>Income Foregone, Capital Grant, Development and Taxation</td></tr>
+        <tr><td><code>FIXED</code></td><td>1</td><td><code>Fixed</code></td><td>BP Input Schemes, line 4721</td></tr>
+        <tr><td><code>TYPE</code></td><td>1</td><td><code>Type</code></td><td>Capital Expenditure action, line 4088</td></tr>
+        <tr><td><code>Tiptext</code></td><td>1</td><td><code>TipText</code></td><td>Stock Assumptions, line 432</td></tr>
+      </tbody>
+    </table>
+    <p>Representative validation locations include lines 1298, 2538, 5056, 7123, 9776 and 13365. These values are not loaded into the corresponding serializer properties.</p>
+  </div>
+
+  <h2>Duplicate scalar elements</h2>
+
+  <p>There are 64 parent nodes containing duplicate scalar properties. These properties are not collections, so the XML does not unambiguously define which value was intended.</p>
+
+  <table>
+    <thead><tr><th>Element</th><th>Affected parents</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>BandID</code></td><td>36</td><td>Primarily Development Details and Development Multi-Year BP Inputs, around lines 6140–6535 and 7534–7933.</td></tr>
+      <tr><td><code>HasRule</code></td><td>6</td><td>Repeated identical declarations in Development datasource fields.</td></tr>
+      <tr><td><code>RowsExpandModel</code></td><td>4</td><td>Stock Disposal and Economic Assumptions.</td></tr>
+      <tr><td><code>DefaultWorksheet</code></td><td>3</td><td>Survey Input, Non-Tenure Capital and Economic Assumptions.</td></tr>
+      <tr><td><code>FieldName</code></td><td>3</td><td>Capital Grant, Repairs preliminary rates and Capital Expenditure.</td></tr>
+      <tr><td><code>RowExpandByNR</code></td><td>3</td><td>Economic RPI and Real Leaseholder Income.</td></tr>
+      <tr><td><code>PositID</code></td><td>2</td><td>Conflicting values rather than identical duplicates.</td></tr>
+      <tr><td><code>RepeatingNR</code></td><td>2</td><td>Repairs and Capital Expenditure repeating fields.</td></tr>
+      <tr><td><code>RepeatsByNR</code></td><td>2</td><td>Repairs and Capital Expenditure repeating fields.</td></tr>
+      <tr><td><code>EditRepNRHere</code></td><td>1</td><td>Capital Expenditure.</td></tr>
+      <tr><td><code>RepeatingHeaderText</code></td><td>1</td><td>Capital Grant contains both <code>Void Rate</code> and <code>Capital Grant Income Year</code>.</td></tr>
+      <tr><td><code>TipText</code></td><td>1</td><td>Funding Details contains an empty and a populated value.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Notable duplicate conflicts</h3>
+  <ul>
+    <li>Development Details <code>OnCostsTotalIn</code> has <code>PositID</code> values 7 and 5 at lines 5245 and 5247.</li>
+    <li>Development Multi-Year repeats the same conflict at lines 6819 and 6821.</li>
+    <li>Capital Grant has duplicate <code>FieldName</code> and <code>RepeatingHeaderText</code> values, including the apparently copied text <code>Void Rate</code>, starting at line 2553.</li>
+    <li>Economic RPI repeats both <code>RowsExpandModel</code> and <code>RowExpandByNR</code> at lines 9853 and 9969.</li>
+    <li>Real Leaseholder Income repeats the same expansion properties at line 10565.</li>
+  </ul>
+
+  <h2>Navigation and identity inconsistencies</h2>
+  <ul>
+    <li>The Service Charge link targets a nonexistent section named <code>Real Service Charge Increases / (Decreases)</code> at line 971. The actual target section is <code>Real Service Charge</code> at line 10171.</li>
+    <li>Taxation Assumptions contains two sections whose XML <code>Name</code> is <code>Corporation Tax Rates</code>, at lines 13230 and 13430. The second has <code>ISName=Capital Allowances and Gains</code>.</li>
+    <li>Workings contains two children named <code>Development Stock</code>, with CSIDs 6 and 58 at lines 17013 and 20353.</li>
+    <li><code>Funding Assumptions V2</code> uses CSID 138 while physically occupying child position 34. Remaining children resume with IDs 34–43. The current resolver supports this, but it is inconsistent with every other group.</li>
+    <li><code>Repairs rephasing </code> contains trailing whitespace at line 3462.</li>
+    <li><code>Development Build &amp; On Cost&nbsp;&nbsp;Profiling</code> contains doubled whitespace at line 9370.</li>
+    <li><code>Leasholder Income Assumptions</code> and associated fields misspell “Leaseholder”, beginning at line 1886.</li>
+  </ul>
+
+  <h2>Other suspicious metadata</h2>
+  <ul>
+    <li><code>New Lettings Other Disposal Numbers</code> uses the one-off <code>DataFormat=0</code> and the copied field name <code>DemolitionNumber</code> at lines 16885–16886.</li>
+    <li>Material child <code>Name</code>/<code>CSName</code> differences occur in Repairs rephasing, Repairs &amp; Maint Rates, Development Consol Options and Development Build/On Cost Profiling.</li>
+    <li>Sensitive workbook credential material is stored directly in the root XML at line 6. The value is deliberately not reproduced in this report.</li>
+  </ul>
+
+  <h2>Checks that passed</h2>
+  <div class="passed">
+    <ul>
+      <li>Every declared worksheet exists in the authoritative BP workbook.</li>
+      <li>Every genuine <code>NRDSName</code>, <code>RowExpandByNR</code>, <code>OffSetNR</code>, <code>RepeatingNR</code> and <code>LiveGridSourceName</code> resolves to an existing workbook name and matches its casing.</li>
+      <li><code>CR</code> at line 12714 is an intentional DataManager sentinel for an explicit <code>DataRange</code>, not a missing named range.</li>
+      <li>There is no <code>MRCI</code> token in the XML or current code. The supported column-insertion token is <code>NRCI</code>; the only operative <code>RowsExpandModel=NRCI</code> occurrence is the dedicated Joint Venture interface.</li>
+      <li>Group IDs and child IDs are unique.</li>
+      <li>The authoritative master and repository compatibility XLSB copies were byte-identical at the time of audit.</li>
+    </ul>
+  </div>
+
+  <p class="footer">Generated as a read-only audit artifact. No application code, workbook or XML definition was corrected as part of this review.</p>
+</main>
+</body>
+</html>

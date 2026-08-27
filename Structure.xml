@@ -429,13 +429,13 @@
               <HasRule>TRUE</HasRule>
               <FieldName>Initial Rate vblf of New Lettings</FieldName>
               <DataFormat>P</DataFormat>
-              <Tiptext>
+              <TipText>
                 Initial Rate of New Lettings
                 Where actual rents are not currently at target, they can be moved to target at re-let to a new tentant.
                 If the Rent Assumptions page is populated with an average actual rent and an average target rent for each defined stock type, you can add a percentage of stock that will move to target in this box.
                 This can be increased or decreased in future years in the boxes below.
                 Leaving the cells empty will assume that current rents do not move to target on re-let. Different percentages can be used for different stock types.
-              </Tiptext>
+              </TipText>
 
               <TipText>Initial Rate of New Lettings Where actual rents are not currently at target, they can be moved to target at re-let to a new tentant. If the Rent Assumptions page is populated with an average actual rent and an average target rent for each defined stock type, you can add a percentage of stock that will move to target in this box. This can be increased or decreased in future years in the boxes below. Leaving the cells empty will assume that current rents do not move to target on re-let. Different percentages can be used for different stock types.</TipText>
             </DataFieldDefinition>
@@ -1295,7 +1295,7 @@
             <DataFieldDefinition>
               <HasRule>TRUE</HasRule>
               <FieldName>Increase/decrease vblf in percentage</FieldName>
-              <MINVAL>-100</MINVAL>
+              <MinVal>-100</MinVal>
               <DataFormat>P</DataFormat>
               <TipText>Increase / (Decrease) in percentage Input change in percentage of stock sold via RTB each year</TipText>
             </DataFieldDefinition>
@@ -1417,7 +1417,7 @@
             <DataFieldDefinition>
               <FieldName>Cumulative inflation factor since transfer</FieldName>
               <DataFormat>P</DataFormat>
-              <MAXVAL>1000</MAXVAL>
+              <MaxVal>1000</MaxVal>
               <TipText>Cumulative inflation factor since transfer The cumulative inflation factor at BP start date is 100%, and each years inflation rate since transfer is multiplied to it using the following formula - previous years inflation factor multiplied by (1+current years inflation)</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
@@ -1528,7 +1528,6 @@
           <RowsExpandModel>NRRI</RowsExpandModel>
           <RO>FALSE</RO>
           <RowsExpandBy>NRRI</RowsExpandBy>
-          <RowsExpandModel>NRRI</RowsExpandModel>
           <RowExpandByNR>IR_Stock_Disp_Desc</RowExpandByNR>
           <DSType>MergeAcross</DSType>
           <MergeSources>Across</MergeSources>
@@ -2535,7 +2534,7 @@
             <DataFieldDefinition>
               <FieldName>Useful Life</FieldName>
               <DataFormat>I</DataFormat>
-              <MAXVAL>200</MAXVAL>
+              <MaxVal>200</MaxVal>
               <HasRule>TRUE</HasRule>
               <TipText>Useful Life If the capital grant is to be amortised, please enter a useful life. If no useful life is entered, the grant will not amortise</TipText>
             </DataFieldDefinition>
@@ -3375,7 +3374,6 @@
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Repairs &amp; Maintenance</GroupName>
-      <DefaultWorksheet>Stock Condition Inputs</DefaultWorksheet>
       <CSInterfaceSection Name="Business Plan Stocktypes">
         <ISName>Business Plan Stock Types</ISName>
         <ISLABEL>TRUE</ISLABEL>
@@ -3596,8 +3594,6 @@
 
               <FieldName>Movement</FieldName>
               <DataFormat>P</DataFormat>
-              <RepeatsByNR>TRUE</RepeatsByNR>
-              <RepeatingNR>IR_RM_Prelim</RepeatingNR>
               <RepeatingHeaderText>Preliminary Rate from Yr </RepeatingHeaderText>
 
               <TipText>
@@ -4085,7 +4081,7 @@
             <BandID>OFA Expenditure (£'000s) in Year</BandID>
             <Action>
               <ActionText>Edit Years of Fixed Asset Expenditure</ActionText>
-              <TYPE>NREDIT</TYPE>
+              <Type>NREDIT</Type>
             </Action>
             <DataFieldDefinition>
 
@@ -4106,9 +4102,6 @@
 
               <FieldName>Year</FieldName>
               <DataFormat>C</DataFormat>
-              <EditRepNRHere>TRUE</EditRepNRHere>
-              <RepeatsByNR>TRUE</RepeatsByNR>
-              <RepeatingNR>IR_CapExpend</RepeatingNR>
               <RepeatingHeaderText>Other Fixed Asset Spend (£'000s) from Year</RepeatingHeaderText>
               <TipText>
                 Please enter the spend profile required per column.
@@ -4718,7 +4711,7 @@
             <DataFieldDefinition>
               <FieldName>Input Scheme Name</FieldName>
               <DataFormat>S</DataFormat>
-              <FIXED>TRUE</FIXED>
+              <Fixed>TRUE</Fixed>
               <TipText>Input Scheme Name The user can input scheme names below that can then be used to group columns entered on the Development BP Assumptions sheet. If the scheme names are identified, then the Total Scheme costs will be shown to the right. If no scheme name is selected on Development BP Assumptions, the scheme costs will show on the Unidentified row below.</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
@@ -5053,27 +5046,27 @@
               <HasRule>TRUE</HasRule>
               <FieldName>Land vblf Cost £</FieldName>
               <DataFormat>I</DataFormat>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
               <TipText>Land Cost Input Land costs for House type that have already been incurred before the beginning of the business plan</TipText>
             </DataFieldDefinition>
             <DataFieldDefinition>
               <FieldName>Build vblf Cost £</FieldName>
               <DataFormat>I</DataFormat>
               <HasRule>TRUE</HasRule>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
               <TipText>Method of Calculating Scheme costs Select from the drop down menu Method for calculating the Works costs/Scheme costs for this House Type.</TipText>
             </DataFieldDefinition>
             <DataFieldDefinition>
               <FieldName>On vblf Costs £</FieldName>
               <DataFormat>I</DataFormat>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
               <HasRule>TRUE</HasRule>
               <TipText>On Costs Input On Cost for House type that have already been incurred before the beginning of the business plan</TipText>
             </DataFieldDefinition>
             <DataFieldDefinition>
               <FieldName>SHG vblf Received £</FieldName>
               <DataFormat>I</DataFormat>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
               <HasRule>TRUE</HasRule>
               <TipText>SHG received Input SHG received for House type that have already been incurred before the beginning of the business plan</TipText>
             </DataFieldDefinition>
@@ -5189,7 +5182,6 @@
               <FieldName>Scheme costs vblf Calculation vblf Method</FieldName>
               <DataFormat>S</DataFormat>
               <RepositaryItemID>Rep_DevCostMod</RepositaryItemID>
-              <HasRule>TRUE</HasRule>
             </DataFieldDefinition>
 
           </CellRangeDataSource>
@@ -5249,7 +5241,6 @@
               <HasRule>TRUE</HasRule>
               <DataFormat>I</DataFormat>
               <FieldName>On vblf Costs £</FieldName>
-              <HasRule>TRUE</HasRule>
               <TipText>On Costs Input On Cost for House type that have already been incurred before the beginning of the business plan</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
@@ -5628,7 +5619,7 @@
             <DataFieldDefinition>
               <FieldName>Weekly vblf Rent vblf / Property</FieldName>
               <DataFormat>M</DataFormat>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
               <HasRule>TRUE</HasRule>
               <TipText>Weekly rent per property Input weekly rent per property whilst let as rented unit</TipText>
             </DataFieldDefinition>
@@ -5643,7 +5634,7 @@
             <DataFieldDefinition>
               <FieldName>Weekly vblf Service Charge vblf / Property</FieldName>
               <DataFormat>M</DataFormat>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
               <HasRule>TRUE</HasRule>
               <TipText>Service charge per property Input weekly service charge per property whilst let as rented unit</TipText>
             </DataFieldDefinition>
@@ -5683,7 +5674,7 @@
             <DataFieldDefinition>
               <FieldName>Annual vblf Management vblf Cost Per Unit</FieldName>
               <DataFormat>M</DataFormat>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
               <HasRule>TRUE</HasRule>
               <TipText>SHG Calculation basis Select from the drop down menu Method for calculating the SHG for this House Type.</TipText>
             </DataFieldDefinition>
@@ -5697,7 +5688,7 @@
             <DataFieldDefinition>
               <FieldName>Annual vblf Service Cost vblf Per Unit</FieldName>
               <DataFormat>M</DataFormat>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
               <HasRule>TRUE</HasRule>
               <TipText>SHG Calculation basis Select from the drop down menu Method for calculating the SHG for this House Type.</TipText>
             </DataFieldDefinition>
@@ -5710,7 +5701,7 @@
             <DataFieldDefinition>
               <FieldName>Annual Responsive/ vblf Cyclical Costs vblf Per Unit</FieldName>
               <DataFormat>M</DataFormat>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
               <HasRule>TRUE</HasRule>
               <TipText>SHG Calculation basis Select from the drop down menu Method for calculating the SHG for this House Type.</TipText>
             </DataFieldDefinition>
@@ -5723,7 +5714,7 @@
             <DataFieldDefinition>
               <FieldName>Annual Planned vblf Maintenance Costs vblf Per Unit</FieldName>
               <DataFormat>M</DataFormat>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
               <HasRule>TRUE</HasRule>
               <TipText>SHG Calculation basis Select from the drop down menu Method for calculating the SHG for this House Type.</TipText>
             </DataFieldDefinition>
@@ -5736,7 +5727,7 @@
             <DataFieldDefinition>
               <FieldName>Weekly vblf Rent vblf / Property</FieldName>
               <DataFormat>M</DataFormat>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
               <HasRule>TRUE</HasRule>
               <TipText>Weekly rent per property Input weekly rent per property whilst let as rented unit</TipText>
             </DataFieldDefinition>
@@ -5749,7 +5740,7 @@
             <DataFieldDefinition>
               <FieldName>Service vblf Charge vblf / Property</FieldName>
               <DataFormat>M</DataFormat>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
               <HasRule>TRUE</HasRule>
               <TipText>Service charge per property Input weekly service charge per property whilst let as rented unit</TipText>
             </DataFieldDefinition>
@@ -5786,8 +5777,8 @@
               <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
 
 
-              <MINVAL>0</MINVAL>
-              <MAXVAL>1</MAXVAL>
+              <MinVal>0</MinVal>
+              <MaxVal>1</MaxVal>
               <TipText>
                 Input Void Rate / Property
               </TipText>
@@ -5822,8 +5813,8 @@
 
 
 
-              <MINVAL>0</MINVAL>
-              <MAXVAL>1</MAXVAL>
+              <MinVal>0</MinVal>
+              <MaxVal>1</MaxVal>
               <TipText>
                 Input Bad Debt Rate / Property
               </TipText>
@@ -5842,7 +5833,7 @@
             <DataFieldDefinition>
               <FieldName>Staircasing Receipt vblf Per Unit</FieldName>
               <DataFormat>M</DataFormat>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
 
               <TipText>SHG Calculation basis Select from the drop down menu Method for calculating the SHG for this House Type.</TipText>
             </DataFieldDefinition>
@@ -5877,7 +5868,7 @@
               <DataFormat>I</DataFormat>
 
               <EditNR>NRRI</EditNR>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
 
               <TipText>
                 Input number of units for staircasing
@@ -6145,7 +6136,6 @@
             <OffSetNR>Rep_DevBP_10</OffSetNR>
             <OffSetBy>R-1</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Cost Allocation</BandID>
             <DataFieldDefinition>
               <HasRule>TRUE</HasRule>
               <DataFormat>P</DataFormat>
@@ -6160,7 +6150,6 @@
             <Worksheet>Development BP Assumptions</Worksheet>
             <NRDSName>Rep_DevBP_10</NRDSName>
             <PositID>0</PositID>
-            <BandID>Cost Allocation</BandID>
             <DataFieldDefinition>
               <FieldName>Structure and vblf Components</FieldName>
               <DataFormat>P</DataFormat>
@@ -6179,7 +6168,6 @@
             <IsOffSet>TRUE</IsOffSet>
             <OffSetNR>Rep_DevBP_12</OffSetNR>
             <OffSetBy>R-1</OffSetBy>
-            <BandID>Useful Life</BandID>
             <PositID>3</PositID>
             <DataFieldDefinition>
 
@@ -6194,8 +6182,6 @@
             <BandID>Useful Life</BandID>
             <Worksheet>Development BP Assumptions</Worksheet>
             <NRDSName>Rep_DevBP_12</NRDSName>
-            <PositID>0</PositID>
-            <BandID>Useful Life</BandID>
             <DataFieldDefinition>
               <FieldName>Structure and vblf Components</FieldName>
               <DataFormat>I</DataFormat>
@@ -6661,7 +6647,6 @@
               <DataFormat>S</DataFormat>
               <HasRule>TRUE</HasRule>
               <RepositaryItemID>Rep_DvptMultiYearDates</RepositaryItemID>
-              <HasRule>TRUE</HasRule>
               <TipText>Period Start on Site (from) Select from drop down menu start on site date for works and oncosts</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
@@ -6676,7 +6661,6 @@
               <DataFormat>S</DataFormat>
               <HasRule>TRUE</HasRule>
               <RepositaryItemID>Rep_DvptMultiYearDates</RepositaryItemID>
-              <HasRule>TRUE</HasRule>
               <TipText>Period Start on Site (to) Select from drop down menu start on site date for works and oncosts</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
@@ -6759,7 +6743,6 @@
               <FieldName>Scheme costs vblf Calculation vblf Method</FieldName>
               <DataFormat>S</DataFormat>
               <RepositaryItemID>Rep_DevCostMod</RepositaryItemID>
-              <HasRule>TRUE</HasRule>
             </DataFieldDefinition>
 
           </CellRangeDataSource>
@@ -6823,7 +6806,6 @@
               <HasRule>TRUE</HasRule>
               <DataFormat>I</DataFormat>
               <FieldName>On vblf Costs £</FieldName>
-              <HasRule>TRUE</HasRule>
               <TipText>On Costs Input On Cost for House type that have already been incurred before the beginning of the business plan</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
@@ -7120,7 +7102,7 @@
             <DataFieldDefinition>
               <FieldName>Weekly vblf Rent vblf / Property</FieldName>
               <DataFormat>M</DataFormat>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
               <HasRule>TRUE</HasRule>
               <TipText>Weekly rent per property Input weekly rent per property whilst let as rented unit</TipText>
             </DataFieldDefinition>
@@ -7134,7 +7116,7 @@
             <DataFieldDefinition>
               <FieldName>Service vblf Charge vblf / Property</FieldName>
               <DataFormat>M</DataFormat>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
               <HasRule>TRUE</HasRule>
               <TipText>Service charge per property Input weekly service charge per property whilst let as rented unit</TipText>
             </DataFieldDefinition>
@@ -7172,8 +7154,8 @@
               <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
 
 
-              <MINVAL>0</MINVAL>
-              <MAXVAL>1</MAXVAL>
+              <MinVal>0</MinVal>
+              <MaxVal>1</MaxVal>
               <TipText>
                 Input Void Rate / Property
               </TipText>
@@ -7209,8 +7191,8 @@
 
 
 
-              <MINVAL>0</MINVAL>
-              <MAXVAL>1</MAXVAL>
+              <MinVal>0</MinVal>
+              <MaxVal>1</MaxVal>
               <TipText>
                 Input Bad Debt Rate / Property
               </TipText>
@@ -7230,7 +7212,7 @@
             <DataFieldDefinition>
               <FieldName>Staircasing Receipt vblf Per Unit</FieldName>
               <DataFormat>M</DataFormat>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
 
               <TipText>SHG Calculation basis Select from the drop down menu Method for calculating the SHG for this House Type.</TipText>
             </DataFieldDefinition>
@@ -7266,7 +7248,7 @@
               <DataFormat>I</DataFormat>
 
               <EditNR>NRRI</EditNR>
-              <MINVAL>0</MINVAL>
+              <MinVal>0</MinVal>
 
               <TipText>
                 Input number of units for staircasing
@@ -7540,7 +7522,6 @@
             <IsMappedRightByNR>HouseTypeInMY</IsMappedRightByNR>
             <OffSetBy>R-1</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Cost Allocation</BandID>
             <DataFieldDefinition>
               <DataFormat>S</DataFormat>
               <FieldName>Land</FieldName>
@@ -7555,7 +7536,6 @@
             <NRDSName>Rep_DevBP_10</NRDSName>
             <IsMappedRightByNR>HouseTypeInMY</IsMappedRightByNR>
             <PositID>0</PositID>
-            <BandID>Cost Allocation</BandID>
             <DataFieldDefinition>
               <FieldName>Structure and vblf Components</FieldName>
               <DataFormat>P</DataFormat>
@@ -7575,7 +7555,6 @@
             <IsOffSet>TRUE</IsOffSet>
             <OffSetNR>Rep_DevBP_12</OffSetNR>
             <OffSetBy>R-1</OffSetBy>
-            <BandID>Useful Life</BandID>
             <PositID>3</PositID>
             <DataFieldDefinition>
 
@@ -7592,7 +7571,6 @@
             <NRDSName>Rep_DevBP_12</NRDSName>
             <IsMappedRightByNR>HouseTypeInMY</IsMappedRightByNR>
             <PositID>0</PositID>
-            <BandID>Useful Life</BandID>
             <DataFieldDefinition>
               <FieldName>Structure and vblf Components</FieldName>
               <DataFormat>I</DataFormat>
@@ -9702,7 +9680,6 @@
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Development Assumptions</GroupName>
-      <DefaultWorksheet>Non Tenure Capital Assumptions</DefaultWorksheet>
       <CSInterfaceSection Name="Annual Non Tenure Specific Expenditure">
         <ISName>Annual Non Tenure Specific Expenditure</ISName>
         <ISDatasource>
@@ -9773,8 +9750,8 @@
             <DataFieldDefinition>
               <FieldName>Year</FieldName>
               <DataFormat>I</DataFormat>
-              <MINVAL>1</MINVAL>
-              <MAXVAL>40</MAXVAL>
+              <MinVal>1</MinVal>
+              <MaxVal>40</MaxVal>
               <TipText>Year Enter year of disposal/demolition</TipText>
             </DataFieldDefinition>
             <DataFieldDefinition>
@@ -9796,7 +9773,6 @@
       <ParentID>1</ParentID>
       <IsMaster>True</IsMaster>
       <GroupName>Economic Assumptions</GroupName>
-      <DefaultWorksheet>Economic Assumptions</DefaultWorksheet>
       <CSInterfaceSection Name="CPI and RPI">
         <ISName>CPI and RPI</ISName>
         <ISDatasource>
@@ -9862,8 +9838,6 @@
           <RowExpandByNR>IR_RPI</RowExpandByNR>
           <DSType>MergeAcross</DSType>
           <MergeSources>Down</MergeSources>
-          <RowsExpandModel>NRRI</RowsExpandModel>
-          <RowExpandByNR>IR_RPI</RowExpandByNR>
           <MergedHeader>False</MergedHeader>
           <Pivot>TRUE</Pivot>
           <ExpandsBy>CC</ExpandsBy>
@@ -9978,8 +9952,6 @@
           <RowExpandByNR>IR_RPI</RowExpandByNR>
           <DSType>MergeAcross</DSType>
           <MergeSources>Down</MergeSources>
-          <RowsExpandModel>NRRI</RowsExpandModel>
-          <RowExpandByNR>IR_RPI</RowExpandByNR>
           <MergedHeader>False</MergedHeader>
           <Pivot>TRUE</Pivot>
           <ExpandsBy>CC</ExpandsBy>
@@ -10577,8 +10549,6 @@
           <MergedHeader>False</MergedHeader>
           <Pivot>TRUE</Pivot>
           <ExpandsBy>CC</ExpandsBy>
-          <RowsExpandModel>NRRI</RowsExpandModel>
-          <RowExpandByNR>IR_LeaseIncReal</RowExpandByNR>
           <!-- header -->
           <CellRangeDataSource>
             <Worksheet>Economic Assumptions</Worksheet>
@@ -13362,8 +13332,8 @@
             <NRDSName>Rep_Tax_05a</NRDSName>
             <PositID>1</PositID>
             <DataFieldDefinition>
-              <MINVAL>1</MINVAL>
-              <MAXVAL>40</MAXVAL>
+              <MinVal>1</MinVal>
+              <MaxVal>40</MaxVal>
               <FieldName>Applies from year</FieldName>
               <DataFormat>I</DataFormat>
               <RepositaryItemID>Rep_YesNo</RepositaryItemID>
@@ -13389,8 +13359,8 @@
             <NRDSName>Rep_Tax_05b</NRDSName>
             <PositID>1</PositID>
             <DataFieldDefinition>
-              <MINVAL>1</MINVAL>
-              <MAXVAL>40</MAXVAL>
+              <MinVal>1</MinVal>
+              <MaxVal>40</MaxVal>
               <FieldName>Applies to year</FieldName>
               <DataFormat>I</DataFormat>
               <RepositaryItemID>Rep_YesNo</RepositaryItemID>
