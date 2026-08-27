@@ -40,6 +40,8 @@ Public Class FormMainScreen
     Public ActiveModel As Integer
     Private FileInstances() As FileInstanceInterface
     Private FileInstanceIndex As Integer = -1
+    Private DsaModelsTabControl As DevExpress.XtraTab.XtraTabControl
+    Private DsaBlankPage As DevExpress.XtraTab.XtraTabPage
     Private ModelsClosedForShutdown As Boolean
 
     Public Sub New()
@@ -53,6 +55,7 @@ Public Class FormMainScreen
         WindowsFormsSettings.DefaultFont = New System.Drawing.Font("Segoe UI", 10)
 
         InitializeComponent()
+        InitialiseDSAWorkspace()
 
         If String.IsNullOrWhiteSpace(ApplicationConfiguration.CurrentApplicationPath) Then
             ApplicationConfiguration.Initialize()
@@ -269,7 +272,9 @@ Public Class FormMainScreen
 
 #End Region
 #Region "ApplicationProcessEvents"
-    Sub OpenModelProceedureBP(Optional ByVal AutoFileToOpen As String = Nothing)
+    Sub OpenModelProceedureBP(
+        Optional ByVal AutoFileToOpen As String = Nothing,
+        Optional ByVal ExpectedModelType As String = Nothing)
 
         Dim FileToOpen As String = AutoFileToOpen
         Dim OpenedModelID As Integer = -1
@@ -334,12 +339,23 @@ Public Class FormMainScreen
             OpenedModelID = FileOpenResult.IntegerReturn
             ActiveModel = OpenedModelID
 
+            If Not String.IsNullOrWhiteSpace(ExpectedModelType) AndAlso
+               Not String.Equals(
+                FileOpenResult.StringReturn,
+                ExpectedModelType,
+                StringComparison.OrdinalIgnoreCase) Then
+
+                Throw New InvalidOperationException(
+                    "The selected file is a " & FileOpenResult.StringReturn &
+                    " model, not the requested " & ExpectedModelType & " model.")
+            End If
+
             Select Case FileOpenResult.StringReturn
                 Case "AbovoBP"
                     PopulateControlsFileBP(ActiveModel)
                     PostLoadActionsBP(ActiveModel)
                 Case "AbovoDSA"
-                    'Reserved for the DSA-specific interface.
+                    PopulateControlsFileDSA(ActiveModel)
                 Case Else
                     Throw New InvalidOperationException("The loaded model type is not recognised.")
             End Select
@@ -371,6 +387,51 @@ Public Class FormMainScreen
 
     End Sub
 
+    Private Sub InitialiseDSAWorkspace()
+
+        XtraTabPageEvolveDSA.Appearance.PageClient.BackColor = Color.White
+        XtraTabPageEvolveDSA.Controls.Clear()
+
+        SimpleButtonTest.Text = "Open DSA"
+        SimpleButtonTest.Location = New Point(16, 12)
+        SimpleButtonTest.Size = New Size(180, 48)
+        SimpleButtonTest.Anchor = AnchorStyles.Top Or AnchorStyles.Left
+
+        DsaModelsTabControl = New DevExpress.XtraTab.XtraTabControl With {
+            .Name = "XtraTabControlDSAModels",
+            .Location = New Point(12, 72),
+            .Size = New Size(
+                Math.Max(200, XtraTabPageEvolveDSA.ClientSize.Width - 24),
+                Math.Max(200, XtraTabPageEvolveDSA.ClientSize.Height - 84)),
+            .Anchor = AnchorStyles.Top Or AnchorStyles.Bottom Or
+                      AnchorStyles.Left Or AnchorStyles.Right
+        }
+
+        DsaBlankPage = New DevExpress.XtraTab.XtraTabPage With {
+            .Name = "XtraTabPageDSABlank",
+            .Text = "No DSA models open"
+        }
+
+        DsaModelsTabControl.TabPages.Add(DsaBlankPage)
+        XtraTabPageEvolveDSA.Controls.Add(DsaModelsTabControl)
+        XtraTabPageEvolveDSA.Controls.Add(SimpleButtonTest)
+        SimpleButtonTest.BringToFront()
+
+    End Sub
+
+    Private Sub OpenDSAProcedure()
+
+        XtraOpenFileDialogMainScreen.Filter =
+            "Development Scheme Appraisals|*.xlsb;*.adsa"
+
+        If XtraOpenFileDialogMainScreen.ShowDialog() <> DialogResult.OK Then Return
+
+        OpenModelProceedureBP(
+            XtraOpenFileDialogMainScreen.FileName,
+            "AbovoDSA")
+
+    End Sub
+
 #End Region
 #Region "InterfaceEvents"
     Function PopulateControlsFileBP(ModelID As Integer) As Integer
@@ -386,12 +447,40 @@ Public Class FormMainScreen
         XtraTabPageMainHABP.Tag = ModelID
         XtraTabControlModels.TabPages.Add(XtraTabPageMainHABP)
         XtraTabControlModels.SelectedTabPage = XtraTabPageMainHABP
+        XtraTabControlMainNavigator.SelectedTabPage = Me.XtraTabPageMainHABP
         XtraTabPageMainHABP.Name = "TabPageModelNo_" & ModelID
         FileInstances(FileInstanceIndex).PopulateFileInfo()
         XtraTabPageMainHABP.Appearance.Header.ForeColor = ExcelModels(ModelID).ColourSwatch
         XtraTabPageMainHABP.Text = "(" & ModelID + 1 & ") " & "HABP " & FileInstances(FileInstanceIndex).MyCompanyName
         XtraTabPageMainHABP.Tooltip = FileInstances(FileInstanceIndex).MyFilePath
         HideFirstTab()
+        Return FileInstanceIndex
+
+    End Function
+
+    Function PopulateControlsFileDSA(ModelID As Integer) As Integer
+
+        FileInstanceIndex += 1
+        ReDim Preserve FileInstances(FileInstanceIndex)
+        FileInstances(FileInstanceIndex) = New FileInstanceInterface(ModelID)
+
+        Dim DsaPage As New DevExpress.XtraTab.XtraTabPage
+        FileInstances(FileInstanceIndex).Dock = DockStyle.Fill
+        DsaPage.Controls.Add(FileInstances(FileInstanceIndex))
+        DsaPage.Tag = ModelID
+        DsaModelsTabControl.TabPages.Add(DsaPage)
+        DsaModelsTabControl.SelectedTabPage = DsaPage
+        XtraTabControlMainNavigator.SelectedTabPage = XtraTabPageEvolveDSA
+        DsaPage.Name = "TabPageModelNo_" & ModelID
+        FileInstances(FileInstanceIndex).PopulateFileInfo()
+        DsaPage.Appearance.Header.ForeColor =
+            ExcelModels(ModelID).ColourSwatch
+        DsaPage.Text =
+            "(" & ModelID + 1 & ") DSA " &
+            FileInstances(FileInstanceIndex).MyCompanyName
+        DsaPage.Tooltip = FileInstances(FileInstanceIndex).MyFilePath
+        HideFirstTab()
+
         Return FileInstanceIndex
 
     End Function
@@ -433,9 +522,22 @@ Public Class FormMainScreen
 
     Public Sub RemoveModel(ModelID As Integer)
 
+        If RemoveModelPage(XtraTabControlModels, ModelID) OrElse
+           RemoveModelPage(DsaModelsTabControl, ModelID) Then
+            HideFirstTab()
+        End If
+
+    End Sub
+
+    Private Function RemoveModelPage(
+        ByVal ModelTabs As DevExpress.XtraTab.XtraTabControl,
+        ByVal ModelID As Integer) As Boolean
+
+        If ModelTabs Is Nothing Then Return False
+
         Dim XtraTabPageToRemove As DevExpress.XtraTab.XtraTabPage = Nothing
 
-        For Each XTP As DevExpress.XtraTab.XtraTabPage In XtraTabControlModels.TabPages
+        For Each XTP As DevExpress.XtraTab.XtraTabPage In ModelTabs.TabPages
 
             If XTP.Tag = ModelID Then
                 XtraTabPageToRemove = XTP
@@ -445,11 +547,14 @@ Public Class FormMainScreen
         Next
 
         If Not IsNothing(XtraTabPageToRemove) Then
-            XtraTabControlModels.TabPages.Remove(XtraTabPageToRemove)
-            HideFirstTab()
+            ModelTabs.TabPages.Remove(XtraTabPageToRemove)
+            Return True
         End If
 
-    End Sub
+        Return False
+
+    End Function
+
     Sub HideFirstTab()
 
         If XtraTabControlModels.TabPages.Count > 1 Then
@@ -460,6 +565,13 @@ Public Class FormMainScreen
 
             XtraTabPageBlank.PageVisible = True
 
+        End If
+
+        If DsaModelsTabControl IsNot Nothing AndAlso
+           DsaBlankPage IsNot Nothing Then
+
+            DsaBlankPage.PageVisible =
+                DsaModelsTabControl.TabPages.Count <= 1
         End If
 
     End Sub
@@ -545,9 +657,11 @@ Public Class FormMainScreen
         End Select
     End Sub
 
-    Private Sub SimpleButton1_Click(sender As Object, e As EventArgs)
+    Private Sub SimpleButtonTest_Click(
+        sender As Object,
+        e As EventArgs) Handles SimpleButtonTest.Click
 
-        AbovoBP.IRVs.Initialise()
+        OpenDSAProcedure()
 
     End Sub
 

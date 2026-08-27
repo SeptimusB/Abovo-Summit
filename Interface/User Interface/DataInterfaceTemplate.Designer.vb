@@ -28,6 +28,7 @@ Partial Class DataInterfaceTemplate
     Private Sub InitializeComponent()
         Dim WindowsUIButtonImageOptions1 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
         Dim WindowsUIButtonImageOptions2 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
+        Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(DataInterfaceTemplate))
         Dim WindowsUIButtonImageOptions3 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
         Dim WindowsUIButtonImageOptions4 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
         Dim WindowsUIButtonImageOptions5 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
@@ -196,12 +197,12 @@ Partial Class DataInterfaceTemplate
         Me.TablePanelDIT.SetColumn(Me.XtraTabControlNewGIT, 0)
         Me.XtraTabControlNewGIT.Dock = System.Windows.Forms.DockStyle.Fill
         Me.XtraTabControlNewGIT.HeaderAutoFill = DevExpress.Utils.DefaultBoolean.[False]
-        Me.XtraTabControlNewGIT.Location = New System.Drawing.Point(19, 133)
+        Me.XtraTabControlNewGIT.Location = New System.Drawing.Point(13, 127)
         Me.XtraTabControlNewGIT.MultiLine = DevExpress.Utils.DefaultBoolean.[True]
         Me.XtraTabControlNewGIT.Name = "XtraTabControlNewGIT"
         Me.TablePanelDIT.SetRow(Me.XtraTabControlNewGIT, 1)
         Me.XtraTabControlNewGIT.SelectedTabPage = Me.XtraTabPage1
-        Me.XtraTabControlNewGIT.Size = New System.Drawing.Size(1260, 1683)
+        Me.XtraTabControlNewGIT.Size = New System.Drawing.Size(1272, 1695)
         Me.XtraTabControlNewGIT.TabIndex = 4
         Me.XtraTabControlNewGIT.TabPages.AddRange(New DevExpress.XtraTab.XtraTabPage() {Me.XtraTabPage1, Me.XtraTabPage2, Me.XtraTabPage3, Me.XtraTabPage4, Me.XtraTabPage5, Me.XtraTabPage6, Me.XtraTabPage7, Me.XtraTabPage8, Me.XtraTabPage9, Me.XtraTabPage10, Me.XtraTabPage11, Me.XtraTabPage12, Me.XtraTabPage13, Me.XtraTabPage14, Me.XtraTabPage15, Me.XtraTabPage16, Me.XtraTabPage17, Me.XtraTabPage18, Me.XtraTabPage19, Me.XtraTabPage20, Me.XtraTabPage21, Me.XtraTabPage22, Me.XtraTabPage23, Me.XtraTabPage24, Me.XtraTabPage25, Me.XtraTabPage26, Me.XtraTabPage27, Me.XtraTabPage28, Me.XtraTabPage29, Me.XtraTabPage30})
         '
@@ -210,7 +211,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage1.AutoScroll = True
         Me.XtraTabPage1.Controls.Add(Me.TablePanel1)
         Me.XtraTabPage1.Name = "XtraTabPage1"
-        Me.XtraTabPage1.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage1.Size = New System.Drawing.Size(1270, 1553)
         Me.XtraTabPage1.Text = "XtraTabPage1"
         '
         'TablePanel1
@@ -229,7 +230,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage2.Controls.Add(Me.TablePanel2)
         Me.XtraTabPage2.Name = "XtraTabPage2"
         Me.XtraTabPage2.PageVisible = False
-        Me.XtraTabPage2.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage2.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage2.Text = "XtraTabPage2"
         '
         'TablePanel2
@@ -247,7 +248,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage3.Controls.Add(Me.TablePanel3)
         Me.XtraTabPage3.Name = "XtraTabPage3"
         Me.XtraTabPage3.PageVisible = False
-        Me.XtraTabPage3.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage3.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage3.Text = "XtraTabPage3"
         '
         'TablePanel3
@@ -265,7 +266,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage4.Controls.Add(Me.TablePanel4)
         Me.XtraTabPage4.Name = "XtraTabPage4"
         Me.XtraTabPage4.PageVisible = False
-        Me.XtraTabPage4.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage4.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage4.Text = "XtraTabPage4"
         '
         'TablePanel4
@@ -283,7 +284,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage5.Controls.Add(Me.TablePanel5)
         Me.XtraTabPage5.Name = "XtraTabPage5"
         Me.XtraTabPage5.PageVisible = False
-        Me.XtraTabPage5.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage5.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage5.Text = "XtraTabPage5"
         '
         'TablePanel5
@@ -301,7 +302,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage6.Controls.Add(Me.TablePanel6)
         Me.XtraTabPage6.Name = "XtraTabPage6"
         Me.XtraTabPage6.PageVisible = False
-        Me.XtraTabPage6.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage6.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage6.Text = "XtraTabPage6"
         '
         'TablePanel6
@@ -319,7 +320,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage7.Controls.Add(Me.TablePanel7)
         Me.XtraTabPage7.Name = "XtraTabPage7"
         Me.XtraTabPage7.PageVisible = False
-        Me.XtraTabPage7.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage7.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage7.Text = "XtraTabPage7"
         '
         'TablePanel7
@@ -337,7 +338,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage8.Controls.Add(Me.TablePanel8)
         Me.XtraTabPage8.Name = "XtraTabPage8"
         Me.XtraTabPage8.PageVisible = False
-        Me.XtraTabPage8.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage8.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage8.Text = "XtraTabPage8"
         '
         'TablePanel8
@@ -355,7 +356,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage9.Controls.Add(Me.TablePanel9)
         Me.XtraTabPage9.Name = "XtraTabPage9"
         Me.XtraTabPage9.PageVisible = False
-        Me.XtraTabPage9.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage9.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage9.Text = "XtraTabPage9"
         '
         'TablePanel9
@@ -373,7 +374,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage10.Controls.Add(Me.TablePanel10)
         Me.XtraTabPage10.Name = "XtraTabPage10"
         Me.XtraTabPage10.PageVisible = False
-        Me.XtraTabPage10.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage10.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage10.Text = "XtraTabPage10"
         '
         'TablePanel10
@@ -391,7 +392,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage11.Controls.Add(Me.TablePanel11)
         Me.XtraTabPage11.Name = "XtraTabPage11"
         Me.XtraTabPage11.PageVisible = False
-        Me.XtraTabPage11.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage11.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage11.Text = "XtraTabPage11"
         '
         'TablePanel11
@@ -409,7 +410,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage12.Controls.Add(Me.TablePanel12)
         Me.XtraTabPage12.Name = "XtraTabPage12"
         Me.XtraTabPage12.PageVisible = False
-        Me.XtraTabPage12.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage12.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage12.Text = "XtraTabPage12"
         '
         'TablePanel12
@@ -427,7 +428,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage13.Controls.Add(Me.TablePanel13)
         Me.XtraTabPage13.Name = "XtraTabPage13"
         Me.XtraTabPage13.PageVisible = False
-        Me.XtraTabPage13.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage13.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage13.Text = "XtraTabPage13"
         '
         'TablePanel13
@@ -445,7 +446,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage14.Controls.Add(Me.TablePanel14)
         Me.XtraTabPage14.Name = "XtraTabPage14"
         Me.XtraTabPage14.PageVisible = False
-        Me.XtraTabPage14.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage14.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage14.Text = "XtraTabPage14"
         '
         'TablePanel14
@@ -463,7 +464,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage15.Controls.Add(Me.TablePanel15)
         Me.XtraTabPage15.Name = "XtraTabPage15"
         Me.XtraTabPage15.PageVisible = False
-        Me.XtraTabPage15.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage15.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage15.Text = "XtraTabPage15"
         '
         'TablePanel15
@@ -481,7 +482,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage16.Controls.Add(Me.TablePanel16)
         Me.XtraTabPage16.Name = "XtraTabPage16"
         Me.XtraTabPage16.PageVisible = False
-        Me.XtraTabPage16.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage16.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage16.Text = "XtraTabPage16"
         '
         'TablePanel16
@@ -499,7 +500,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage17.Controls.Add(Me.TablePanel17)
         Me.XtraTabPage17.Name = "XtraTabPage17"
         Me.XtraTabPage17.PageVisible = False
-        Me.XtraTabPage17.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage17.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage17.Text = "XtraTabPage17"
         '
         'TablePanel17
@@ -517,7 +518,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage18.Controls.Add(Me.TablePanel18)
         Me.XtraTabPage18.Name = "XtraTabPage18"
         Me.XtraTabPage18.PageVisible = False
-        Me.XtraTabPage18.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage18.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage18.Text = "XtraTabPage18"
         '
         'TablePanel18
@@ -535,7 +536,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage19.Controls.Add(Me.TablePanel19)
         Me.XtraTabPage19.Name = "XtraTabPage19"
         Me.XtraTabPage19.PageVisible = False
-        Me.XtraTabPage19.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage19.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage19.Text = "XtraTabPage19"
         '
         'TablePanel19
@@ -553,7 +554,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage20.Controls.Add(Me.TablePanel20)
         Me.XtraTabPage20.Name = "XtraTabPage20"
         Me.XtraTabPage20.PageVisible = False
-        Me.XtraTabPage20.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage20.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage20.Text = "XtraTabPage20"
         '
         'TablePanel20
@@ -571,7 +572,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage21.Controls.Add(Me.TablePanel21)
         Me.XtraTabPage21.Name = "XtraTabPage21"
         Me.XtraTabPage21.PageVisible = False
-        Me.XtraTabPage21.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage21.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage21.Text = "XtraTabPage21"
         '
         'TablePanel21
@@ -589,7 +590,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage22.Controls.Add(Me.TablePanel22)
         Me.XtraTabPage22.Name = "XtraTabPage22"
         Me.XtraTabPage22.PageVisible = False
-        Me.XtraTabPage22.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage22.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage22.Text = "XtraTabPage22"
         '
         'TablePanel22
@@ -607,7 +608,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage23.Controls.Add(Me.TablePanel23)
         Me.XtraTabPage23.Name = "XtraTabPage23"
         Me.XtraTabPage23.PageVisible = False
-        Me.XtraTabPage23.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage23.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage23.Text = "XtraTabPage23"
         '
         'TablePanel23
@@ -625,7 +626,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage24.Controls.Add(Me.TablePanel24)
         Me.XtraTabPage24.Name = "XtraTabPage24"
         Me.XtraTabPage24.PageVisible = False
-        Me.XtraTabPage24.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage24.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage24.Text = "XtraTabPage24"
         '
         'TablePanel24
@@ -643,7 +644,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage25.Controls.Add(Me.TablePanel25)
         Me.XtraTabPage25.Name = "XtraTabPage25"
         Me.XtraTabPage25.PageVisible = False
-        Me.XtraTabPage25.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage25.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage25.Text = "XtraTabPage25"
         '
         'TablePanel25
@@ -661,7 +662,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage26.Controls.Add(Me.TablePanel26)
         Me.XtraTabPage26.Name = "XtraTabPage26"
         Me.XtraTabPage26.PageVisible = False
-        Me.XtraTabPage26.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage26.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage26.Text = "XtraTabPage26"
         '
         'TablePanel26
@@ -679,7 +680,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage27.Controls.Add(Me.TablePanel27)
         Me.XtraTabPage27.Name = "XtraTabPage27"
         Me.XtraTabPage27.PageVisible = False
-        Me.XtraTabPage27.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage27.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage27.Text = "XtraTabPage27"
         '
         'TablePanel27
@@ -697,7 +698,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage28.Controls.Add(Me.TablePanel28)
         Me.XtraTabPage28.Name = "XtraTabPage28"
         Me.XtraTabPage28.PageVisible = False
-        Me.XtraTabPage28.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage28.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage28.Text = "XtraTabPage28"
         '
         'TablePanel28
@@ -715,7 +716,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage29.Controls.Add(Me.TablePanel29)
         Me.XtraTabPage29.Name = "XtraTabPage29"
         Me.XtraTabPage29.PageVisible = False
-        Me.XtraTabPage29.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage29.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage29.Text = "XtraTabPage29"
         '
         'TablePanel29
@@ -733,7 +734,7 @@ Partial Class DataInterfaceTemplate
         Me.XtraTabPage30.Controls.Add(Me.TablePanel30)
         Me.XtraTabPage30.Name = "XtraTabPage30"
         Me.XtraTabPage30.PageVisible = False
-        Me.XtraTabPage30.Size = New System.Drawing.Size(1258, 1369)
+        Me.XtraTabPage30.Size = New System.Drawing.Size(1258, 1541)
         Me.XtraTabPage30.Text = "XtraTabPage30"
         '
         'TablePanel30
@@ -748,22 +749,22 @@ Partial Class DataInterfaceTemplate
         '
         'WindowsUIButtonPanelActions
         '
-        WindowsUIButtonImageOptions1.SvgImage = Global.My.Resources.Resources.bo_appointment
-        WindowsUIButtonImageOptions2.SvgImage = Global.My.Resources.Resources.bo_security_permission_action
-        WindowsUIButtonImageOptions3.SvgImage = Global.My.Resources.Resources.bo_address1
-        WindowsUIButtonImageOptions4.SvgImage = Global.My.Resources.Resources.charttype_spline
-        WindowsUIButtonImageOptions5.SvgImage = Global.My.Resources.Resources.gridresetcolumnwidths
-        WindowsUIButtonImageOptions6.SvgImage = Global.My.Resources.Resources.copy
-        WindowsUIButtonImageOptions7.SvgImage = Global.My.Resources.Resources.pastespecial
-        WindowsUIButtonImageOptions8.SvgImage = Global.My.Resources.Resources.bo_kpi_definition
-        Me.WindowsUIButtonPanelActions.Buttons.AddRange(New DevExpress.XtraEditors.ButtonPanel.IBaseButton() {New DevExpress.XtraBars.Docking2010.WindowsUIButton("", True, WindowsUIButtonImageOptions1, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "View data as spreadsheet", -1, True, Nothing, True, False, True, "Spreadsheet", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", True, WindowsUIButtonImageOptions2, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "", -1, True, Nothing, True, False, True, "Refresh", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", True, WindowsUIButtonImageOptions3, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Show Main Menu", -1, True, Nothing, True, False, True, "MainMenu", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", False, WindowsUIButtonImageOptions4, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Show History", -1, True, Nothing, True, False, True, "History", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", True, WindowsUIButtonImageOptions5, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Return", -1, True, Nothing, True, False, False, "Return", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", False, WindowsUIButtonImageOptions6, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Copy", -1, True, Nothing, True, False, True, "Copy", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", False, WindowsUIButtonImageOptions7, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Paste", -1, True, Nothing, True, False, True, "Paste", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", True, WindowsUIButtonImageOptions8, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Help for this interface", -1, True, Nothing, True, False, True, "Help", -1, True)})
+        WindowsUIButtonImageOptions1.SvgImage = Global.My.Resources.Resources.gridresetcolumnwidths
+        WindowsUIButtonImageOptions2.SvgImage = CType(resources.GetObject("WindowsUIButtonImageOptions2.SvgImage"), DevExpress.Utils.Svg.SvgImage)
+        WindowsUIButtonImageOptions3.SvgImage = Global.My.Resources.Resources.pastespecial
+        WindowsUIButtonImageOptions4.SvgImage = Global.My.Resources.Resources.copy
+        WindowsUIButtonImageOptions5.SvgImage = Global.My.Resources.Resources.bo_appointment
+        WindowsUIButtonImageOptions6.SvgImage = Global.My.Resources.Resources.bo_security_permission_action
+        WindowsUIButtonImageOptions7.SvgImage = Global.My.Resources.Resources.charttype_spline
+        WindowsUIButtonImageOptions8.SvgImage = Global.My.Resources.Resources.bo_address1
+        Me.WindowsUIButtonPanelActions.Buttons.AddRange(New DevExpress.XtraEditors.ButtonPanel.IBaseButton() {New DevExpress.XtraBars.Docking2010.WindowsUIButton("", True, WindowsUIButtonImageOptions1, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Return", -1, True, Nothing, True, False, False, "Return", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", True, WindowsUIButtonImageOptions2, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Help for this interface", -1, True, Nothing, True, False, True, "Help", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", False, WindowsUIButtonImageOptions3, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Paste", -1, True, Nothing, True, False, True, "Paste", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", False, WindowsUIButtonImageOptions4, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Copy", -1, True, Nothing, True, False, True, "Copy", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", True, WindowsUIButtonImageOptions5, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "View data as spreadsheet", -1, True, Nothing, True, False, True, "Spreadsheet", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", True, WindowsUIButtonImageOptions6, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "", -1, True, Nothing, True, False, True, "Refresh", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", False, WindowsUIButtonImageOptions7, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Show History", -1, True, Nothing, True, False, True, "History", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", True, WindowsUIButtonImageOptions8, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Show Main Menu", -1, True, Nothing, True, False, True, "MainMenu", -1, True)})
         Me.TablePanelDIT.SetColumn(Me.WindowsUIButtonPanelActions, 0)
         Me.WindowsUIButtonPanelActions.ContentAlignment = System.Drawing.ContentAlignment.MiddleLeft
         Me.WindowsUIButtonPanelActions.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.WindowsUIButtonPanelActions.Location = New System.Drawing.Point(19, 18)
+        Me.WindowsUIButtonPanelActions.Location = New System.Drawing.Point(13, 12)
         Me.WindowsUIButtonPanelActions.Name = "WindowsUIButtonPanelActions"
         Me.TablePanelDIT.SetRow(Me.WindowsUIButtonPanelActions, 0)
-        Me.WindowsUIButtonPanelActions.Size = New System.Drawing.Size(1260, 109)
+        Me.WindowsUIButtonPanelActions.Size = New System.Drawing.Size(1272, 111)
         Me.WindowsUIButtonPanelActions.TabIndex = 3
         Me.WindowsUIButtonPanelActions.Text = "WindowsUIButtonPanel1"
         '

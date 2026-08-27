@@ -89,6 +89,7 @@ Namespace Abovo
     Public Class Abovo_Model_Def
 
         <XmlElement("Name")> Public Name As String
+        <XmlElement("ModelType")> Public ModelType As String
         <XmlElement("DefID")> Public DefID As String
         <XmlElement("FileID")> Public FileID As String
         <XmlElement("CompanyName")> Public CompanyName As String

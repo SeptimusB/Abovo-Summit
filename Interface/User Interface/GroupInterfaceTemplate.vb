@@ -83,7 +83,7 @@ Public Class GroupInterfaceTemplate
         BarTopBar.Appearance.BackColor = Color.White
         BarHeaderItemDetail.Appearance.BackColor = Color.White
 
-        Me.Text = AbovoBP.BPDetails.CompanyName
+        Me.Text = ExcelModels(SetModelID).WBStructure.CompanyName
         AccordionControlNavigator.LookAndFeel.UseDefaultLookAndFeel = False
 
         MyName = ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).GSName
@@ -177,27 +177,47 @@ Public Class GroupInterfaceTemplate
 
     Sub RefreshSummaryData()
 
+        Dim Workbook As DevExpress.Spreadsheet.IWorkbook =
+            ExcelModels(MyModelID).WB
+        Dim ModelProfile As WorkbookModelProfile =
+            ExcelModels(MyModelID).Profile
+        Dim ModelDescription As String =
+            If(ModelProfile Is Nothing,
+               "Abovo model",
+               ModelProfile.DisplayName)
 
+        If Workbook.Worksheets.Contains("BP Dashboard") Then
+            Dim DataRange As DevExpress.Spreadsheet.CellRange =
+                Workbook.Worksheets("BP Dashboard").Range("H6:L23")
 
-        Dim DataRange As DevExpress.Spreadsheet.CellRange = ExcelModels(MyModelID).WB.Worksheets("BP Dashboard").Range("H6:L23")
+            Dim DLList As New List(Of DevExpress.Spreadsheet.CellRange)
+            DLList.Add(DataRange)
 
-        Dim DLList As New List(Of DevExpress.Spreadsheet.CellRange)
+            WebBrowserBPSum.DocumentText =
+                ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(DLList)
+        Else
+            WebBrowserBPSum.DocumentText =
+                "<html><body><p>" & ModelDescription &
+                " does not define a Business Plan dashboard summary.</p></body></html>"
+        End If
 
-        DLList.Add(DataRange)
+        If Workbook.Worksheets.Contains("Funding Assumptions") Then
+            Dim FDSList As New List(Of DevExpress.Spreadsheet.CellRange)
+            Dim DataRange As DevExpress.Spreadsheet.CellRange =
+                Workbook.Worksheets("Funding Assumptions").Range("E3:I5")
+            FDSList.Add(DataRange)
 
-        WebBrowserBPSum.DocumentText = ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(DLList)
+            DataRange =
+                Workbook.Worksheets("Funding Assumptions").Range("J3:N5")
+            FDSList.Add(DataRange)
 
-
-        Dim FDSList As New List(Of DevExpress.Spreadsheet.CellRange)
-        DataRange = ExcelModels(MyModelID).WB.Worksheets("Funding Assumptions").Range("E3:i5")
-
-        FDSList.Add(DataRange)
-
-        DataRange = ExcelModels(MyModelID).WB.Worksheets("Funding Assumptions").Range("J3:N5")
-
-        FDSList.Add(DataRange)
-
-        WebBrowserFundSum.DocumentText = ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(FDSList)
+            WebBrowserFundSum.DocumentText =
+                ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(FDSList)
+        Else
+            WebBrowserFundSum.DocumentText =
+                "<html><body><p>No funding summary is defined for this " &
+                ModelDescription & ".</p></body></html>"
+        End If
 
         'DataRange = ExcelModels(MyModelID).WB.Worksheets("Funding Assumptions").Range("E3:M5")
         'WebBrowserBPSum.DocumentText = ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(DataRange)
@@ -223,7 +243,8 @@ Public Class GroupInterfaceTemplate
         Dim MyFilePath = ExcelModels(MyModelID).FileName
         Dim MyCompanyName = ExcelModels(MyModelID).WBStructure.CompanyName
 
-        StrFileDescription = "<html><body><p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.5) & "px'>Organisation name: " & ExcelModels(MyModelID).WBStructure.CompanyName & " (<a href='editbpname'>edit</a>)<br/>"
+        StrFileDescription = "<html><body><p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.5) & "px'>Model type: " & ModelDescription & "<br/>"
+        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.5) & "px'>Model name: " & ExcelModels(MyModelID).WBStructure.CompanyName & "<br/>"
         StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.5) & "px'>Start Date: " & ExcelModels(MyModelID).WBStructure.StartDate & " (<a href='editbpdate'>edit</a>)<br/>"
         StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.3) & "px'>File Name: " & ExcelModels(MyModelID).FileName & "<br/>"
         StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.3) & "px'>Opened: " & Now().ToString & "<br/>"
@@ -617,7 +638,7 @@ Public Class GroupInterfaceTemplate
 
             DocumentManagerAssumptions.View.ActivateDocument(doc.Control)
 
-            Me.BarStaticItemDescription.Caption = " " & AbovoBP.BPDetails.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ResolveChildStructure(SetCSID).CSName
+            Me.BarStaticItemDescription.Caption = " " & ExcelModels(SetModelID).WBStructure.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ResolveChildStructure(SetCSID).CSName
 
         Else
 
@@ -729,8 +750,8 @@ Public Class GroupInterfaceTemplate
             DocumentManagerAssumptions.View.AddDocument(DataInterfaces(DataInterfaceCount))
             DocumentManagerAssumptions.View.ActivateDocument(DataInterfaces(DataInterfaceCount))
             ActiveInterface = DataInterfaces(DataInterfaceCount)
-            Me.BarStaticItemDescription.Caption = " " & AbovoBP.BPDetails.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ResolveChildStructure(SetCSID).CSName
-            Me.Text = " " & AbovoBP.BPDetails.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ResolveChildStructure(SetCSID).CSName
+            Me.BarStaticItemDescription.Caption = " " & ExcelModels(SetModelID).WBStructure.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ResolveChildStructure(SetCSID).CSName
+            Me.Text = " " & ExcelModels(SetModelID).WBStructure.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ResolveChildStructure(SetCSID).CSName
 
 
 

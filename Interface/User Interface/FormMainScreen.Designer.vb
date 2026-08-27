@@ -376,7 +376,7 @@ Partial Class FormMainScreen
         Me.SimpleButtonTest.Name = "SimpleButtonTest"
         Me.SimpleButtonTest.Size = New System.Drawing.Size(208, 72)
         Me.SimpleButtonTest.TabIndex = 18
-        Me.SimpleButtonTest.Text = "Test"
+        Me.SimpleButtonTest.Text = "Open DSA"
         '
         'XtraTabPageFortressLABP
         '

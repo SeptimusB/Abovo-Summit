@@ -36,6 +36,12 @@ Public Class FileInstanceInterface
         End Set
 
     End Property
+
+    Public ReadOnly Property ModelID As Integer
+        Get
+            Return BPModelID
+        End Get
+    End Property
     Public Sub New(ModelID As Integer)
 
         ' This call is required by the designer.
@@ -48,6 +54,45 @@ Public Class FileInstanceInterface
         STInit = False
         FFRInit = False
         FileManager.RegisterModelInterface(BPModelID, Me)
+        ConfigureModelActions()
+
+    End Sub
+    Private Sub ConfigureModelActions()
+
+        If ExcelModels Is Nothing OrElse
+           BPModelID < 0 OrElse
+           BPModelID >= ExcelModels.Length OrElse
+           ExcelModels(BPModelID) Is Nothing Then Return
+
+        Dim IsBusinessPlan As Boolean =
+            ExcelModels(BPModelID).Profile IsNot Nothing AndAlso
+            String.Equals(
+                ExcelModels(BPModelID).Profile.ModelType,
+                "AbovoBP",
+                StringComparison.OrdinalIgnoreCase)
+
+        For Each Item As DevExpress.XtraEditors.ButtonPanel.IBaseButton In
+            WindowsUIButtonPanelBPActions.Buttons
+
+            Dim ActionButton As WindowsUIButton = TryCast(Item, WindowsUIButton)
+            If ActionButton Is Nothing OrElse ActionButton.Tag Is Nothing Then Continue For
+
+            Dim ActionTag As String = ActionButton.Tag.ToString()
+
+            Select Case ActionTag
+                Case "GoAssumpt"
+                    ActionButton.Visible =
+                        GetGroupID(BPModelID, "Assumptions") >= 0
+                Case "GoWorkings"
+                    ActionButton.Visible =
+                        GetGroupID(BPModelID, "Workings") >= 0
+                Case "GoOutputs"
+                    ActionButton.Visible =
+                        GetGroupID(BPModelID, "Outputs") >= 0
+                Case "GoFFR", "GoData", "StressTest"
+                    ActionButton.Visible = IsBusinessPlan
+            End Select
+        Next
 
     End Sub
     Public Sub ProcessBPInstance(ByVal BPModelID As Integer)
@@ -61,6 +106,17 @@ Public Class FileInstanceInterface
     Public Sub ShowInterface(InterfaceName As String, Optional ByVal LinkTag As ElementInterfaceLinkTag = Nothing)
 
         Dim GroupId As Integer = GetGroupID(BPModelID, InterfaceName)
+
+        If GroupId < 0 Then
+            MessageBox.Show(
+                Me,
+                "This model does not define an '" & InterfaceName & "' interface.",
+                "Interface unavailable",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information)
+            Return
+        End If
+
         ExcelModels(BPModelID).WBInterface.ShowGroupInterface(BPModelID, GroupId, "Maximised", InterfaceName, Me)
 
     End Sub
@@ -83,16 +139,15 @@ Public Class FileInstanceInterface
             Case "GoAssumpt"
                 ' OpenAssumptionsInterface
 
-                ExcelModels(BPModelID).WBInterface.ShowGroupInterface(BPModelID, 0, "Maximised", "Assumptions", Me)
+                ShowInterface("Assumptions")
 
             Case "GoWorkings"
 
-                ExcelModels(BPModelID).WBInterface.ShowGroupInterface(BPModelID, 1, "Maximised", "Workings", Me)
+                ShowInterface("Workings")
 
             Case "GoOutputs"
 
-                Dim x As Integer = BPModelID
-                ExcelModels(BPModelID).WBInterface.ShowGroupInterface(BPModelID, 2, "Maximised", "Outputs", Me)
+                ShowInterface("Outputs")
 
             Case "GoOther"
 
@@ -144,7 +199,13 @@ Public Class FileInstanceInterface
         MyFilePath = ExcelModels(BPModelID).FileName
         MyCompanyName = ExcelModels(BPModelID).WBStructure.CompanyName
 
-        StrFileDescription = "<html><body><p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.5) & "px'>Organisation name: " & ExcelModels(BPModelID).WBStructure.CompanyName & " (<a href='editbpname'>edit</a>)<br/>"
+        Dim ModelDescription As String =
+            If(ExcelModels(BPModelID).Profile Is Nothing,
+               "Abovo model",
+               ExcelModels(BPModelID).Profile.DisplayName)
+
+        StrFileDescription = "<html><body><p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.5) & "px'>Model type: " & ModelDescription & "<br/>"
+        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.5) & "px'>Model name: " & ExcelModels(BPModelID).WBStructure.CompanyName & "<br/>"
         StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.5) & "px'>Start Date: " & ExcelModels(BPModelID).WBStructure.StartDate & " (<a href='editbpdate'>edit</a>)<br/>"
         StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.3) & "px'>File Name: " & ExcelModels(BPModelID).FileName & "<br/>"
         StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.3) & "px'>Opened: " & Now().ToString & "<br/>"

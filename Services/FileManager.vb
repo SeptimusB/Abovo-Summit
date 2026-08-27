@@ -160,6 +160,7 @@ Namespace Abovo
             Public SSViewer As MainModelViewer
             Public WB As IWorkbook
             Public WBStructure As Abovo_Model_Def
+            Public Profile As WorkbookModelProfile
             Public WBStructureManager As StructureManager
             Public WBData As DataManager
             Public WBInterface As InterfaceManager
@@ -175,6 +176,7 @@ Namespace Abovo
             Public ModelID As Integer
             Public ChangeManager As ModelChangeManagerV2
             Public HistoryManager As HistoryManagerV2
+            Public PdfExportManager As DITPdfExportManager
             Public TransDBM As TransDBManager
             Public ColourSwatch As Color
             Public SSViewInitialised As Boolean = False
@@ -200,12 +202,8 @@ Namespace Abovo
                     WBCalcEngine = New CalcEngine(SetModelID)
                     WBInterface = New InterfaceManager(SetModelID)
                     WBDataPres = New PresentationManager(SetModelID)
-                    EventCoordinator = New EventManager(SetModelID, "AbovoBP")
-                    TransDBM = New TransDBManager(SetModelID)
                     RDSM = New RDSManager(SetModelID)
                     InterfaceDependencies = New InterfaceDependencyManager(SetModelID)
-                    TransDBSync = New TransactionalDBSynchroniser(SetModelID)
-                    WorkbookStructureRules = New WorkbookStructureRuleManager(SetModelID)
                 End If
 
                 IsDirty = False
@@ -310,25 +308,38 @@ Namespace Abovo
                 Dim Result As New AbovoTransaction
 
                 Try
-                    Dim TransactionSheetID As Integer =
-                        GetSheetID(ModelID, "Transactional DB")
-
-                    If TransactionSheetID < 0 Then
-                        Throw New InvalidOperationException(
-                            "The workbook is missing the 'Transactional DB' worksheet.")
-                    End If
-
-                    WBCalculationService = New CustomCalcEngine(ModelID) With {
-                        .TransDBSheetID = TransactionSheetID,
-                        .DontCalcTDBS = True
-                    }
-
-                    WB.AddService(
-                        GetType(DevExpress.XtraSpreadsheet.Services.ICustomCalculationService),
-                        WBCalculationService)
-
                     ChangeManager = New ModelChangeManagerV2(ModelID)
                     HistoryManager = New HistoryManagerV2(ModelID)
+                    PdfExportManager = New DITPdfExportManager(ModelID)
+                    EventCoordinator = New EventManager(
+                        ModelID,
+                        If(Profile Is Nothing, String.Empty, Profile.ModelType))
+
+                    If Profile IsNot Nothing AndAlso
+                       Profile.UsesTransactionalDatabase Then
+
+                        Dim TransactionSheetID As Integer =
+                            GetSheetID(ModelID, "Transactional DB")
+
+                        If TransactionSheetID < 0 Then
+                            Throw New InvalidOperationException(
+                                "The workbook is missing the 'Transactional DB' worksheet.")
+                        End If
+
+                        WBCalculationService = New CustomCalcEngine(ModelID) With {
+                            .TransDBSheetID = TransactionSheetID,
+                            .DontCalcTDBS = True
+                        }
+
+                        WB.AddService(
+                            GetType(DevExpress.XtraSpreadsheet.Services.ICustomCalculationService),
+                            WBCalculationService)
+
+                        TransDBM = New TransDBManager(ModelID)
+                        TransDBSync = New TransactionalDBSynchroniser(ModelID)
+                        WorkbookStructureRules =
+                            New WorkbookStructureRuleManager(ModelID)
+                    End If
 
                     Result.BSuccess = True
                     Result.StringReturn = "Workbook services initialized."
@@ -645,6 +656,16 @@ Namespace Abovo
                     End If
                 End Try
 
+                If Profile IsNot Nothing AndAlso
+                   String.Equals(
+                    Profile.ModelType,
+                    "AbovoDSA",
+                    StringComparison.OrdinalIgnoreCase) Then
+
+                    ValidateDSAClose(Result)
+                    Return Result
+                End If
+
                 Try
                     Dim ValidationName As DevExpress.Spreadsheet.DefinedName =
                         WB.DefinedNames.GetDefinedName("Outputs_CheckSheet")
@@ -715,6 +736,102 @@ Namespace Abovo
                 Return Result
 
             End Function
+
+            Private Sub ValidateDSAClose(
+                ByVal Result As CloseModelValidationResult)
+
+                Try
+                    Dim CheckTotalName As DevExpress.Spreadsheet.DefinedName =
+                        WB.DefinedNames.GetDefinedName("CheckTotal")
+
+                    If CheckTotalName Is Nothing OrElse
+                       CheckTotalName.Range Is Nothing Then
+
+                        Result.ValidationError =
+                            "The DSA workbook does not contain the CheckTotal validation range."
+                        Return
+                    End If
+
+                    Dim CheckTotalText As String =
+                        CheckTotalName.Range(0, 0).DisplayText.Trim()
+                    Dim CheckTotal As Decimal
+
+                    If Not Decimal.TryParse(
+                        CheckTotalText,
+                        Globalization.NumberStyles.Any,
+                        Globalization.CultureInfo.CurrentCulture,
+                        CheckTotal) AndAlso
+                       Not Decimal.TryParse(
+                        CheckTotalText,
+                        Globalization.NumberStyles.Any,
+                        Globalization.CultureInfo.InvariantCulture,
+                        CheckTotal) Then
+
+                        Result.ValidationError =
+                            "The DSA CheckTotal value could not be interpreted: " &
+                            CheckTotalText
+                        Return
+                    End If
+
+                    If CheckTotal = 0D Then Return
+
+                    If Not WB.Worksheets.Contains("Check Sheet") Then
+                        Result.ValidationError =
+                            "The DSA workbook is missing the 'Check Sheet' worksheet."
+                        Return
+                    End If
+
+                    Dim CheckSheet As DevExpress.Spreadsheet.Worksheet =
+                        WB.Worksheets("Check Sheet")
+
+                    'The v6.1500 contract uses rows 8-32 for individual checks
+                    'and row 33 for CheckTotal.
+                    For SheetRow As Integer = 7 To 31
+                        Dim StatusText As String =
+                            CheckSheet.Cells(SheetRow, 2).DisplayText.Trim()
+                        Dim CheckValueText As String =
+                            CheckSheet.Cells(SheetRow, 3).DisplayText.Trim()
+                        Dim CheckValue As Decimal
+                        Dim HasNonZeroValue As Boolean =
+                            Decimal.TryParse(
+                                CheckValueText,
+                                Globalization.NumberStyles.Any,
+                                Globalization.CultureInfo.CurrentCulture,
+                                CheckValue) AndAlso CheckValue <> 0D
+
+                        If Not HasNonZeroValue AndAlso
+                           (String.IsNullOrWhiteSpace(StatusText) OrElse
+                            String.Equals(
+                                StatusText,
+                                "OK",
+                                StringComparison.OrdinalIgnoreCase)) Then Continue For
+
+                        Result.Issues.Add(
+                            New CloseModelValidationIssue With {
+                                .CheckRow = SheetRow + 1,
+                                .Label = CheckSheet.Cells(SheetRow, 0).DisplayText.Trim(),
+                                .Status = If(
+                                    String.IsNullOrWhiteSpace(StatusText),
+                                    CheckValueText,
+                                    StatusText),
+                                .Message = CheckValueText,
+                                .TargetWorksheet =
+                                    CheckSheet.Cells(SheetRow, 4).DisplayText.Trim()
+                            })
+                    Next
+
+                    If Result.Issues.Count = 0 Then
+                        Result.ValidationError =
+                            "The DSA CheckTotal is non-zero, but no individual " &
+                            "Check Sheet row could be identified."
+                    End If
+
+                Catch ex As Exception
+                    Result.ValidationError =
+                        "The DSA Check Sheet could not be examined: " & ex.Message
+                End Try
+
+            End Sub
 
             Private Shared Function BuildCloseValidationMessage(
                 ByVal Validation As CloseModelValidationResult) As String
@@ -847,6 +964,12 @@ Namespace Abovo
                 End Try
 
                 Try
+                    If PdfExportManager IsNot Nothing Then PdfExportManager.CloseForModel()
+                Catch ex As Exception
+                    WriteLog("Error disposing PDF export manager: " & ex.Message, FileName)
+                End Try
+
+                Try
                     If SSViewer IsNot Nothing Then SSViewer.Dispose()
                 Catch ex As Exception
                     WriteLog("Error disposing spreadsheet viewer: " & ex.Message, FileName)
@@ -875,6 +998,7 @@ Namespace Abovo
                 EventCoordinator = Nothing
                 ChangeManager = Nothing
                 HistoryManager = Nothing
+                PdfExportManager = Nothing
                 TransDBM = Nothing
                 RDSM = Nothing
                 InterfaceDependencies = Nothing
@@ -903,7 +1027,7 @@ Namespace Abovo
 
             End Function
 
-            Public Function ProcessAsAbovoBP() As AbovoTransaction
+            Public Function ProcessModelMetadata() As AbovoTransaction
 
                 Dim Result As New AbovoTransaction
 
@@ -913,19 +1037,12 @@ Namespace Abovo
                             "The workbook interface definition has not been loaded.")
                     End If
 
-                    If WB Is Nothing OrElse
-                       Not WB.Worksheets.Contains("Global Assumptions") Then
+                    If Profile Is Nothing Then
                         Throw New InvalidOperationException(
-                            "The workbook is missing the 'Global Assumptions' worksheet.")
+                            "The workbook model profile has not been resolved.")
                     End If
 
-                    Dim GlobalAssumptions As DevExpress.Spreadsheet.Worksheet =
-                        WB.Worksheets("Global Assumptions")
-
-                    WBStructure.CompanyName =
-                        GlobalAssumptions.Cells(5, 2).Value.TextValue
-                    WBStructure.StartDate =
-                        GlobalAssumptions.Cells(7, 2).Value.DateTimeValue.ToString("yyyy-MM-dd")
+                    Profile.ApplyMetadata(WB, WBStructure)
 
                     If Not String.IsNullOrWhiteSpace(WBStructure.RejData) Then
                         UnlockPassword = WBStructure.RejData
@@ -944,6 +1061,12 @@ Namespace Abovo
                 End Try
 
                 Return Result
+
+            End Function
+
+            Public Function ProcessAsAbovoBP() As AbovoTransaction
+
+                Return ProcessModelMetadata()
 
             End Function
 
@@ -1192,7 +1315,17 @@ Namespace Abovo
         End Function
         Public Shared Function ValidateOpenFile(ModelToCheck As Integer) As AbovoTransaction
 
-            Return WorkbookContractValidator.Validate(GetWorkBook(ModelToCheck))
+            Dim Profile As WorkbookModelProfile = Nothing
+            Dim Result As AbovoTransaction =
+                WorkbookContractValidator.Validate(
+                    GetWorkBook(ModelToCheck),
+                    Profile)
+
+            If Not Result.BError Then
+                ExcelModels(ModelToCheck).Profile = Profile
+            End If
+
+            Return Result
 
         End Function
 
@@ -1283,14 +1416,18 @@ Namespace Abovo
                         Throw New InvalidOperationException(ServiceResult.StringReturn)
                     End If
 
+                    Dim StructureSource As String =
+                        NewModel.Profile.ResolveStructureSource(FullPath)
+
                     Dim StructureResult As AbovoTransaction =
-                        NewModel.WBStructureManager.CreateStructureFromXML()
+                        NewModel.WBStructureManager.CreateStructureFromXML(
+                            StructureSource)
                     If StructureResult.BError Then
                         Throw New InvalidOperationException(StructureResult.StringReturn)
                     End If
 
                     Dim MetadataResult As AbovoTransaction =
-                        NewModel.ProcessAsAbovoBP()
+                        NewModel.ProcessModelMetadata()
                     If MetadataResult.BError Then
                         Throw New InvalidOperationException(MetadataResult.StringReturn)
                     End If
