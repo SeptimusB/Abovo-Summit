@@ -177,6 +177,7 @@ Namespace Abovo
             Public ChangeManager As ModelChangeManagerV2
             Public HistoryManager As HistoryManagerV2
             Public PdfExportManager As DITPdfExportManager
+            Public ExcelExportManager As DITExcelExportManager
             Public TransDBM As TransDBManager
             Public ColourSwatch As Color
             Public SSViewInitialised As Boolean = False
@@ -311,6 +312,7 @@ Namespace Abovo
                     ChangeManager = New ModelChangeManagerV2(ModelID)
                     HistoryManager = New HistoryManagerV2(ModelID)
                     PdfExportManager = New DITPdfExportManager(ModelID)
+                    ExcelExportManager = New DITExcelExportManager(ModelID)
                     EventCoordinator = New EventManager(
                         ModelID,
                         If(Profile Is Nothing, String.Empty, Profile.ModelType))
@@ -970,6 +972,12 @@ Namespace Abovo
                 End Try
 
                 Try
+                    If ExcelExportManager IsNot Nothing Then ExcelExportManager.CloseForModel()
+                Catch ex As Exception
+                    WriteLog("Error disposing Excel export manager: " & ex.Message, FileName)
+                End Try
+
+                Try
                     If SSViewer IsNot Nothing Then SSViewer.Dispose()
                 Catch ex As Exception
                     WriteLog("Error disposing spreadsheet viewer: " & ex.Message, FileName)
@@ -999,6 +1007,7 @@ Namespace Abovo
                 ChangeManager = Nothing
                 HistoryManager = Nothing
                 PdfExportManager = Nothing
+                ExcelExportManager = Nothing
                 TransDBM = Nothing
                 RDSM = Nothing
                 InterfaceDependencies = Nothing

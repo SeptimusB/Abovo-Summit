@@ -463,7 +463,7 @@ Public Class DataInterfaceTemplate
         ParentGroupForm = MyParent
 
         InitializeComponent()
-        InitialisePdfExportAction()
+        InitialiseExportActions()
         InitialiseClipboardActions()
 
         If Not IsNothing(MyParent) Then
@@ -7300,38 +7300,34 @@ NextCell:
 #End Region
 
 #Region "Menu Button Actions"
-    Private Sub InitialisePdfExportAction()
-
+    Private Sub InitialiseExportActions()
+        Dim hasPdf As Boolean
+        Dim hasExcel As Boolean
         For Each item As Object In WindowsUIButtonPanelActions.Buttons
             Dim existingButton As WindowsUIButton = TryCast(item, WindowsUIButton)
-            If existingButton IsNot Nothing AndAlso
-               String.Equals(Convert.ToString(existingButton.Tag), "ExportPdf", StringComparison.OrdinalIgnoreCase) Then
-                Return
-            End If
+            If existingButton Is Nothing Then Continue For
+            Dim existingTag As String = Convert.ToString(existingButton.Tag)
+            If String.Equals(existingTag, "ExportPdf", StringComparison.OrdinalIgnoreCase) Then hasPdf = True
+            If String.Equals(existingTag, "ExportExcel", StringComparison.OrdinalIgnoreCase) Then hasExcel = True
         Next
 
-        Dim exportButton As New WindowsUIButton(
-            "PDF",
-            False,
-            Nothing,
-            ButtonStyle.PushButton,
-            "Add interface data to the PDF export workspace",
-            -1,
-            True,
-            Nothing,
-            True,
-            False,
-            True,
-            "ExportPdf",
-            -1,
-            True)
-
-        WindowsUIButtonPanelActions.Buttons.Add(exportButton)
+        If Not hasPdf Then
+            WindowsUIButtonPanelActions.Buttons.Add(
+                New WindowsUIButton("PDF", False, Nothing, ButtonStyle.PushButton,
+                    "Add interface data to the PDF export workspace", -1, True,
+                    Nothing, True, False, True, "ExportPdf", -1, True))
+        End If
+        If Not hasExcel Then
+            WindowsUIButtonPanelActions.Buttons.Add(
+                New WindowsUIButton("Excel", False, Nothing, ButtonStyle.PushButton,
+                    "Add interface data to the Excel export workspace", -1, True,
+                    Nothing, True, False, True, "ExportExcel", -1, True))
+        End If
     End Sub
 
-    Public Function GetPdfExportCandidates() As List(Of DITPdfExportCandidate)
+    Public Function GetExportCandidates() As List(Of DITExportCandidate)
 
-        Dim candidates As New List(Of DITPdfExportCandidate)()
+        Dim candidates As New List(Of DITExportCandidate)()
         Dim selectedPage As XtraTabPage = XtraTabControlNewGIT.SelectedTabPage
 
         'Sections are created lazily for normal navigation. Export selection is
@@ -7342,7 +7338,7 @@ NextCell:
 
         For Each page As XtraTabPage In XtraTabControlNewGIT.TabPages
             Dim printableControls As New List(Of Control)()
-            CollectPdfPrintableControls(page, printableControls)
+            CollectExportableControls(page, printableControls)
 
             For controlIndex As Integer = 0 To printableControls.Count - 1
                 Dim printable As DevExpress.XtraPrinting.IPrintable =
@@ -7356,7 +7352,7 @@ NextCell:
                     title &= " (" & (controlIndex + 1).ToString() & ")"
                 End If
 
-                candidates.Add(New DITPdfExportCandidate(
+                candidates.Add(New DITExportCandidate(
                     title, DITName, sectionName, printable, page Is selectedPage))
             Next
         Next
@@ -7364,14 +7360,14 @@ NextCell:
         Return candidates
     End Function
 
-    Private Shared Sub CollectPdfPrintableControls(ByVal parent As Control,
-                                                   ByVal controls As List(Of Control))
+    Private Shared Sub CollectExportableControls(ByVal parent As Control,
+                                                 ByVal controls As List(Of Control))
         For Each child As Control In parent.Controls
             If (TypeOf child Is GridControl OrElse TypeOf child Is VGridControl) AndAlso
                TryCast(child, DevExpress.XtraPrinting.IPrintable) IsNot Nothing Then
                 controls.Add(child)
             ElseIf child.HasChildren Then
-                CollectPdfPrintableControls(child, controls)
+                CollectExportableControls(child, controls)
             End If
         Next
     End Sub
@@ -7467,6 +7463,10 @@ SectionSelect:
             Case "ExportPdf"
 
                 ExcelModels(ModelID).PdfExportManager.ShowForDIT(Me)
+
+            Case "ExportExcel"
+
+                ExcelModels(ModelID).ExcelExportManager.ShowForDIT(Me)
 
             Case "Spreadsheet"
 

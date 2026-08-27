@@ -387,6 +387,7 @@
     </Compile>
     <Compile Include="Interface\ExportPrint\ExportServices.vb" />
     <Compile Include="Interface\ExportPrint\DITPdfExportManager.vb" />
+    <Compile Include="Interface\ExportPrint\DITExcelExportManager.vb" />
     <Compile Include="Interface\FFR\FFRForm.Designer.vb">
       <DependentUpon>FFRForm.vb</DependentUpon>
     </Compile>

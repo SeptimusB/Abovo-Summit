@@ -3,43 +3,20 @@ Imports System.Diagnostics
 Imports System.Drawing.Printing
 Imports System.IO
 Imports System.Linq
-Imports DevExpress.Pdf
+Imports DevExpress.Spreadsheet
 Imports DevExpress.Utils
 Imports DevExpress.XtraEditors
 Imports DevExpress.XtraEditors.Controls
 Imports DevExpress.XtraGrid
 Imports DevExpress.XtraGrid.Views.Grid
 
-''' <summary>A printable control exposed by a DataInterfaceTemplate section.</summary>
-Public NotInheritable Class DITExportCandidate
-
-    Public Sub New(ByVal title As String,
-                   ByVal interfaceName As String,
-                   ByVal sectionName As String,
-                   ByVal printableComponent As DevExpress.XtraPrinting.IPrintable,
-                   ByVal isCurrentSection As Boolean)
-        Me.Title = title
-        Me.InterfaceName = interfaceName
-        Me.SectionName = sectionName
-        Me.PrintableComponent = printableComponent
-        Me.IsCurrentSection = isCurrentSection
-    End Sub
-
-    Public ReadOnly Property Title As String
-    Public ReadOnly Property InterfaceName As String
-    Public ReadOnly Property SectionName As String
-    Public ReadOnly Property PrintableComponent As DevExpress.XtraPrinting.IPrintable
-    Public ReadOnly Property IsCurrentSection As Boolean
-End Class
-
 ''' <summary>
-''' Model-scoped PDF workspace. Items are rendered to temporary PDF snapshots
-''' when added, so subsequent calculations cannot alter an item already staged.
+''' Separate, model-scoped Excel export workspace. Each selected DIT grid is
+''' frozen to XLSX when added; publishing combines snapshots as worksheets.
 ''' </summary>
-Public NotInheritable Class DITPdfExportManager
-
+Public NotInheritable Class DITExcelExportManager
     Private ReadOnly ModelID As Integer
-    Private Workspace As DITPdfExportWorkspace
+    Private Workspace As DITExcelExportWorkspace
 
     Public Sub New(ByVal setModelID As Integer)
         ModelID = setModelID
@@ -47,19 +24,16 @@ Public NotInheritable Class DITPdfExportManager
 
     Public Sub ShowForDIT(ByVal owner As DataInterfaceTemplate)
         If owner Is Nothing OrElse owner.IsDisposed Then Return
-
         Dim candidates As List(Of DITExportCandidate) = owner.GetExportCandidates()
         If candidates.Count = 0 Then
             XtraMessageBox.Show(owner,
-                "This interface does not currently contain a grid that can be exported to PDF.",
-                "PDF export", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                "This interface does not currently contain a grid that can be exported to Excel.",
+                "Excel export", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         End If
-
         If Workspace Is Nothing OrElse Workspace.IsDisposed Then
-            Workspace = New DITPdfExportWorkspace(ModelID)
+            Workspace = New DITExcelExportWorkspace(ModelID)
         End If
-
         Workspace.SetSource(owner, candidates)
         Workspace.ShowForUser(owner)
     End Sub
@@ -70,16 +44,15 @@ Public NotInheritable Class DITPdfExportManager
     End Sub
 End Class
 
-Friend NotInheritable Class DITPdfExportWorkspace
+Friend NotInheritable Class DITExcelExportWorkspace
     Inherits XtraForm
 
     Private ReadOnly TemporaryFolder As String
-    Private ReadOnly StagedItems As New BindingList(Of DITPdfStagedItem)()
+    Private ReadOnly StagedItems As New BindingList(Of DITExcelStagedItem)()
     Private ReadOnly Root As New TableLayoutPanel()
     Private ReadOnly CandidateLabel As New LabelControl()
     Private ReadOnly CandidateList As New CheckedListBoxControl()
     Private ReadOnly AddButton As New SimpleButton()
-    Private ReadOnly QueueLabel As New LabelControl()
     Private ReadOnly QueueGrid As New GridControl()
     Private ReadOnly QueueView As New GridView()
     Private ReadOnly Toolbar As New FlowLayoutPanel()
@@ -93,11 +66,10 @@ Friend NotInheritable Class DITPdfExportWorkspace
     Private ClosingForModel As Boolean
 
     Public Sub New(ByVal setModelID As Integer)
-        TemporaryFolder = Path.Combine(Path.GetTempPath(), "AbovoSummit", "DITPdf",
+        TemporaryFolder = Path.Combine(Path.GetTempPath(), "AbovoSummit", "DITExcel",
             setModelID.ToString() & "_" & Guid.NewGuid().ToString("N"))
         Directory.CreateDirectory(TemporaryFolder)
-
-        Text = "PDF Export Workspace"
+        Text = "Excel Export Workspace"
         StartPosition = FormStartPosition.CenterParent
         MinimumSize = New Size(800, 560)
         Size = New Size(1060, 720)
@@ -122,26 +94,25 @@ Friend NotInheritable Class DITPdfExportWorkspace
         CandidateLabel.Appearance.Font = New Font(CandidateLabel.Font, FontStyle.Bold)
         CandidateLabel.Dock = DockStyle.Fill
         Root.Controls.Add(CandidateLabel, 0, 0)
-
         CandidateList.Dock = DockStyle.Fill
         CandidateList.CheckOnClick = True
         Root.Controls.Add(CandidateList, 0, 1)
 
-        AddButton.Text = "Add selected snapshots to PDF"
+        AddButton.Text = "Add selected snapshots to Excel"
         AddButton.Width = 230
         AddButton.Height = 30
         AddHandler AddButton.Click, AddressOf AddButton_Click
         Dim addPanel As New FlowLayoutPanel With {
-            .Dock = DockStyle.Fill,
-            .FlowDirection = FlowDirection.LeftToRight,
+            .Dock = DockStyle.Fill, .FlowDirection = FlowDirection.LeftToRight,
             .Padding = New Padding(0, 5, 0, 3)}
         addPanel.Controls.Add(AddButton)
         Root.Controls.Add(addPanel, 0, 2)
 
-        QueueLabel.Text = "In-process PDF contents (snapshots are retained in this order)"
-        QueueLabel.Appearance.Font = New Font(QueueLabel.Font, FontStyle.Bold)
-        QueueLabel.Dock = DockStyle.Fill
-        Root.Controls.Add(QueueLabel, 0, 3)
+        Dim queueLabel As New LabelControl With {
+            .Text = "In-process workbook contents (one or more worksheets per snapshot)",
+            .Dock = DockStyle.Fill}
+        queueLabel.Appearance.Font = New Font(queueLabel.Font, FontStyle.Bold)
+        Root.Controls.Add(queueLabel, 0, 3)
 
         QueueGrid.Dock = DockStyle.Fill
         QueueGrid.MainView = QueueView
@@ -159,19 +130,16 @@ Friend NotInheritable Class DITPdfExportWorkspace
         Toolbar.Dock = DockStyle.Fill
         Toolbar.FlowDirection = FlowDirection.LeftToRight
         Toolbar.WrapContents = False
-        Toolbar.Padding = New Padding(0, 8, 0, 4)
         ConfigureButton(RemoveButton, "Remove", AddressOf RemoveButton_Click)
         ConfigureButton(MoveUpButton, "Move up", AddressOf MoveUpButton_Click)
         ConfigureButton(MoveDownButton, "Move down", AddressOf MoveDownButton_Click)
         ConfigureButton(ClearButton, "Clear", AddressOf ClearButton_Click)
-        ConfigureButton(PublishButton, "Publish PDF...", AddressOf PublishButton_Click)
+        ConfigureButton(PublishButton, "Publish Excel...", AddressOf PublishButton_Click)
         ConfigureButton(CloseButton, "Close", AddressOf CloseButton_Click)
         Toolbar.Controls.AddRange(New Control() {
             RemoveButton, MoveUpButton, MoveDownButton, ClearButton, PublishButton, CloseButton})
         Root.Controls.Add(Toolbar, 0, 5)
-
         StatusLabel.Dock = DockStyle.Fill
-        StatusLabel.Appearance.ForeColor = Color.FromArgb(32, 58, 89)
         Root.Controls.Add(StatusLabel, 0, 6)
         RefreshStatus()
         AddHandler FormClosing, AddressOf Workspace_FormClosing
@@ -224,7 +192,7 @@ Friend NotInheritable Class DITPdfExportWorkspace
         Next
 
         If selected.Count = 0 Then
-            XtraMessageBox.Show(Me, "Select at least one grid to add.", "PDF export")
+            XtraMessageBox.Show(Me, "Select at least one grid to add.", "Excel export")
             Return
         End If
 
@@ -232,9 +200,9 @@ Friend NotInheritable Class DITPdfExportWorkspace
         Try
             For Each candidate As DITExportCandidate In selected
                 Dim snapshotPath As String = Path.Combine(TemporaryFolder,
-                    Guid.NewGuid().ToString("N") & ".pdf")
+                    Guid.NewGuid().ToString("N") & ".xlsx")
                 CreateSnapshot(candidate, snapshotPath)
-                StagedItems.Add(New DITPdfStagedItem With {
+                StagedItems.Add(New DITExcelStagedItem With {
                     .Sequence = StagedItems.Count + 1,
                     .Title = candidate.Title,
                     .InterfaceName = candidate.InterfaceName,
@@ -245,9 +213,9 @@ Friend NotInheritable Class DITPdfExportWorkspace
             RefreshQueue()
         Catch ex As Exception
             XtraMessageBox.Show(Me,
-                "The selected grid could not be added to the PDF workspace." &
+                "The selected grid could not be added to the Excel workspace." &
                 Environment.NewLine & Environment.NewLine & ex.Message,
-                "PDF export", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                "Excel export", MessageBoxButtons.OK, MessageBoxIcon.Error)
         Finally
             Cursor = Cursors.Default
         End Try
@@ -258,39 +226,35 @@ Friend NotInheritable Class DITPdfExportWorkspace
         If candidate.PrintableComponent Is Nothing Then
             Throw New InvalidOperationException("The source control is no longer available.")
         End If
-
         Using printingSystem As New DevExpress.XtraPrinting.PrintingSystem()
             Using link As New DevExpress.XtraPrinting.PrintableComponentLink(printingSystem)
                 link.Component = candidate.PrintableComponent
                 link.PaperKind = PaperKind.A4
                 link.Landscape = True
-                link.Margins = New Margins(35, 35, 45, 40)
-
+                link.Margins = New System.Drawing.Printing.Margins(35, 35, 45, 40)
                 Dim title As String = candidate.Title
                 AddHandler link.CreateReportHeaderArea,
                     Sub(sender As Object, args As DevExpress.XtraPrinting.CreateAreaEventArgs)
                         args.Graph.Font = New Font("Segoe UI", 12.0F, FontStyle.Bold)
-                        args.Graph.StringFormat =
-                            New DevExpress.XtraPrinting.BrickStringFormat(
-                                StringAlignment.Near, StringAlignment.Center)
+                        args.Graph.StringFormat = New DevExpress.XtraPrinting.BrickStringFormat(
+                            StringAlignment.Near, StringAlignment.Center)
                         args.Graph.DrawString(title, Color.FromArgb(0, 79, 158),
                             New RectangleF(0.0F, 0.0F, args.Graph.ClientPageSize.Width, 34.0F),
                             DevExpress.XtraPrinting.BorderSide.Bottom)
                     End Sub
-
                 link.CreateDocument()
-                link.ExportToPdf(snapshotPath)
+                link.ExportToXlsx(snapshotPath)
             End Using
         End Using
     End Sub
 
     Private Sub RemoveButton_Click(ByVal sender As Object, ByVal e As EventArgs)
-        Dim removeItems As New List(Of DITPdfStagedItem)()
+        Dim removeItems As New List(Of DITExcelStagedItem)()
         For Each rowHandle As Integer In QueueView.GetSelectedRows()
-            Dim item As DITPdfStagedItem = TryCast(QueueView.GetRow(rowHandle), DITPdfStagedItem)
+            Dim item As DITExcelStagedItem = TryCast(QueueView.GetRow(rowHandle), DITExcelStagedItem)
             If item IsNot Nothing Then removeItems.Add(item)
         Next
-        For Each item As DITPdfStagedItem In removeItems
+        For Each item As DITExcelStagedItem In removeItems
             DeleteSnapshot(item)
             StagedItems.Remove(item)
         Next
@@ -306,12 +270,11 @@ Friend NotInheritable Class DITPdfExportWorkspace
     End Sub
 
     Private Sub MoveFocusedItem(ByVal offset As Integer)
-        Dim item As DITPdfStagedItem = TryCast(QueueView.GetFocusedRow(), DITPdfStagedItem)
+        Dim item As DITExcelStagedItem = TryCast(QueueView.GetFocusedRow(), DITExcelStagedItem)
         If item Is Nothing Then Return
         Dim oldIndex As Integer = StagedItems.IndexOf(item)
         Dim newIndex As Integer = oldIndex + offset
         If newIndex < 0 OrElse newIndex >= StagedItems.Count Then Return
-
         StagedItems.RaiseListChangedEvents = False
         Try
             StagedItems.RemoveAt(oldIndex)
@@ -325,55 +288,93 @@ Friend NotInheritable Class DITPdfExportWorkspace
 
     Private Sub ClearButton_Click(ByVal sender As Object, ByVal e As EventArgs)
         If StagedItems.Count = 0 Then Return
-        If XtraMessageBox.Show(Me, "Remove all staged PDF snapshots?", "PDF export",
+        If XtraMessageBox.Show(Me, "Remove all staged Excel snapshots?", "Excel export",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question) <> DialogResult.Yes Then Return
         ClearStagedItems()
     End Sub
 
     Private Sub PublishButton_Click(ByVal sender As Object, ByVal e As EventArgs)
         If StagedItems.Count = 0 Then
-            XtraMessageBox.Show(Me, "Add at least one snapshot before publishing.", "PDF export")
+            XtraMessageBox.Show(Me, "Add at least one snapshot before publishing.", "Excel export")
             Return
         End If
-
         Using dialog As New SaveFileDialog With {
-            .AddExtension = True,
-            .DefaultExt = "pdf",
-            .Filter = "PDF documents (*.pdf)|*.pdf",
-            .OverwritePrompt = True,
-            .Title = "Publish staged PDF"}
+            .AddExtension = True, .DefaultExt = "xlsx",
+            .Filter = "Excel workbooks (*.xlsx)|*.xlsx",
+            .OverwritePrompt = True, .Title = "Publish staged Excel workbook"}
             If dialog.ShowDialog(Me) <> DialogResult.OK Then Return
-
             Cursor = Cursors.WaitCursor
             Try
-                If StagedItems.Count = 1 Then
-                    File.Copy(StagedItems(0).SnapshotPath, dialog.FileName, True)
-                Else
-                    Using processor As New PdfDocumentProcessor()
-                        processor.CreateEmptyDocument()
-                        For Each item As DITPdfStagedItem In StagedItems
-                            processor.AppendDocument(item.SnapshotPath)
-                        Next
-                        processor.SaveDocument(dialog.FileName)
-                    End Using
-                End If
-
+                PublishWorkbook(dialog.FileName)
                 If XtraMessageBox.Show(Me,
-                        "The PDF was published successfully." & Environment.NewLine & "Open it now?",
-                        "PDF export", MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Information) = DialogResult.Yes Then
+                        "The Excel workbook was published successfully." &
+                        Environment.NewLine & "Open it now?", "Excel export",
+                        MessageBoxButtons.YesNo, MessageBoxIcon.Information) = DialogResult.Yes Then
                     Process.Start(New ProcessStartInfo(dialog.FileName) With {.UseShellExecute = True})
                 End If
             Catch ex As Exception
                 XtraMessageBox.Show(Me,
-                    "The PDF could not be published." & Environment.NewLine &
-                    Environment.NewLine & ex.Message,
-                    "PDF export", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                    "The Excel workbook could not be published." & Environment.NewLine &
+                    Environment.NewLine & ex.Message, "Excel export",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error)
             Finally
                 Cursor = Cursors.Default
             End Try
         End Using
     End Sub
+
+    Private Sub PublishWorkbook(ByVal outputPath As String)
+        Using targetWorkbook As New Workbook()
+            targetWorkbook.CreateNewDocument()
+            Dim firstTargetSheet As Boolean = True
+            Dim usedNames As New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)
+            For Each item As DITExcelStagedItem In StagedItems
+                Using sourceWorkbook As New Workbook()
+                    sourceWorkbook.LoadDocument(item.SnapshotPath, DocumentFormat.Xlsx)
+                    For sourceIndex As Integer = 0 To sourceWorkbook.Worksheets.Count - 1
+                        Dim targetSheet As Worksheet
+                        If firstTargetSheet Then
+                            targetSheet = targetWorkbook.Worksheets(0)
+                            firstTargetSheet = False
+                        Else
+                            targetSheet = targetWorkbook.Worksheets.Add()
+                        End If
+                        targetSheet.CopyFrom(sourceWorkbook.Worksheets(sourceIndex))
+                        Dim requestedName As String = item.Title
+                        If sourceWorkbook.Worksheets.Count > 1 Then
+                            requestedName &= " " & (sourceIndex + 1).ToString()
+                        End If
+                        targetSheet.Name = MakeUniqueWorksheetName(requestedName, usedNames)
+                    Next
+                End Using
+            Next
+            targetWorkbook.SaveDocument(outputPath, DocumentFormat.Xlsx)
+        End Using
+    End Sub
+
+    Private Shared Function MakeUniqueWorksheetName(
+        ByVal requestedName As String,
+        ByVal usedNames As HashSet(Of String)) As String
+        Dim candidate As String = If(requestedName, String.Empty).Trim()
+        For Each invalidCharacter As Char In New Char() {
+            ":"c, "\"c, "/"c, "?"c, "*"c, "["c, "]"c}
+            candidate = candidate.Replace(invalidCharacter, "-"c)
+        Next
+        candidate = candidate.Trim("'"c, " "c)
+        If candidate.Length = 0 Then candidate = "Export"
+        If candidate.Length > 31 Then candidate = candidate.Substring(0, 31).Trim()
+
+        Dim baseName As String = candidate
+        Dim suffixIndex As Integer = 2
+        While usedNames.Contains(candidate)
+            Dim suffix As String = " (" & suffixIndex.ToString() & ")"
+            candidate = baseName.Substring(
+                0, Math.Min(baseName.Length, 31 - suffix.Length)).Trim() & suffix
+            suffixIndex += 1
+        End While
+        usedNames.Add(candidate)
+        Return candidate
+    End Function
 
     Private Sub CloseButton_Click(ByVal sender As Object, ByVal e As EventArgs)
         Hide()
@@ -399,14 +400,14 @@ Friend NotInheritable Class DITPdfExportWorkspace
     End Sub
 
     Private Sub ClearStagedItems()
-        For Each item As DITPdfStagedItem In StagedItems.ToList()
+        For Each item As DITExcelStagedItem In StagedItems.ToList()
             DeleteSnapshot(item)
         Next
         StagedItems.Clear()
         RefreshQueue()
     End Sub
 
-    Private Shared Sub DeleteSnapshot(ByVal item As DITPdfStagedItem)
+    Private Shared Sub DeleteSnapshot(ByVal item As DITExcelStagedItem)
         Try
             If item IsNot Nothing AndAlso File.Exists(item.SnapshotPath) Then
                 File.Delete(item.SnapshotPath)
@@ -428,7 +429,7 @@ Friend NotInheritable Class DITPdfExportWorkspace
     Private Sub RefreshStatus()
         StatusLabel.Text = StagedItems.Count.ToString() &
             If(StagedItems.Count = 1, " snapshot staged", " snapshots staged") &
-            " | Items are frozen when added and retained until cleared or the workbook closes."
+            " | Excel and PDF workspaces are independent."
         PublishButton.Enabled = StagedItems.Count > 0
         RemoveButton.Enabled = StagedItems.Count > 0
         ClearButton.Enabled = StagedItems.Count > 0
@@ -437,7 +438,7 @@ Friend NotInheritable Class DITPdfExportWorkspace
     End Sub
 End Class
 
-Friend NotInheritable Class DITPdfStagedItem
+Friend NotInheritable Class DITExcelStagedItem
     Public Property Sequence As Integer
     Public Property Title As String
     Public Property InterfaceName As String
