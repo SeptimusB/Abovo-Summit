@@ -105,100 +105,86 @@
 <main>
   <header>
     <h1>Core BP Structure.xml Audit</h1>
-    <p class="muted">Current consistency review of the Abovo Summit business-plan interface definition.</p>
+    <p class="muted">Fresh consistency review of the Abovo Summit business-plan interface definition.</p>
   </header>
 
   <dl class="meta">
-    <div><dt>Audit date</dt><dd>28 August 2026</dd></div>
+    <div><dt>Audit date</dt><dd>30 August 2026</dd></div>
     <div><dt>Source</dt><dd class="path">C:\Repos\Abovo Summit\Structure.xml</dd></div>
-    <div><dt>Contract workbook</dt><dd class="path">Library\TestFileMigrated.xlsb</dd></div>
-    <div><dt>Scope</dt><dd>Refreshed XML structure and workbook-reference consistency</dd></div>
+    <div><dt>Authoritative master</dt><dd class="path">Z:\Sandbox\TestFileClean.xlsb</dd></div>
+    <div><dt>Repository workbook</dt><dd class="path">Library\TestFileMigrated.xlsb</dd></div>
   </dl>
 
   <div class="notice">
-    <strong>This refresh did not modify Structure.xml.</strong> It reloads the user-revised source, removes resolved conclusions and lists the remaining confirmed inconsistencies and lower-confidence anomalies.
+    <strong>This refresh did not modify Structure.xml or either workbook.</strong> Both XLSB files were inspected in hidden, macro-disabled, read-only Excel sessions and closed without saving.
   </div>
 
-  <p>The XML is well-formed and contains 3 groups, 217 child structures, 490 interface sections, 529 datasources and 959 cell-range sources.</p>
+  <p>The XML is well formed and contains 3 groups, 217 child structures, 490 interface sections, 529 datasources and 959 cell-range sources. It declares 210 distinct worksheets.</p>
 
-  <h2>High-confidence inconsistency</h2>
+  <h2>High-confidence findings</h2>
 
-  <div class="finding">
-    <h3>1. Housing Asset retains contradictory expansion metadata</h3>
-    <p><code>RowsExpandModel=NRRI</code> at line 15283 and <code>RowExpandByNR=DepnType</code> at line 15284 define the operative row-expansion contract, while <code>RowsExpandBy=CC</code> remains at line 15288. <code>RowsExpandBy</code> is not represented in the current <code>ISEDatasource</code> serializer, so the <code>CC</code> value is ignored and conflicts with the active metadata.</p>
-  </div>
-
-  <h2>Resolved since the previous audit</h2>
   <div class="passed">
-    <ul>
-      <li>Both <code>ImpairmentDirect</code> sources now declare <code>Development BP Assumptions</code> and match the workbook-owned name.</li>
-      <li>Both annual and periodic non-tenure expenditure sources now declare <code>Non Tenure Capital Assumptions</code> and match their workbook-owned names.</li>
-      <li>The Repairs datasource now uses the local <code>RepIncStkCat</code> expansion master at line 3204, represented by <code>NRDSName=RepIncStkCat</code> at line 3216.</li>
-      <li>The unsupported and misleading <code>RowsExpandBy</code> values have been removed from Other Fixed Asset and Other Current Asset. Other Fixed Asset retains its operative <code>RowsExpandModel</code>/<code>RowExpandByNR</code> contract.</li>
-      <li>The 28 conflicting summary <code>BandID</code> values have been removed from Development Details and Development Multi-Year.</li>
-      <li>The one-off <code>DataFormat=0</code> declaration has been removed from New Lettings Other Disposal Numbers.</li>
-      <li>The former case-sensitive serializer-tag defects have been normalised. No <code>MINVAL</code>, <code>MAXVAL</code>, <code>FIXED</code>, <code>TYPE</code> or <code>Tiptext</code> tokens remain.</li>
-      <li>No exactly identical scalar sibling groups remain. The remaining duplicates carry different values or differ in whitespace/content and therefore require an explicit choice rather than automatic deletion.</li>
-    </ul>
+    <h3>No high-confidence structural reference defect remains</h3>
+    <p>The current XML has no missing worksheet, missing named-range, serializer-casing, expansion-contract or broken-navigation finding.</p>
   </div>
 
   <h2>Duplicate scalar elements</h2>
+  <div class="passed">
+    <p>No exactly identical scalar sibling groups remain, and no conflicting repeated scalar sibling groups remain.</p>
+  </div>
 
-  <p>There are 7 parent nodes containing repeated scalar properties with different values or content. These properties are not collections, so the XML does not unambiguously define which value is intended. Exactly identical scalar siblings have already been removed.</p>
-
-  <table>
-    <thead><tr><th>Element</th><th>Affected parents</th><th>Notes</th></tr></thead>
-    <tbody>
-      <tr><td><code>FieldName</code></td><td>2</td><td>Repairs preliminary rates and Capital Expenditure each contain an empty and populated value.</td></tr>
-      <tr><td><code>PositID</code></td><td>2</td><td>Development Details and Development Multi-Year each contain values 7 and 5.</td></tr>
-      <tr><td><code>TipText</code></td><td>2</td><td>Stock New Lettings has whitespace-format variants; Funding Details contains an empty and a populated value.</td></tr>
-      <tr><td><code>RepeatingHeaderText</code></td><td>1</td><td>Capital Grant contains both <code>Void Rate</code> and <code>Capital Grant Income Year</code>.</td></tr>
-    </tbody>
-  </table>
-
-  <h3>Notable duplicate conflicts</h3>
+  <h2>Accepted design exceptions</h2>
   <ul>
-    <li>Stock New Lettings repeats semantically equivalent <code>TipText</code> values with different whitespace at lines 433 and 441.</li>
-    <li>Capital Grant conflicts between <code>Void Rate</code> and <code>Capital Grant Income Year</code> for <code>RepeatingHeaderText</code> at lines 2560 and 2573.</li>
-    <li>Repairs preliminary rates repeats an empty and populated <code>FieldName</code> at lines 3581 and 3596; Capital Expenditure does the same at lines 4090 and 4104.</li>
-    <li>Development Details <code>BalCapCostGrantHFG</code> has <code>PositID</code> values 7 and 5 at lines 5238 and 5240. Development Multi-Year repeats that conflict at lines 6804 and 6806.</li>
-    <li>Funding Details repeats an empty and populated <code>TipText</code> at lines 11878 and 11880.</li>
+    <li><code>Funding Assumptions V2</code> deliberately uses temporary CSID 138 while V1/V2 evaluation remains in progress. It is excluded from findings.</li>
+    <li>The two Workings children named <code>Development Stock</code> represent separate workbook workings that both exist in the XLSB. Their shared display name is excluded from findings.</li>
+    <li>Plaintext root <code>RejData</code> storage is an explicitly accepted client risk given the client's XML-editing capability. Its value remains deliberately omitted and it is excluded from findings.</li>
   </ul>
 
-  <h2>Navigation and identity inconsistencies</h2>
+  <h2>Remaining hygiene observation</h2>
   <ul>
-    <li>The Service Charge link targets a nonexistent section named <code>Real Service Charge Increases / (Decreases)</code> at line 973. The actual target section is <code>Real Service Charge</code> at line 10146.</li>
-    <li>Taxation Assumptions contains two sections whose XML <code>Name</code> is <code>Corporation Tax Rates</code>, at lines 13200 and 13400. The second has <code>ISName=Capital Allowances and Gains</code>.</li>
-    <li>Workings contains two children named <code>Development Stock</code>, with CSIDs 6 and 58 at lines 16983 and 20323.</li>
-    <li><code>Funding Assumptions V2</code> uses CSID 138 while physically occupying child position 34. Remaining children resume with IDs 34–43. The current resolver supports this, but it is inconsistent with every other group.</li>
-    <li><code>Repairs rephasing </code> contains trailing whitespace at line 3461.</li>
-    <li><code>Development Build &amp; On Cost&nbsp;&nbsp;Profiling</code> contains doubled whitespace at line 9351.</li>
-    <li><code>Leasholder Income Assumptions</code> and associated fields misspell “Leaseholder”, beginning at line 1887.</li>
+    <li>The XML contains trailing whitespace on 38 lines. This is not expected to change XML values but makes reviews noisier.</li>
   </ul>
 
-  <h2>Other suspicious metadata</h2>
-  <ul>
-    <li>The current XML revision introduces trailing whitespace on 34 lines, from line 396 through line 15774. This is not expected to change XML values, but it causes <code>git diff --check</code> to fail and makes future reviews noisier.</li>
-    <li><code>New Lettings Other Disposal Numbers</code> still uses the copied field name <code>DemolitionNumber</code> at line 16856, although its one-off <code>DataFormat=0</code> has been removed.</li>
-    <li>Material child <code>Name</code>/<code>CSName</code> differences occur in Repairs rephasing, Repairs &amp; Maint Rates, Development Consol Options and Development Build/On Cost Profiling.</li>
-    <li>Sensitive workbook credential material is stored directly in the root XML at line 6. The value is deliberately not reproduced in this report.</li>
-  </ul>
+  <h2>Resolved by the latest edit</h2>
+  <div class="passed">
+    <ul>
+      <li>The duplicate Stock New Lettings <code>TipText</code> has been removed.</li>
+      <li>The conflicting Capital Grant <code>RepeatingHeaderText</code> values have been removed.</li>
+      <li>The second Taxation section is correctly named <code>Capital Allowances and Gains</code>; no child contains duplicate section names.</li>
+      <li>Both broken GOTO targets now match their actual target sections.</li>
+      <li>The conflicting <code>RowsExpandBy=CC</code> has been removed from the Housing Asset expansion datasource while its operative NRRI contract remains.</li>
+      <li>The duplicate Repairs preliminary-rate <code>FieldName</code>, both duplicate <code>PositID</code> pairs and the empty Funding Details <code>TipText</code> have been removed.</li>
+      <li>The remaining duplicate Capital Expenditure <code>FieldName</code> has been removed; no conflicting scalar groups remain.</li>
+      <li>Leaseholder spelling and the Repairs, Development Consol and Development Build/On Cost naming differences have been reconciled; no child <code>Name</code>/<code>CSName</code> mismatch remains.</li>
+      <li>The two Other Disposal live-grid fields now use <code>Disposal Numbers</code>; the second also has integer <code>DataFormat=I</code> metadata.</li>
+      <li>Previously resolved worksheet ownership, expansion master, Development <code>BandID</code>, <code>DataFormat=0</code>, serializer-casing and identical-scalar findings remain resolved.</li>
+    </ul>
+  </div>
+
+  <h2>Updated workbook baseline</h2>
+  <div class="passed">
+    <ul>
+      <li><code>Library\TestFileMigrated.xlsb</code> is now an exact copy of the revised authoritative <code>Z:\Sandbox\TestFileClean.xlsb</code>.</li>
+      <li>Both files are 11,814,925 bytes with SHA-256 <code>E58DC1CF506422C598E68628E71A0FFCC701CB935B0E42C1C768566FBB72144C</code>.</li>
+      <li>Both contain 283 worksheets and 1,758 defined names, including <code>TDB Snapshot</code> and <code>TSB Comparison</code>.</li>
+    </ul>
+  </div>
 
   <h2>Checks that passed</h2>
   <div class="passed">
     <ul>
-      <li>Every declared worksheet exists in the authoritative BP workbook.</li>
-      <li>Every genuine <code>NRDSName</code>, <code>RowExpandByNR</code>, <code>OffSetNR</code>, <code>RepeatingNR</code> and <code>LiveGridSourceName</code> resolves to an existing workbook name and matches its casing.</li>
-      <li>The refreshed workbook pass found 210 distinct declared worksheets, with no missing worksheet references, named ranges or case mismatches.</li>
-      <li>All named-range-backed cell sources checked for worksheet ownership now agree with the workbook worksheet that owns the name.</li>
-      <li><code>CR</code> remains an intentional DataManager sentinel for an explicit <code>DataRange</code>, not a missing named range.</li>
-      <li>There is no <code>MRCI</code> token in the XML or current code. The supported column-insertion token is <code>NRCI</code>; the only operative <code>RowsExpandModel=NRCI</code> occurrence is the dedicated Joint Venture interface.</li>
-      <li>Group IDs and child IDs are unique.</li>
-      <li>The authoritative master and repository compatibility XLSB copies remain byte-identical: 11,841,039 bytes, SHA-256 <code>B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE</code>.</li>
+      <li>Both workbooks contain every one of the 210 distinct worksheets declared by the XML.</li>
+      <li>All genuine <code>NRDSName</code>, <code>RowExpandByNR</code>, <code>OffSetNR</code>, <code>RepeatingNR</code> and <code>LiveGridSourceName</code> references resolve and match workbook casing in both files.</li>
+      <li>Named-range-backed datasource ownership agrees with the workbook worksheet owning the name.</li>
+      <li>The 13 <code>NRDSName=CR</code> entries are intentional explicit-cell-range sentinels, not missing names.</li>
+      <li>No known noncanonical serializer tag casing remains.</li>
+      <li>Group IDs and child IDs are unique within their groups.</li>
+      <li>There is no <code>MRCI</code> token; the supported <code>NRCI</code> expansion occurs in the dedicated Joint Venture interface.</li>
+      <li>The authoritative master and repository compatibility workbook are byte-identical.</li>
     </ul>
   </div>
 
-  <p class="footer">Refreshed from the current user-revised Structure.xml using XML line-aware checks and a separate hidden, macro-disabled, read-only Excel validation pass. The workbook was closed without saving. This refresh changed only the audit document.</p>
+  <p class="footer">Regenerated from the current user-revised Structure.xml with XML line-aware checks and read-only Excel validation after copying the user-supplied authoritative master to the repository compatibility path. Neither workbook was calculated or saved during validation. The formulas and business purpose of the two additional sheets were not separately audited here.</p>
 </main>
 </body>
 </html>

@@ -438,7 +438,6 @@
                 Leaving the cells empty will assume that current rents do not move to target on re-let. Different percentages can be used for different stock types.
               </TipText>
 
-              <TipText>Initial Rate of New Lettings Where actual rents are not currently at target, they can be moved to target at re-let to a new tentant. If the Rent Assumptions page is populated with an average actual rent and an average target rent for each defined stock type, you can add a percentage of stock that will move to target in this box. This can be increased or decreased in future years in the boxes below. Leaving the cells empty will assume that current rents do not move to target on re-let. Different percentages can be used for different stock types.</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
           <CellRangeDataSource>
@@ -970,7 +969,7 @@
             <LinkData>Economic Assumptions</LinkData>
             <LinkText>Input real inflationary vblf increases for each category</LinkText>
             <LinkTip>Click to input real inflationary increase for each category in Economic Assumptions</LinkTip>
-            <LinkTargetSection>Real Service Charge Increases / (Decreases)</LinkTargetSection>
+            <LinkTargetSection>Real Service Charge</LinkTargetSection>
             <LinkGroup>Assumptions</LinkGroup>
           </InterfaceLinkObject>
         </IElement>
@@ -1884,8 +1883,8 @@
 
 
     </ChildStructure>
-    <ChildStructure Name="Leasholder Income Assumptions">
-      <CSName>Leasholder Income Assumptions</CSName>
+    <ChildStructure Name="Leaseholder Income Assumptions">
+      <CSName>Leaseholder Income Assumptions</CSName>
       <CSID>9</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -2266,7 +2265,7 @@
             <LinkData>Specific Income Assumptions</LinkData>
             <LinkText>Edit Summary Categories</LinkText>
             <LinkTip>Click to input view and edit summary categories in Specific Income Assumptions</LinkTip>
-            <LinkTargetSection>Summary Categories</LinkTargetSection>
+            <LinkTargetSection>Specific Income Assumptions Categories</LinkTargetSection>
             <LinkGroup>Assumptions</LinkGroup>
           </InterfaceLinkObject>
         </IElement>
@@ -2557,7 +2556,7 @@
               <FieldName>Year</FieldName>
               <RepeatsByNR>TRUE</RepeatsByNR>
               <RepeatingNR>IR_CapGrant</RepeatingNR>
-              <RepeatingHeaderText>Void Rate</RepeatingHeaderText>
+
               <BandEditDescription>Add year columns</BandEditDescription>
               <EditRepNRHere>TRUE</EditRepNRHere>
               <EditRepNRHereDataFormat>I</EditRepNRHereDataFormat>
@@ -3458,8 +3457,8 @@
 
       </CSInterfaceSection>
     </ChildStructure>
-    <ChildStructure Name="Repairs rephasing ">
-      <CSName>Repairs Rephasing </CSName>
+    <ChildStructure Name="Repairs Rephasing">
+      <CSName>Repairs Rephasing</CSName>
       <CSID>17</CSID>
       <DefaultWorksheet>Repairs &amp; Maint. Rephasing</DefaultWorksheet>
       <ParentID>1</ParentID>
@@ -3534,7 +3533,7 @@
         </IElement>
       </CSInterfaceSection>
     </ChildStructure>
-    <ChildStructure Name="Repairs &amp; Maint Rates">
+    <ChildStructure Name="Repairs &amp; Maint. Rates">
       <CSName>Repairs &amp; Maint. Rates</CSName>
       <CSID>18</CSID>
       <ParentID>1</ParentID>
@@ -3578,7 +3577,7 @@
 
 
               <HasRule>TRUE</HasRule>
-              <FieldName/>
+
               <RepeatsByNR>TRUE</RepeatsByNR>
               <RepeatingNR>IR_RM_Prelim</RepeatingNR>
               <BandEditDescription>Add year columns</BandEditDescription>
@@ -3615,7 +3614,7 @@
 
 
               <HasRule>TRUE</HasRule>
-              <FieldName/>
+
               <RepeatsByNR>TRUE</RepeatsByNR>
               <RepeatingNR>IR_RM_Cont</RepeatingNR>
               <BandEditDescription>Add year columns</BandEditDescription>
@@ -4087,7 +4086,7 @@
             <DataFieldDefinition>
 
               <HasRule>TRUE</HasRule>
-              <FieldName/>
+
               <RepeatsByNR>TRUE</RepeatsByNR>
               <RepeatingNR>IR_CapExpend</RepeatingNR>
               <BandEditDescription>Add year columns</BandEditDescription>
@@ -4339,7 +4338,7 @@
 
       </CSInterfaceSection>
     </ChildStructure>
-    <ChildStructure Name="Development Consol Options">
+    <ChildStructure Name="Development Consol and Import Options">
       <CSName>Development Consol and Import Options</CSName>
       <CSID>23</CSID>
       <DefaultWorksheet>Development Consol Options</DefaultWorksheet>
@@ -5237,7 +5236,7 @@
             <NRDSName>OnCostsTotalIn</NRDSName>
             <PositID>7</PositID>
 
-            <PositID>5</PositID>
+
             <DataFieldDefinition>
               <HasRule>TRUE</HasRule>
               <DataFormat>I</DataFormat>
@@ -6801,9 +6800,8 @@
             <IsMappedRightByNR>HouseTypeInMY</IsMappedRightByNR>
             <Worksheet>Development BP Assumptions</Worksheet>
             <NRDSName>OnCostsTotalIn</NRDSName>
-            <PositID>7</PositID>
+            <PositID>7</PositID> 
 
-            <PositID>5</PositID>
             <DataFieldDefinition>
               <HasRule>TRUE</HasRule>
               <DataFormat>I</DataFormat>
@@ -9348,7 +9346,7 @@
 
       </CSInterfaceSection>
     </ChildStructure>
-    <ChildStructure Name="Development Build &amp; On Cost  Profiling">
+    <ChildStructure Name="Development Build On Cost Profiling Assumptions">
       <CSName>Development Build On Cost Profiling Assumptions</CSName>
       <CSID>29</CSID>
       <DefaultWorksheet>Development BP Assumptions</DefaultWorksheet>
@@ -11875,8 +11873,7 @@
               <EditRepNRHereROPostNRLines/>
               <EditRepNRHereEditor>DATE</EditRepNRHereEditor>
               <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
-              <TipText>
-              </TipText>
+
               <TipText>Date Enter cashflow date purchase price paid or dowry received.</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
@@ -13397,7 +13394,7 @@
         </IElement>
 
       </CSInterfaceSection>
-      <CSInterfaceSection Name="Corporation Tax Rates">
+      <CSInterfaceSection Name="Capital Allowances and Gains">
         <ISName>Capital Allowances and Gains</ISName>
         <ISDatasource>
           <ISDName>Capital Allowances</ISDName>
@@ -15285,7 +15282,7 @@
           <StructureRuleID>HOUSING_COMPONENT_RECORDS</StructureRuleID>
           <StructureAddCommand>ProcessAddHARecords</StructureAddCommand>
           <StructureDeleteCommand>ProcessDeleteHARecords</StructureDeleteCommand>
-          <RowsExpandBy>CC</RowsExpandBy>
+
           <DSType>MergeDownAndPivot</DSType>
           <MergeSources>Down</MergeSources>
           <MergedHeader>False</MergedHeader>
@@ -16810,7 +16807,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
             <LiveGridHeaderRows>6,9</LiveGridHeaderRows>
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
-              <FieldName>DemolitionNumber</FieldName>
+              <FieldName>Disposal Numbers</FieldName>
               <DataFormat>I</DataFormat>
             </DataFieldDefinition>
           </CellRangeDataSource>
@@ -16853,7 +16850,8 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
             <LiveGridHeaderRows>6,9</LiveGridHeaderRows>
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
-              <FieldName>DemolitionNumber</FieldName>
+              <FieldName>Disposal Numbers</FieldName>
+              <DataFormat>I</DataFormat>
             </DataFieldDefinition>
           </CellRangeDataSource>
         </ISDatasource>
