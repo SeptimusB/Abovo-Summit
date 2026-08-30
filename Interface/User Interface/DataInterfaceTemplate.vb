@@ -450,9 +450,25 @@ Public Class DataInterfaceTemplate
     'Interface controls
     Private WindowsUIButtonPanelSaveClose As DevExpress.XtraBars.Docking2010.WindowsUIButtonPanel = New DevExpress.XtraBars.Docking2010.WindowsUIButtonPanel()
     Private ClipboardContextMenu As ContextMenuStrip
+    Private ClipboardCutMenuItem As ToolStripMenuItem
     Private ClipboardCopyMenuItem As ToolStripMenuItem
     Private ClipboardPasteMenuItem As ToolStripMenuItem
+    Private ClipboardClearContentsMenuItem As ToolStripMenuItem
     Private LastClipboardTarget As Control
+
+    Private Structure ClipboardDataCellTarget
+        Public DataSetIndex As Integer
+        Public DataRowIndex As Integer
+        Public DataColumnIndex As Integer
+
+        Public Sub New(ByVal SetDataSetIndex As Integer,
+                       ByVal SetDataRowIndex As Integer,
+                       ByVal SetDataColumnIndex As Integer)
+            DataSetIndex = SetDataSetIndex
+            DataRowIndex = SetDataRowIndex
+            DataColumnIndex = SetDataColumnIndex
+        End Sub
+    End Structure
 
     'Development Variables
     Private DataCallCount As Integer = 0
@@ -9505,13 +9521,22 @@ SectionSelect:
 
     Private Sub InitialiseClipboardActions()
         ClipboardContextMenu = New ContextMenuStrip()
+        ClipboardCutMenuItem = New ToolStripMenuItem("Cut", Nothing, AddressOf ClipboardCutMenuItem_Click)
         ClipboardCopyMenuItem = New ToolStripMenuItem("Copy", Nothing, AddressOf ClipboardCopyMenuItem_Click) With {
             .ShortcutKeyDisplayString = "Ctrl+C"
         }
         ClipboardPasteMenuItem = New ToolStripMenuItem("Paste", Nothing, AddressOf ClipboardPasteMenuItem_Click) With {
             .ShortcutKeyDisplayString = "Ctrl+V"
         }
-        ClipboardContextMenu.Items.AddRange(New ToolStripItem() {ClipboardCopyMenuItem, ClipboardPasteMenuItem})
+        ClipboardClearContentsMenuItem = New ToolStripMenuItem("Clear Contents", Nothing, AddressOf ClipboardClearContentsMenuItem_Click)
+        ClipboardContextMenu.Items.AddRange(
+            New ToolStripItem() {
+                ClipboardCutMenuItem,
+                ClipboardCopyMenuItem,
+                ClipboardPasteMenuItem,
+                New ToolStripSeparator(),
+                ClipboardClearContentsMenuItem
+            })
         AddHandler ClipboardContextMenu.Opening, AddressOf ClipboardContextMenu_Opening
         AddHandler Me.Disposed, AddressOf DisposeClipboardActions
 
@@ -9579,9 +9604,12 @@ SectionSelect:
         Dim canCopy As Boolean = LastClipboardTarget IsNot Nothing AndAlso Not LastClipboardTarget.IsDisposed
         Dim canPasteTarget As Boolean = canCopy AndAlso CanPasteIntoClipboardTarget(LastClipboardTarget)
         Dim canPaste As Boolean = canPasteTarget AndAlso Clipboard.ContainsText()
+        Dim canClear As Boolean = canCopy AndAlso CanClearClipboardTarget(LastClipboardTarget)
 
+        If ClipboardCutMenuItem IsNot Nothing Then ClipboardCutMenuItem.Enabled = canCopy AndAlso canClear
         If ClipboardCopyMenuItem IsNot Nothing Then ClipboardCopyMenuItem.Enabled = canCopy
         If ClipboardPasteMenuItem IsNot Nothing Then ClipboardPasteMenuItem.Enabled = canPaste
+        If ClipboardClearContentsMenuItem IsNot Nothing Then ClipboardClearContentsMenuItem.Enabled = canClear
         For Each button As Object In WindowsUIButtonPanelActions.Buttons
             Dim windowsButton As WindowsUIButton = TryCast(button, WindowsUIButton)
             If windowsButton Is Nothing OrElse windowsButton.Tag Is Nothing Then Continue For
@@ -9599,6 +9627,17 @@ SectionSelect:
     End Sub
 
     Private Function CanPasteIntoClipboardTarget(ByVal target As Control) As Boolean
+        Dim dataSetIndex As Integer
+        Dim dataSet As DataCellRange = Nothing
+        Return TryResolveClipboardDataSet(target, dataSetIndex, dataSet) AndAlso Not dataSet.RO
+    End Function
+
+    Private Function TryResolveClipboardDataSet(ByVal target As Control,
+                                                ByRef dataSetIndex As Integer,
+                                                ByRef dataSet As DataCellRange) As Boolean
+        dataSetIndex = -1
+        dataSet = Nothing
+
         Dim dataSource As AbovoUnboundSource = Nothing
         Dim grid As GridControl = TryCast(target, GridControl)
         If grid IsNot Nothing Then dataSource = TryCast(grid.DataSource, AbovoUnboundSource)
@@ -9606,21 +9645,180 @@ SectionSelect:
         If verticalGrid IsNot Nothing Then dataSource = TryCast(verticalGrid.DataSource, AbovoUnboundSource)
         If dataSource Is Nothing OrElse dataSource.UBSTag Is Nothing Then Return False
 
-        Dim dataSetIndex As Integer = dataSource.UBSTag.DSIndex
-        Return DataPres IsNot Nothing AndAlso dataSetIndex >= 0 AndAlso
-               dataSetIndex < DataPres.DataSets.Count AndAlso Not DataPres.DataSets(dataSetIndex).RO
+        dataSetIndex = dataSource.UBSTag.DSIndex
+        If DataPres Is Nothing OrElse dataSetIndex < 0 OrElse dataSetIndex >= DataPres.DataSets.Count Then Return False
+
+        dataSet = DataPres.DataSets(dataSetIndex)
+        Return dataSet IsNot Nothing
     End Function
 
-    Private Sub PerformClipboardCopy()
-        If LastClipboardTarget Is Nothing OrElse LastClipboardTarget.IsDisposed Then Return
-        Dim grid As GridControl = TryCast(LastClipboardTarget, GridControl)
+    Private Function GetSelectedClipboardDataCells(ByVal target As Control) As List(Of ClipboardDataCellTarget)
+        Dim result As New List(Of ClipboardDataCellTarget)()
+        Dim dataSetIndex As Integer
+        Dim dataSet As DataCellRange = Nothing
+
+        If Not TryResolveClipboardDataSet(target, dataSetIndex, dataSet) Then Return result
+
+        Dim seen As New HashSet(Of String)(StringComparer.Ordinal)
+        Dim grid As GridControl = TryCast(target, GridControl)
+
         If grid IsNot Nothing Then
             Dim view As GridView = TryCast(grid.FocusedView, GridView)
-            If view IsNot Nothing Then view.CopyToClipboard()
-            Return
+            If view Is Nothing Then Return result
+
+            Dim selectedCells = view.GetSelectedCells()
+
+            If selectedCells IsNot Nothing Then
+                For Each selectedCell In selectedCells
+                    Dim dataRowIndex As Integer = view.GetDataSourceRowIndex(selectedCell.RowHandle)
+                    Dim dataColumnIndex As Integer = GetGridColumnIndex(selectedCell.Column)
+                    AddClipboardDataCellTarget(result, seen, dataSetIndex, dataRowIndex, dataColumnIndex)
+                Next
+            End If
+
+            If result.Count = 0 AndAlso view.FocusedColumn IsNot Nothing Then
+                AddClipboardDataCellTarget(
+                    result,
+                    seen,
+                    dataSetIndex,
+                    view.GetFocusedDataSourceRowIndex(),
+                    GetGridColumnIndex(view.FocusedColumn))
+            End If
+
+            Return result
         End If
-        Dim verticalGrid As VGridControl = TryCast(LastClipboardTarget, VGridControl)
-        If verticalGrid IsNot Nothing Then verticalGrid.CopyToClipboard()
+
+        Dim verticalGrid As VGridControl = TryCast(target, VGridControl)
+        If verticalGrid Is Nothing Then Return result
+
+        Dim selectedVGridCells = verticalGrid.GetSelectedCells()
+
+        If selectedVGridCells IsNot Nothing Then
+            For Each selectedCell In selectedVGridCells
+                AddClipboardDataCellTarget(
+                    result,
+                    seen,
+                    dataSetIndex,
+                    selectedCell.RecordIndex,
+                    GetVGridColumnIndex(selectedCell.Row, selectedCell.RowCellIndex))
+            Next
+        End If
+
+        If result.Count = 0 AndAlso verticalGrid.FocusedRow IsNot Nothing Then
+            AddClipboardDataCellTarget(
+                result,
+                seen,
+                dataSetIndex,
+                verticalGrid.FocusedRecord,
+                GetVGridColumnIndex(verticalGrid.FocusedRow))
+        End If
+
+        Return result
+    End Function
+
+    Private Sub AddClipboardDataCellTarget(ByVal targets As List(Of ClipboardDataCellTarget),
+                                           ByVal seen As HashSet(Of String),
+                                           ByVal dataSetIndex As Integer,
+                                           ByVal dataRowIndex As Integer,
+                                           ByVal dataColumnIndex As Integer)
+        If dataRowIndex < 0 OrElse dataColumnIndex < 0 Then Return
+
+        Dim key As String = dataSetIndex.ToString() & "|" & dataRowIndex.ToString() & "|" & dataColumnIndex.ToString()
+        If Not seen.Add(key) Then Return
+
+        targets.Add(New ClipboardDataCellTarget(dataSetIndex, dataRowIndex, dataColumnIndex))
+    End Sub
+
+    Private Function CanClearClipboardTarget(ByVal target As Control) As Boolean
+        For Each cellTarget As ClipboardDataCellTarget In GetSelectedClipboardDataCells(target)
+            If cellTarget.DataSetIndex < 0 OrElse cellTarget.DataSetIndex >= DataPres.DataSets.Count Then Continue For
+            If CanPasteToDataPoint(
+                DataPres.DataSets(cellTarget.DataSetIndex),
+                cellTarget.DataRowIndex,
+                cellTarget.DataColumnIndex) Then Return True
+        Next
+
+        Return False
+    End Function
+
+    Private Function PerformClipboardCopy() As Boolean
+        If LastClipboardTarget Is Nothing OrElse LastClipboardTarget.IsDisposed Then Return False
+
+        Try
+            Dim grid As GridControl = TryCast(LastClipboardTarget, GridControl)
+            If grid IsNot Nothing Then
+                Dim view As GridView = TryCast(grid.FocusedView, GridView)
+                If view Is Nothing Then Return False
+                view.CopyToClipboard()
+                Return True
+            End If
+
+            Dim verticalGrid As VGridControl = TryCast(LastClipboardTarget, VGridControl)
+            If verticalGrid Is Nothing Then Return False
+            verticalGrid.CopyToClipboard()
+            Return True
+        Catch ex As Exception
+            MsgBox("The selected cells could not be copied to the clipboard." & vbCrLf & ex.Message,
+                   MsgBoxStyle.Exclamation,
+                   "Abovo Summit")
+            Return False
+        End Try
+    End Function
+
+    Private Sub PerformClipboardClear(ByVal copyBeforeClearing As Boolean)
+        If LastClipboardTarget Is Nothing OrElse LastClipboardTarget.IsDisposed Then Return
+
+        Dim selectedTargets As List(Of ClipboardDataCellTarget) =
+            GetSelectedClipboardDataCells(LastClipboardTarget)
+
+        Dim writableTargets As New List(Of ClipboardDataCellTarget)()
+
+        For Each cellTarget As ClipboardDataCellTarget In selectedTargets
+            If cellTarget.DataSetIndex < 0 OrElse cellTarget.DataSetIndex >= DataPres.DataSets.Count Then Continue For
+
+            If CanPasteToDataPoint(
+                DataPres.DataSets(cellTarget.DataSetIndex),
+                cellTarget.DataRowIndex,
+                cellTarget.DataColumnIndex) Then
+                writableTargets.Add(cellTarget)
+            End If
+        Next
+
+        If writableTargets.Count = 0 Then Return
+        If copyBeforeClearing AndAlso Not PerformClipboardCopy() Then Return
+
+        Dim groupDescription As String =
+            If(copyBeforeClearing, "Cut from ", "Clear contents in ") & DITName
+
+        Me.Cursor = Cursors.WaitCursor
+
+        Try
+            Using clearGroup As IDisposable = ChangeMan.BeginChangeGroup(groupDescription)
+                For Each cellTarget As ClipboardDataCellTarget In writableTargets
+                    PushDSData(
+                        cellTarget.DataSetIndex,
+                        cellTarget.DataRowIndex,
+                        cellTarget.DataColumnIndex,
+                        Nothing,
+                        False)
+                Next
+            End Using
+
+            Dim affectedDataSets As New HashSet(Of Integer)()
+            For Each cellTarget As ClipboardDataCellTarget In writableTargets
+                affectedDataSets.Add(cellTarget.DataSetIndex)
+            Next
+
+            For Each dataSetIndex As Integer In affectedDataSets
+                UpdateRules(dataSetIndex)
+                UpdateCalcs(dataSetIndex)
+            Next
+
+            RefreshData()
+        Finally
+            Me.Cursor = Cursors.Default
+            UpdateClipboardActionState()
+        End Try
     End Sub
 
     Private Sub PerformClipboardPaste()
@@ -9640,8 +9838,16 @@ SectionSelect:
         PerformClipboardCopy()
     End Sub
 
+    Private Sub ClipboardCutMenuItem_Click(ByVal sender As Object, ByVal e As EventArgs)
+        PerformClipboardClear(True)
+    End Sub
+
     Private Sub ClipboardPasteMenuItem_Click(ByVal sender As Object, ByVal e As EventArgs)
         PerformClipboardPaste()
+    End Sub
+
+    Private Sub ClipboardClearContentsMenuItem_Click(ByVal sender As Object, ByVal e As EventArgs)
+        PerformClipboardClear(False)
     End Sub
 
     Private Sub ClipboardContextMenu_Opening(ByVal sender As Object, ByVal e As CancelEventArgs)
