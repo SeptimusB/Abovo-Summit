@@ -393,7 +393,8 @@
               <RO>TRUE</RO>
               <FieldName>Stock Description</FieldName>
               <DataFormat>S</DataFormat>
-              <TipText>Stock Description Enter a description of each stock category.</TipText>
+              <TipText>Stock Description Enter a description of 
+              each stock category.</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
           <CellRangeDataSource>
@@ -404,9 +405,8 @@
               <RO>TRUE</RO>
               <FieldName>Owned/Managed</FieldName>
               <DataFormat>S</DataFormat>
-
-
-              <TipText>Owned or Managed for Others? Indicated whether the stock type is Owned or Managed for Others Default: Owned</TipText>
+              <TipText>Owned or Managed for Others? Indicated whether the stock type 
+              is Owned or Managed for Others Default: Owned</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
           <CellRangeDataSource>
@@ -418,7 +418,8 @@
               <FieldName>SOCI vblf Stock Type</FieldName>
               <DataFormat>S</DataFormat>
 
-              <TipText>SOCI Stock Type Description Select SOCI Stock Type for reporting purposes from drop down list</TipText>
+              <TipText>SOCI Stock Type Description Select SOCI
+              Stock Type for reporting purposes from drop down list</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
           <CellRangeDataSource>
@@ -466,7 +467,8 @@
               <EditRepNRHereComboRepository>Rep_OrdinalYears</EditRepNRHereComboRepository>
               <EditRepNRHereExpansionMethod>NRRI</EditRepNRHereExpansionMethod>
 
-              <TipText>Enter movement in rate of new lettings and the year in which it is to apply</TipText>
+              <TipText>Enter movement in rate of new 
+              lettings and the year in which it is to apply</TipText>
             </DataFieldDefinition>
 
 
@@ -2567,7 +2569,6 @@
               <EditRepNRHereComboRepository>Rep_OrdinalYearsLess1</EditRepNRHereComboRepository>
               <EditRepNRHereExpansionMethod>NRRIbyCOL</EditRepNRHereExpansionMethod>
 
-              <FieldName/>
               <DataFormat>C</DataFormat>
               <RepeatingHeaderText>Capital Grant Income Year</RepeatingHeaderText>
               <TipText>Capital Grant Income Please enter the capital grant required per column.</TipText>
@@ -3200,7 +3201,7 @@
           <ColsExpandBy>NR</ColsExpandBy>
           <RO>FALSE</RO>
           <RowsExpandModel>NRRI</RowsExpandModel>
-          <RowExpandByNR>StockCondCats</RowExpandByNR>
+          <RowExpandByNR>RepIncStkCat</RowExpandByNR>
           <StructureRuleID>REPAIRS_RECORDS</StructureRuleID>
           <StructureAddCommand>ProcessAddRepairsRecords</StructureAddCommand>
           <StructureDeleteCommand>ProcessDeleteRepairsRecords</StructureDeleteCommand>
@@ -5963,7 +5964,8 @@
           <MergedHeader>False</MergedHeader>
           <Pivot>FALSE</Pivot>
           <CellRangeDataSource>
-            <Worksheet>Development Consol Options</Worksheet>
+            
+            <Worksheet>Development BP Assumptions</Worksheet>
             <NRDSName>ImpairmentDirect</NRDSName>
             <PositID>1</PositID>
             <DataFieldDefinition>
@@ -6270,7 +6272,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R9</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
               <DataFormat>I</DataFormat>
               <FieldName>Units Developed</FieldName>
@@ -6288,7 +6290,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R10</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
               <DataFormat>I</DataFormat>
               <FieldName>Land vblf Cost (£)</FieldName>
@@ -6306,7 +6308,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R11</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>I</DataFormat>
@@ -6325,7 +6327,7 @@
             <OffSetBy>R12</OffSetBy>
 
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>I</DataFormat>
@@ -6347,7 +6349,7 @@
 
             <OffSetBy>R13</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>I</DataFormat>
@@ -6366,7 +6368,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R14</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>I</DataFormat>
@@ -6385,7 +6387,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R15</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>I</DataFormat>
@@ -6403,7 +6405,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R17</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
               <DataFormat>I</DataFormat>
               <FieldName>Units Developed</FieldName>
@@ -6421,7 +6423,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R18</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
               <DataFormat>I</DataFormat>
               <FieldName>Land vblf Cost (£)</FieldName>
@@ -6439,7 +6441,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R19</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>I</DataFormat>
@@ -6458,7 +6460,7 @@
             <OffSetBy>R20</OffSetBy>
 
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>I</DataFormat>
@@ -6480,7 +6482,7 @@
 
             <OffSetBy>R21</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>I</DataFormat>
@@ -6499,7 +6501,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R22</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>S</DataFormat>
@@ -6518,7 +6520,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R23</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>S</DataFormat>
@@ -7342,8 +7344,9 @@
           <DSType>SingleCell</DSType>
           <MergedHeader>False</MergedHeader>
           <Pivot>FALSE</Pivot>
-          <CellRangeDataSource>
-            <Worksheet>Development Consol Options</Worksheet>
+          
+            <CellRangeDataSource>
+            <Worksheet>Development BP Assumptions</Worksheet>
             <NRDSName>ImpairmentDirect</NRDSName>
             <PositID>1</PositID>
             <DataFieldDefinition>
@@ -7660,7 +7663,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R9</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
               <DataFormat>I</DataFormat>
               <FieldName>Units Developed</FieldName>
@@ -7678,7 +7681,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R10</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
               <DataFormat>M</DataFormat>
               <FieldName>Land vblf Cost (£)</FieldName>
@@ -7696,7 +7699,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R11</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>M</DataFormat>
@@ -7715,7 +7718,7 @@
             <OffSetBy>R12</OffSetBy>
             <IsMappedRightByNR>HouseTypeInMY</IsMappedRightByNR>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>M</DataFormat>
@@ -7737,7 +7740,7 @@
             <IsMappedRightByNR>HouseTypeInMY</IsMappedRightByNR>
             <OffSetBy>R13</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>M</DataFormat>
@@ -7756,7 +7759,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R14</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>M</DataFormat>
@@ -7775,7 +7778,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R15</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>M</DataFormat>
@@ -7793,7 +7796,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R17</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
               <DataFormat>I</DataFormat>
               <FieldName>Units Developed</FieldName>
@@ -7811,7 +7814,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R18</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
               <DataFormat>M</DataFormat>
               <FieldName>Land vblf Cost (£)</FieldName>
@@ -7829,7 +7832,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R19</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>M</DataFormat>
@@ -7848,7 +7851,7 @@
             <OffSetBy>R20</OffSetBy>
             <IsMappedRightByNR>HouseTypeInMY</IsMappedRightByNR>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>S</DataFormat>
@@ -7870,7 +7873,7 @@
             <IsMappedRightByNR>HouseTypeInMY</IsMappedRightByNR>
             <OffSetBy>R21</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>S</DataFormat>
@@ -7889,7 +7892,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R22</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>S</DataFormat>
@@ -7908,7 +7911,7 @@
             <OffSetNR>MVIn</OffSetNR>
             <OffSetBy>R23</OffSetBy>
             <PositID>3</PositID>
-            <BandID>Summary of BP Inputs</BandID>
+            
             <DataFieldDefinition>
 
               <DataFormat>S</DataFormat>
@@ -9696,7 +9699,7 @@
           <Pivot>FALSE</Pivot>
           <ExpandsBy>ROW</ExpandsBy>
           <CellRangeDataSource>
-            <Worksheet>Stock Disposal Assumptions</Worksheet>
+            <Worksheet>Non Tenure Capital Assumptions</Worksheet>
             <NRDSName>Rep_Annual_Non_Tenure_Specific_Expenditure</NRDSName>
             <PositID>1</PositID>
             <DataFieldDefinition>
@@ -9735,7 +9738,7 @@
           <Pivot>FALSE</Pivot>
           <ExpandsBy>ROW</ExpandsBy>
           <CellRangeDataSource>
-            <Worksheet>Stock Disposal Assumptions</Worksheet>
+            <Worksheet>Non Tenure Capital Assumptions</Worksheet>
             <NRDSName>Rep_Periodic_Non_Tenure_Specific_Expenditure</NRDSName>
             <PositID>1</PositID>
             <DataFieldDefinition>
@@ -11787,7 +11790,6 @@
               <DataFormat>M</DataFormat>
               <RepeatsByNR>TRUE</RepeatsByNR>
               <RepeatingNR>IR_Fund_Fac_Inc</RepeatingNR>
-              <RepeatingHeaderText>Void Rate</RepeatingHeaderText>
               <BandEditDescription>Add event columns</BandEditDescription>
               <EditRepNRHere>TRUE</EditRepNRHere>
               <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
@@ -11819,7 +11821,6 @@
               <DataFormat>M</DataFormat>
               <RepeatsByNR>TRUE</RepeatsByNR>
               <RepeatingNR>IR_Fund_Fac_Dec</RepeatingNR>
-              <RepeatingHeaderText>Void Rate</RepeatingHeaderText>
               <BandEditDescription>Add event columns</BandEditDescription>
               <EditRepNRHere>TRUE</EditRepNRHere>
               <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
@@ -11865,7 +11866,6 @@
               <DataFormat>P</DataFormat>
               <RepeatsByNR>TRUE</RepeatsByNR>
               <RepeatingNR>IR_Fund_Fees</RepeatingNR>
-              <RepeatingHeaderText>Void Rate</RepeatingHeaderText>
               <BandEditDescription>Add event columns</BandEditDescription>
               <EditRepNRHere>TRUE</EditRepNRHere>
               <EditRepNRHereDataFormat>D</EditRepNRHereDataFormat>
@@ -15771,6 +15771,7 @@
             <DataFieldDefinition>
               <RepositaryItemID>Rep_ValueBasis</RepositaryItemID>
               <DataFormat>S</DataFormat>
+              
               <FieldName>Write-off Component vblf cost/depn after vblf useful life?</FieldName>
               <TipText>Write-off Component cost &amp; depn after useful life? Choose whether to write-off the Component cost and deprecation after components are fully depreciated, i.e. after the useful life the cost and depreciation is written off the Balance Sheet, this excludes the Structure component. Default: No</TipText>
             </DataFieldDefinition>
@@ -15918,7 +15919,7 @@
           <StructureRuleID>OFA_RECORDS</StructureRuleID>
           <StructureAddCommand>ProcessAddOFARecords</StructureAddCommand>
           <StructureDeleteCommand>ProcessDeleteOFARecords</StructureDeleteCommand>
-          <RowsExpandBy>NRCI</RowsExpandBy>
+
           <DSType>MergeDownAndPivot</DSType>
           <MergeSources>Down</MergeSources>
           <MergedHeader>False</MergedHeader>
@@ -16073,7 +16074,7 @@
           <SourceDataFormat>Cols</SourceDataFormat>
           <ColsExpandBy>NR</ColsExpandBy>
           <RO>FALSE</RO>
-          <RowsExpandBy>NRRI</RowsExpandBy>
+
           <DSType>MergeAcross</DSType>
           <MergeSources>Down</MergeSources>
           <MergedHeader>False</MergedHeader>
@@ -16853,7 +16854,6 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
             <Pivot>TRUE</Pivot>
             <DataFieldDefinition>
               <FieldName>DemolitionNumber</FieldName>
-              <DataFormat>0</DataFormat>
             </DataFieldDefinition>
           </CellRangeDataSource>
         </ISDatasource>
