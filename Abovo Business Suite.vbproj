@@ -616,6 +616,7 @@
     <Compile Include="Interface\Interface Services\Resizer.vb" />
     <Compile Include="Interface\Interface Services\GridFormatter.vb" />
     <Compile Include="Services\TransactionalDB\TransactionalDBSynchroniser.vb" />
+    <Compile Include="Services\TransactionalDB\TransactionalDBSnapshotManager.vb" />
     <Compile Include="Services\WorkbookContractValidator.vb" />
     <Compile Include="Services\WorkbookModelProfiles.vb" />
     <Compile Include="Services\WorkbookManager.vb" />

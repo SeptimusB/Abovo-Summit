@@ -876,6 +876,7 @@ Namespace Abovo
             Dim PreviousHistoryEnabled As Boolean = WB.History.IsEnabled
             Dim HistoryChanged As Boolean = False
             Dim UpdateStarted As Boolean = False
+            Dim StructuralChangeAttempted As Boolean = False
             Dim SyncTimer As Stopwatch = Stopwatch.StartNew()
 
             Try
@@ -925,6 +926,7 @@ Namespace Abovo
                 For Each Item As MirrorResizeWorkItem In WorkItems
 
                     Dim MirrorTimer As Stopwatch = Stopwatch.StartNew()
+                    StructuralChangeAttempted = True
 
                     Dim ResizeResult As AbovoTransaction =
                         ResizeMirrorRangeInBatch(WB,
@@ -954,6 +956,21 @@ Namespace Abovo
                     WB.EndUpdate()
 
 
+                End If
+
+                If StructuralChangeAttempted Then
+                    Try
+                        TransactionalDBSnapshotManager.InvalidateSnapshot(ModelID)
+
+                        If ExcelModels(ModelID).ExpendAnalyserV2 IsNot Nothing Then
+                            ExcelModels(ModelID).ExpendAnalyserV2.NotifySnapshotInvalidated()
+                        End If
+                    Catch ex As Exception
+                        Result.BError = True
+                        Result.StringReturn &=
+                            "Transactional DB snapshot invalidation: " & ex.Message &
+                            Environment.NewLine
+                    End Try
                 End If
 
                 Dim RestoreCalcTimer As Stopwatch = Stopwatch.StartNew()

@@ -34,6 +34,12 @@ Imports DevExpress.XtraSpreadsheet.Model
 #End Region
 Public Class BPIncomeExpenditureAnalyserV2
 
+    Private Enum AnalyserDataSourceMode
+        Live
+        Snapshot
+        Comparison
+    End Enum
+
     Private DataPM As PresentationManager
     Private DataPres As PresentationManager.DataPresentation
     Public ModelID As Integer
@@ -79,6 +85,10 @@ Public Class BPIncomeExpenditureAnalyserV2
     Private CurrChartWS As DevExpress.Spreadsheet.Worksheet
     Private DSAnalDataRange As RangeDataSource
     Private HasSnapshots As Boolean = False
+    Private ComparisonWorksheetRegistered As Boolean = False
+    Private CurrentDataSourceMode As AnalyserDataSourceMode = AnalyserDataSourceMode.Live
+    Private UpdatingDataSourceButtons As Boolean = False
+    Private PendingGridState As AnalyserGridStateBundle
     Private gridInfo As GridViewInfo = Nothing
     Private ActiveGridView As CustomGridView
     Private ActiveGridWrapper As CustomGridWrapper
@@ -98,6 +108,29 @@ Public Class BPIncomeExpenditureAnalyserV2
     Private WrapCG_CF As CustomGridWrapper
     Private WrapCG_SOCI As CustomGridWrapper
     Private WrapCG_BS As CustomGridWrapper
+
+    Private NotInheritable Class SelectedGridCellState
+        Public DataSourceRowIndex As Integer
+        Public FieldName As String
+    End Class
+
+    Private NotInheritable Class AnalyserGridViewState
+        Public LayoutData As Byte()
+        Public ActiveFilterString As String
+        Public FocusedDataSourceRowIndex As Integer = -1
+        Public FocusedGroupPath As String
+        Public FocusedColumnFieldName As String
+        Public TopRowIndex As Integer
+        Public LeftCoord As Integer
+        Public ExpandedGroupPaths As New List(Of String)
+        Public SelectedCells As New List(Of SelectedGridCellState)
+    End Class
+
+    Private NotInheritable Class AnalyserGridStateBundle
+        Public SOCI As AnalyserGridViewState
+        Public Cashflow As AnalyserGridViewState
+        Public BalanceSheet As AnalyserGridViewState
+    End Class
 
 
     Public Sub New(SetModelID As Integer, MyParent As GroupInterfaceTemplate)
@@ -304,6 +337,9 @@ Public Class BPIncomeExpenditureAnalyserV2
         Formatter.FormatGridView(View_WrapCG_SOCI, WrapCG_SOCI.WrappedCGC, "Smaller")
         Formatter.FormatGridView(View_WrapCG_CF, WrapCG_CF.WrappedCGC, "Smaller")
         Formatter.FormatGridView(View_WrapCG_BS, WrapCG_BS.WrappedCGC, "Smaller")
+        ApplyAnalyserFooterAppearance(View_WrapCG_SOCI)
+        ApplyAnalyserFooterAppearance(View_WrapCG_CF)
+        ApplyAnalyserFooterAppearance(View_WrapCG_BS)
 
         GridView_Process_SetExpandedLevels(View_WrapCG_SOCI)
         GridView_Process_SetExpandedLevels(View_WrapCG_CF)
@@ -320,6 +356,9 @@ Public Class BPIncomeExpenditureAnalyserV2
         ActiveSpreadsheet = ExcelModels(SetModelID).WB.Worksheets("Transactional DB")
 
         ExcelModels(ModelID).WBCalcEngine.AddActiveWorksheet(CalcEngID, ActiveSpreadsheet)
+        EnsureComparisonWorksheetRegistered()
+        HasSnapshots = TransactionalDBSnapshotManager.HasValidSnapshot(ModelID)
+        UpdateDataSourceButtons()
 
         Exit Sub
 
@@ -335,11 +374,44 @@ Public Class BPIncomeExpenditureAnalyserV2
 
     Sub Form_InitilisationProcess_SetDataSource()
 
-        Dim worksheet As DevExpress.Spreadsheet.Worksheet = FileManager.ExcelModels(ModelID).WB.Worksheets("Transactional DB")
+        Dim worksheetName As String = TransactionalDBSnapshotManager.SourceWorksheetName
+        Dim rangeName As String = TransactionalDBSnapshotManager.SourceRangeName
+
+        Select Case CurrentDataSourceMode
+            Case AnalyserDataSourceMode.Snapshot
+                worksheetName = TransactionalDBSnapshotManager.SnapshotWorksheetName
+                rangeName = TransactionalDBSnapshotManager.SnapshotRangeName
+            Case AnalyserDataSourceMode.Comparison
+                worksheetName = TransactionalDBSnapshotManager.ComparisonWorksheetName
+                rangeName = TransactionalDBSnapshotManager.ComparisonRangeName
+        End Select
+
+        Dim workbook As DevExpress.Spreadsheet.IWorkbook = FileManager.ExcelModels(ModelID).WB
+        Dim worksheet As DevExpress.Spreadsheet.Worksheet = workbook.Worksheets(worksheetName)
         Dim ColList As New List(Of String)
         Dim typelist As String = ""
         Dim CTD As New BPIEAColumnDetectorV2()
-        TransDBDataRange = worksheet.Range("Transactional_Records")
+        Dim definedName As DevExpress.Spreadsheet.DefinedName =
+            worksheet.DefinedNames.GetDefinedName(rangeName)
+        If definedName Is Nothing Then definedName = workbook.DefinedNames.GetDefinedName(rangeName)
+        If definedName Is Nothing OrElse definedName.Range Is Nothing Then
+            Throw New InvalidOperationException(
+                "The named range '" & rangeName & "' is not available on '" & worksheetName & "'.")
+        End If
+
+        If definedName.Range.Worksheet Is Nothing OrElse
+           Not String.Equals(
+               definedName.Range.Worksheet.Name,
+               worksheetName,
+               StringComparison.OrdinalIgnoreCase) Then
+            Throw New InvalidOperationException(
+                "The named range '" & rangeName & "' does not refer to '" & worksheetName & "'.")
+        End If
+
+        TransDBDataRange = definedName.Range
+        If CurrentDataSourceMode = AnalyserDataSourceMode.Comparison Then
+            TransDBDataRange.Calculate()
+        End If
 
         Dim RDSOptions As New RangeDataSourceOptions With {
             .UseFirstRowAsHeader = True,
@@ -359,6 +431,7 @@ Public Class BPIncomeExpenditureAnalyserV2
         If DSAnalDataRange IsNot Nothing Then
 
             AmInactiveState = True
+            PendingGridState = CaptureAnalyserGridState()
 
             WrapCG_SOCI.WrappedCGC.DataSource = Nothing
             WrapCG_CF.WrappedCGC.DataSource = Nothing
@@ -383,12 +456,25 @@ Public Class BPIncomeExpenditureAnalyserV2
 
         If DSAnalDataRange Is Nothing Then
 
+            If CurrentDataSourceMode <> AnalyserDataSourceMode.Live AndAlso
+               Not TransactionalDBSnapshotManager.HasValidSnapshot(ModelID) Then
+                CurrentDataSourceMode = AnalyserDataSourceMode.Live
+                HasSnapshots = False
+            End If
+
             Form_InitilisationProcess_SetDataSource()
             WrapCG_SOCI.WrappedCGC.DataSource = DSAnalDataRange
             WrapCG_CF.WrappedCGC.DataSource = DSAnalDataRange
             WrapCG_BS.WrappedCGC.DataSource = DSAnalDataRange
 
+            WrapCG_SOCI.WrappedCGC.RefreshDataSource()
+            WrapCG_CF.WrappedCGC.RefreshDataSource()
+            WrapCG_BS.WrappedCGC.RefreshDataSource()
+
             AmInactiveState = False
+            RestoreAnalyserGridState(PendingGridState)
+            PendingGridState = Nothing
+            UpdateDataSourceButtons()
 
         End If
 
@@ -435,7 +521,7 @@ Public Class BPIncomeExpenditureAnalyserV2
                 FormMainScreen.BringToFront()
 
             Case "Snapshot"
-
+                CreateTransactionalDBSnapshot(ButSender)
             Case "SideBySide"
 
                 RunSideBySide(ModelID, "Assumptions", ParentGIT, True)
@@ -452,6 +538,346 @@ Public Class BPIncomeExpenditureAnalyserV2
 
         End Select
 
+    End Sub
+
+    Private Sub WindowsUIButtonPanelAnalyser_ButtonChecked(
+        ByVal sender As Object,
+        ByVal e As DevExpress.XtraBars.Docking2010.ButtonEventArgs) _
+        Handles WindowsUIButtonPanelAnalyser.ButtonChecked
+
+        If UpdatingDataSourceButtons Then Return
+
+        Dim button As WindowsUIButton = TryCast(e.Button, WindowsUIButton)
+        If button Is Nothing OrElse button.Tag Is Nothing Then Return
+
+        Select Case button.Tag.ToString()
+            Case "ViewLive"
+                SwitchDataSource(AnalyserDataSourceMode.Live)
+            Case "ViewSnapshot"
+                SwitchDataSource(AnalyserDataSourceMode.Snapshot)
+            Case "ViewComparison"
+                SwitchDataSource(AnalyserDataSourceMode.Comparison)
+        End Select
+    End Sub
+
+    Private Sub CreateTransactionalDBSnapshot(ByVal snapshotButton As WindowsUIButton)
+        If snapshotButton IsNot Nothing Then snapshotButton.Enabled = False
+        Me.Cursor = Cursors.WaitCursor
+
+        Try
+            TransactionalDBSnapshotManager.CreateSnapshotAndComparison(ModelID)
+            HasSnapshots = TransactionalDBSnapshotManager.HasValidSnapshot(ModelID)
+            EnsureComparisonWorksheetRegistered()
+            UpdateDataSourceButtons()
+        Catch ex As Exception
+            XtraMessageBox.Show(
+                Me,
+                "The Transactional DB snapshot could not be created." & vbCrLf & vbCrLf & ex.Message,
+                "Snapshot error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error)
+        Finally
+            Me.Cursor = Cursors.Default
+            If snapshotButton IsNot Nothing Then snapshotButton.Enabled = True
+        End Try
+    End Sub
+
+    Private Sub SwitchDataSource(ByVal requestedMode As AnalyserDataSourceMode)
+        If requestedMode <> AnalyserDataSourceMode.Live AndAlso
+           Not TransactionalDBSnapshotManager.HasValidSnapshot(ModelID) Then
+            HasSnapshots = False
+            UpdateDataSourceButtons()
+            XtraMessageBox.Show(
+                Me,
+                "Create a new Transactional DB snapshot before selecting this view.",
+                "Snapshot unavailable",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information)
+            Return
+        End If
+
+        If requestedMode = CurrentDataSourceMode AndAlso DSAnalDataRange IsNot Nothing Then
+            UpdateDataSourceButtons()
+            Return
+        End If
+
+        Dim previousMode As AnalyserDataSourceMode = CurrentDataSourceMode
+        Me.Cursor = Cursors.WaitCursor
+
+        Try
+            DisconnectRDS()
+            CurrentDataSourceMode = requestedMode
+            ReconnectRDS()
+        Catch ex As Exception
+            CurrentDataSourceMode = AnalyserDataSourceMode.Live
+            Try
+                If DSAnalDataRange IsNot Nothing Then DisconnectRDS()
+                ReconnectRDS()
+            Catch
+                CurrentDataSourceMode = previousMode
+            End Try
+
+            XtraMessageBox.Show(
+                Me,
+                "The selected analyser datasource could not be opened." & vbCrLf & vbCrLf & ex.Message,
+                "Datasource error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error)
+        Finally
+            Me.Cursor = Cursors.Default
+            UpdateDataSourceButtons()
+        End Try
+    End Sub
+
+    Friend Sub NotifySnapshotInvalidated()
+        HasSnapshots = False
+
+        If CurrentDataSourceMode <> AnalyserDataSourceMode.Live Then
+            CurrentDataSourceMode = AnalyserDataSourceMode.Live
+            If DSAnalDataRange IsNot Nothing Then
+                DisconnectRDS()
+                ReconnectRDS()
+            End If
+        End If
+
+        UpdateDataSourceButtons()
+    End Sub
+
+    Private Sub UpdateDataSourceButtons()
+        If WindowsUIButtonPanelAnalyser Is Nothing Then Return
+
+        UpdatingDataSourceButtons = True
+        Try
+            For Each baseButton As DevExpress.XtraEditors.ButtonPanel.IBaseButton In
+                WindowsUIButtonPanelAnalyser.Buttons
+
+                Dim button As WindowsUIButton = TryCast(baseButton, WindowsUIButton)
+                If button Is Nothing OrElse button.Tag Is Nothing Then Continue For
+
+                Select Case button.Tag.ToString()
+                    Case "ViewLive"
+                        button.Enabled = True
+                        button.Checked = (CurrentDataSourceMode = AnalyserDataSourceMode.Live)
+                    Case "ViewSnapshot"
+                        button.Enabled = HasSnapshots
+                        button.Checked = (CurrentDataSourceMode = AnalyserDataSourceMode.Snapshot)
+                    Case "ViewComparison"
+                        button.Enabled = HasSnapshots
+                        button.Checked = (CurrentDataSourceMode = AnalyserDataSourceMode.Comparison)
+                End Select
+            Next
+        Finally
+            UpdatingDataSourceButtons = False
+        End Try
+    End Sub
+
+    Private Function CaptureAnalyserGridState() As AnalyserGridStateBundle
+        If WrapCG_SOCI Is Nothing OrElse WrapCG_CF Is Nothing OrElse WrapCG_BS Is Nothing Then
+            Return Nothing
+        End If
+
+        Return New AnalyserGridStateBundle With {
+            .SOCI = CaptureGridViewState(WrapCG_SOCI.WrappedGridView),
+            .Cashflow = CaptureGridViewState(WrapCG_CF.WrappedGridView),
+            .BalanceSheet = CaptureGridViewState(WrapCG_BS.WrappedGridView)
+        }
+    End Function
+
+    Private Shared Function CaptureGridViewState(
+        ByVal view As CustomGridView) As AnalyserGridViewState
+
+        If view Is Nothing Then Return Nothing
+
+        Dim state As New AnalyserGridViewState With {
+            .ActiveFilterString = view.ActiveFilterString,
+            .TopRowIndex = view.TopRowIndex,
+            .LeftCoord = view.LeftCoord,
+            .FocusedDataSourceRowIndex = view.GetDataSourceRowIndex(view.FocusedRowHandle),
+            .FocusedColumnFieldName = If(view.FocusedColumn Is Nothing, Nothing, view.FocusedColumn.FieldName)
+        }
+
+        Using layoutStream As New System.IO.MemoryStream()
+            view.SaveLayoutToStream(layoutStream)
+            state.LayoutData = layoutStream.ToArray()
+        End Using
+
+        If view.IsGroupRow(view.FocusedRowHandle) Then
+            state.FocusedGroupPath = GetGroupPath(view, view.FocusedRowHandle)
+        End If
+
+        For visibleIndex As Integer = 0 To view.RowCount - 1
+            Dim rowHandle As Integer = view.GetVisibleRowHandle(visibleIndex)
+            If view.IsGroupRow(rowHandle) AndAlso view.GetRowExpanded(rowHandle) Then
+                state.ExpandedGroupPaths.Add(GetGroupPath(view, rowHandle))
+            End If
+        Next
+
+        For Each selectedCell As DevExpress.XtraGrid.Views.Base.GridCell In view.GetSelectedCells()
+            If selectedCell.Column Is Nothing OrElse view.IsGroupRow(selectedCell.RowHandle) Then Continue For
+
+            Dim dataSourceIndex As Integer = view.GetDataSourceRowIndex(selectedCell.RowHandle)
+            If dataSourceIndex < 0 Then Continue For
+
+            state.SelectedCells.Add(New SelectedGridCellState With {
+                .DataSourceRowIndex = dataSourceIndex,
+                .FieldName = selectedCell.Column.FieldName
+            })
+        Next
+
+        Return state
+    End Function
+
+    Private Sub RestoreAnalyserGridState(ByVal state As AnalyserGridStateBundle)
+        If state Is Nothing Then Return
+
+        RestoreGridViewState(WrapCG_SOCI.WrappedGridView, state.SOCI)
+        RestoreGridViewState(WrapCG_CF.WrappedGridView, state.Cashflow)
+        RestoreGridViewState(WrapCG_BS.WrappedGridView, state.BalanceSheet)
+    End Sub
+
+    Private Shared Sub RestoreGridViewState(
+        ByVal view As CustomGridView,
+        ByVal state As AnalyserGridViewState)
+
+        If view Is Nothing OrElse state Is Nothing Then Return
+
+        view.BeginUpdate()
+        Try
+            If state.LayoutData IsNot Nothing AndAlso state.LayoutData.Length > 0 Then
+                Using layoutStream As New System.IO.MemoryStream(state.LayoutData, False)
+                    view.RestoreLayoutFromStream(layoutStream)
+                End Using
+            End If
+
+            view.ActiveFilterString = state.ActiveFilterString
+            view.RefreshData()
+            ApplyAnalyserFooterAppearance(view)
+            RestoreExpandedGroups(view, state.ExpandedGroupPaths)
+
+            view.ClearSelection()
+            For Each selectedCell As SelectedGridCellState In state.SelectedCells
+                Dim column As GridColumn = view.Columns.ColumnByFieldName(selectedCell.FieldName)
+                Dim rowHandle As Integer = view.GetRowHandle(selectedCell.DataSourceRowIndex)
+                If column IsNot Nothing AndAlso view.IsValidRowHandle(rowHandle) Then
+                    view.SelectCell(rowHandle, column)
+                End If
+            Next
+
+            If Not String.IsNullOrWhiteSpace(state.FocusedGroupPath) Then
+                Dim focusedGroupHandle As Integer =
+                    FindVisibleGroupRow(view, state.FocusedGroupPath)
+                If view.IsValidRowHandle(focusedGroupHandle) Then
+                    view.FocusedRowHandle = focusedGroupHandle
+                End If
+            ElseIf state.FocusedDataSourceRowIndex >= 0 Then
+                Dim focusedRowHandle As Integer =
+                    view.GetRowHandle(state.FocusedDataSourceRowIndex)
+                If view.IsValidRowHandle(focusedRowHandle) Then
+                    view.FocusedRowHandle = focusedRowHandle
+                End If
+            End If
+
+            If Not String.IsNullOrWhiteSpace(state.FocusedColumnFieldName) Then
+                Dim focusedColumn As GridColumn =
+                    view.Columns.ColumnByFieldName(state.FocusedColumnFieldName)
+                If focusedColumn IsNot Nothing Then view.FocusedColumn = focusedColumn
+            End If
+
+            view.TopRowIndex = Math.Max(0, Math.Min(state.TopRowIndex, Math.Max(0, view.RowCount - 1)))
+            view.LeftCoord = Math.Max(0, state.LeftCoord)
+        Finally
+            view.EndUpdate()
+        End Try
+    End Sub
+
+    Private Shared Sub RestoreExpandedGroups(
+        ByVal view As CustomGridView,
+        ByVal expandedGroupPaths As IEnumerable(Of String))
+
+        view.CollapseAllGroups()
+        If expandedGroupPaths Is Nothing Then Return
+
+        Dim pending As New HashSet(Of String)(expandedGroupPaths, StringComparer.Ordinal)
+        If pending.Count = 0 Then Return
+
+        For level As Integer = 0 To view.GroupCount - 1
+            Dim visibleIndex As Integer = 0
+            While visibleIndex < view.RowCount
+                Dim rowHandle As Integer = view.GetVisibleRowHandle(visibleIndex)
+                If view.IsGroupRow(rowHandle) AndAlso
+                   pending.Remove(GetGroupPath(view, rowHandle)) Then
+                    view.SetRowExpanded(rowHandle, True, False)
+                End If
+                visibleIndex += 1
+            End While
+        Next
+    End Sub
+
+    Private Shared Function FindVisibleGroupRow(
+        ByVal view As CustomGridView,
+        ByVal groupPath As String) As Integer
+
+        For visibleIndex As Integer = 0 To view.RowCount - 1
+            Dim rowHandle As Integer = view.GetVisibleRowHandle(visibleIndex)
+            If view.IsGroupRow(rowHandle) AndAlso
+               String.Equals(GetGroupPath(view, rowHandle), groupPath, StringComparison.Ordinal) Then
+                Return rowHandle
+            End If
+        Next
+
+        Return DevExpress.XtraGrid.GridControl.InvalidRowHandle
+    End Function
+
+    Private Shared Function GetGroupPath(
+        ByVal view As CustomGridView,
+        ByVal groupRowHandle As Integer) As String
+
+        Dim parts As New List(Of String)
+        Dim currentHandle As Integer = groupRowHandle
+
+        While view.IsGroupRow(currentHandle)
+            Dim groupValue As Object = view.GetGroupRowValue(currentHandle)
+            parts.Insert(
+                0,
+                view.GetRowLevel(currentHandle).ToString(CultureInfo.InvariantCulture) & ":" &
+                If(groupValue Is Nothing,
+                   String.Empty,
+                   Convert.ToString(groupValue, CultureInfo.InvariantCulture)))
+            currentHandle = view.GetParentRowHandle(currentHandle)
+        End While
+
+        Return String.Join(ChrW(31), parts)
+    End Function
+
+    Private Shared Sub ApplyAnalyserFooterAppearance(ByVal view As CustomGridView)
+        If view Is Nothing OrElse view.Appearance.GroupRow.Font Is Nothing Then Return
+
+        view.Appearance.GroupFooter.Font = view.Appearance.GroupRow.Font
+        view.Appearance.GroupFooter.FontStyleDelta = FontStyle.Bold
+        view.Appearance.GroupFooter.Options.UseFont = True
+    End Sub
+
+    Private Sub EnsureComparisonWorksheetRegistered()
+        If ComparisonWorksheetRegistered OrElse CalcEngID < 0 Then Return
+        If ExcelModels Is Nothing OrElse
+           ModelID < 0 OrElse ModelID >= ExcelModels.Length OrElse
+           ExcelModels(ModelID) Is Nothing OrElse
+           ExcelModels(ModelID).WB Is Nothing OrElse
+           ExcelModels(ModelID).WBCalcEngine Is Nothing Then Return
+
+        For Each worksheet As DevExpress.Spreadsheet.Worksheet In ExcelModels(ModelID).WB.Worksheets
+            If Not String.Equals(
+                worksheet.Name,
+                TransactionalDBSnapshotManager.ComparisonWorksheetName,
+                StringComparison.OrdinalIgnoreCase) Then Continue For
+
+            ExcelModels(ModelID).WBCalcEngine.AddActiveWorksheet(
+                CalcEngID,
+                worksheet,
+                False)
+            ComparisonWorksheetRegistered = True
+            Return
+        Next
     End Sub
     Private Sub XtraTabControlAnalyser_Selected(sender As Object, e As DevExpress.XtraTab.TabPageEventArgs) Handles XtraTabControlAnalyser.Selected
 
@@ -1124,6 +1550,7 @@ Public Class BPIncomeExpenditureAnalyserV2
 
 
         End Select
+        e.Appearance.Font = sender.Appearance.GroupRow.Font
         e.Appearance.FontStyleDelta = FontStyle.Bold
         Dim DisplayText As String = e.Info.DisplayText
         If IsNumeric(DisplayText) Then
@@ -1152,6 +1579,7 @@ Public Class BPIncomeExpenditureAnalyserV2
     End Sub
     Sub GridView_CustomDraw_RowFooter(ByVal sender As CustomGridView, ByVal e As RowObjectCustomDrawEventArgs)
 
+        e.Appearance.Font = sender.Appearance.GroupRow.Font
         e.Appearance.FontStyleDelta = FontStyle.Bold
 
         Dim RLev As Integer = sender.GetRowLevel(e.RowHandle)
