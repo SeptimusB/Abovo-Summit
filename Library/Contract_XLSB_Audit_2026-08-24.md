@@ -9,7 +9,7 @@ Review this document and `Contract_XLSB_Audit_Evidence_2026-08-24.json` before a
 ## Authority and method
 
 - Authoritative master: `Z:\Sandbox\TestFileClean.xlsb`
-- Repository compatibility copy: `Library/TestFileMigrated.xlsb`
+- Repository copy: `Library/TestFileClean.xlsb`
 - Exact copy SHA-256: `B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE`
 - The authoritative master was not opened or saved by the audit. Excel inspected a disposable exact local copy read-only, with macros/events disabled and links not updated.
 - Thirty-five protected sheets were unlocked only in memory on the disposable copy; no password is stored in project evidence.

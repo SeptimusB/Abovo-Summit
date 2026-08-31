@@ -1,6 +1,6 @@
 # Abovo Summit architecture review
 
-Reviewed 20 August 2026 against the development baseline, Library/TestFileMigrated.xlsb (read-only), Structure.xml, DataManager, PresentationManager and DataInterfaceTemplate.
+Reviewed 20 August 2026 against the development baseline, Library/TestFileClean.xlsb (read-only), Structure.xml, DataManager, PresentationManager and DataInterfaceTemplate.
 
 ## Purpose and authority
 

@@ -344,7 +344,7 @@ $AlternativeNames = @{
 
 $RepositoryRoot = Split-Path -Parent $PSScriptRoot
 $StructurePath = Join-Path $RepositoryRoot 'Structure.xml'
-$WorkbookPath = Join-Path $RepositoryRoot 'Library\TestFileMigrated.xlsb'
+$WorkbookPath = Join-Path $RepositoryRoot 'Library\TestFileClean.xlsb'
 $StructureText = [System.IO.File]::ReadAllText($StructurePath)
 $ExistingGroupMatch = [regex]::Match(
     $StructureText,

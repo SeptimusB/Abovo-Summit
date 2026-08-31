@@ -9,10 +9,10 @@
   },
   "authority": {
     "masterSource": "Z:/Sandbox/TestFileClean.xlsb",
-    "repositoryCopy": "Library/TestFileMigrated.xlsb",
+    "repositoryCopy": "Library/TestFileClean.xlsb",
     "repositoryFilenameRetainedForCompatibility": true,
-    "sizeBytes": 11841039,
-    "sha256": "B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE"
+    "sizeBytes": 11812164,
+    "sha256": "F1BFE086682A87987400F78CE36FDE769BA30D492FD35D5B5EBAE839F9D0CF2B"
   },
   "workbook": {
     "fileFormat": 50,
@@ -76,7 +76,7 @@
   },
   "workbookHealthAudit": {
     "auditDate": "2026-08-24",
-    "contractSha256": "B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE",
+    "contractSha256": "F1BFE086682A87987400F78CE36FDE769BA30D492FD35D5B5EBAE839F9D0CF2B",
     "report": "Library/Contract_XLSB_Audit_2026-08-24.pdf",
     "summary": "Library/Contract_XLSB_Audit_2026-08-24.md",
     "evidence": "Library/Contract_XLSB_Audit_Evidence_2026-08-24.json",

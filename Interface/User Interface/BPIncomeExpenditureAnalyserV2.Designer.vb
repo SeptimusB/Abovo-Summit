@@ -67,30 +67,30 @@ Partial Class BPIncomeExpenditureAnalyserV2
         Me.XtraTabControlAnalyser.AppearancePage.HeaderActive.Options.UseForeColor = True
         Me.TablePanelAnalyser.SetColumn(Me.XtraTabControlAnalyser, 0)
         Me.XtraTabControlAnalyser.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.XtraTabControlAnalyser.Location = New System.Drawing.Point(9, 65)
+        Me.XtraTabControlAnalyser.Location = New System.Drawing.Point(13, 102)
         Me.XtraTabControlAnalyser.Name = "XtraTabControlAnalyser"
         Me.TablePanelAnalyser.SetRow(Me.XtraTabControlAnalyser, 1)
         Me.XtraTabControlAnalyser.SelectedTabPage = Me.XtraTabPageSOCIWrapped
-        Me.XtraTabControlAnalyser.Size = New System.Drawing.Size(794, 469)
+        Me.XtraTabControlAnalyser.Size = New System.Drawing.Size(1275, 755)
         Me.XtraTabControlAnalyser.TabIndex = 0
         Me.XtraTabControlAnalyser.TabPages.AddRange(New DevExpress.XtraTab.XtraTabPage() {Me.XtraTabPageSOCIWrapped, Me.XtraTabPageCFWrapped, Me.XtraTabPageBSWrapped})
         '
         'XtraTabPageSOCIWrapped
         '
         Me.XtraTabPageSOCIWrapped.Name = "XtraTabPageSOCIWrapped"
-        Me.XtraTabPageSOCIWrapped.Size = New System.Drawing.Size(792, 434)
+        Me.XtraTabPageSOCIWrapped.Size = New System.Drawing.Size(1273, 726)
         Me.XtraTabPageSOCIWrapped.Text = "SOCI"
         '
         'XtraTabPageCFWrapped
         '
         Me.XtraTabPageCFWrapped.Name = "XtraTabPageCFWrapped"
-        Me.XtraTabPageCFWrapped.Size = New System.Drawing.Size(792, 458)
+        Me.XtraTabPageCFWrapped.Size = New System.Drawing.Size(792, 440)
         Me.XtraTabPageCFWrapped.Text = "Detailed Cashflow"
         '
         'XtraTabPageBSWrapped
         '
         Me.XtraTabPageBSWrapped.Name = "XtraTabPageBSWrapped"
-        Me.XtraTabPageBSWrapped.Size = New System.Drawing.Size(792, 458)
+        Me.XtraTabPageBSWrapped.Size = New System.Drawing.Size(792, 440)
         Me.XtraTabPageBSWrapped.Text = "Statement of Financial Position"
         '
         'TablePanelAnalyser
@@ -117,20 +117,23 @@ Partial Class BPIncomeExpenditureAnalyserV2
         WindowsUIButtonImageOptions3.ImageUri.Uri = "SendXLS"
         WindowsUIButtonImageOptions3.SvgImage = Global.My.Resources.Resources.exporttoxls
         WindowsUIButtonImageOptions3.SvgImageSize = New System.Drawing.Size(16, 16)
-        WindowsUIButtonImageOptions4.Image = CType(resources.GetObject("WindowsUIButtonImageOptions4.Image"), System.Drawing.Image)
-        WindowsUIButtonImageOptions5.ImageUri.Uri = "SendPDF"
+        WindowsUIButtonImageOptions4.SvgImage = CType(resources.GetObject("WindowsUIButtonImageOptions4.SvgImage"), DevExpress.Utils.Svg.SvgImage)
+        WindowsUIButtonImageOptions4.SvgImageSize = New System.Drawing.Size(16, 16)
         WindowsUIButtonImageOptions5.SvgImage = CType(resources.GetObject("WindowsUIButtonImageOptions5.SvgImage"), DevExpress.Utils.Svg.SvgImage)
-        WindowsUIButtonImageOptions5.SvgImageSize = New System.Drawing.Size(16, 16)
-        WindowsUIButtonImageOptions6.SvgImage = Global.My.Resources.Resources.actions_refresh
-        WindowsUIButtonImageOptions6.SvgImageSize = New System.Drawing.Size(16, 16)
-        Me.WindowsUIButtonPanelAnalyser.Buttons.AddRange(New DevExpress.XtraEditors.ButtonPanel.IBaseButton() {New DevExpress.XtraBars.Docking2010.WindowsUIButton("Button", False, WindowsUIButtonImageOptions1, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Expand all rows", -1, True, Nothing, True, False, True, "ExpandAll", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Button", False, WindowsUIButtonImageOptions2, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Collapse all rows", -1, True, Nothing, True, False, True, "CollapseAll", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", True, WindowsUIButtonImageOptions3, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Export the data to XLS document", -1, True, Nothing, True, False, True, "ExportXL", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Take Snapshot", True, WindowsUIButtonImageOptions6, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Create a Transactional DB snapshot and live comparison", -1, True, Nothing, True, False, True, "Snapshot", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Live", True, WindowsUIButtonImageOptions7, DevExpress.XtraBars.Docking2010.ButtonStyle.CheckButton, "Show the current Transactional DB values", -1, True, Nothing, False, True, True, "ViewLive", 17, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Snapshot", True, WindowsUIButtonImageOptions8, DevExpress.XtraBars.Docking2010.ButtonStyle.CheckButton, "Show the fixed snapshot values", -1, False, Nothing, False, False, True, "ViewSnapshot", 17, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Comparison", True, WindowsUIButtonImageOptions9, DevExpress.XtraBars.Docking2010.ButtonStyle.CheckButton, "Show current values less the fixed snapshot", -1, False, Nothing, False, False, True, "ViewComparison", 17, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", False, WindowsUIButtonImageOptions4, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "View side by side with assumptions", -1, True, Nothing, True, False, True, "SideBySide", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", True, WindowsUIButtonImageOptions5, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Go to main menu", -1, True, Nothing, True, False, True, "OpenHome", -1, True)})
+        WindowsUIButtonImageOptions6.SvgImage = CType(resources.GetObject("WindowsUIButtonImageOptions6.SvgImage"), DevExpress.Utils.Svg.SvgImage)
+        WindowsUIButtonImageOptions7.SvgImage = CType(resources.GetObject("WindowsUIButtonImageOptions7.SvgImage"), DevExpress.Utils.Svg.SvgImage)
+        WindowsUIButtonImageOptions8.Image = CType(resources.GetObject("WindowsUIButtonImageOptions8.Image"), System.Drawing.Image)
+        WindowsUIButtonImageOptions9.ImageUri.Uri = "SendPDF"
+        WindowsUIButtonImageOptions9.SvgImage = CType(resources.GetObject("WindowsUIButtonImageOptions9.SvgImage"), DevExpress.Utils.Svg.SvgImage)
+        WindowsUIButtonImageOptions9.SvgImageSize = New System.Drawing.Size(16, 16)
+        Me.WindowsUIButtonPanelAnalyser.Buttons.AddRange(New DevExpress.XtraEditors.ButtonPanel.IBaseButton() {New DevExpress.XtraBars.Docking2010.WindowsUIButton("Button", False, WindowsUIButtonImageOptions1, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Expand all rows", -1, True, Nothing, True, False, True, "ExpandAll", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Button", False, WindowsUIButtonImageOptions2, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Collapse all rows", -1, True, Nothing, True, False, True, "CollapseAll", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", True, WindowsUIButtonImageOptions3, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Export the data to XLS document", -1, True, Nothing, True, False, True, "ExportXL", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", True, WindowsUIButtonImageOptions4, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Create a Transactional DB snapshot and live comparison", -1, True, Nothing, True, False, True, "Snapshot", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", False, WindowsUIButtonImageOptions5, DevExpress.XtraBars.Docking2010.ButtonStyle.CheckButton, "Show the current Transactional DB values", -1, True, Nothing, True, True, True, "ViewLive", 17, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", False, WindowsUIButtonImageOptions6, DevExpress.XtraBars.Docking2010.ButtonStyle.CheckButton, "Show the fixed snapshot values", -1, False, Nothing, True, False, True, "ViewSnapshot", 17, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Comparison", False, WindowsUIButtonImageOptions7, DevExpress.XtraBars.Docking2010.ButtonStyle.CheckButton, "Show current values less the fixed snapshot", -1, False, Nothing, True, False, True, "ViewComparison", 17, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", False, WindowsUIButtonImageOptions8, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "View side by side with assumptions", -1, True, Nothing, True, False, True, "SideBySide", -1, True), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True), New DevExpress.XtraBars.Docking2010.WindowsUIButton("", True, WindowsUIButtonImageOptions9, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Go to main menu", -1, True, Nothing, True, False, True, "OpenHome", -1, True)})
         Me.TablePanelAnalyser.SetColumn(Me.WindowsUIButtonPanelAnalyser, 0)
         Me.WindowsUIButtonPanelAnalyser.ContentAlignment = System.Drawing.ContentAlignment.MiddleLeft
         Me.WindowsUIButtonPanelAnalyser.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.WindowsUIButtonPanelAnalyser.Location = New System.Drawing.Point(9, 9)
+        Me.WindowsUIButtonPanelAnalyser.Location = New System.Drawing.Point(13, 12)
         Me.WindowsUIButtonPanelAnalyser.Name = "WindowsUIButtonPanelAnalyser"
         Me.TablePanelAnalyser.SetRow(Me.WindowsUIButtonPanelAnalyser, 0)
-        Me.WindowsUIButtonPanelAnalyser.Size = New System.Drawing.Size(794, 54)
+        Me.WindowsUIButtonPanelAnalyser.Size = New System.Drawing.Size(1275, 86)
         Me.WindowsUIButtonPanelAnalyser.TabIndex = 1
         Me.WindowsUIButtonPanelAnalyser.Text = "WindowsUIButtonPanelAnalyser"
         '

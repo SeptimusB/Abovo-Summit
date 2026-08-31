@@ -4,7 +4,7 @@ Audit date: 19 August 2026
 
 ## Authority and scope
 
-The implementation authority is `Library/TestFileMigrated.xlsb`. The visible
+The implementation authority is `Library/TestFileClean.xlsb`. The visible
 `Comparative` and `Comparative 2` worksheets, their linked form controls,
 chart series, support formulas, validation and formatting were inspected
 read-only. The source-free VBA inventory was also checked. Neither comparative

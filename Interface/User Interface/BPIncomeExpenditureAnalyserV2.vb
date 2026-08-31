@@ -564,22 +564,58 @@ Public Class BPIncomeExpenditureAnalyserV2
         If snapshotButton IsNot Nothing Then snapshotButton.Enabled = False
         Me.Cursor = Cursors.WaitCursor
 
+        Dim dataSourceWasConnected As Boolean = (DSAnalDataRange IsNot Nothing)
+        Dim snapshotCreated As Boolean = False
+        Dim snapshotError As Exception = Nothing
+
         Try
+            If dataSourceWasConnected Then DisconnectRDS()
+
             TransactionalDBSnapshotManager.CreateSnapshotAndComparison(ModelID)
             HasSnapshots = TransactionalDBSnapshotManager.HasValidSnapshot(ModelID)
+            If Not HasSnapshots Then
+                Throw New InvalidOperationException(
+                    "The snapshot sheets were rebuilt but did not pass datasource validation.")
+            End If
+
             EnsureComparisonWorksheetRegistered()
-            UpdateDataSourceButtons()
+            snapshotCreated = True
         Catch ex As Exception
-            XtraMessageBox.Show(
-                Me,
-                "The Transactional DB snapshot could not be created." & vbCrLf & vbCrLf & ex.Message,
-                "Snapshot error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error)
+            snapshotError = ex
+            HasSnapshots = TransactionalDBSnapshotManager.HasValidSnapshot(ModelID)
+
+            If CurrentDataSourceMode <> AnalyserDataSourceMode.Live AndAlso Not HasSnapshots Then
+                CurrentDataSourceMode = AnalyserDataSourceMode.Live
+            End If
         Finally
+            If dataSourceWasConnected AndAlso DSAnalDataRange Is Nothing Then
+                Try
+                    ReconnectRDS()
+                Catch reconnectException As Exception
+                    If snapshotError Is Nothing Then
+                        snapshotError = reconnectException
+                    Else
+                        snapshotError = New AggregateException(snapshotError, reconnectException)
+                    End If
+                End Try
+            End If
+
+            UpdateDataSourceButtons()
             Me.Cursor = Cursors.Default
             If snapshotButton IsNot Nothing Then snapshotButton.Enabled = True
         End Try
+
+        If snapshotError IsNot Nothing Then
+            XtraMessageBox.Show(
+                Me,
+                If(snapshotCreated,
+                   "The Transactional DB snapshot was created, but the analyser view could not be reconnected.",
+                   "The Transactional DB snapshot could not be created.") &
+                vbCrLf & vbCrLf & snapshotError.GetBaseException().Message,
+                "Snapshot error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error)
+        End If
     End Sub
 
     Private Sub SwitchDataSource(ByVal requestedMode As AnalyserDataSourceMode)

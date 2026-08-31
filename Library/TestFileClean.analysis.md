@@ -5,9 +5,9 @@ Analysis date: 22 August 2026
 ## Identity
 
 - Authoritative source: `Z:\Sandbox\TestFileClean.xlsb`
-- Repository compatibility copy: `Library/TestFileMigrated.xlsb`
-- Size: 11,841,039 bytes
-- SHA-256: `B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE`
+- Repository copy: `Library/TestFileClean.xlsb`
+- Size: 11,812,164 bytes
+- SHA-256: `F1BFE086682A87987400F78CE36FDE769BA30D492FD35D5B5EBAE839F9D0CF2B`
 - Source and repository-copy hashes match exactly.
 
 ## Verified workbook contract

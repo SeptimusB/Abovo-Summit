@@ -5,7 +5,7 @@
 Outputs children 0 through 33 are implemented through Analysis V2.
 Scenario Planning is intentionally omitted because those interfaces are owned
 by Stress Test.
-The authoritative contract is `Library/TestFileMigrated.xlsb`; archived
+The authoritative contract is `Library/TestFileClean.xlsb`; archived
 structure files were used only to recover likely ordering and grouping before
 each child was checked against the current workbook.
 

@@ -1,5 +1,5 @@
 param(
-    [string]$WorkbookPath = (Join-Path $PSScriptRoot '..\Library\TestFileMigrated.xlsb'),
+    [string]$WorkbookPath = (Join-Path $PSScriptRoot '..\Library\TestFileClean.xlsb'),
     [string]$OutputDirectory = (Join-Path $env:TEMP 'AbovoFundingDashboardInspection')
 )
 

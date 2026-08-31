@@ -4,7 +4,7 @@ Audit date: 2026-08-21
 
 ## Delivered scope
 
-The Workings navigator is generated from the ordered list supplied by the product owner and reconciled to `Library/TestFileMigrated.xlsb`.
+The Workings navigator is generated from the ordered list supplied by the product owner and reconciled to `Library/TestFileClean.xlsb`.
 
 - 12 navigator groups.
 - 138 child structures with sequential CSIDs 0-137.

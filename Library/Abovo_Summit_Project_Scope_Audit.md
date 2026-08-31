@@ -4,10 +4,10 @@ Audit date: 22 August 2026
 
 ## Current authority
 
-`Z:\Sandbox\TestFileClean.xlsb` is the authoritative workbook master. `Library/TestFileMigrated.xlsb` deliberately retains its repository filename for existing tooling, but its bytes are an exact copy of that master:
+`Z:\Sandbox\TestFileClean.xlsb` is the authoritative workbook master. `Library/TestFileClean.xlsb` is an exact repository copy of that master:
 
-- Size: 11,841,039 bytes
-- SHA-256: `B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE`
+- Size: 11,812,164 bytes
+- SHA-256: `F1BFE086682A87987400F78CE36FDE769BA30D492FD35D5B5EBAE839F9D0CF2B`
 - Worksheets: 281
 - Defined names: 1,758
 - `Transactional_Records`: `Transactional DB!A6:BV1599` (1,594 rows by 74 columns)
@@ -170,7 +170,7 @@ Required manual integration validation remains:
 
 ## Contract XLSB health and calculation audit - 24 August 2026
 
-The authoritative `Z:\Sandbox\TestFileClean.xlsb` and repository compatibility copy remain byte-for-byte identical at SHA-256 `B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE`. The audit inspected an exact disposable copy through Excel with macros and events disabled and made no workbook or code remediation.
+The authoritative `Z:\Sandbox\TestFileClean.xlsb` and repository copy remain byte-for-byte identical at SHA-256 `F1BFE086682A87987400F78CE36FDE769BA30D492FD35D5B5EBAE839F9D0CF2B`. The audit inspected an exact disposable copy through Excel with macros and events disabled and made no workbook or code remediation.
 
 The workbook is structurally healthy and natively fast on the audit workstation: 638,360 formula cells completed a full dependency rebuild in 2.152 seconds and warm full calculations averaged about 0.42 seconds. No broken defined names, external formula references, workbook connections, circular reference, or true full-column calculation formulas were found. Broad formula replacement is therefore not justified.
 

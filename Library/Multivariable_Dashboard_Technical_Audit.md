@@ -4,7 +4,7 @@ Audit date: 19 August 2026
 
 ## Authority and scope
 
-The implementation authority is `TestFileMigrated.xlsb`, not the previous
+The implementation authority is `TestFileClean.xlsb`, not the previous
 contents of Stress Test Tab #4. The workbook was inspected read-only through
 DevExpress Spreadsheet. Its VBA streams were extracted statically with
 `oletools`; no macro was executed and the XLSB was not saved or modified.

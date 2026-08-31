@@ -9,7 +9,7 @@
   },
   "authority": {
     "master": "Z:/Sandbox/TestFileClean.xlsb",
-    "repositoryCopy": "Library/TestFileMigrated.xlsb",
+    "repositoryCopy": "Library/TestFileClean.xlsb",
     "sizeBytes": 11841039,
     "sha256": "B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE",
     "exactCopyVerified": true

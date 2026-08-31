@@ -4,7 +4,7 @@ Date: 22 August 2026
 
 ## Baseline
 
-`TestFileClean.xlsb` is the authoritative workbook master. The repository compatibility copy at `Library/TestFileMigrated.xlsb` is byte-identical (SHA-256 `B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE`).
+`TestFileClean.xlsb` is the authoritative workbook master. The repository copy at `Library/TestFileClean.xlsb` is byte-identical (SHA-256 `F1BFE086682A87987400F78CE36FDE769BA30D492FD35D5B5EBAE839F9D0CF2B`).
 
 ## Current integration
 

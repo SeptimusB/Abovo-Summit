@@ -6,7 +6,7 @@ Source: `C:\Repos\Abovo Summit\Structure.xml`
 
 Authoritative master: `Z:\Sandbox\TestFileClean.xlsb`
 
-Repository compatibility workbook: `Library\TestFileMigrated.xlsb`
+Repository workbook: `Library\TestFileClean.xlsb`
 
 ## Scope and method
 
@@ -62,7 +62,7 @@ Previously resolved findings remain resolved: the Impairment and non-tenure work
 
 ## Updated workbook baseline
 
-- `Library\TestFileMigrated.xlsb` has been replaced with an exact copy of the revised authoritative `Z:\Sandbox\TestFileClean.xlsb`.
+- `Library\TestFileClean.xlsb` has been replaced with an exact copy of the revised authoritative `Z:\Sandbox\TestFileClean.xlsb`.
 - Both files are 11,814,925 bytes with SHA-256 `E58DC1CF506422C598E68628E71A0FFCC701CB935B0E42C1C768566FBB72144C`.
 - Both contain 283 worksheets and 1,758 defined names, including `TDB Snapshot` and `TSB Comparison`.
 

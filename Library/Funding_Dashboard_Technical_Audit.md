@@ -2,7 +2,7 @@
 
 ## Authoritative workbook contract
 
-`Library/TestFileMigrated.xlsb` was inspected through Microsoft Excel automation
+`Library/TestFileClean.xlsb` was inspected through Microsoft Excel automation
 with macros and events disabled, alerts suppressed, and the file opened
 read-only. It was closed without saving. The SHA-256 before and after inspection
 was `7039BD6E7BAE82C0269F1F9E56D4C28E17EED7599FFB263169798D214AABF044`.
