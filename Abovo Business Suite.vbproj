@@ -18,6 +18,7 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
+    <TargetFrameworkProfile />
     <PublishUrl>Z:\Sandbox\Deploy\Summit Test 1.00\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -28,17 +29,16 @@
     <UpdatePeriodically>false</UpdatePeriodically>
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
+    <ProductName>Abovo Summit Test</ProductName>
+    <PublisherName>Abovo</PublisherName>
+    <SuiteName>Abovo</SuiteName>
     <AutorunEnabled>true</AutorunEnabled>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.0</ApplicationVersion>
-    <PublisherName>Abovo</PublisherName>
-    <ProductName>Abovo Summit Test</ProductName>
-    <SuiteName>Abovo</SuiteName>
-    <CreateDesktopShortcut>true</CreateDesktopShortcut>
     <UseApplicationTrust>false</UseApplicationTrust>
+    <CreateDesktopShortcut>true</CreateDesktopShortcut>
     <PublishWizardCompleted>true</PublishWizardCompleted>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -872,41 +872,19 @@
     <Folder Include="Services\Import and Export\" />
   </ItemGroup>
   <ItemGroup>
-    <PublishFile Include="Structure.xml">
-      <Visible>False</Visible>
-      <Group />
-      <TargetPath>Structure.xml</TargetPath>
-      <PublishState>Include</PublishState>
-      <IncludeHash>True</IncludeHash>
-      <FileType>File</FileType>
-    </PublishFile>
     <PublishFile Include="DSAStructure.xml">
       <Visible>False</Visible>
-      <Group />
+      <Group>
+      </Group>
       <TargetPath>DSAStructure.xml</TargetPath>
-      <PublishState>Include</PublishState>
-      <IncludeHash>True</IncludeHash>
-      <FileType>File</FileType>
-    </PublishFile>
-    <PublishFile Include="Help\index.html">
-      <Visible>False</Visible>
-      <Group />
-      <TargetPath>Help\index.html</TargetPath>
-      <PublishState>Include</PublishState>
-      <IncludeHash>True</IncludeHash>
-      <FileType>File</FileType>
-    </PublishFile>
-    <PublishFile Include="Help\README.md">
-      <Visible>False</Visible>
-      <Group />
-      <TargetPath>Help\README.md</TargetPath>
       <PublishState>Include</PublishState>
       <IncludeHash>True</IncludeHash>
       <FileType>File</FileType>
     </PublishFile>
     <PublishFile Include="Help\assets\summit-help.css">
       <Visible>False</Visible>
-      <Group />
+      <Group>
+      </Group>
       <TargetPath>Help\assets\summit-help.css</TargetPath>
       <PublishState>Include</PublishState>
       <IncludeHash>True</IncludeHash>
@@ -914,7 +892,8 @@
     </PublishFile>
     <PublishFile Include="Help\assets\summit-help.js">
       <Visible>False</Visible>
-      <Group />
+      <Group>
+      </Group>
       <TargetPath>Help\assets\summit-help.js</TargetPath>
       <PublishState>Include</PublishState>
       <IncludeHash>True</IncludeHash>
@@ -922,7 +901,8 @@
     </PublishFile>
     <PublishFile Include="Help\data\interfaces.js">
       <Visible>False</Visible>
-      <Group />
+      <Group>
+      </Group>
       <TargetPath>Help\data\interfaces.js</TargetPath>
       <PublishState>Include</PublishState>
       <IncludeHash>True</IncludeHash>
@@ -930,8 +910,36 @@
     </PublishFile>
     <PublishFile Include="Help\data\overrides.js">
       <Visible>False</Visible>
-      <Group />
+      <Group>
+      </Group>
       <TargetPath>Help\data\overrides.js</TargetPath>
+      <PublishState>Include</PublishState>
+      <IncludeHash>True</IncludeHash>
+      <FileType>File</FileType>
+    </PublishFile>
+    <PublishFile Include="Help\index.html">
+      <Visible>False</Visible>
+      <Group>
+      </Group>
+      <TargetPath>Help\index.html</TargetPath>
+      <PublishState>Include</PublishState>
+      <IncludeHash>True</IncludeHash>
+      <FileType>File</FileType>
+    </PublishFile>
+    <PublishFile Include="Help\README.md">
+      <Visible>False</Visible>
+      <Group>
+      </Group>
+      <TargetPath>Help\README.md</TargetPath>
+      <PublishState>Include</PublishState>
+      <IncludeHash>True</IncludeHash>
+      <FileType>File</FileType>
+    </PublishFile>
+    <PublishFile Include="Structure.xml">
+      <Visible>False</Visible>
+      <Group>
+      </Group>
+      <TargetPath>Structure.xml</TargetPath>
       <PublishState>Include</PublishState>
       <IncludeHash>True</IncludeHash>
       <FileType>File</FileType>
