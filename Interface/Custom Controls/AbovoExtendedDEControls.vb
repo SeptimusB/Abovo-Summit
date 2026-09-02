@@ -656,6 +656,38 @@ Namespace Abovo
             End Sub
 
         End Class
+        Public NotInheritable Class OrdinalYearComboItem
+
+            Public Sub New(ByVal storedValue As String, ByVal displayText As String)
+                Me.StoredValue = storedValue
+                Me.DisplayText = displayText
+            End Sub
+
+            Public ReadOnly Property StoredValue As String
+            Public ReadOnly Property DisplayText As String
+
+            Public Overrides Function ToString() As String
+                Return DisplayText
+            End Function
+
+            Public Overrides Function Equals(ByVal obj As Object) As Boolean
+                Dim other As OrdinalYearComboItem = TryCast(obj, OrdinalYearComboItem)
+                If other IsNot Nothing Then
+                    Return String.Equals(StoredValue, other.StoredValue, StringComparison.OrdinalIgnoreCase)
+                End If
+
+                Return String.Equals(
+                    StoredValue,
+                    Convert.ToString(obj).Trim(),
+                    StringComparison.OrdinalIgnoreCase)
+            End Function
+
+            Public Overrides Function GetHashCode() As Integer
+                Return StringComparer.OrdinalIgnoreCase.GetHashCode(StoredValue)
+            End Function
+
+        End Class
+
         Public Class AbovoDEHeaderComboBox
 
             Inherits DevExpress.XtraEditors.ComboBoxEdit
@@ -679,6 +711,8 @@ Namespace Abovo
             Private CurrList As List(Of String)
             Private LitmitToList As Boolean = True
             Public RenderedListItems As List(Of String)
+            Private OrdinalYearItems As Dictionary(Of String, OrdinalYearComboItem)
+            Private OrdinalYearDisplayHandlerAttached As Boolean = False
 
             Public Property SetLimitToList As Boolean
                 Get
@@ -746,6 +780,7 @@ Namespace Abovo
             Public Sub InitialiseStandard(RepID As String)
 
                 ClearList()
+                Me.RepID = RepID
 
                 'Dim DataTag As SingleCellDataTag = Tag
 
@@ -754,13 +789,124 @@ Namespace Abovo
 
                 Dim ListItems As List(Of String) = RepositaryItems.GetList(RepID, ModelID)
 
-                If AddBlankFirstItem Then ListItems.Insert(0, "<Blank>")
-                RenderedListItems = ListItems
-                Properties.Items.AddRange(ListItems)
-                CurrList = ListItems
+                If IsOrdinalYearRepository(RepID) Then
+                    InitialiseOrdinalYearItems(ListItems)
+                Else
+                    If AddBlankFirstItem Then ListItems.Insert(0, "<Blank>")
+                    RenderedListItems = ListItems
+                    Properties.Items.AddRange(ListItems)
+                    CurrList = ListItems
+                End If
 
                 CommonItems()
 
+            End Sub
+
+            Private Shared Function IsOrdinalYearRepository(ByVal repositoryID As String) As Boolean
+                Return String.Equals(repositoryID, "Rep_OrdinalYears", StringComparison.OrdinalIgnoreCase) OrElse
+                       String.Equals(repositoryID, "Rep_OrdinalYearsLess1", StringComparison.OrdinalIgnoreCase)
+            End Function
+
+            Private Sub InitialiseOrdinalYearItems(ByVal storedValues As IEnumerable(Of String))
+                OrdinalYearItems =
+                    New Dictionary(Of String, OrdinalYearComboItem)(StringComparer.OrdinalIgnoreCase)
+
+                Dim periodByOrdinal As Dictionary(Of String, String) = LoadOrdinalYearPeriods()
+                Dim propertyItems As New List(Of Object)
+                Dim displayItems As New List(Of String)
+
+                If AddBlankFirstItem Then
+                    propertyItems.Add("<Blank>")
+                    displayItems.Add("<Blank>")
+                End If
+
+                For Each storedValue As String In storedValues
+                    Dim ordinal As String = If(storedValue, String.Empty).Trim()
+                    If ordinal.Length = 0 Then Continue For
+
+                    Dim period As String = Nothing
+                    Dim displayText As String = ordinal
+                    If periodByOrdinal.TryGetValue(ordinal, period) AndAlso
+                       Not String.IsNullOrWhiteSpace(period) Then
+                        displayText = ordinal & " - " & ShortenYearDescription(period)
+                    End If
+
+                    Dim item As New OrdinalYearComboItem(ordinal, displayText)
+                    OrdinalYearItems(ordinal) = item
+                    propertyItems.Add(item)
+                    displayItems.Add(displayText)
+                Next
+
+                RenderedListItems = displayItems
+                CurrList = displayItems
+                Properties.Items.AddRange(propertyItems.ToArray())
+                AddHandler Properties.CustomDisplayText, AddressOf OrdinalYear_CustomDisplayText
+                OrdinalYearDisplayHandlerAttached = True
+            End Sub
+
+            Private Function LoadOrdinalYearPeriods() As Dictionary(Of String, String)
+                Dim result As New Dictionary(Of String, String)(StringComparer.OrdinalIgnoreCase)
+
+                If FileManager.ExcelModels Is Nothing OrElse
+                   ModelID < 0 OrElse ModelID >= FileManager.ExcelModels.Length OrElse
+                   FileManager.ExcelModels(ModelID) Is Nothing OrElse
+                   FileManager.ExcelModels(ModelID).WB Is Nothing Then
+                    Return result
+                End If
+
+                Dim yearTable As DevExpress.Spreadsheet.Worksheet = Nothing
+                For Each worksheet As DevExpress.Spreadsheet.Worksheet In FileManager.ExcelModels(ModelID).WB.Worksheets
+                    If String.Equals(
+                        worksheet.Name,
+                        "Hidden - Year Table",
+                        StringComparison.OrdinalIgnoreCase) Then
+                        yearTable = worksheet
+                        Exit For
+                    End If
+                Next
+
+                If yearTable Is Nothing Then Return result
+
+                Dim usedRange As DevExpress.Spreadsheet.CellRange = yearTable.GetUsedRange()
+                For rowIndex As Integer = usedRange.TopRowIndex To usedRange.BottomRowIndex
+                    Dim ordinal As String = yearTable.Cells(rowIndex, 6).DisplayText.Trim()
+                    Dim period As String = yearTable.Cells(rowIndex, 8).DisplayText.Trim()
+                    If ordinal.Length > 0 AndAlso period.Length > 0 Then
+                        result(ordinal) = period
+                    End If
+                Next
+
+                Return result
+            End Function
+
+            Private Shared Function ShortenYearDescription(ByVal fullDescription As String) As String
+                Dim parts As String() = If(fullDescription, String.Empty).Trim().Split("/"c)
+                If parts.Length <> 2 Then Return If(fullDescription, String.Empty).Trim()
+
+                Dim firstYear As String = parts(0).Trim()
+                Dim secondYear As String = parts(1).Trim()
+                If firstYear.Length > 2 Then firstYear = firstYear.Substring(firstYear.Length - 2)
+                If secondYear.Length > 2 Then secondYear = secondYear.Substring(secondYear.Length - 2)
+
+                Return firstYear & "/" & secondYear
+            End Function
+
+            Private Sub OrdinalYear_CustomDisplayText(
+                ByVal sender As Object,
+                ByVal e As DevExpress.XtraEditors.Controls.CustomDisplayTextEventArgs)
+
+                If OrdinalYearItems Is Nothing OrElse e.Value Is Nothing Then Return
+
+                Dim item As OrdinalYearComboItem = TryCast(e.Value, OrdinalYearComboItem)
+                If item IsNot Nothing Then
+                    e.DisplayText = item.DisplayText
+                    Return
+                End If
+
+                Dim ordinal As String = Convert.ToString(e.Value).Trim()
+                If OrdinalYearItems.TryGetValue(ordinal, item) Then
+                    e.DisplayText = item.DisplayText
+                End If
             End Sub
             Sub ProcesDefValue()
 
@@ -802,6 +948,12 @@ Namespace Abovo
             End Property
             Public Sub ClearList()
 
+                If OrdinalYearDisplayHandlerAttached Then
+                    RemoveHandler Properties.CustomDisplayText, AddressOf OrdinalYear_CustomDisplayText
+                    OrdinalYearDisplayHandlerAttached = False
+                End If
+
+                OrdinalYearItems = Nothing
                 Properties.Items.Clear()
 
             End Sub

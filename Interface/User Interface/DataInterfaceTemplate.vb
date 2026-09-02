@@ -3991,6 +3991,7 @@ SkipRefresh:
                                     ReDim Preserve InHeaderCombos(InHeaderCombosCount)
 
                                     Dim EditControl As New AbovoDEHeaderComboBox
+                                    EditControl.ModelID = ModelID
                                     EditControl.AddBlankFirstItem = True
                                     EditControl.InitialiseStandard(OriginColTag.EditRepNRHereComboRepository)
                                     EditControl.EditValue = OriginColTag.EditRepNRHereInitialValue
@@ -5380,6 +5381,7 @@ SkipRefresh:
                         If UCase(ColTag.EditRepNRHereEditor) = "COMBO" Then
 
                             Dim EditControl As New AbovoDEHeaderComboBox
+                            EditControl.ModelID = ModelID
                             EditControl.AddBlankFirstItem = True
                             EditControl.InitialiseStandard(ColTag.EditRepNRHereComboRepository)
                             EditControl.EditValue = ColTag.EditRepNRHereInitialValue
@@ -12602,6 +12604,10 @@ SectionSelect:
     End Function
 
     Private Shared Function NormalizeInColumnEditorValue(ByVal value As Object) As Object
+
+        Dim ordinalYearItem As AbovoExtendedDEControls.OrdinalYearComboItem =
+            TryCast(value, AbovoExtendedDEControls.OrdinalYearComboItem)
+        If ordinalYearItem IsNot Nothing Then Return ordinalYearItem.StoredValue
 
         Dim textValue As String = TryCast(value, String)
 
