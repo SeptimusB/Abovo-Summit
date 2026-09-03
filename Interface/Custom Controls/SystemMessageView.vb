@@ -39,7 +39,14 @@ Namespace Abovo
             Try
                 ViewItems.RaiseListChangedEvents = False
                 ViewItems.Clear()
-                For Each item As SystemMessageRecord In MessageManager.SnapshotItems()
+                Dim messages As List(Of SystemMessageRecord) = MessageManager.SnapshotItems()
+                messages.Sort(
+                    Function(left As SystemMessageRecord, right As SystemMessageRecord) As Integer
+                        Dim timeComparison As Integer = right.TimeStamp.CompareTo(left.TimeStamp)
+                        If timeComparison <> 0 Then Return timeComparison
+                        Return right.EventID.CompareTo(left.EventID)
+                    End Function)
+                For Each item As SystemMessageRecord In messages
                     ViewItems.Add(item)
                 Next
             Finally
@@ -47,8 +54,10 @@ Namespace Abovo
                 ViewItems.ResetBindings()
                 MessageGridView.EndDataUpdate()
             End Try
+            ConfigureColumns()
             StatusLabel.Text = ViewItems.Count.ToString() & " message" & If(ViewItems.Count = 1, String.Empty, "s")
-            If MessageGridView.RowCount > 0 Then MessageGridView.MoveLast()
+            MessageGridView.BestFitColumns()
+            If MessageGridView.RowCount > 0 Then MessageGridView.MoveFirst()
         End Sub
 
         Protected Overrides Sub Dispose(ByVal disposing As Boolean)
@@ -95,7 +104,7 @@ Namespace Abovo
             MessageGridView.OptionsView.ShowGroupPanel = False
             MessageGridView.OptionsView.ShowIndicator = False
             MessageGridView.OptionsView.RowAutoHeight = True
-            MessageGridView.OptionsView.ColumnAutoWidth = False
+            MessageGridView.OptionsView.ColumnAutoWidth = True
             MessageGridView.OptionsView.EnableAppearanceEvenRow = True
             MessageGridView.Appearance.EvenRow.BackColor = Color.FromArgb(248, 250, 252)
             MessageGridView.Appearance.Row.Font = New Font("Segoe UI", 9.0F)
@@ -109,26 +118,36 @@ Namespace Abovo
         End Sub
 
         Private Sub ConfigureColumns()
-            HideColumn("EventID")
-            HideColumn("Severity")
+            HideColumn("SeverityText")
+            HideColumn("Location")
+            HideColumn("UserName")
+            SetColumn("EventID", "ID", 50, 0)
             Dim timeColumn = MessageGridView.Columns.ColumnByFieldName("TimeStamp")
             If timeColumn IsNot Nothing Then
                 timeColumn.Caption = "Time"
                 timeColumn.DisplayFormat.FormatType = FormatType.DateTime
-                timeColumn.DisplayFormat.FormatString = "g"
-                timeColumn.Width = 125
-                timeColumn.VisibleIndex = 0
+                timeColumn.DisplayFormat.FormatString = "HH:mm:ss"
+                timeColumn.Width = 75
+                timeColumn.VisibleIndex = 1
+                timeColumn.SortOrder = DevExpress.Data.ColumnSortOrder.Descending
+                timeColumn.SortIndex = 0
             End If
-            SetColumn("SeverityText", "Type", 75, 1)
-            SetColumn("Message", "Message", 300, 2)
-            SetColumn("Source", "Source", 120, 3)
-            SetColumn("Location", "Location", 100, 4)
-            SetColumn("UserName", "User", 90, 5)
+            Dim eventColumn = MessageGridView.Columns.ColumnByFieldName("EventID")
+            If eventColumn IsNot Nothing Then
+                eventColumn.SortOrder = DevExpress.Data.ColumnSortOrder.Descending
+                eventColumn.SortIndex = 1
+            End If
+            SetColumn("Severity", "Severity", 85, 2)
+            SetColumn("Message", "Message", 300, 3)
+            SetColumn("Source", "Source", 120, 4)
         End Sub
 
         Private Sub HideColumn(ByVal fieldName As String)
             Dim column = MessageGridView.Columns.ColumnByFieldName(fieldName)
-            If column IsNot Nothing Then column.Visible = False
+            If column Is Nothing Then Return
+            column.Visible = False
+            column.VisibleIndex = -1
+            column.OptionsColumn.ShowInCustomizationForm = False
         End Sub
 
         Private Sub SetColumn(ByVal fieldName As String,

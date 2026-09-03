@@ -435,6 +435,7 @@ Partial Class GroupInterfaceTemplate
         Me.AccordionControlSum.Controls.Add(Me.AccordionContentContainerSystemMessages)
         Me.AccordionControlSum.Dock = System.Windows.Forms.DockStyle.Fill
         Me.AccordionControlSum.Elements.AddRange(New DevExpress.XtraBars.Navigation.AccordionControlElement() {Me.AccordionControlElementBPStat, Me.AccordionControlElementDev, Me.AccordionControlElementFund, Me.AccordionControlElementSystemMessages, Me.AccordionControlElementFile, Me.AccordionControlElementAbbHelp})
+        Me.AccordionControlSum.ExpandElementMode = DevExpress.XtraBars.Navigation.ExpandElementMode.Multiple
         Me.AccordionControlSum.Location = New System.Drawing.Point(0, 0)
         Me.AccordionControlSum.Margin = New System.Windows.Forms.Padding(2, 2, 2, 2)
         Me.AccordionControlSum.Name = "AccordionControlSum"
@@ -448,7 +449,7 @@ Partial Class GroupInterfaceTemplate
         Me.AccordionContentContainer1.Controls.Add(Me.WebBrowserBPSum)
         Me.AccordionContentContainer1.Margin = New System.Windows.Forms.Padding(2, 2, 2, 2)
         Me.AccordionContentContainer1.Name = "AccordionContentContainer1"
-        Me.AccordionContentContainer1.Size = New System.Drawing.Size(357, 229)
+        Me.AccordionContentContainer1.Size = New System.Drawing.Size(357, 286)
         Me.AccordionContentContainer1.TabIndex = 2
         '
         'WebBrowserBPSum

@@ -149,9 +149,9 @@ NextWS:
 
 
             WBCalcMinDirty = False
-            RaiseEvent CalculationCompleted(Me, EventArgs.Empty)
 
             RefreshObjsData()
+            RaiseEvent CalculationCompleted(Me, EventArgs.Empty)
 
         End Sub
 

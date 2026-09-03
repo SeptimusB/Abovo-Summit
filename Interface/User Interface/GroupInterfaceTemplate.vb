@@ -59,7 +59,6 @@ Public Class GroupInterfaceTemplate
     Private SidebarMessageView As SystemMessageView
     Private SidebarRefreshTimer As Timer
     Private SidebarEventsAttached As Boolean
-    Private SidebarDockWidth As Integer = 560
     Public Sub New()
 
         ' This call is required by the designer.
@@ -182,7 +181,7 @@ Public Class GroupInterfaceTemplate
 
     End Sub
 
-    Public Sub RefreshSummaryData()
+    Public Sub RefreshSummaryData(Optional ByVal refreshReason As String = "Direct")
 
         If IsDisposed OrElse Disposing OrElse
            ExcelModels Is Nothing OrElse
@@ -207,6 +206,13 @@ Public Class GroupInterfaceTemplate
         AccordionControlElementFund.Visible = HasFundingSummary
         AccordionControlElementDev.Visible = HasDevelopmentSummary
 
+        Debug.WriteLine("GroupInterfaceTemplate sidebar refresh started. ModelID=" &
+                        MyModelID.ToString() & ", reason=" & refreshReason)
+
+        If HasBPSummary OrElse HasFundingSummary OrElse HasDevelopmentSummary Then
+            CalculateSidebarWorkbook(Workbook, refreshReason)
+        End If
+
         If HasBPSummary Then
             Dim DataRange As DevExpress.Spreadsheet.CellRange =
                 Workbook.Worksheets("BP Dashboard").Range("H6:L23")
@@ -214,8 +220,8 @@ Public Class GroupInterfaceTemplate
             Dim DLList As New List(Of DevExpress.Spreadsheet.CellRange)
             DLList.Add(DataRange)
 
-            WebBrowserBPSum.DocumentText =
-                ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(DLList)
+            WebBrowserBPSum.DocumentText = CompactSummaryHtml(
+                ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(DLList))
         Else
             WebBrowserBPSum.DocumentText =
                 "<html><body><p>" & ModelDescription &
@@ -232,8 +238,8 @@ Public Class GroupInterfaceTemplate
                 Workbook.Worksheets("Funding Assumptions").Range("J3:N5")
             FDSList.Add(DataRange)
 
-            WebBrowserFundSum.DocumentText =
-                ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(FDSList)
+            WebBrowserFundSum.DocumentText = CompactSummaryHtml(
+                ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(FDSList))
         Else
             WebBrowserFundSum.DocumentText =
                 "<html><body><p>No funding summary is defined for this " &
@@ -266,8 +272,63 @@ Public Class GroupInterfaceTemplate
 
         WebBrowserFile.DocumentText = CreateSidebarHtml(StrFileDescription)
         If SidebarMessageView IsNot Nothing Then SidebarMessageView.RefreshMessages()
+        DockPanelDetail.Text = "Summary — updated " & Now().ToString("HH:mm:ss")
+        Debug.WriteLine("GroupInterfaceTemplate sidebar refresh completed. ModelID=" &
+                        MyModelID.ToString() & ", reason=" & refreshReason)
 
     End Sub
+
+    Private Sub CalculateSidebarWorkbook(ByVal workbook As DevExpress.Spreadsheet.IWorkbook,
+                                         ByVal refreshReason As String)
+        If workbook Is Nothing Then Return
+        Dim previousEngine As DevExpress.Spreadsheet.CalculationEngineType =
+            workbook.Options.CalculationEngineType
+        Dim previousCursor As Cursor = Me.Cursor
+        Dim previousUseWaitCursor As Boolean = Me.UseWaitCursor
+        Dim calculationTimer As Stopwatch = Stopwatch.StartNew()
+        Try
+            Me.UseWaitCursor = True
+            Me.Cursor = Cursors.WaitCursor
+            System.Windows.Forms.Cursor.Current = Cursors.WaitCursor
+            workbook.Options.CalculationEngineType =
+                DevExpress.Spreadsheet.CalculationEngineType.Recursive
+            workbook.CalculateFull()
+            Debug.WriteLine("GroupInterfaceTemplate sidebar workbook calculated. ModelID=" &
+                            MyModelID.ToString() & ", reason=" & refreshReason &
+                            ", elapsedMs=" & calculationTimer.ElapsedMilliseconds.ToString())
+        Catch ex As Exception
+            Debug.WriteLine("GroupInterfaceTemplate sidebar workbook calculation failed. ModelID=" &
+                            MyModelID.ToString() & ", error=" & ex.ToString())
+            SystemMessageManager.Publish(MyModelID,
+                "The sidebar summary could not be recalculated: " & ex.Message,
+                SystemMessageSeverity.Warning,
+                "Summary refresh")
+        Finally
+            calculationTimer.Stop()
+            Try
+                workbook.Options.CalculationEngineType = previousEngine
+            Finally
+                Me.UseWaitCursor = previousUseWaitCursor
+                Me.Cursor = previousCursor
+                System.Windows.Forms.Cursor.Current = previousCursor
+            End Try
+        End Try
+    End Sub
+
+    Private Shared Function CompactSummaryHtml(ByVal sourceHtml As String) As String
+        If String.IsNullOrWhiteSpace(sourceHtml) Then Return sourceHtml
+        Const compactStyle As String =
+            "<style type='text/css'>" &
+            "html,body{margin:0!important;padding:2px!important;font-size:8pt!important;}" &
+            "table{width:auto!important;margin:0!important;border-collapse:collapse!important;}" &
+            "tr{height:18px!important;min-height:18px!important;}" &
+            "td,th{height:18px!important;min-height:0!important;padding:1px 3px!important;" &
+            "font-size:8pt!important;line-height:1.05!important;white-space:nowrap!important;}" &
+            "</style>"
+        Dim headEnd As Integer = sourceHtml.IndexOf("</head>", StringComparison.OrdinalIgnoreCase)
+        If headEnd >= 0 Then Return sourceHtml.Insert(headEnd, compactStyle)
+        Return compactStyle & sourceHtml
+    End Function
 
     Private Sub InitialiseRightSidebar()
         SidebarMessageView = New SystemMessageView(MyModelID) With {.Dock = DockStyle.Fill}
@@ -324,7 +385,7 @@ Public Class GroupInterfaceTemplate
 
     Private Sub SidebarRefreshTimer_Tick(ByVal sender As Object, ByVal e As EventArgs)
         SidebarRefreshTimer.Stop()
-        RefreshSummaryData()
+        RefreshSummaryData("Automatic")
     End Sub
 
     Private Sub DockPanelDetail_CustomButtonClick(
@@ -333,30 +394,22 @@ Public Class GroupInterfaceTemplate
 
         If DockPanelDetail.CustomHeaderButtons.Count > 1 AndAlso
            Object.ReferenceEquals(e.Button, DockPanelDetail.CustomHeaderButtons(1)) Then
-            If DockPanelDetail.Width > 0 Then SidebarDockWidth = DockPanelDetail.Width
             DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide
+            BeginInvoke(New MethodInvoker(
+                Sub()
+                    If IsDisposed OrElse Disposing Then Return
+                    If DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide Then
+                        DockPanelDetail.HideSliding()
+                    End If
+                End Sub))
             Return
         End If
 
-        RefreshSummaryData()
+        RefreshSummaryData("Manual")
         SystemMessageManager.Publish(MyModelID,
             "The sidebar summary was refreshed.",
             SystemMessageSeverity.Success,
             "Summary")
-    End Sub
-
-    Private Sub DockPanelDetail_Expanding(
-        ByVal sender As Object,
-        ByVal e As DevExpress.XtraBars.Docking.DockPanelCancelEventArgs) Handles DockPanelDetail.Expanding
-
-        If DockPanelDetail.Visibility <> DevExpress.XtraBars.Docking.DockVisibility.AutoHide Then Return
-        e.Cancel = True
-        BeginInvoke(New MethodInvoker(
-            Sub()
-                If IsDisposed OrElse Disposing Then Return
-                DockPanelDetail.OriginalSize = New Size(Math.Max(320, SidebarDockWidth), DockPanelDetail.OriginalSize.Height)
-                DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.Visible
-            End Sub))
     End Sub
 
     Private Sub SidebarBrowser_Navigating(ByVal sender As Object,
@@ -379,11 +432,11 @@ Public Class GroupInterfaceTemplate
     End Function
 
     Private Function CreateSidebarHtml(ByVal body As String) As String
-        Dim fontSize As Integer = Math.Max(10, CInt(ScaleUnits * 1.3F))
+        Dim fontSize As Integer = Math.Max(8, CInt(ScaleUnits * 0.85F))
         Return "<!doctype html><html><head><meta charset='utf-8'><style>" &
             "body{font-family:Segoe UI,Arial,sans-serif;font-size:" & fontSize.ToString() &
-            "px;color:#333;margin:12px;background:#fff}h2{color:#075da8;font-size:1.25em;margin:0 0 12px}" &
-            "a{color:#075da8}dl{display:grid;grid-template-columns:minmax(100px,35%) 1fr;gap:7px 10px}" &
+            "px;color:#333;margin:6px;background:#fff;line-height:1.15}h2{color:#075da8;font-size:1.15em;margin:0 0 6px}" &
+            "a{color:#075da8}p{margin:3px 0}dl{display:grid;grid-template-columns:minmax(85px,35%) 1fr;gap:3px 6px;margin:4px 0}" &
             "dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}</style></head><body>" & body & "</body></html>"
     End Function
 
