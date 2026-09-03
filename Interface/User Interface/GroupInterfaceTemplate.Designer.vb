@@ -22,6 +22,8 @@ Partial Class GroupInterfaceTemplate
         Me.components = New System.ComponentModel.Container()
         Dim CustomHeaderButtonImageOptions2 As DevExpress.XtraBars.Docking.CustomHeaderButtonImageOptions = New DevExpress.XtraBars.Docking.CustomHeaderButtonImageOptions()
         Dim SerializableAppearanceObject2 As DevExpress.Utils.SerializableAppearanceObject = New DevExpress.Utils.SerializableAppearanceObject()
+        Dim CustomHeaderButtonImageOptions3 As DevExpress.XtraBars.Docking.CustomHeaderButtonImageOptions = New DevExpress.XtraBars.Docking.CustomHeaderButtonImageOptions()
+        Dim SerializableAppearanceObject3 As DevExpress.Utils.SerializableAppearanceObject = New DevExpress.Utils.SerializableAppearanceObject()
         Dim CustomHeaderButtonImageOptions1 As DevExpress.XtraBars.Docking.CustomHeaderButtonImageOptions = New DevExpress.XtraBars.Docking.CustomHeaderButtonImageOptions()
         Dim SerializableAppearanceObject1 As DevExpress.Utils.SerializableAppearanceObject = New DevExpress.Utils.SerializableAppearanceObject()
         Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(GroupInterfaceTemplate))
@@ -50,11 +52,13 @@ Partial Class GroupInterfaceTemplate
         Me.WebBrowserAboutHelp = New System.Windows.Forms.WebBrowser()
         Me.AccordionContentContainer5 = New DevExpress.XtraBars.Navigation.AccordionContentContainer()
         Me.WebBrowserFile = New System.Windows.Forms.WebBrowser()
+        Me.AccordionContentContainerSystemMessages = New DevExpress.XtraBars.Navigation.AccordionContentContainer()
         Me.AccordionControlElementBPStat = New DevExpress.XtraBars.Navigation.AccordionControlElement()
         Me.AccordionControlElementDev = New DevExpress.XtraBars.Navigation.AccordionControlElement()
         Me.AccordionControlElementFund = New DevExpress.XtraBars.Navigation.AccordionControlElement()
         Me.AccordionControlElementAbbHelp = New DevExpress.XtraBars.Navigation.AccordionControlElement()
         Me.AccordionControlElementFile = New DevExpress.XtraBars.Navigation.AccordionControlElement()
+        Me.AccordionControlElementSystemMessages = New DevExpress.XtraBars.Navigation.AccordionControlElement()
         Me.hideContainerLeft = New DevExpress.XtraBars.Docking.AutoHideContainer()
         Me.DockPanelNavigator = New DevExpress.XtraBars.Docking.DockPanel()
         Me.DockPanelNavigator_Container = New DevExpress.XtraBars.Docking.ControlContainer()
@@ -96,6 +100,7 @@ Partial Class GroupInterfaceTemplate
         Me.AccordionContentContainer3.SuspendLayout()
         Me.AccordionContentContainer4.SuspendLayout()
         Me.AccordionContentContainer5.SuspendLayout()
+        Me.AccordionContentContainerSystemMessages.SuspendLayout()
         Me.hideContainerLeft.SuspendLayout()
         Me.DockPanelNavigator.SuspendLayout()
         Me.DockPanelNewNavigator.SuspendLayout()
@@ -363,18 +368,17 @@ Partial Class GroupInterfaceTemplate
         '
         'DockManagerAssumptions
         '
-        Me.DockManagerAssumptions.AutoHideContainers.AddRange(New DevExpress.XtraBars.Docking.AutoHideContainer() {Me.hideContainerRightDetail, Me.hideContainerLeft})
+        Me.DockManagerAssumptions.AutoHideContainers.AddRange(New DevExpress.XtraBars.Docking.AutoHideContainer() {Me.hideContainerLeft})
         Me.DockManagerAssumptions.Controller = Me.BarAndDockingControllerAssumptions
         Me.DockManagerAssumptions.Form = Me
         Me.DockManagerAssumptions.MenuManager = Me.BarManagerAssumptions
-        Me.DockManagerAssumptions.RootPanels.AddRange(New DevExpress.XtraBars.Docking.DockPanel() {Me.DockPanelNewNavigator})
+        Me.DockManagerAssumptions.RootPanels.AddRange(New DevExpress.XtraBars.Docking.DockPanel() {Me.DockPanelNewNavigator, Me.DockPanelDetail})
         Me.DockManagerAssumptions.Style = DevExpress.XtraBars.Docking2010.Views.DockingViewStyle.Light
         Me.DockManagerAssumptions.TopZIndexControls.AddRange(New String() {"DevExpress.XtraBars.BarDockControl", "DevExpress.XtraBars.StandaloneBarDockControl", "System.Windows.Forms.MenuStrip", "System.Windows.Forms.StatusStrip", "System.Windows.Forms.StatusBar", "DevExpress.XtraBars.Ribbon.RibbonStatusBar", "DevExpress.XtraBars.Ribbon.RibbonControl", "DevExpress.XtraBars.Navigation.OfficeNavigationBar", "DevExpress.XtraBars.Navigation.TileNavPane", "DevExpress.XtraBars.TabFormControl", "DevExpress.XtraBars.FluentDesignSystem.FluentDesignFormControl", "DevExpress.XtraBars.ToolbarForm.ToolbarFormControl"})
         '
         'hideContainerRightDetail
         '
         Me.hideContainerRightDetail.BackColor = System.Drawing.Color.White
-        Me.hideContainerRightDetail.Controls.Add(Me.DockPanelDetail)
         Me.hideContainerRightDetail.Dock = System.Windows.Forms.DockStyle.Right
         Me.hideContainerRightDetail.Font = New System.Drawing.Font("Segoe UI", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
         Me.hideContainerRightDetail.Location = New System.Drawing.Point(1043, 77)
@@ -386,7 +390,8 @@ Partial Class GroupInterfaceTemplate
         '
         Me.DockPanelDetail.Controls.Add(Me.DockPanelDetail_Container)
         CustomHeaderButtonImageOptions2.SvgImage = Global.My.Resources.Resources.changeview
-        Me.DockPanelDetail.CustomHeaderButtons.AddRange(New DevExpress.XtraBars.Docking2010.IButton() {New DevExpress.XtraBars.Docking.CustomHeaderButton("", False, CustomHeaderButtonImageOptions2, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Refresh summary info", -1, True, Nothing, True, False, True, SerializableAppearanceObject2, "Refresh", -1)})
+        CustomHeaderButtonImageOptions3.SvgImage = Global.My.Resources.Resources.close
+        Me.DockPanelDetail.CustomHeaderButtons.AddRange(New DevExpress.XtraBars.Docking2010.IButton() {New DevExpress.XtraBars.Docking.CustomHeaderButton("", False, CustomHeaderButtonImageOptions2, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Refresh summary information", -1, True, Nothing, True, False, True, SerializableAppearanceObject2, "Refresh", -1), New DevExpress.XtraBars.Docking.CustomHeaderButton("", False, CustomHeaderButtonImageOptions3, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Hide summary panel", -1, True, Nothing, True, False, True, SerializableAppearanceObject3, "Hide", -1)})
         Me.DockPanelDetail.Dock = DevExpress.XtraBars.Docking.DockingStyle.Right
         Me.DockPanelDetail.ID = New System.Guid("410689cc-e297-496b-bd9f-6bca8a7ce1c3")
         Me.DockPanelDetail.Location = New System.Drawing.Point(0, 0)
@@ -399,17 +404,17 @@ Partial Class GroupInterfaceTemplate
         Me.DockPanelDetail.Options.AllowDockTop = False
         Me.DockPanelDetail.Options.AllowFloating = False
         Me.DockPanelDetail.Options.FloatOnDblClick = False
-        Me.DockPanelDetail.Options.ResizeDirection = DevExpress.XtraBars.Docking.Helpers.ResizeDirection.None
+        Me.DockPanelDetail.Options.ResizeDirection = DevExpress.XtraBars.Docking.Helpers.ResizeDirection.All
         Me.DockPanelDetail.Options.ShowAutoHideButton = False
         Me.DockPanelDetail.Options.ShowCloseButton = False
         Me.DockPanelDetail.Options.ShowMaximizeButton = False
         Me.DockPanelDetail.Options.ShowMinimizeButton = False
-        Me.DockPanelDetail.OriginalSize = New System.Drawing.Size(592, 200)
+        Me.DockPanelDetail.OriginalSize = New System.Drawing.Size(560, 200)
         Me.DockPanelDetail.SavedDock = DevExpress.XtraBars.Docking.DockingStyle.Right
         Me.DockPanelDetail.SavedIndex = 0
-        Me.DockPanelDetail.Size = New System.Drawing.Size(377, 545)
+        Me.DockPanelDetail.Size = New System.Drawing.Size(560, 545)
         Me.DockPanelDetail.Text = "Summary"
-        Me.DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide
+        Me.DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.Visible
         '
         'DockPanelDetail_Container
         '
@@ -427,8 +432,9 @@ Partial Class GroupInterfaceTemplate
         Me.AccordionControlSum.Controls.Add(Me.AccordionContentContainer3)
         Me.AccordionControlSum.Controls.Add(Me.AccordionContentContainer4)
         Me.AccordionControlSum.Controls.Add(Me.AccordionContentContainer5)
+        Me.AccordionControlSum.Controls.Add(Me.AccordionContentContainerSystemMessages)
         Me.AccordionControlSum.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.AccordionControlSum.Elements.AddRange(New DevExpress.XtraBars.Navigation.AccordionControlElement() {Me.AccordionControlElementBPStat, Me.AccordionControlElementDev, Me.AccordionControlElementFund, Me.AccordionControlElementAbbHelp, Me.AccordionControlElementFile})
+        Me.AccordionControlSum.Elements.AddRange(New DevExpress.XtraBars.Navigation.AccordionControlElement() {Me.AccordionControlElementBPStat, Me.AccordionControlElementDev, Me.AccordionControlElementFund, Me.AccordionControlElementSystemMessages, Me.AccordionControlElementFile, Me.AccordionControlElementAbbHelp})
         Me.AccordionControlSum.Location = New System.Drawing.Point(0, 0)
         Me.AccordionControlSum.Margin = New System.Windows.Forms.Padding(2, 2, 2, 2)
         Me.AccordionControlSum.Name = "AccordionControlSum"
@@ -527,6 +533,13 @@ Partial Class GroupInterfaceTemplate
         Me.WebBrowserFile.Size = New System.Drawing.Size(357, 168)
         Me.WebBrowserFile.TabIndex = 3
         '
+        'AccordionContentContainerSystemMessages
+        '
+        Me.AccordionContentContainerSystemMessages.Margin = New System.Windows.Forms.Padding(2)
+        Me.AccordionContentContainerSystemMessages.Name = "AccordionContentContainerSystemMessages"
+        Me.AccordionContentContainerSystemMessages.Size = New System.Drawing.Size(540, 310)
+        Me.AccordionContentContainerSystemMessages.TabIndex = 8
+        '
         'AccordionControlElementBPStat
         '
         Me.AccordionControlElementBPStat.ContentContainer = Me.AccordionContentContainer1
@@ -562,7 +575,14 @@ Partial Class GroupInterfaceTemplate
         Me.AccordionControlElementFile.Expanded = True
         Me.AccordionControlElementFile.Name = "AccordionControlElementFile"
         Me.AccordionControlElementFile.Style = DevExpress.XtraBars.Navigation.ElementStyle.Item
-        Me.AccordionControlElementFile.Text = "ElementFile"
+        Me.AccordionControlElementFile.Text = "File Details"
+        '
+        'AccordionControlElementSystemMessages
+        '
+        Me.AccordionControlElementSystemMessages.ContentContainer = Me.AccordionContentContainerSystemMessages
+        Me.AccordionControlElementSystemMessages.Name = "AccordionControlElementSystemMessages"
+        Me.AccordionControlElementSystemMessages.Style = DevExpress.XtraBars.Navigation.ElementStyle.Item
+        Me.AccordionControlElementSystemMessages.Text = "System Messages"
         '
         'hideContainerLeft
         '
@@ -888,7 +908,7 @@ Partial Class GroupInterfaceTemplate
         Me.ClientSize = New System.Drawing.Size(1074, 604)
         Me.Controls.Add(Me.DockPanelNewNavigator)
         Me.Controls.Add(Me.hideContainerLeft)
-        Me.Controls.Add(Me.hideContainerRightDetail)
+        Me.Controls.Add(Me.DockPanelDetail)
         Me.Controls.Add(Me.barDockControlLeft)
         Me.Controls.Add(Me.barDockControlRight)
         Me.Controls.Add(Me.barDockControlBottom)
@@ -917,6 +937,7 @@ Partial Class GroupInterfaceTemplate
         Me.AccordionContentContainer3.ResumeLayout(False)
         Me.AccordionContentContainer4.ResumeLayout(False)
         Me.AccordionContentContainer5.ResumeLayout(False)
+        Me.AccordionContentContainerSystemMessages.ResumeLayout(False)
         Me.hideContainerLeft.ResumeLayout(False)
         Me.DockPanelNavigator.ResumeLayout(False)
         Me.DockPanelNewNavigator.ResumeLayout(False)
@@ -1002,4 +1023,6 @@ Partial Class GroupInterfaceTemplate
     Friend WithEvents AccordionContentContainer5 As DevExpress.XtraBars.Navigation.AccordionContentContainer
     Friend WithEvents WebBrowserFile As WebBrowser
     Friend WithEvents AccordionControlElementFile As DevExpress.XtraBars.Navigation.AccordionControlElement
+    Friend WithEvents AccordionContentContainerSystemMessages As DevExpress.XtraBars.Navigation.AccordionContentContainer
+    Friend WithEvents AccordionControlElementSystemMessages As DevExpress.XtraBars.Navigation.AccordionControlElement
 End Class

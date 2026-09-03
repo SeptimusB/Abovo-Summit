@@ -5,6 +5,8 @@ Imports DevExpress.CodeParser
 Namespace Abovo
     Public Class CalcEngine
 
+        Public Event CalculationCompleted As EventHandler
+
         Public ActiveWSs(-1) As DevExpress.Spreadsheet.Worksheet
         Public WBCalcDirty As Boolean = False
         Public WBCalcMinDirty As Boolean = False
@@ -147,6 +149,7 @@ NextWS:
 
 
             WBCalcMinDirty = False
+            RaiseEvent CalculationCompleted(Me, EventArgs.Empty)
 
             RefreshObjsData()
 
@@ -254,6 +257,7 @@ NextWS:
             WBCalcDirty = False
             WBCalcMinDirty = False
             RefreshObjsData()
+            RaiseEvent CalculationCompleted(Me, EventArgs.Empty)
 
         End Sub
         Public Sub CalcManual()

@@ -6,18 +6,35 @@ Namespace Abovo
         Private Shared ReadOnly SyncRoot As New Object()
         Public Shared ChangeLogEventID As Integer = -1
         Public Shared ChangeLog As DataTable
+        Public Shared Event EntryAdded As EventHandler(Of ChangeLogEntryAddedEventArgs)
 
         Public Shared Function AddChangeLogEvent(ByVal sentEvent As ChangeLogEvent) As Integer
+            Dim addedEvent As ChangeLogEvent
             SyncLock SyncRoot
                 If ChangeLog Is Nothing Then Initialise()
                 ChangeLogEventID += 1
+                sentEvent.EventID = ChangeLogEventID
                 ChangeLog.Rows.Add(New Object() {
                     ChangeLogEventID, sentEvent.TimeStamp, sentEvent.ModelID,
                     sentEvent.Description, sentEvent.WSName, sentEvent.CellAddress,
                     sentEvent.OriginalValue, sentEvent.ChangedValue, sentEvent.UserName,
                     sentEvent.Status, sentEvent.DataType, sentEvent.GroupID,
                     sentEvent.Operation})
-                Return ChangeLogEventID
+                addedEvent = sentEvent
+            End SyncLock
+
+            Try
+                RaiseEvent EntryAdded(Nothing, New ChangeLogEntryAddedEventArgs(addedEvent))
+            Catch
+                'A presentation subscriber must never make workbook logging fail.
+            End Try
+            Return addedEvent.EventID
+        End Function
+
+        Public Shared Function Snapshot() As DataTable
+            SyncLock SyncRoot
+                If ChangeLog Is Nothing Then Initialise()
+                Return ChangeLog.Copy()
             End SyncLock
         End Function
 
@@ -40,6 +57,16 @@ Namespace Abovo
                     New DataColumn("GroupID", GetType(Integer)),
                     New DataColumn("Operation", GetType(String))})
             End SyncLock
+        End Sub
+    End Class
+
+    Public NotInheritable Class ChangeLogEntryAddedEventArgs
+        Inherits EventArgs
+
+        Public ReadOnly Property Entry As ChangeLogEvent
+
+        Public Sub New(ByVal setEntry As ChangeLogEvent)
+            Entry = setEntry
         End Sub
     End Class
 

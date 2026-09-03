@@ -16,7 +16,7 @@ Namespace Abovo
         Public Shared WorkMode As String = "INTERFACE"
         Public Shared ReadOnly Property IsDev As Boolean = True
         Public Shared ReadOnly Property MaxGridHeight As Integer = CInt(Screen.PrimaryScreen.Bounds.Height * 0.7)
-        Public Shared ReadOnly Property DecVersionNumber As Decimal = 1.23D
+        Public Shared ReadOnly Property DecVersionNumber As Decimal = 1.25D
         Public Shared ReadOnly Property AppTitle As String = "abovo summit"
         Public Shared Property DefaultLrgFontSize As Integer = 12
         Public Shared Property DefaultMediumFontSize As Integer = 10
@@ -79,6 +79,7 @@ Namespace Abovo
             DefaultSmallFontSize = CInt(DefaultLrgFontSize * 0.55)
             MasterChangeLog.Initialise()
             MasterChangeLog.AddChangeLogEvent(New ChangeLogEvent With {
+                .ModelID = -1,
                 .Description = "Abovo Summit opened",
                 .WSName = "System Message",
                 .CellAddress = "",
@@ -156,6 +157,20 @@ Namespace Abovo
         Public Shared Sub WriteLog(strEntry As String, Optional ByVal strSource As String = "")
 
             SystemLogText += strEntry & ", " & strSource & ", " & Now().ToString & vbLf
+            Dim status As Integer = 6
+            If strEntry.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0 Then
+                status = 3
+            ElseIf strEntry.StartsWith("complete", StringComparison.OrdinalIgnoreCase) Then
+                status = 1
+            End If
+            MasterChangeLog.AddChangeLogEvent(New ChangeLogEvent With {
+                .ModelID = -1,
+                .Description = strEntry,
+                .WSName = If(String.IsNullOrWhiteSpace(strSource), "System", strSource),
+                .TimeStamp = Now(),
+                .UserName = Environment.UserName,
+                .Status = status,
+                .Operation = "LegacyLog"})
 
         End Sub
         Public Shared Function ConvertToStringNum(stPassed As String) As String

@@ -488,6 +488,9 @@
     <Compile Include="Interface\Custom Controls\HistoryManagerV2.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Interface\Custom Controls\SystemMessageView.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Interface\Custom Controls\ModelPostingComboBox.vb">
       <SubType>Component</SubType>
     </Compile>
@@ -586,6 +589,7 @@
     <Compile Include="Services\CustomFormPainter.vb" />
     <Compile Include="Services\DataService\ChangeLogModels.vb" />
     <Compile Include="Services\DataService\ChangeManagerV2.vb" />
+    <Compile Include="Services\SystemMessageManager.vb" />
     <Compile Include="Services\DataService\RDSManager.vb" />
     <Compile Include="Services\DataService\DataClasses\AssumptionsCollection.vb" />
     <Compile Include="Services\DataService\DataClasses\BPStockCollection.vb" />

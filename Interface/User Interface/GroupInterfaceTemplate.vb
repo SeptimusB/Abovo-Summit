@@ -22,6 +22,8 @@ Imports DevExpress.XtraLayout
 Imports DevExpress.XtraPrinting
 Imports DevExpress.XtraRichEdit.Import.Html
 Imports Microsoft.VisualBasic.Devices
+Imports System.Diagnostics
+Imports System.Net
 
 Public Class GroupInterfaceTemplate
 
@@ -54,6 +56,10 @@ Public Class GroupInterfaceTemplate
     Private MyColourSwatch As Color
     Private OpenGroupID As Integer
     Private InterfaceMode As String
+    Private SidebarMessageView As SystemMessageView
+    Private SidebarRefreshTimer As Timer
+    Private SidebarEventsAttached As Boolean
+    Private SidebarDockWidth As Integer = 560
     Public Sub New()
 
         ' This call is required by the designer.
@@ -97,6 +103,7 @@ Public Class GroupInterfaceTemplate
         ApplyStructure(SetModelID, GSID)
 
         LoadDefaultInterface()
+        InitialiseRightSidebar()
         RefreshSummaryData()
 
     End Sub
@@ -175,7 +182,13 @@ Public Class GroupInterfaceTemplate
 
     End Sub
 
-    Sub RefreshSummaryData()
+    Public Sub RefreshSummaryData()
+
+        If IsDisposed OrElse Disposing OrElse
+           ExcelModels Is Nothing OrElse
+           MyModelID < 0 OrElse MyModelID >= ExcelModels.Length OrElse
+           ExcelModels(MyModelID) Is Nothing OrElse
+           ExcelModels(MyModelID).WB Is Nothing Then Return
 
         Dim Workbook As DevExpress.Spreadsheet.IWorkbook =
             ExcelModels(MyModelID).WB
@@ -186,7 +199,15 @@ Public Class GroupInterfaceTemplate
                "Abovo model",
                ModelProfile.DisplayName)
 
-        If Workbook.Worksheets.Contains("BP Dashboard") Then
+        Dim HasBPSummary As Boolean = Workbook.Worksheets.Contains("BP Dashboard")
+        Dim HasFundingSummary As Boolean = Workbook.Worksheets.Contains("Funding Assumptions")
+        Dim HasDevelopmentSummary As Boolean = Workbook.Worksheets.Contains("Development Dashboard")
+
+        AccordionControlElementBPStat.Visible = HasBPSummary
+        AccordionControlElementFund.Visible = HasFundingSummary
+        AccordionControlElementDev.Visible = HasDevelopmentSummary
+
+        If HasBPSummary Then
             Dim DataRange As DevExpress.Spreadsheet.CellRange =
                 Workbook.Worksheets("BP Dashboard").Range("H6:L23")
 
@@ -201,7 +222,7 @@ Public Class GroupInterfaceTemplate
                 " does not define a Business Plan dashboard summary.</p></body></html>"
         End If
 
-        If Workbook.Worksheets.Contains("Funding Assumptions") Then
+        If HasFundingSummary Then
             Dim FDSList As New List(Of DevExpress.Spreadsheet.CellRange)
             Dim DataRange As DevExpress.Spreadsheet.CellRange =
                 Workbook.Worksheets("Funding Assumptions").Range("E3:I5")
@@ -219,44 +240,180 @@ Public Class GroupInterfaceTemplate
                 ModelDescription & ".</p></body></html>"
         End If
 
-        'DataRange = ExcelModels(MyModelID).WB.Worksheets("Funding Assumptions").Range("E3:M5")
-        'WebBrowserBPSum.DocumentText = ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(DataRange)
-        WebBrowserAboutHelp.DocumentText = "<html><body><B>" +
-                                        "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.2) & "px'>abovo-summit version " & DecVersionNumber & " <br/></b>" +
-                                        "</p>" +
-                                        "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'>© 2015-" +
-                                        Year(Now()).ToString +
-                                        " Abovo Business Services Limited.</p>" +
-                                        "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'><Support <a href='https://www.abovo-consult.co.uk'>www.abovo-consult.co.uk</a>" +
-                                        "</p><p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'><a href='mailto:support@abovo-consult.co.uk'>support@abovo-consult.co.uk</a><br>" +
-                                        "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'>Built using Microsoft&reg; Excel&reg; © " +
-                                        "<a href='https://www.microsoft.com'>Microsoft</a> Inc. </p>" +
-                                        "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'>Portions © Developer Express Inc." +
-                                        "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'>Visit the <a href='goforum'>Abovo Forum</a>." +
-                                        "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'>View <a href='goforum'>System Log</a>." +
-                                        "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'>Portions © Developer Express Inc." +
-                                        "</body></html>"
+        WebBrowserAboutHelp.DocumentText = CreateSidebarHtml(
+            "<h2>abovo-summit version " & WebUtility.HtmlEncode(DecVersionNumber.ToString()) & "</h2>" &
+            "<p>© 2015-" & Year(Now()).ToString() & " Abovo Business Services Limited.</p>" &
+            "<p><a href='summit-help'>Open Summit Help</a></p>" &
+            "<p><a href='https://www.abovo-consult.co.uk'>www.abovo-consult.co.uk</a><br>" &
+            "<a href='mailto:support@abovo-consult.co.uk'>support@abovo-consult.co.uk</a></p>" &
+            "<p>Built using Microsoft&reg; Excel&reg; and DevExpress.</p>")
 
 
         Dim StrFileDescription As String
 
-        Dim MyFilePath = ExcelModels(MyModelID).FileName
-        Dim MyCompanyName = ExcelModels(MyModelID).WBStructure.CompanyName
+        Dim FileInformation As System.IO.FileInfo = ExcelModels(MyModelID).FileInfo
+        StrFileDescription = "<h2>Model details</h2>" &
+            "<dl><dt>Model type</dt><dd>" & Html(ModelDescription) & "</dd>" &
+            "<dt>Model name</dt><dd>" & Html(ExcelModels(MyModelID).WBStructure.CompanyName) & "</dd>" &
+            "<dt>Start date</dt><dd>" & Html(ExcelModels(MyModelID).WBStructure.StartDate) & "</dd>" &
+            "<dt>File</dt><dd>" & Html(ExcelModels(MyModelID).FileName) & "</dd>"
+        If FileInformation IsNot Nothing Then
+            StrFileDescription &= "<dt>Created</dt><dd>" & Html(FileInformation.CreationTime.ToString("g")) & "</dd>" &
+                "<dt>Last accessed</dt><dd>" & Html(FileInformation.LastAccessTime.ToString("g")) & "</dd>" &
+                "<dt>Size</dt><dd>" & Format((FileInformation.Length / 1000000), "###.##") & " MB</dd>"
+        End If
+        StrFileDescription &= "</dl>"
 
-        StrFileDescription = "<html><body><p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.5) & "px'>Model type: " & ModelDescription & "<br/>"
-        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.5) & "px'>Model name: " & ExcelModels(MyModelID).WBStructure.CompanyName & "<br/>"
-        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.5) & "px'>Start Date: " & ExcelModels(MyModelID).WBStructure.StartDate & " (<a href='editbpdate'>edit</a>)<br/>"
-        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.3) & "px'>File Name: " & ExcelModels(MyModelID).FileName & "<br/>"
-        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.3) & "px'>Opened: " & Now().ToString & "<br/>"
-
-        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.3) & "px'>Created: " & ExcelModels(MyModelID).FileInfo.CreationTime & "<br/>"
-        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.3) & "px'>Last Previous Access: " & ExcelModels(MyModelID).FileInfo.LastAccessTime & "<br/>"
-        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.3) & "px'>Size: " & Format((ExcelModels(MyModelID).FileInfo.Length / 1000000), "###.##") & "Mb<br/>"
-        StrFileDescription += "</body></html>"
-
-        WebBrowserFile.DocumentText = StrFileDescription
+        WebBrowserFile.DocumentText = CreateSidebarHtml(StrFileDescription)
+        If SidebarMessageView IsNot Nothing Then SidebarMessageView.RefreshMessages()
 
     End Sub
+
+    Private Sub InitialiseRightSidebar()
+        SidebarMessageView = New SystemMessageView(MyModelID) With {.Dock = DockStyle.Fill}
+        AccordionContentContainerSystemMessages.Controls.Add(SidebarMessageView)
+
+        For Each browser As WebBrowser In {WebBrowserBPSum, WebBrowserDevSum,
+                                           WebBrowserFundSum, WebBrowserAboutHelp,
+                                           WebBrowserFile}
+            browser.AllowWebBrowserDrop = False
+            browser.IsWebBrowserContextMenuEnabled = False
+            browser.ScriptErrorsSuppressed = True
+            browser.WebBrowserShortcutsEnabled = True
+            AddHandler browser.Navigating, AddressOf SidebarBrowser_Navigating
+        Next
+
+        SidebarRefreshTimer = New Timer With {.Interval = 400}
+        AddHandler SidebarRefreshTimer.Tick, AddressOf SidebarRefreshTimer_Tick
+        AddHandler DockPanelDetail.CustomButtonClick, AddressOf DockPanelDetail_CustomButtonClick
+
+        If ExcelModels(MyModelID).WBCalcEngine IsNot Nothing Then
+            AddHandler ExcelModels(MyModelID).WBCalcEngine.CalculationCompleted,
+                AddressOf WorkbookCalculationCompleted
+        End If
+        If ExcelModels(MyModelID).ChangeManager IsNot Nothing Then
+            AddHandler ExcelModels(MyModelID).ChangeManager.HistoryChanged,
+                AddressOf WorkbookHistoryChanged
+        End If
+        SidebarEventsAttached = True
+
+        SystemMessageManager.Publish(MyModelID,
+            MyName & " interface opened.",
+            SystemMessageSeverity.Information,
+            "Interface")
+    End Sub
+
+    Private Sub RequestSidebarRefresh()
+        If IsDisposed OrElse Disposing OrElse SidebarRefreshTimer Is Nothing Then Return
+        If InvokeRequired Then
+            BeginInvoke(New MethodInvoker(AddressOf RequestSidebarRefresh))
+            Return
+        End If
+        SidebarRefreshTimer.Stop()
+        SidebarRefreshTimer.Start()
+    End Sub
+
+    Private Sub WorkbookCalculationCompleted(ByVal sender As Object, ByVal e As EventArgs)
+        RequestSidebarRefresh()
+    End Sub
+
+    Private Sub WorkbookHistoryChanged(ByVal sender As Object,
+                                       ByVal e As ChangeHistoryChangedEventArgsV2)
+        RequestSidebarRefresh()
+    End Sub
+
+    Private Sub SidebarRefreshTimer_Tick(ByVal sender As Object, ByVal e As EventArgs)
+        SidebarRefreshTimer.Stop()
+        RefreshSummaryData()
+    End Sub
+
+    Private Sub DockPanelDetail_CustomButtonClick(
+        ByVal sender As Object,
+        ByVal e As DevExpress.XtraBars.Docking2010.ButtonEventArgs)
+
+        If DockPanelDetail.CustomHeaderButtons.Count > 1 AndAlso
+           Object.ReferenceEquals(e.Button, DockPanelDetail.CustomHeaderButtons(1)) Then
+            If DockPanelDetail.Width > 0 Then SidebarDockWidth = DockPanelDetail.Width
+            DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide
+            Return
+        End If
+
+        RefreshSummaryData()
+        SystemMessageManager.Publish(MyModelID,
+            "The sidebar summary was refreshed.",
+            SystemMessageSeverity.Success,
+            "Summary")
+    End Sub
+
+    Private Sub DockPanelDetail_Expanding(
+        ByVal sender As Object,
+        ByVal e As DevExpress.XtraBars.Docking.DockPanelCancelEventArgs) Handles DockPanelDetail.Expanding
+
+        If DockPanelDetail.Visibility <> DevExpress.XtraBars.Docking.DockVisibility.AutoHide Then Return
+        e.Cancel = True
+        BeginInvoke(New MethodInvoker(
+            Sub()
+                If IsDisposed OrElse Disposing Then Return
+                DockPanelDetail.OriginalSize = New Size(Math.Max(320, SidebarDockWidth), DockPanelDetail.OriginalSize.Height)
+                DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.Visible
+            End Sub))
+    End Sub
+
+    Private Sub SidebarBrowser_Navigating(ByVal sender As Object,
+                                          ByVal e As WebBrowserNavigatingEventArgs)
+        If e.Url Is Nothing OrElse e.Url.ToString().Equals("about:blank", StringComparison.OrdinalIgnoreCase) Then Return
+        e.Cancel = True
+        If e.Url.ToString().IndexOf("summit-help", StringComparison.OrdinalIgnoreCase) >= 0 Then
+            HelpManager.ShowHelpHome(Me)
+            Return
+        End If
+        If e.Url.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) OrElse
+           e.Url.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) OrElse
+           e.Url.Scheme.Equals(Uri.UriSchemeMailto, StringComparison.OrdinalIgnoreCase) Then
+            Process.Start(New ProcessStartInfo(e.Url.ToString()) With {.UseShellExecute = True})
+        End If
+    End Sub
+
+    Private Shared Function Html(ByVal value As Object) As String
+        Return WebUtility.HtmlEncode(If(value, String.Empty).ToString())
+    End Function
+
+    Private Function CreateSidebarHtml(ByVal body As String) As String
+        Dim fontSize As Integer = Math.Max(10, CInt(ScaleUnits * 1.3F))
+        Return "<!doctype html><html><head><meta charset='utf-8'><style>" &
+            "body{font-family:Segoe UI,Arial,sans-serif;font-size:" & fontSize.ToString() &
+            "px;color:#333;margin:12px;background:#fff}h2{color:#075da8;font-size:1.25em;margin:0 0 12px}" &
+            "a{color:#075da8}dl{display:grid;grid-template-columns:minmax(100px,35%) 1fr;gap:7px 10px}" &
+            "dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}</style></head><body>" & body & "</body></html>"
+    End Function
+
+    Private Sub GroupInterfaceTemplate_Disposed(ByVal sender As Object,
+                                                ByVal e As EventArgs) Handles Me.Disposed
+        If SidebarEventsAttached AndAlso
+           ExcelModels IsNot Nothing AndAlso
+           MyModelID >= 0 AndAlso MyModelID < ExcelModels.Length AndAlso
+           ExcelModels(MyModelID) IsNot Nothing Then
+            If ExcelModels(MyModelID).WBCalcEngine IsNot Nothing Then
+                RemoveHandler ExcelModels(MyModelID).WBCalcEngine.CalculationCompleted,
+                    AddressOf WorkbookCalculationCompleted
+            End If
+            If ExcelModels(MyModelID).ChangeManager IsNot Nothing Then
+                RemoveHandler ExcelModels(MyModelID).ChangeManager.HistoryChanged,
+                    AddressOf WorkbookHistoryChanged
+            End If
+        End If
+        SidebarEventsAttached = False
+        If SidebarRefreshTimer IsNot Nothing Then
+            SidebarRefreshTimer.Stop()
+            SidebarRefreshTimer.Dispose()
+            SidebarRefreshTimer = Nothing
+        End If
+        If SidebarMessageView IsNot Nothing Then
+            SidebarMessageView.Dispose()
+            SidebarMessageView = Nothing
+        End If
+    End Sub
+
     Sub AddNavigatorItem(ItemName As String, IntTag As AbovoInterfaceTag, IsMaster As String, Optional ByVal GroupName As String = "None")
 
 
