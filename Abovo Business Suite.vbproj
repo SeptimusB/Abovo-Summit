@@ -662,6 +662,7 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Services\WorkbookStructureRuleManager.vb" />
+    <Compile Include="Services\ModelSafetyManager.vb" />
     <Compile Include="Services/ModelResourceRegistry.vb" />
     <Compile Include="Interface\User Interface\BPIncomeExpenditureAnalyserV2.Designer.vb">
       <DependentUpon>BPIncomeExpenditureAnalyserV2.vb</DependentUpon>

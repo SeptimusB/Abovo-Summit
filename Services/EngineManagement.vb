@@ -97,7 +97,18 @@ Namespace Abovo
 
                 If ActiveObj IsNot Nothing Then
 
-                    ActiveObj.RefreshObjData()
+                    Try
+                        ActiveObj.RefreshObjData()
+                    Catch ex As Exception
+                        Dim ObjectName As String = "Active interface"
+                        If ActiveObj.Obj IsNot Nothing Then ObjectName = ActiveObj.Obj.GetType().Name
+                        SystemMessageManager.Publish(
+                            ModelID,
+                            "The workbook recalculated, but '" & ObjectName & "' could not refresh: " & ex.Message,
+                            SystemMessageSeverity.Warning,
+                            "Calculation refresh",
+                            ObjectName)
+                    End Try
 
                 End If
             Next

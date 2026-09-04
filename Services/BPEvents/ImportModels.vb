@@ -21,6 +21,9 @@ Namespace Abovo
             Const AllYears As Integer = 30
             Dim Result As New AbovoTransaction("ImportStockRentModel")
             Dim RentModelID As Integer = -1
+            Dim Journal As New WorkbookCellJournal
+            Dim MutationStarted As Boolean = False
+            Dim StructuralMutation As Boolean = False
 
             Try
                 Dim BusinessPlan As IWorkbook = FileManager.GetWorkBook(ModelID)
@@ -81,6 +84,17 @@ Namespace Abovo
                 Dim SourceRentWeeks As CellRange = GetRequiredRange(RentModel, "RentWks", "rent model")
                 Dim SourceRealIncreases As CellRange = GetRequiredRange(RentModel, "TransRealIncr", "rent model")
 
+                Journal.Capture(TargetBPCats)
+                Journal.Capture(TargetStock)
+                Journal.Capture(TargetRents)
+                Journal.Capture(TargetReletRents)
+                Journal.Capture(TargetReletRentsFV5)
+                Journal.Capture(TargetRentWeeks)
+                Journal.Capture(TargetRealIncreases)
+                Journal.Capture(TargetRentFile)
+                Journal.Capture(TargetTimestamp)
+                Journal.Capture(TargetYearRows)
+
                 If Not RentModel.Worksheets.Contains("Contents") Then
                     Throw New IO.InvalidDataException(
                         "The selected rent model is missing the 'Contents' worksheet.")
@@ -99,6 +113,7 @@ Namespace Abovo
                         "Please choose a later version of the rent model.")
                 End If
 
+                MutationStarted = True
                 TargetBPCats.CopyFrom(SourceBPCats, PasteSpecial.Values)
                 TargetStock.CopyFrom(SourceStock, PasteSpecial.Values)
                 TargetRents.CopyFrom(SourceRents, PasteSpecial.Values)
@@ -107,6 +122,7 @@ Namespace Abovo
                 TargetRentWeeks.CopyFrom(SourceRentWeeks, PasteSpecial.Values)
 
                 If TargetYearRows.RowCount < AllYears Then
+                    StructuralMutation = True
                     Dim ResizeResult As AbovoTransaction =
                         WorkbookManager.SetRangeRowsToSize(
                             ModelID,
@@ -154,8 +170,38 @@ Namespace Abovo
                     "The rent data could not be imported." &
                     Environment.NewLine & Environment.NewLine & ex.Message
 
+                If MutationStarted Then
+                    Dim RollbackFailure As String = String.Empty
+                    Dim Restored As Boolean = Journal.Restore(RollbackFailure)
+                    Try
+                        Dim Model As IWorkbook = FileManager.GetWorkBook(ModelID)
+                        If Model IsNot Nothing Then Model.Calculate()
+                    Catch rollbackCalculationError As Exception
+                        Restored = False
+                        RollbackFailure &=
+                            If(String.IsNullOrWhiteSpace(RollbackFailure), String.Empty, Environment.NewLine) &
+                            "Rollback calculation: " & rollbackCalculationError.Message
+                    End Try
+
+                    If Restored AndAlso Not StructuralMutation Then
+                        Result.StrResponseMessage &=
+                            Environment.NewLine & Environment.NewLine &
+                            "The previous business-plan values were restored."
+                    Else
+                        ModelSafetyManager.MarkRecoveryRequired(
+                            ModelID,
+                            "Import rent model",
+                            If(String.IsNullOrWhiteSpace(RollbackFailure), ex.Message, RollbackFailure),
+                            "Import Models")
+                    End If
+                End If
+
             Finally
-                FileManager.CloseModel(RentModelID)
+                Try
+                    If RentModelID >= 0 Then FileManager.CloseModel(RentModelID)
+                Finally
+                    Journal.Dispose()
+                End Try
             End Try
 
             Return Result
@@ -188,6 +234,8 @@ Namespace Abovo
             Dim SourceModelID As Integer = -1
             Dim SourcePath As String = String.Empty
             Dim TargetWasProtected As Boolean = False
+            Dim Journal As New WorkbookCellJournal
+            Dim MutationStarted As Boolean = False
 
             Try
                 Dim BusinessPlan As IWorkbook = FileManager.GetWorkBook(ModelID)
@@ -247,6 +295,14 @@ Namespace Abovo
                     TargetOther(YearIndex) = RangeFromAnchor(TargetSheet, OtherAnchor, SourceOther)
                 Next
 
+                Journal.Capture(TargetServices)
+                Journal.Capture(TargetMCFile)
+                Journal.Capture(TargetTimestamp)
+                For YearIndex As Integer = 0 To ImportYears - 1
+                    Journal.Capture(TargetStaff(YearIndex))
+                    Journal.Capture(TargetOther(YearIndex))
+                Next
+
                 If TargetServices.RowCount <> SourceServices.ColumnCount OrElse
                    TargetServices.ColumnCount <> SourceServices.RowCount Then
                     Throw New IO.InvalidDataException("The Services range in the selected file does not fit the transposed Services range in the business plan.")
@@ -273,6 +329,7 @@ Namespace Abovo
                 TargetWasProtected = TargetSheet.IsProtected
                 If TargetWasProtected Then UNProtectWS(ModelID, TargetSheetName)
 
+                MutationStarted = True
                 TargetServices.CopyFrom(SourceServices, PasteSpecial.Values, True)
                 For YearIndex As Integer = 0 To ImportYears - 1
                     SourceYear(0, 0).Value = YearIndex + 1
@@ -298,9 +355,55 @@ Namespace Abovo
                 Result.BSuccess = False
                 Result.StringReturn = ex.Message
                 Result.StrResponseMessage = "The management and service costs could not be imported." & Environment.NewLine & Environment.NewLine & ex.Message
+
+                If MutationStarted Then
+                    Dim RollbackFailure As String = String.Empty
+                    Dim Restored As Boolean = Journal.Restore(RollbackFailure)
+                    Try
+                        Dim Model As IWorkbook = FileManager.GetWorkBook(ModelID)
+                        If Model IsNot Nothing Then Model.Calculate()
+                    Catch rollbackCalculationError As Exception
+                        Restored = False
+                        RollbackFailure &=
+                            If(String.IsNullOrWhiteSpace(RollbackFailure), String.Empty, Environment.NewLine) &
+                            "Rollback calculation: " & rollbackCalculationError.Message
+                    End Try
+
+                    If Restored Then
+                        Result.StrResponseMessage &=
+                            Environment.NewLine & Environment.NewLine &
+                            "The previous business-plan values were restored."
+                    Else
+                        ModelSafetyManager.MarkRecoveryRequired(
+                            ModelID,
+                            "Import management and service costs",
+                            RollbackFailure,
+                            "Import Models")
+                    End If
+                End If
             Finally
-                If TargetWasProtected Then ProtectWS(ModelID, TargetSheetName)
-                FileManager.CloseModel(SourceModelID)
+                If TargetWasProtected Then
+                    Try
+                        ProtectWS(ModelID, TargetSheetName)
+                    Catch protectionError As Exception
+                        Result.BError = True
+                        Result.BSuccess = False
+                        Result.StrResponseMessage &=
+                            Environment.NewLine & Environment.NewLine &
+                            "Worksheet protection could not be restored: " & protectionError.Message
+                        ModelSafetyManager.MarkRecoveryRequired(
+                            ModelID,
+                            "Import management and service costs",
+                            protectionError.Message,
+                            "Import Models",
+                            TargetSheetName)
+                    End Try
+                End If
+                Try
+                    If SourceModelID >= 0 Then FileManager.CloseModel(SourceModelID)
+                Finally
+                    Journal.Dispose()
+                End Try
             End Try
 
             Return Result
@@ -324,89 +427,91 @@ Namespace Abovo
                 Anchor.TopRowIndex + SourceRange.RowCount - 1)
         End Function
 
-        Public Shared Sub ImportStockConditionSurvey(SetModelID As Integer)
-
-
-            'CodeSafe JW 25/4/22
-
-            '
-            '   Imports Costs from SCS spreadsheet - needs to be set up for each organisation
-
-            Dim FileToOpen
-            Dim rmFile As IWorkbook
-            Dim BusPlanFile As IWorkbook = FileManager.GetWorkBook(SetModelID)
-            Dim ActiveRMModel As IWorkbook = Nothing
-
-            On Error GoTo Err_Handler
-
-            '   assign BP file
-
-            Dim XtraOpenFileDialogMainScreen As New DevExpress.XtraEditors.XtraOpenFileDialog()
-            XtraOpenFileDialogMainScreen.Title = "Select file which contains Stock Condition Survey data"
-            XtraOpenFileDialogMainScreen.Filter = "Abovo Repairs and Maint Models |*.xlsm;*.xlsb;*.armc"
-
-            If XtraOpenFileDialogMainScreen.ShowDialog = Windows.Forms.DialogResult.Cancel Then Exit Sub
-
-            FileToOpen = XtraOpenFileDialogMainScreen.FileName
-
-            Dim FileOpenResult As AbovoTransaction
-            Dim MyFileInfos As IO.FileInfo = My.Computer.FileSystem.GetFileInfo(FileToOpen)
+        Public Shared Function ImportStockConditionSurvey(SetModelID As Integer) As AbovoTransaction
+            Dim Result As New AbovoTransaction("ImportStockConditionSurvey")
             Dim ActiveRMModelID As Integer = -1
+            Dim Journal As New WorkbookCellJournal
+            Dim MutationStarted As Boolean = False
 
-            FileOpenResult = FileManager.OpenModel(FileToOpen, MyFileInfos, FileManager.WorkbookOpenMode.ImportSource)
+            Try
+                Dim BusPlanFile As IWorkbook = FileManager.GetWorkBook(SetModelID)
+                If BusPlanFile Is Nothing Then Throw New InvalidOperationException("The active business-plan workbook is not available.")
 
-            If FileOpenResult.BError = False Then
+                Dim FileToOpen As String
+                Using FileDialog As New DevExpress.XtraEditors.XtraOpenFileDialog With {
+                    .Title = "Select file which contains Stock Condition Survey data",
+                    .Filter = "Abovo Repairs and Maint Models |*.xlsm;*.xlsb;*.armc"}
+                    If FileDialog.ShowDialog() <> Windows.Forms.DialogResult.OK Then
+                        Result.EventCancelled = True
+                        Result.StrResponseMessage = "Stock-condition import cancelled."
+                        Return Result
+                    End If
+                    FileToOpen = FileDialog.FileName
+                End Using
 
+                Dim FileOpenResult As AbovoTransaction =
+                    FileManager.OpenModel(FileToOpen, New IO.FileInfo(FileToOpen), FileManager.WorkbookOpenMode.ImportSource)
+                If FileOpenResult.BError Then Throw New IO.InvalidDataException(FileOpenResult.StrResponseMessage)
                 ActiveRMModelID = FileOpenResult.IntegerReturn
 
-                ActiveRMModel = FileManager.GetWorkBook(ActiveRMModelID)
+                Dim ActiveRMModel As IWorkbook = FileManager.GetWorkBook(ActiveRMModelID)
+                If ActiveRMModel Is Nothing Then Throw New InvalidOperationException("The selected stock-condition model could not be loaded.")
+                RequireWorksheet(ActiveRMModel, "Totals", "stock-condition model")
+                Dim TargetFile As CellRange = GetRequiredRange(BusPlanFile, "SCSfile", "business plan")
+                Dim TargetTimestamp As CellRange = GetRequiredRange(BusPlanFile, "Datestampscs", "business plan")
+                Journal.Capture(TargetFile)
+                Journal.Capture(TargetTimestamp)
 
-            Else
-                MsgBox(FileOpenResult.StrResponseMessage)
-                GoTo Exiter
-            End If
+                Dim SourceFileCell As Cell = ActiveRMModel.Worksheets("Totals").Cells("Z1")
+                SourceFileCell.Formula = "=CELL(""FILENAME"")"
+                ActiveRMModel.Calculate()
 
-            Dim SourceRange As CellRange
-            Dim DestRange As CellRange
-            Dim CurrCell As DevExpress.Spreadsheet.Cell
-            Dim TempString As String
+                MutationStarted = True
+                TargetFile(0, 0).SetValueFromText(SourceFileCell.DisplayText)
+                TargetTimestamp(0, 0).SetValue(Now())
+                FileManager.ExcelModels(SetModelID).SetDirtyFlag()
+                FileManager.ExcelModels(SetModelID).WBCalcEngine.CalcFile()
 
-            '   Copy update file name and date stamp time of transfer
-            CurrCell = ActiveRMModel.Worksheets("Totals").Range("z1")(0, 0)
+                Result.BSuccess = True
+                Result.BError = False
+                Result.StringReturn = "Stock-condition survey details imported successfully."
+                Result.StrResponseMessage = Result.StringReturn
+            Catch ex As Exception
+                Result.BError = True
+                Result.BSuccess = False
+                Result.StringReturn = ex.Message
+                Result.StrResponseMessage = "The stock-condition survey could not be imported." &
+                    Environment.NewLine & Environment.NewLine & ex.Message
+                If MutationStarted Then
+                    Dim RollbackFailure As String = String.Empty
+                    If Journal.Restore(RollbackFailure) Then
+                        Result.StrResponseMessage &= Environment.NewLine & Environment.NewLine &
+                            "The previous business-plan values were restored."
+                    Else
+                        ModelSafetyManager.MarkRecoveryRequired(
+                            SetModelID,
+                            "Import stock-condition survey",
+                            RollbackFailure,
+                            "Import Models")
+                    End If
+                End If
+            Finally
+                Try
+                    If ActiveRMModelID >= 0 Then FileManager.CloseModel(ActiveRMModelID)
+                Catch closeError As Exception
+                    Result.BError = True
+                    Result.BSuccess = False
+                    Result.StrResponseMessage &= Environment.NewLine & Environment.NewLine &
+                        "The source stock-condition model could not be closed: " & closeError.Message
+                    SystemMessageManager.Publish(SetModelID, Result.StrResponseMessage,
+                        SystemMessageSeverity.Error, "Import Models", "Stock Condition Survey")
+                Finally
+                    Journal.Dispose()
+                End Try
+            End Try
 
-            CurrCell.Formula = "=CELL(""FILENAME"")"
-            ActiveRMModel.Calculate()
-            TempString = CurrCell.DisplayText
-
-            CurrCell = BusPlanFile.Range("SCSfile")(0, 0)
-
-            CurrCell.SetValueFromText(TempString)
-
-            CurrCell = BusPlanFile.Range("Datestampscs")(0, 0)
-
-            CurrCell.SetValue(Now())
-
-
-
-Exiter:
-
-            On Error Resume Next
-
-            FileManager.CloseModel(ActiveRMModelID)
-
-
-
-            Exit Sub
-
-Err_Handler:
-
-            MsgBox("Sorry, an error occured. The error has been logged.  The error is " & Err.Description)
-
-            Err.Clear()
-
-            Resume Exiter
-
-        End Sub
+            Return Result
+        End Function
 
 
 

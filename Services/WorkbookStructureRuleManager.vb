@@ -1,6 +1,5 @@
 ﻿Imports System
 Imports System.Collections.Generic
-Imports System.Diagnostics
 Imports Abovo.AbovoAppCls
 Imports Abovo.FileManager
 Imports Abovo.WSSecurity
@@ -1120,17 +1119,26 @@ Namespace Abovo
             Dim RecordRangeSnapshot As StructuralNamedRangeSnapshot =
                 SnapshotNamedRange(WB, Rule.RecordCountNamedRange)
 
+            For Each Target As WorkbookStructureTarget In Rule.Targets
+                If GetWorksheet(WB, Target.WorksheetName) Is Nothing Then
+                    Result.BError = True
+                    Result.StringReturn = "Worksheet '" & Target.WorksheetName & "' was not found."
+                    Result.StrResponseMessage = Result.StringReturn
+                    Return Result
+                End If
+            Next
+
             Dim ChangedWorksheets As New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)
             Dim UpdateStarted As Boolean = False
+            Dim MutationStarted As Boolean = False
+            Dim BulkMutationGuardStarted As Boolean = False
             Dim PreviousCalculationMode As WorkbookCalculationMode = WB.Options.CalculationMode
-
-#If DEBUG Then
-            Dim TotalTimer As Stopwatch = Stopwatch.StartNew()
-#End If
 
             Try
 
                 IsExecuting = True
+                ModelSafetyManager.BeginBulkWorkbookMutation(ModelID)
+                BulkMutationGuardStarted = True
 
                 'Match deletion and the original VBA structural routines: do not
                 'recalculate the workbook between linked-sheet insertions.
@@ -1155,22 +1163,17 @@ Namespace Abovo
                         WS.Visible = True
                         If WasProtected Then UNProtectWS(ModelID, WS.Name)
 
-#If DEBUG Then
-                        Dim SheetTimer As Stopwatch = Stopwatch.StartNew()
-#End If
-
                         Select Case Rule.Axis
 
                             Case WorkbookStructureAxis.Columns
+                                MutationStarted = True
                                 InsertColumnsForTarget(WS, InsertIndex, RecordCount, Target)
 
                             Case WorkbookStructureAxis.Rows
+                                MutationStarted = True
                                 InsertRowsForTarget(WS, InsertIndex, RecordCount, Target)
 
                         End Select
-
-#If DEBUG Then
-#End If
 
                         ChangedWorksheets.Add(WS.Name)
 
@@ -1190,7 +1193,6 @@ Namespace Abovo
                                              RecordRangeSnapshot,
                                              Rule.Axis,
                                              RecordCount)
-
                 Result.BError = False
                 Result.EventCancelled = False
                 Result.StringReturn = RecordCount.ToString & " " & Rule.Description & " added."
@@ -1199,20 +1201,41 @@ Namespace Abovo
 
                 Result.BError = True
                 Result.StringReturn = ex.Message
+                Result.StrResponseMessage = ex.Message
+                If MutationStarted Then
+                    ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Insert " & Rule.Description, ex.Message,
+                        "Workbook Structure", Rule.RuleID)
+                End If
 
             Finally
 
-                If UpdateStarted Then WB.EndUpdate()
-                WB.Options.CalculationMode = PreviousCalculationMode
+                Try
+                    If UpdateStarted Then WB.EndUpdate()
+                Catch ex As Exception
+                    Result.BError = True
+                    Result.StringReturn &= Environment.NewLine & "End workbook update: " & ex.Message
+                    If MutationStarted Then
+                        ModelSafetyManager.MarkRecoveryRequired(
+                            ModelID, "Insert " & Rule.Description, Result.StringReturn,
+                            "Workbook Structure", Rule.RuleID)
+                    End If
+                End Try
+                Try
+                    WB.Options.CalculationMode = PreviousCalculationMode
+                Catch ex As Exception
+                    Result.BError = True
+                    Result.StringReturn &= Environment.NewLine & "Restore calculation mode: " & ex.Message
+                End Try
                 IsExecuting = False
+                If BulkMutationGuardStarted Then
+                    ModelSafetyManager.EndBulkWorkbookMutation(ModelID)
+                    BulkMutationGuardStarted = False
+                End If
 
             End Try
 
             If Not Result.BError Then
-
-#If DEBUG Then
-                Dim PostActionTimer As Stopwatch = Stopwatch.StartNew()
-#End If
 
                 Dim PostActionResult As AbovoTransaction =
                     RunPostActions(Rule, ChangedWorksheets)
@@ -1224,13 +1247,14 @@ Namespace Abovo
                         "Workbook structure changed, but Transactional DB synchronisation failed: " &
                         PostActionResult.StringReturn
                     Result.StrResponseMessage = Result.StringReturn
+                    ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Insert " & Rule.Description, Result.StringReturn,
+                        "Workbook Structure", Rule.RuleID)
                 End If
-
-#If DEBUG Then
-#End If
 
             End If
 
+            If MutationStarted Then ExcelModels(ModelID).IsDirty = True
             Return Result
 
         End Function
@@ -1334,17 +1358,26 @@ Namespace Abovo
             Dim DeleteBlocks As List(Of StructuralDeleteBlock) =
                 BuildDeleteBlocks(RecordIndexes)
 
+            For Each Target As WorkbookStructureTarget In Rule.Targets
+                If GetWorksheet(WB, Target.WorksheetName) Is Nothing Then
+                    Result.BError = True
+                    Result.StringReturn = "Worksheet '" & Target.WorksheetName & "' was not found."
+                    Result.StrResponseMessage = Result.StringReturn
+                    Return Result
+                End If
+            Next
+
             Dim ChangedWorksheets As New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)
             Dim UpdateStarted As Boolean = False
+            Dim MutationStarted As Boolean = False
+            Dim BulkMutationGuardStarted As Boolean = False
             Dim PreviousCalculationMode As WorkbookCalculationMode = WB.Options.CalculationMode
-
-#If DEBUG Then
-            Dim TotalTimer As Stopwatch = Stopwatch.StartNew()
-#End If
 
             Try
 
                 IsExecuting = True
+                ModelSafetyManager.BeginBulkWorkbookMutation(ModelID)
+                BulkMutationGuardStarted = True
 
                 WB.Options.CalculationMode = WorkbookCalculationMode.Manual
 
@@ -1367,25 +1400,20 @@ Namespace Abovo
                         WS.Visible = True
                         If WasProtected Then UNProtectWS(ModelID, WS.Name)
 
-#If DEBUG Then
-                        Dim SheetTimer As Stopwatch = Stopwatch.StartNew()
-#End If
-
                         For Each DeleteBlock As StructuralDeleteBlock In DeleteBlocks
 
                             Select Case Rule.Axis
                                 Case WorkbookStructureAxis.Columns
+                                    MutationStarted = True
                                     WS.Columns.Remove(FirstRecordIndex + DeleteBlock.StartRecordIndex,
                                                       DeleteBlock.RecordCount)
                                 Case WorkbookStructureAxis.Rows
+                                    MutationStarted = True
                                     WS.Rows.Remove(FirstRecordIndex + DeleteBlock.StartRecordIndex,
                                                    DeleteBlock.RecordCount)
                             End Select
 
                         Next
-
-#If DEBUG Then
-#End If
 
                         ChangedWorksheets.Add(WS.Name)
 
@@ -1402,7 +1430,6 @@ Namespace Abovo
                                              RecordRangeSnapshot,
                                              Rule.Axis,
                                              -RecordIndexes.Count)
-
                 Result.BError = False
                 Result.EventCancelled = False
                 Result.StringReturn = RecordIndexes.Count.ToString & " " & Rule.Description & " deleted."
@@ -1411,20 +1438,41 @@ Namespace Abovo
 
                 Result.BError = True
                 Result.StringReturn = ex.Message
+                Result.StrResponseMessage = ex.Message
+                If MutationStarted Then
+                    ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Delete " & Rule.Description, ex.Message,
+                        "Workbook Structure", Rule.RuleID)
+                End If
 
             Finally
 
-                If UpdateStarted Then WB.EndUpdate()
-                WB.Options.CalculationMode = PreviousCalculationMode
+                Try
+                    If UpdateStarted Then WB.EndUpdate()
+                Catch ex As Exception
+                    Result.BError = True
+                    Result.StringReturn &= Environment.NewLine & "End workbook update: " & ex.Message
+                    If MutationStarted Then
+                        ModelSafetyManager.MarkRecoveryRequired(
+                            ModelID, "Delete " & Rule.Description, Result.StringReturn,
+                            "Workbook Structure", Rule.RuleID)
+                    End If
+                End Try
+                Try
+                    WB.Options.CalculationMode = PreviousCalculationMode
+                Catch ex As Exception
+                    Result.BError = True
+                    Result.StringReturn &= Environment.NewLine & "Restore calculation mode: " & ex.Message
+                End Try
                 IsExecuting = False
+                If BulkMutationGuardStarted Then
+                    ModelSafetyManager.EndBulkWorkbookMutation(ModelID)
+                    BulkMutationGuardStarted = False
+                End If
 
             End Try
 
             If Not Result.BError Then
-
-#If DEBUG Then
-                Dim PostActionTimer As Stopwatch = Stopwatch.StartNew()
-#End If
 
                 Dim PostActionResult As AbovoTransaction =
                     RunPostActions(Rule, ChangedWorksheets)
@@ -1436,13 +1484,14 @@ Namespace Abovo
                         "Workbook structure changed, but Transactional DB synchronisation failed: " &
                         PostActionResult.StringReturn
                     Result.StrResponseMessage = Result.StringReturn
+                    ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Delete " & Rule.Description, Result.StringReturn,
+                        "Workbook Structure", Rule.RuleID)
                 End If
-
-#If DEBUG Then
-#End If
 
             End If
 
+            If MutationStarted Then ExcelModels(ModelID).IsDirty = True
             Return Result
 
         End Function
@@ -1480,9 +1529,6 @@ Namespace Abovo
 
             Dim TemplateWidth As Single =
                 WS.Columns(WidthTemplateColumnIndex).Width
-
-#If DEBUG Then
-#End If
 
             WS.Columns.Insert(InsertIndex, RecordCount)
 
@@ -1572,7 +1618,6 @@ Namespace Abovo
                                         ByVal ChangedWorksheets As IEnumerable(Of String)) As AbovoTransaction
 
             Dim Result As New AbovoTransaction With {.BError = False}
-
             'Do TransactionDB once after all linked workbook sheets are structurally
             'consistent.  This avoids synchronising an intermediate half-updated state.
             If Not String.IsNullOrWhiteSpace(Rule.TransactionDBSyncNamedRange) Then

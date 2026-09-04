@@ -209,7 +209,11 @@ Public Class GroupInterfaceTemplate
         Debug.WriteLine("GroupInterfaceTemplate sidebar refresh started. ModelID=" &
                         MyModelID.ToString() & ", reason=" & refreshReason)
 
-        If HasBPSummary OrElse HasFundingSummary OrElse HasDevelopmentSummary Then
+        'Navigation, interface construction, calculation-completed notifications and
+        'history changes refresh the displayed snapshot only.  A full workbook
+        'calculation is deliberately reserved for the user's Refresh button.
+        If String.Equals(refreshReason, "Manual", StringComparison.OrdinalIgnoreCase) AndAlso
+           (HasBPSummary OrElse HasFundingSummary OrElse HasDevelopmentSummary) Then
             CalculateSidebarWorkbook(Workbook, refreshReason)
         End If
 
@@ -285,7 +289,6 @@ Public Class GroupInterfaceTemplate
             workbook.Options.CalculationEngineType
         Dim previousCursor As Cursor = Me.Cursor
         Dim previousUseWaitCursor As Boolean = Me.UseWaitCursor
-        Dim calculationTimer As Stopwatch = Stopwatch.StartNew()
         Try
             Me.UseWaitCursor = True
             Me.Cursor = Cursors.WaitCursor
@@ -294,8 +297,7 @@ Public Class GroupInterfaceTemplate
                 DevExpress.Spreadsheet.CalculationEngineType.Recursive
             workbook.CalculateFull()
             Debug.WriteLine("GroupInterfaceTemplate sidebar workbook calculated. ModelID=" &
-                            MyModelID.ToString() & ", reason=" & refreshReason &
-                            ", elapsedMs=" & calculationTimer.ElapsedMilliseconds.ToString())
+                            MyModelID.ToString() & ", reason=" & refreshReason)
         Catch ex As Exception
             Debug.WriteLine("GroupInterfaceTemplate sidebar workbook calculation failed. ModelID=" &
                             MyModelID.ToString() & ", error=" & ex.ToString())
@@ -304,7 +306,6 @@ Public Class GroupInterfaceTemplate
                 SystemMessageSeverity.Warning,
                 "Summary refresh")
         Finally
-            calculationTimer.Stop()
             Try
                 workbook.Options.CalculationEngineType = previousEngine
             Finally

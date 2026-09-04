@@ -141,14 +141,25 @@ Namespace Abovo
                 If automaticGroup Then RaiseHistoryChanged(False, {targetCell.Worksheet.Name})
                 Return result
             Catch ex As Exception
+                Dim rollbackFailures As New List(Of String)
                 Try
                     before.Apply(targetCell)
-                Catch
+                Catch rollbackError As Exception
+                    rollbackFailures.Add("Restore cell: " & rollbackError.Message)
                 End Try
                 Try
                     FileManager.ExcelModels(ModelID).WBCalcEngine.CalculateWSs()
-                Catch
+                Catch rollbackError As Exception
+                    rollbackFailures.Add("Recalculate restored workbook: " & rollbackError.Message)
                 End Try
+                If rollbackFailures.Count > 0 Then
+                    ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID,
+                        sentEvent.Description,
+                        String.Join(Environment.NewLine, rollbackFailures),
+                        "Change Manager",
+                        targetCell.Worksheet.Name & "!" & targetCell.GetReferenceA1())
+                End If
                 Return FailedChange(sentEvent, targetCell.Worksheet.Name, targetCell.GetReferenceA1(), ex)
             End Try
         End Function
@@ -234,20 +245,39 @@ Namespace Abovo
                     End If
                 Next
             Catch ex As Exception
+                Dim rollbackFailures As New List(Of String)
                 For Each entry As ChangeHistoryEntryV2 In applied.AsEnumerable().Reverse()
                     Try
                         Dim cell As Cell = WB.Worksheets(entry.WorksheetName).Cells(entry.CellAddress)
                         Dim rollbackSnapshot As CellSnapshotV2 = If(redo, entry.BeforeSnapshot, entry.AfterSnapshot)
                         rollbackSnapshot.Apply(cell)
-                    Catch
+                    Catch rollbackError As Exception
+                        rollbackFailures.Add(
+                            entry.WorksheetName & "!" & entry.CellAddress & ": " &
+                            rollbackError.Message)
                     End Try
                 Next
                 Try
                     FileManager.ExcelModels(ModelID).WBCalcEngine.CalculateWSs()
-                Catch
+                Catch rollbackError As Exception
+                    rollbackFailures.Add("Recalculate restored workbook: " & rollbackError.Message)
                 End Try
                 result.BError = True
-                result.StrResponseMessage = "The " & If(redo, "redo", "undo") & " failed and was rolled back: " & ex.Message
+                If rollbackFailures.Count = 0 Then
+                    result.StrResponseMessage =
+                        "The " & If(redo, "redo", "undo") &
+                        " failed; the previous workbook values were restored: " & ex.Message
+                Else
+                    result.StrResponseMessage =
+                        "The " & If(redo, "redo", "undo") &
+                        " failed and rollback could not be verified: " & ex.Message &
+                        Environment.NewLine & String.Join(Environment.NewLine, rollbackFailures)
+                    ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID,
+                        If(redo, "Redo", "Undo"),
+                        result.StrResponseMessage,
+                        "Change Manager")
+                End If
                 Return result
             Finally
                 IsApplyingHistory = False
@@ -310,7 +340,8 @@ Namespace Abovo
                                       ByVal address As String,
                                       ByVal ex As Exception) As AbovoAppCls.AbovoTransaction
             MasterChangeLog.AddChangeLogEvent(New ChangeLogEvent With {
-                .ModelID = ModelID, .Description = sentEvent.Description,
+                .ModelID = ModelID,
+                .Description = sentEvent.Description & " failed: " & ex.Message,
                 .WSName = worksheetName, .CellAddress = address,
                 .OriginalValue = Convert.ToString(sentEvent.OriginalValue, CultureInfo.CurrentCulture),
                 .ChangedValue = Convert.ToString(sentEvent.ChangedValue, CultureInfo.CurrentCulture),

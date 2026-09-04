@@ -71,6 +71,11 @@ Namespace Abovo
                         Catch ex As Exception
                             Rejected += 1
                             AppendReject(ModelID, FilePath, ex.Message)
+                            If ModelSafetyManager.RequiresRecoverySaveAs(ModelID) Then
+                                Throw New InvalidOperationException(
+                                    "Folder import stopped because the rejected scheme may have left partial workbook changes.",
+                                    ex)
+                            End If
                         End Try
                     Next
                     If Imported = 0 Then Throw New InvalidDataException("No files were successfully imported. " & Rejected.ToString() & " file(s) were rejected.")
@@ -86,6 +91,7 @@ Namespace Abovo
         Public Shared Function ImportDSA_Template(ModelID As Integer) As AbovoTransaction
             Const Action As String = "ImportDSA_Template"
             Dim SourceID As Integer = -1
+            Dim MutationStarted As Boolean = False
             Try
                 Dim SourcePath As String
                 Using Dialog As New DevExpress.XtraEditors.XtraOpenFileDialog()
@@ -112,6 +118,7 @@ Namespace Abovo
                 Dim ExistingCount As Integer = Math.Max(0, SchemeRange.ColumnCount - 1)
                 Dim RequiredCount As Integer = If(ClearExisting, Math.Max(Count, 10) + 1, SchemeRange.ColumnCount + Count)
                 Dim Offset As Integer = If(ClearExisting, 0, ExistingCount)
+                MutationStarted = True
                 ResizeDevelopmentColumns(ModelID, RequiredCount)
                 If ClearExisting Then
                     Dim ColumnsToClear As Integer = RequiredCount - 1
@@ -133,7 +140,16 @@ Namespace Abovo
                 ExcelModels(ModelID).WBCalcEngine.CalcFile()
                 Return Succeeded(Action, Count.ToString() & " development scheme(s) imported from the template.")
             Catch ex As Exception
-                Return Failed(Action, "The development template could not be imported.", ex)
+                Dim Result As AbovoTransaction =
+                    Failed(Action, "The development template could not be imported.", ex)
+                If MutationStarted Then
+                    ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID,
+                        "Import DSA template",
+                        ex.Message,
+                        "DSA Import")
+                End If
+                Return Result
             Finally
                 CloseModel(SourceID)
             End Try
@@ -143,6 +159,9 @@ Namespace Abovo
             Dim SourceID As Integer = -1
             Dim SchemeMade As Boolean = False
             Dim TotalsMade As Boolean = False
+            Dim MutationStarted As Boolean = False
+            Dim ListMutationStarted As Boolean = False
+            Dim OperationSucceeded As Boolean = False
             Dim Name As String = String.Empty
             Dim BP As IWorkbook = Workbook(ModelID)
             Dim ListSheet As Worksheet = RequireSheet(BP, "List Imported", "business plan")
@@ -188,6 +207,7 @@ Namespace Abovo
                 Else
                     Commitment = RequiredRange(Source, "Rep_Global_01", "selected DSA model")(0, 0).DisplayText
                 End If
+                MutationStarted = True
                 ImportsStart.Visible = True
                 TotalsTemplate.Visible = True
                 TotalsEnd.Visible = True
@@ -197,21 +217,78 @@ Namespace Abovo
                 SchemeMade = True
                 InsertTotalsSheet(BP, Name)
                 TotalsMade = True
+                ListMutationStarted = True
                 UpdateList(BP, Name, FilePath, Commitment)
                 ExcelModels(ModelID).SetDirtyFlag()
                 ExcelModels(ModelID).WBCalcEngine.CalcFile()
+                OperationSucceeded = True
                 Return Name
-            Catch
-                If TotalsMade AndAlso BP.Worksheets.Contains(Name & " Total") Then BP.Worksheets.Remove(BP.Worksheets(Name & " Total"))
-                If SchemeMade AndAlso BP.Worksheets.Contains(Name) Then BP.Worksheets.Remove(BP.Worksheets(Name))
+            Catch ex As Exception
+                Dim CleanupFailures As New List(Of String)
+                Try
+                    If TotalsMade AndAlso BP.Worksheets.Contains(Name & " Total") Then
+                        BP.Worksheets.Remove(BP.Worksheets(Name & " Total"))
+                    End If
+                Catch cleanupError As Exception
+                    CleanupFailures.Add("Remove totals worksheet: " & cleanupError.Message)
+                End Try
+                Try
+                    If SchemeMade AndAlso BP.Worksheets.Contains(Name) Then
+                        BP.Worksheets.Remove(BP.Worksheets(Name))
+                    End If
+                Catch cleanupError As Exception
+                    CleanupFailures.Add("Remove scheme worksheet: " & cleanupError.Message)
+                End Try
+
+                If MutationStarted AndAlso
+                   (ListMutationStarted OrElse CleanupFailures.Count > 0) Then
+                    ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID,
+                        "Import DSA scheme",
+                        ex.Message &
+                        If(CleanupFailures.Count = 0, String.Empty,
+                           Environment.NewLine & String.Join(Environment.NewLine, CleanupFailures)),
+                        "DSA Import",
+                        Name)
+                End If
                 Throw
             Finally
-                ImportsStart.Visible = ImportsVisible
-                TotalsTemplate.Visible = TemplateVisible
-                TotalsEnd.Visible = EndVisible
-                If ListProtected Then ProtectWS(ModelID, ListSheet.Name)
-                If TemplateProtected Then ProtectWS(ModelID, TotalsTemplate.Name)
-                CloseModel(SourceID)
+                Dim RestorationFailures As New List(Of String)
+                Try
+                    ImportsStart.Visible = ImportsVisible
+                    TotalsTemplate.Visible = TemplateVisible
+                    TotalsEnd.Visible = EndVisible
+                    If ListProtected Then ProtectWS(ModelID, ListSheet.Name)
+                    If TemplateProtected Then ProtectWS(ModelID, TotalsTemplate.Name)
+                Catch restorationError As Exception
+                    RestorationFailures.Add("Workbook state restoration failed: " & restorationError.Message)
+                End Try
+                Try
+                    If SourceID >= 0 Then CloseModel(SourceID)
+                Catch closeError As Exception
+                    RestorationFailures.Add("Source DSA close failed: " & closeError.Message)
+                End Try
+                If RestorationFailures.Count > 0 Then
+                    Dim FailureMessage As String = String.Join(Environment.NewLine, RestorationFailures)
+                    If MutationStarted Then
+                        ModelSafetyManager.MarkRecoveryRequired(
+                            ModelID,
+                            "Import DSA scheme",
+                            FailureMessage,
+                            "DSA Import",
+                            Name)
+                    Else
+                        SystemMessageManager.Publish(
+                            ModelID,
+                            FailureMessage,
+                            SystemMessageSeverity.Error,
+                            "DSA Import",
+                            Name)
+                    End If
+                    If OperationSucceeded Then
+                        Throw New InvalidOperationException("The DSA import completed, but final workbook cleanup failed. " & FailureMessage)
+                    End If
+                End If
             End Try
         End Function
 
@@ -365,8 +442,18 @@ Namespace Abovo
             End Try
 
             If ExcelModels(ModelID).TransDBSync IsNot Nothing Then
-                ExcelModels(ModelID).TransDBSync.SynchroniseForNamedRange("HouseTypeInID")
+                Dim SyncResult As AbovoTransaction =
+                    ExcelModels(ModelID).TransDBSync.SynchroniseForNamedRange("HouseTypeInID")
+                If SyncResult Is Nothing OrElse SyncResult.BError Then
+                    Throw New InvalidOperationException(
+                        "Development columns were resized, but Transactional DB synchronisation failed: " &
+                        If(SyncResult Is Nothing, "No synchronisation result was returned.", SyncResult.StringReturn))
+                End If
+            Else
+                Throw New InvalidOperationException(
+                    "Development columns were resized, but the Transactional DB synchronisation service is unavailable.")
             End If
+            ExcelModels(ModelID).SetDirtyFlag()
         End Sub
 
         Private Shared Sub ResizeRows(BP As IWorkbook, Name As String, Count As Integer)

@@ -172,7 +172,33 @@ Namespace Abovo
         End Function
 
         Private Sub MessagesChanged(ByVal sender As Object, ByVal e As EventArgs)
-            RefreshMessages()
+            If IsDisposedLocally Then Return
+            If InvokeRequired Then
+                BeginInvoke(New EventHandler(AddressOf MessagesChanged), sender, e)
+                Return
+            End If
+
+            Dim newestEventID As Integer = -1
+            If ViewItems.Count > 0 Then newestEventID = ViewItems(0).EventID
+            Dim newItems As List(Of SystemMessageRecord) =
+                MessageManager.SnapshotItemsAfter(newestEventID)
+            If newItems.Count = 0 Then Return
+
+            'Manager items are chronological. Inserting each at zero leaves the
+            'newest message first without rebuilding, sorting, rebinding and
+            'best-fitting the entire accumulated history for every event.
+            ViewItems.RaiseListChangedEvents = False
+            Try
+                For Each item As SystemMessageRecord In newItems
+                    ViewItems.Insert(0, item)
+                Next
+            Finally
+                ViewItems.RaiseListChangedEvents = True
+                ViewItems.ResetBindings()
+            End Try
+            StatusLabel.Text = ViewItems.Count.ToString() & " message" &
+                If(ViewItems.Count = 1, String.Empty, "s")
+            If MessageGridView.RowCount > 0 Then MessageGridView.MoveFirst()
         End Sub
 
         Private Sub MessageGridView_RowStyle(ByVal sender As Object,
@@ -199,32 +225,49 @@ Namespace Abovo
             Try
                 Clipboard.SetText(MessageManager.CreateTextExport())
             Catch ex As Exception
+                SystemMessageManager.Publish(ModelID, "System message copy failed: " & ex.Message,
+                    SystemMessageSeverity.Error, "System messages", "Clipboard")
                 XtraMessageBox.Show(Me, ex.Message, "Copy system messages", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             End Try
         End Sub
 
         Private Sub SaveButtonClick(ByVal sender As Object, ByVal e As EventArgs)
-            Using dialog As New SaveFileDialog With {
-                .Title = "Save system messages",
-                .Filter = "HTML file (*.html)|*.html|Text file (*.txt)|*.txt",
-                .DefaultExt = "html",
-                .AddExtension = True,
-                .FileName = "Summit system messages " & Now().ToString("yyyy-MM-dd HHmm")}
-                If dialog.ShowDialog(Me) <> DialogResult.OK Then Return
-                If String.Equals(Path.GetExtension(dialog.FileName), ".txt", StringComparison.OrdinalIgnoreCase) Then
-                    File.WriteAllText(dialog.FileName, MessageManager.CreateTextExport(), System.Text.Encoding.UTF8)
-                Else
-                    File.WriteAllText(dialog.FileName, MessageManager.CreateHtmlExport(), System.Text.Encoding.UTF8)
-                End If
-            End Using
+            Try
+                Using dialog As New SaveFileDialog With {
+                    .Title = "Save system messages",
+                    .Filter = "HTML file (*.html)|*.html|Text file (*.txt)|*.txt",
+                    .DefaultExt = "html",
+                    .AddExtension = True,
+                    .FileName = "Summit system messages " & Now().ToString("yyyy-MM-dd HHmm")}
+                    If dialog.ShowDialog(Me) <> DialogResult.OK Then Return
+                    If String.Equals(Path.GetExtension(dialog.FileName), ".txt", StringComparison.OrdinalIgnoreCase) Then
+                        File.WriteAllText(dialog.FileName, MessageManager.CreateTextExport(), System.Text.Encoding.UTF8)
+                    Else
+                        File.WriteAllText(dialog.FileName, MessageManager.CreateHtmlExport(), System.Text.Encoding.UTF8)
+                    End If
+                    SystemMessageManager.Publish(ModelID, "System messages saved to " & dialog.FileName,
+                        SystemMessageSeverity.Success, "System messages", dialog.FileName)
+                End Using
+            Catch ex As Exception
+                SystemMessageManager.Publish(ModelID, "System message export failed: " & ex.Message,
+                    SystemMessageSeverity.Error, "System messages", "Save")
+                XtraMessageBox.Show(Me, ex.Message, "Save system messages", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            End Try
         End Sub
 
         Private Sub EmailButtonClick(ByVal sender As Object, ByVal e As EventArgs)
             Dim exportDirectory As String = Path.Combine(Path.GetTempPath(), "Abovo Summit")
-            Directory.CreateDirectory(exportDirectory)
             Dim attachmentPath As String = Path.Combine(exportDirectory,
                 "System messages " & Now().ToString("yyyyMMdd HHmmss") & ".txt")
-            File.WriteAllText(attachmentPath, MessageManager.CreateTextExport(), System.Text.Encoding.UTF8)
+            Try
+                Directory.CreateDirectory(exportDirectory)
+                File.WriteAllText(attachmentPath, MessageManager.CreateTextExport(), System.Text.Encoding.UTF8)
+            Catch ex As Exception
+                SystemMessageManager.Publish(ModelID, "System message email preparation failed: " & ex.Message,
+                    SystemMessageSeverity.Error, "System messages", attachmentPath)
+                XtraMessageBox.Show(Me, ex.Message, "Email system messages", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                Return
+            End Try
 
             Dim outlook As Object = Nothing
             Dim mail As Object = Nothing
@@ -235,6 +278,8 @@ Namespace Abovo
                 mail.Body = "The exported Abovo Summit system messages are attached."
                 mail.Attachments.Add(attachmentPath)
                 mail.Display()
+                SystemMessageManager.Publish(ModelID, "System message email prepared.",
+                    SystemMessageSeverity.Success, "System messages", attachmentPath)
             Catch
                 Dim body As String = MessageManager.CreateTextExport()
                 If body.Length > 1500 Then body = body.Substring(0, 1500) & Environment.NewLine & "[Export shortened for email.]"
@@ -242,7 +287,11 @@ Namespace Abovo
                                         "&body=" & System.Uri.EscapeDataString(body)
                 Try
                     Process.Start(New ProcessStartInfo(mailUri) With {.UseShellExecute = True})
+                    SystemMessageManager.Publish(ModelID, "The default email application was opened with system messages.",
+                        SystemMessageSeverity.Information, "System messages", attachmentPath)
                 Catch ex As Exception
+                    SystemMessageManager.Publish(ModelID, "System message email failed: " & ex.Message,
+                        SystemMessageSeverity.Error, "System messages", attachmentPath)
                     XtraMessageBox.Show(Me,
                         "The default email application could not be opened." & Environment.NewLine &
                         "The complete message export was saved to:" & Environment.NewLine & attachmentPath &
@@ -250,8 +299,14 @@ Namespace Abovo
                         "Email system messages", MessageBoxButtons.OK, MessageBoxIcon.Warning)
                 End Try
             Finally
-                If mail IsNot Nothing AndAlso Marshal.IsComObject(mail) Then Marshal.FinalReleaseComObject(mail)
-                If outlook IsNot Nothing AndAlso Marshal.IsComObject(outlook) Then Marshal.FinalReleaseComObject(outlook)
+                Try
+                    If mail IsNot Nothing AndAlso Marshal.IsComObject(mail) Then Marshal.FinalReleaseComObject(mail)
+                Catch
+                End Try
+                Try
+                    If outlook IsNot Nothing AndAlso Marshal.IsComObject(outlook) Then Marshal.FinalReleaseComObject(outlook)
+                Catch
+                End Try
             End Try
         End Sub
     End Class

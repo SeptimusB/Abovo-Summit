@@ -37,6 +37,13 @@ Public Class MainModelViewer
     End Sub
     Public Sub ProcessCVC(ByVal sender As Object, ByVal e As SpreadsheetCellEventArgs)
 
+        'Structural and multi-range workbook services publish one transaction-level
+        'result after their work completes.  SpreadsheetControl also raises this
+        'interactive event for their programmatic range copies; recalculating the
+        'entire model for every such event turns one structural command into dozens
+        'of redundant full calculations.
+        If ModelSafetyManager.IsBulkWorkbookMutationInProgress(ModelID) Then Return
+
         MasterChangeLog.AddChangeLogEvent(New ChangeLogEvent With {
                 .ModelID = ModelID,
                 .Description = "Sheet " & SSC.ActiveWorksheet.Name & " cell " & e.Cell.GetReferenceA1() & " changed from " & e.OldValue.ToString & " to " & e.Value.ToString,

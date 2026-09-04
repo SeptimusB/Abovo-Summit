@@ -1,5 +1,3 @@
-Imports System.Diagnostics
-Imports System.Globalization
 Imports System.Text.RegularExpressions
 Imports DevExpress.Spreadsheet
 
@@ -17,10 +15,7 @@ Namespace Abovo
         Private Sub New()
         End Sub
 
-        Public Shared Function CreateSnapshotAndComparison(ByVal modelID As Integer) As TimeSpan
-            Dim timer As Stopwatch = Stopwatch.StartNew()
-            Dim completed As Boolean = False
-            Dim processedCellCount As Integer = 0
+        Public Shared Sub CreateSnapshotAndComparison(ByVal modelID As Integer)
             Dim snapshotSheet As Worksheet = Nothing
             Dim comparisonSheet As Worksheet = Nothing
 
@@ -61,7 +56,6 @@ Namespace Abovo
                 Dim comparisonRange As CellRange =
                     CreateMatchingLocalRange(comparisonSheet, sourceRange)
 
-                processedCellCount = sourceRange.RowCount * sourceRange.ColumnCount
                 Dim comparisonColumns As Boolean() =
                     GetComparisonValueColumns(sourceRange)
 
@@ -112,23 +106,14 @@ Namespace Abovo
 
                 comparisonRange.Calculate()
                 FileManager.ExcelModels(modelID).IsDirty = True
-                completed = True
-                Return timer.Elapsed
             Catch
                 ''A failed run must not leave a partially-populated comparison which
                 ''could be mistaken for a valid snapshot. These sheets are dedicated
                 ''scratch outputs, so a clean blank state is the safe recovery state.
                 ClearPartialOutput(snapshotSheet, comparisonSheet)
                 Throw
-            Finally
-                timer.Stop()
-                Debug.Print(
-                    "Transactional DB snapshot " & If(completed, "completed", "failed") &
-                    " in " & timer.Elapsed.TotalSeconds.ToString("0.000", CultureInfo.InvariantCulture) &
-                    " seconds for " & processedCellCount.ToString("N0", CultureInfo.InvariantCulture) &
-                    " cells.")
             End Try
-        End Function
+        End Sub
 
         Public Shared Function HasValidSnapshot(ByVal modelID As Integer) As Boolean
             Try

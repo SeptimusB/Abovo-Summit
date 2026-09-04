@@ -84,6 +84,16 @@ Namespace Abovo
             End SyncLock
         End Function
 
+        Public Function SnapshotItemsAfter(ByVal eventID As Integer) As List(Of SystemMessageRecord)
+            Dim result As New List(Of SystemMessageRecord)()
+            SyncLock ItemsLock
+                For Each item As SystemMessageRecord In Items
+                    If item.EventID > eventID Then result.Add(item)
+                Next
+            End SyncLock
+            Return result
+        End Function
+
         Public Function CreateTextExport() As String
             Dim output As New StringBuilder()
             output.AppendLine("Abovo Summit system messages")

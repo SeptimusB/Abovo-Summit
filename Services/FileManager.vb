@@ -172,6 +172,10 @@ Namespace Abovo
             Public ExpendAnalyserV2 As BPIncomeExpenditureAnalyserV2
             Public ReadOnly ResourceRegistry As New ModelResourceRegistry
             Public IsDirty As Boolean
+            Public IntegrityState As ModelIntegrityState = ModelIntegrityState.Healthy
+            Public RecoverySaveAsRequired As Boolean = False
+            Public IntegrityReason As String = String.Empty
+            Public IntegrityOperation As String = String.Empty
             Public IsClosing As Boolean
             Public ModelID As Integer
             Public ChangeManager As ModelChangeManagerV2
@@ -492,6 +496,15 @@ Namespace Abovo
                                 FileName = SelectedPath
                                 FileInfo = New System.IO.FileInfo(FileName)
                                 IsDirty = False
+                                RecoverySaveAsRequired = False
+                                SystemMessageManager.Publish(
+                                    ModelID,
+                                    If(IntegrityState = ModelIntegrityState.RecoveryRequired,
+                                       "Recovery copy saved successfully. The original workbook was not overwritten.",
+                                       "Model saved as '" & System.IO.Path.GetFileName(FileName) & "'."),
+                                    SystemMessageSeverity.Success,
+                                    "File Manager",
+                                    FileName)
                                 Return True
 
                             Loop
@@ -511,9 +524,22 @@ Namespace Abovo
                     FileName = System.IO.Path.GetFullPath(SavedPath)
                     FileInfo = New System.IO.FileInfo(FileName)
                     IsDirty = False
+                    RecoverySaveAsRequired = False
+                    SystemMessageManager.Publish(
+                        ModelID,
+                        "Model saved as '" & System.IO.Path.GetFileName(FileName) & "'.",
+                        SystemMessageSeverity.Success,
+                        "File Manager",
+                        FileName)
                     Return True
 
                 Catch ex As Exception
+                    SystemMessageManager.Publish(
+                        ModelID,
+                        "The model could not be saved to the selected location: " & ex.Message,
+                        SystemMessageSeverity.Error,
+                        "File Manager",
+                        OriginalPath)
                     MessageBox.Show(
                         "The model could not be saved to the selected location." &
                         Environment.NewLine & Environment.NewLine & ex.Message,
@@ -526,14 +552,36 @@ Namespace Abovo
             End Function
             Public Function SaveFile() As Boolean
 
+                If RecoverySaveAsRequired Then
+                    SystemMessageManager.Publish(
+                        ModelID,
+                        "Normal save was redirected to Save As because an earlier workbook operation could not be rolled back reliably.",
+                        SystemMessageSeverity.Warning,
+                        "File Manager",
+                        FileName)
+                    Return SaveFileAs(RequireDifferentPath:=True)
+                End If
+
                 If Not IsDirty Then Return True
 
                 Try
                     ModelSpreadsheetControl.SaveDocument()
                     IsDirty = False
+                    SystemMessageManager.Publish(
+                        ModelID,
+                        "Model saved successfully.",
+                        SystemMessageSeverity.Success,
+                        "File Manager",
+                        FileName)
                     Return True
 
                 Catch ex As Exception
+                    SystemMessageManager.Publish(
+                        ModelID,
+                        "The model could not be saved: " & ex.Message,
+                        SystemMessageSeverity.Error,
+                        "File Manager",
+                        FileName)
                     MessageBox.Show(
                         "Sorry, an error occurred while saving. Please check the file is not open in another program and that you have write permissions to the location." &
                         Environment.NewLine & Environment.NewLine & ex.Message,
@@ -565,6 +613,13 @@ Namespace Abovo
 
                 If Validation.HasFailures Then
 
+                    SystemMessageManager.Publish(
+                        ModelID,
+                        "Close validation failed. The original workbook cannot be overwritten; a separate validation copy is required.",
+                        SystemMessageSeverity.Warning,
+                        "Model validation",
+                        FileName)
+
                     Dim ValidationResponse As DialogResult =
                         MessageBox.Show(
                             BuildCloseValidationMessage(Validation),
@@ -582,6 +637,24 @@ Namespace Abovo
 
                     CloseTrans.StringReturn = "Proceed"
                     Return CloseTrans
+                End If
+
+                If RecoverySaveAsRequired Then
+                    Dim RecoveryResponse As DialogResult =
+                        MessageBox.Show(
+                            "An earlier workbook operation could not be rolled back reliably." &
+                            Environment.NewLine & Environment.NewLine &
+                            "To protect the original workbook, Summit must save this model as a separate XLSB copy before closing.",
+                            "Recovery copy required",
+                            MessageBoxButtons.OKCancel,
+                            MessageBoxIcon.Warning,
+                            MessageBoxDefaultButton.Button2)
+
+                    If RecoveryResponse <> DialogResult.OK OrElse
+                       Not SaveFileAs(RequireDifferentPath:=True) Then
+                        CloseTrans.StringReturn = "Cancel"
+                        Return CloseTrans
+                    End If
                 End If
 
                 If IsDirty Then
@@ -1363,9 +1436,30 @@ Namespace Abovo
             Dim My_Exception As Exception
             My_Exception = e.Exception
             e.Handled = True
+            Dim modelID As Integer = ResolveSpreadsheetModelID(TryCast(sender, SpreadsheetControl))
+            SystemMessageManager.Publish(
+                modelID,
+                "A spreadsheet command could not be completed: " & My_Exception.Message,
+                SystemMessageSeverity.Error,
+                "Spreadsheet",
+                If(modelID >= 0 AndAlso ExcelModels IsNot Nothing AndAlso
+                   modelID < ExcelModels.Length AndAlso ExcelModels(modelID) IsNot Nothing,
+                   ExcelModels(modelID).FileName,
+                   String.Empty))
             MessageBox.Show(My_Exception.Message, "An error has occured with the file")
 
         End Sub
+
+        Private Shared Function ResolveSpreadsheetModelID(ByVal control As SpreadsheetControl) As Integer
+            If control Is Nothing OrElse ExcelModels Is Nothing Then Return -1
+            For index As Integer = 0 To ExcelModels.Length - 1
+                If ExcelModels(index) IsNot Nothing AndAlso
+                   Object.ReferenceEquals(ExcelModels(index).ModelSpreadsheetControl, control) Then
+                    Return index
+                End If
+            Next
+            Return -1
+        End Function
         Public Shared Function OpenModel(
             ByVal strPath As String,
             ByVal FileInfo As System.IO.FileInfo,

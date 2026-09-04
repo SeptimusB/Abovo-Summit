@@ -1,6 +1,5 @@
 ﻿Imports System
 Imports System.Collections.Generic
-Imports System.Diagnostics
 Imports Abovo.FileManager
 Imports Abovo.AbovoAppCls
 Imports DevExpress.Spreadsheet
@@ -12,7 +11,6 @@ Namespace Abovo
         Private ReadOnly ModelID As Integer
         Private ReadOnly SyncRules As List(Of TransactionalDBSyncRule)
         Private IsSynchronising As Boolean = False
-
         Private Class TransactionalDBSyncRule
 
             Public SourceNamedRange As String
@@ -48,6 +46,11 @@ Namespace Abovo
             Public RightColumnIndex As Integer
             Public CurrentRows As Integer
 
+        End Class
+
+        Private Class WorksheetShiftBounds
+            Public LeftColumnIndex As Integer
+            Public RightColumnIndex As Integer
         End Class
 
         Public Sub New(ByVal SetModelID As Integer)
@@ -323,9 +326,6 @@ Namespace Abovo
                 WS = Nothing
             End Try
 
-            Dim DiagnosticTimer As Stopwatch = Stopwatch.StartNew()
-
-
             If WS Is Nothing Then
                 Return
             End If
@@ -570,9 +570,6 @@ Namespace Abovo
             Const TransactionDBSheetName As String = "Transactional DB"
             Const MaximumExamplesPerType As Integer = 250
 
-            Dim DiagnosticTimer As Stopwatch = Stopwatch.StartNew()
-
-
             Dim TransactionDBSheet As Worksheet = Nothing
 
             Try
@@ -667,7 +664,6 @@ Namespace Abovo
                     Continue For
                 End If
 
-                Dim SheetTimer As Stopwatch = Stopwatch.StartNew()
                 Dim UsedRange As CellRange = WS.GetUsedRange()
 
                 Dim SheetFormulaCount As Long = 0
@@ -775,7 +771,6 @@ Namespace Abovo
                                           ByVal LegacyChangedNamedRange As String) As AbovoTransaction
 
             Dim Result As New AbovoTransaction With {.BError = False}
-
             If IsSynchronising Then Return Result
 
             Dim WB As IWorkbook = GetWorkbook()
@@ -811,7 +806,6 @@ Namespace Abovo
             'bottom to top.  This minimises the amount of lower worksheet content
             'that each full-row insert/delete has to shift.
             Dim WorkItems As New List(Of MirrorResizeWorkItem)
-
             For Each Request As MirrorResizeRequest In Requests.Values
 
                 Dim DN As DefinedName = Nothing
@@ -858,11 +852,6 @@ Namespace Abovo
                 End Function)
 
 
-            For Each Item As MirrorResizeWorkItem In WorkItems
-
-
-            Next
-
             If WorkItems.Count = 0 Then
                 Result.StringReturn = "TransactionDB mirrors already aligned."
                 Return Result
@@ -877,21 +866,37 @@ Namespace Abovo
             Dim HistoryChanged As Boolean = False
             Dim UpdateStarted As Boolean = False
             Dim StructuralChangeAttempted As Boolean = False
-            Dim SyncTimer As Stopwatch = Stopwatch.StartNew()
-
+            Dim MutationFailed As Boolean = False
+            Dim CleanupFailures As New List(Of String)
+            Dim BulkMutationGuardStarted As Boolean = False
+            Dim ShiftBoundsByWorksheet As New Dictionary(Of String, WorksheetShiftBounds)(StringComparer.OrdinalIgnoreCase)
+            'Every mirror on a worksheet shifts the same used column span. Calling
+            'GetUsedRange for each mirror is particularly expensive on Transactional
+            'DB, so resolve it once before any row mutations begin.
+            For Each Item As MirrorResizeWorkItem In WorkItems
+                If Not ShiftBoundsByWorksheet.ContainsKey(Item.WorksheetName) Then
+                    Dim Sheet As Worksheet = WB.Worksheets(Item.WorksheetName)
+                    Dim UsedRange As CellRange = Sheet.GetUsedRange()
+                    ShiftBoundsByWorksheet.Add(Item.WorksheetName, New WorksheetShiftBounds With {
+                        .LeftColumnIndex = Math.Min(UsedRange.LeftColumnIndex, Item.LeftColumnIndex),
+                        .RightColumnIndex = Math.Max(UsedRange.RightColumnIndex, Item.RightColumnIndex)})
+                Else
+                    Dim Bounds As WorksheetShiftBounds = ShiftBoundsByWorksheet(Item.WorksheetName)
+                    Bounds.LeftColumnIndex = Math.Min(Bounds.LeftColumnIndex, Item.LeftColumnIndex)
+                    Bounds.RightColumnIndex = Math.Max(Bounds.RightColumnIndex, Item.RightColumnIndex)
+                End If
+            Next
             Try
 
                 IsSynchronising = True
-
-                Dim HistoryTimer As Stopwatch = Stopwatch.StartNew()
+                ModelSafetyManager.BeginBulkWorkbookMutation(ModelID)
+                BulkMutationGuardStarted = True
 
                 If WB.History.IsEnabled Then
                     WB.History.IsEnabled = False
                     HistoryChanged = True
                 End If
 
-
-                Dim EngineTimer As Stopwatch = Stopwatch.StartNew()
 
                 If WB.Options.CalculationEngineType <> CalculationEngineType.Recursive Then
                     WB.Options.CalculationEngineType = CalculationEngineType.Recursive
@@ -908,8 +913,6 @@ Namespace Abovo
 
                 If ExcelModels(ModelID).ExpendAnalyser IsNot Nothing Then
 
-                    Dim DisconnectTimer As Stopwatch = Stopwatch.StartNew()
-
                     ExcelModels(ModelID).ExpendAnalyser.DisconectRDS()
                     RDSDisconnected = True
 
@@ -924,21 +927,23 @@ Namespace Abovo
                 End If
 
                 For Each Item As MirrorResizeWorkItem In WorkItems
-
-                    Dim MirrorTimer As Stopwatch = Stopwatch.StartNew()
                     StructuralChangeAttempted = True
+                    Dim Bounds As WorksheetShiftBounds = ShiftBoundsByWorksheet(Item.WorksheetName)
 
                     Dim ResizeResult As AbovoTransaction =
                         ResizeMirrorRangeInBatch(WB,
                                                  Item.Request.TargetNamedRange,
-                                                 Item.Request.RequiredRows)
-
+                                                 Item.Request.RequiredRows,
+                                                 Bounds.LeftColumnIndex,
+                                                 Bounds.RightColumnIndex)
 
                     If ResizeResult.BError Then
                         Result.BError = True
+                        MutationFailed = True
                         Result.StringReturn &= Item.Request.TargetNamedRange &
                                                ": " & ResizeResult.StringReturn &
                                                Environment.NewLine
+                        Exit For
                     End If
 
                 Next
@@ -946,16 +951,18 @@ Namespace Abovo
             Catch ex As Exception
 
                 Result.BError = True
+                MutationFailed = StructuralChangeAttempted
                 Result.StringReturn &= ex.Message
 
             Finally
 
                 If UpdateStarted Then
 
-                    Dim EndUpdateTimer As Stopwatch = Stopwatch.StartNew()
-                    WB.EndUpdate()
-
-
+                    Try
+                        WB.EndUpdate()
+                    Catch ex As Exception
+                        CleanupFailures.Add("End workbook update: " & ex.Message)
+                    End Try
                 End If
 
                 If StructuralChangeAttempted Then
@@ -966,51 +973,96 @@ Namespace Abovo
                             ExcelModels(ModelID).ExpendAnalyserV2.NotifySnapshotInvalidated()
                         End If
                     Catch ex As Exception
-                        Result.BError = True
-                        Result.StringReturn &=
-                            "Transactional DB snapshot invalidation: " & ex.Message &
-                            Environment.NewLine
+                        SystemMessageManager.Publish(
+                            ModelID,
+                            "Transactional DB data changed, but the analyser snapshot notification failed: " & ex.Message,
+                            SystemMessageSeverity.Warning,
+                            "Transactional DB Synchroniser")
                     End Try
                 End If
 
-                Dim RestoreCalcTimer As Stopwatch = Stopwatch.StartNew()
-                WB.Options.CalculationMode = PreviousCalculationMode
+                Try
+                    WB.Options.CalculationMode = PreviousCalculationMode
+                Catch ex As Exception
+                    CleanupFailures.Add("Restore calculation mode: " & ex.Message)
+                End Try
 
 
                 If CalculationEngineChanged Then
 
-                    Dim RestoreEngineTimer As Stopwatch = Stopwatch.StartNew()
-                    WB.Options.CalculationEngineType = PreviousCalculationEngineType
+                    Try
+                        WB.Options.CalculationEngineType = PreviousCalculationEngineType
+                    Catch ex As Exception
+                        CleanupFailures.Add("Restore calculation engine: " & ex.Message)
+                    End Try
 
 
                 End If
 
                 If HistoryChanged Then
 
-                    Dim RestoreHistoryTimer As Stopwatch = Stopwatch.StartNew()
-                    WB.History.IsEnabled = PreviousHistoryEnabled
+                    Try
+                        WB.History.IsEnabled = PreviousHistoryEnabled
+                    Catch ex As Exception
+                        CleanupFailures.Add("Restore workbook history: " & ex.Message)
+                    End Try
 
 
                 End If
 
                 If RDSDisconnected AndAlso ExcelModels(ModelID).ExpendAnalyser IsNot Nothing Then
 
-                    Dim ReconnectTimer As Stopwatch = Stopwatch.StartNew()
-                    ExcelModels(ModelID).ExpendAnalyser.ReconnectRDS()
+                    Try
+                        ExcelModels(ModelID).ExpendAnalyser.ReconnectRDS()
+                    Catch ex As Exception
+                        CleanupFailures.Add("Reconnect Analysis V1 data source: " & ex.Message)
+                    End Try
 
 
                 End If
 
                 If RDSV2Disconnected AndAlso ExcelModels(ModelID).ExpendAnalyserV2 IsNot Nothing Then
 
-                    ExcelModels(ModelID).ExpendAnalyserV2.ReconnectRDS()
+                    Try
+                        ExcelModels(ModelID).ExpendAnalyserV2.ReconnectRDS()
+                    Catch ex As Exception
+                        CleanupFailures.Add("Reconnect Analysis V2 data source: " & ex.Message)
+                    End Try
 
                 End If
 
 
                 IsSynchronising = False
 
+                If BulkMutationGuardStarted Then
+                    ModelSafetyManager.EndBulkWorkbookMutation(ModelID)
+                    BulkMutationGuardStarted = False
+                End If
+
+                If CleanupFailures.Count > 0 Then
+                    Result.BError = True
+                    MutationFailed = StructuralChangeAttempted
+                    Result.StringReturn &=
+                        If(String.IsNullOrWhiteSpace(Result.StringReturn), String.Empty, Environment.NewLine) &
+                        String.Join(Environment.NewLine, CleanupFailures)
+                End If
+
             End Try
+
+            If StructuralChangeAttempted Then ExcelModels(ModelID).IsDirty = True
+
+            If MutationFailed Then
+                Result.BSuccess = False
+                Result.StrResponseMessage = Result.StringReturn
+                ModelSafetyManager.MarkRecoveryRequired(
+                    ModelID,
+                    "Transactional DB synchronisation",
+                    Result.StringReturn,
+                    "Transactional DB Synchroniser")
+            ElseIf Not Result.BError Then
+                Result.BSuccess = True
+                Result.StrResponseMessage = Result.StringReturn
+            End If
 
             Return Result
 
@@ -1024,7 +1076,6 @@ Namespace Abovo
 
             If WS Is Nothing Then Return False
 
-            Dim UsedRangeTimer As Stopwatch = Stopwatch.StartNew()
             Dim UsedRange As CellRange = WS.GetUsedRange()
 
             'Shift every USED column on the TransactionDB sheet, not merely the
@@ -1046,8 +1097,10 @@ Namespace Abovo
         End Function
 
         Private Function ResizeMirrorRangeInBatch(ByVal WB As IWorkbook,
-                                                  ByVal TargetNamedRange As String,
-                                                  ByVal RequiredRows As Integer) As AbovoTransaction
+                                                   ByVal TargetNamedRange As String,
+                                                   ByVal RequiredRows As Integer,
+                                                   ByVal CachedShiftLeft As Integer,
+                                                   ByVal CachedShiftRight As Integer) As AbovoTransaction
 
             Dim Result As New AbovoTransaction With {.BError = False}
 
@@ -1088,17 +1141,10 @@ Namespace Abovo
 
                     Dim TemplateHeight As Single = WS.Rows(LastFormulaRow).Height
 
-                    Dim ShiftLeft As Integer = RangeLeft
-                    Dim ShiftRight As Integer = RangeRight
-
+                    Dim ShiftLeft As Integer = Math.Min(CachedShiftLeft, RangeLeft)
+                    Dim ShiftRight As Integer = Math.Max(CachedShiftRight, RangeRight)
                     Dim UseFastPath As Boolean =
-                        GetTransactionDBShiftBounds(WS,
-                                                    RangeLeft,
-                                                    RangeRight,
-                                                    ShiftLeft,
-                                                    ShiftRight)
-
-                    Dim InsertTimer As Stopwatch = Stopwatch.StartNew()
+                        ShiftLeft >= 0 AndAlso ShiftRight >= ShiftLeft AndAlso ShiftRight <= 16383
 
                     If UseFastPath Then
 
@@ -1116,8 +1162,6 @@ Namespace Abovo
 
                     End If
 
-                    Dim InsertElapsed As Long = InsertTimer.ElapsedMilliseconds
-
                     Dim SourceTemplate As CellRange =
                         WS.Range.FromLTRB(RangeLeft,
                                           LastFormulaRow,
@@ -1130,8 +1174,6 @@ Namespace Abovo
                                           RangeRight,
                                           RangeBottom + RowsToAdd - 1)
 
-                    Dim FillTimer As Stopwatch = Stopwatch.StartNew()
-
                     NewRows.CopyFrom(SourceTemplate, PasteSpecial.All)
 
                     If Not UseFastPath Then
@@ -1139,8 +1181,6 @@ Namespace Abovo
                             WS.Rows(RowIndex).Height = TemplateHeight
                         Next
                     End If
-
-                    Dim FillElapsed As Long = FillTimer.ElapsedMilliseconds
 
                     Dim ExpandedRange As CellRange =
                         WS.Range.FromLTRB(RangeLeft,
@@ -1169,17 +1209,10 @@ Namespace Abovo
 
                     Dim FirstDeleteRow As Integer = RangeBottom - RowsToDelete
 
-                    Dim ShiftLeft As Integer = RangeLeft
-                    Dim ShiftRight As Integer = RangeRight
-
+                    Dim ShiftLeft As Integer = Math.Min(CachedShiftLeft, RangeLeft)
+                    Dim ShiftRight As Integer = Math.Max(CachedShiftRight, RangeRight)
                     Dim UseFastPath As Boolean =
-                        GetTransactionDBShiftBounds(WS,
-                                                    RangeLeft,
-                                                    RangeRight,
-                                                    ShiftLeft,
-                                                    ShiftRight)
-
-                    Dim DeleteTimer As Stopwatch = Stopwatch.StartNew()
+                        ShiftLeft >= 0 AndAlso ShiftRight >= ShiftLeft AndAlso ShiftRight <= 16383
 
                     If UseFastPath Then
 
@@ -1196,8 +1229,6 @@ Namespace Abovo
                         WS.Rows.Remove(FirstDeleteRow, RowsToDelete)
 
                     End If
-
-                    Dim DeleteElapsed As Long = DeleteTimer.ElapsedMilliseconds
 
                     Dim ContractedRange As CellRange =
                         WS.Range.FromLTRB(RangeLeft,

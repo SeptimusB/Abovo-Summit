@@ -7586,11 +7586,29 @@ SectionSelect:
 
         End If
 
-        Dim Trans As AbovoTransaction =
-            ExcelModels(ModelID).EventCoordinator.TriggerEvent(
-                "GridButton",
-                GridTag,
-                ParentGroupForm)
+        Dim Trans As AbovoTransaction
+        Try
+            Trans = ExcelModels(ModelID).EventCoordinator.TriggerEvent(
+                    "GridButton",
+                    GridTag,
+                    ParentGroupForm)
+        Catch ex As Exception
+            SystemMessageManager.Publish(
+                ModelID,
+                "The structural grid command failed unexpectedly: " & ex.Message,
+                SystemMessageSeverity.Error,
+                "Data Interface",
+                GridTag.CommandData)
+            XtraMessageBox.Show(Me, ex.Message, "Workbook structure",
+                                MessageBoxButtons.OK, MessageBoxIcon.Error)
+            Return
+        End Try
+
+        ModelSafetyManager.PublishResult(
+            ModelID,
+            GridTag.CommandData,
+            Trans,
+            "Data Interface")
 
         If Trans Is Nothing OrElse Trans.BError Then Return
 
@@ -7616,11 +7634,31 @@ SectionSelect:
     End Sub
     Private Sub Interface_ButtonClick(sender As Object, e As EventArgs)
 
-        Dim EventResult As AbovoTransaction =
-            ExcelModels(ModelID).EventCoordinator.TriggerEvent(
-                "Code",
-                sender.Tag,
-                ParentGroupForm)
+        Dim ImportCommand As String = TryCast(sender.Tag, String)
+        Dim EventResult As AbovoTransaction
+
+        Try
+            EventResult = ExcelModels(ModelID).EventCoordinator.TriggerEvent(
+                    "Code",
+                    sender.Tag,
+                    ParentGroupForm)
+        Catch ex As Exception
+            SystemMessageManager.Publish(
+                ModelID,
+                "The command '" & ImportCommand & "' failed unexpectedly: " & ex.Message,
+                SystemMessageSeverity.Error,
+                "Data Interface",
+                ImportCommand)
+            MessageBox.Show(Me, ex.Message, "Import Data",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error)
+            Return
+        End Try
+
+        ModelSafetyManager.PublishResult(
+            ModelID,
+            ImportCommand,
+            EventResult,
+            "Data Interface")
 
         If EventResult Is Nothing OrElse EventResult.EventCancelled Then Return
 
@@ -7634,7 +7672,6 @@ SectionSelect:
             Return
         End If
 
-        Dim ImportCommand As String = TryCast(sender.Tag, String)
         Dim IsDevelopmentImport As Boolean =
             String.Equals(ImportCommand, "ImportSingleDSA_File", StringComparison.Ordinal) OrElse
             String.Equals(ImportCommand, "ImportMultiDSA_Files", StringComparison.Ordinal) OrElse
@@ -12126,7 +12163,14 @@ SectionSelect:
                                     Math.Abs(LineAdjustment))
 
                         End If
-
+                        ModelSafetyManager.PublishResult(
+                            ModelID,
+                            If(LineAdjustment > 0,
+                               "Add records " & StructuralRuleID,
+                               "Delete records " & StructuralRuleID),
+                            StructureResult,
+                            "Data Interface",
+                            StructuralRuleID)
                         If StructureResult IsNot Nothing AndAlso
                            StructureResult.BError Then
 

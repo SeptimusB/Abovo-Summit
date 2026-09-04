@@ -113,3 +113,9 @@ Recommendation: Confirm the expected blank-state behaviour and use IFNA/validati
 - Excel timings exclude Summit's DevExpress calculation, UDF implementation, RangeDataSource work, grid refresh and UI rendering.
 - Per-sheet COM Calculate timings were dominated by call overhead and are not used to rank performance.
 - No workbook or application code was changed by this audit.
+
+## Post-audit authority decision - 4 September 2026
+
+This report remains the health and calculation baseline for the workbook audited on 24 August. A reserved-capacity prototype was trialled on 3 September but withdrawn following client review. The production contract now uses the validated pre-capacity workbook and the established structural-shift behavior shared by Summit and Excel/VBA.
+
+The current master is 11,813,448 bytes with SHA-256 `D2CA9A14B432C6914612917129F20446DDD33A9BD7740AFAC704A5C357790C17`. It has 283 worksheets, 1,758 names and `Transactional_Records = Transactional DB!A6:BV1599` (1,594 by 74), with no `_Capacity` or `_Continuation` names. Targeted validation found no broken names and no non-OK saved Check Sheet results. See `TestFileClean.analysis.md` and `Abovo_Summit_Project_Scope_Audit.md` for the current authority record.

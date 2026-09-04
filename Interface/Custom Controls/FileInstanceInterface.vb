@@ -231,8 +231,11 @@ Public Class FileInstanceInterface
             Case "SaveBP"
 
                 Me.Cursor = Cursors.WaitCursor
-                ExcelModels(BPModelID).SaveFile()
-                Me.Cursor = Cursors.Default
+                Try
+                    ExcelModels(BPModelID).SaveFile()
+                Finally
+                    Me.Cursor = Cursors.Default
+                End Try
 
             Case "SaveBPAs"
 

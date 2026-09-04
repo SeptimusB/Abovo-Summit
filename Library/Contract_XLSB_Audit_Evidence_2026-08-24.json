@@ -14,6 +14,24 @@
     "sha256": "B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE",
     "exactCopyVerified": true
   },
+  "postAuditAuthorityChange": {
+    "changeDate": "2026-09-04",
+    "purpose": "Restore the client-approved pre-capacity Transactional DB structure and retain structural-shift expansion in Summit and Excel/VBA.",
+    "currentSizeBytes": 11813448,
+    "currentSha256": "D2CA9A14B432C6914612917129F20446DDD33A9BD7740AFAC704A5C357790C17",
+    "worksheets": 283,
+    "definedNames": 1758,
+    "transactionalRecords": "Transactional DB!A6:BV1599",
+    "transactionalRecordRows": 1594,
+    "transactionalRecordColumns": 74,
+    "capacityNames": 0,
+    "continuationNames": 0,
+    "brokenDefinedNames": 0,
+    "savedCheckSheetNonOkRows": 0,
+    "repositoryCopyExactMatch": true,
+    "auditMetricsRerun": false,
+    "note": "The reserved-capacity prototype is not an authoritative workbook contract."
+  },
   "method": {
     "sourceMasterModified": false,
     "sourceMasterOpenedByExcel": false,

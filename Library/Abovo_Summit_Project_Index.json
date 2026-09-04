@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-25T12:53:20+01:00",
+  "generatedAt": "2026-09-04T12:30:00+01:00",
   "purpose": "Compact current contract index for the TestFileClean authoritative master and its Summit integration.",
   "security": {
     "containsWorkbook": false,
@@ -11,13 +11,13 @@
     "masterSource": "Z:/Sandbox/TestFileClean.xlsb",
     "repositoryCopy": "Library/TestFileClean.xlsb",
     "repositoryFilenameRetainedForCompatibility": true,
-    "sizeBytes": 11812164,
-    "sha256": "F1BFE086682A87987400F78CE36FDE769BA30D492FD35D5B5EBAE839F9D0CF2B"
+    "sizeBytes": 11813448,
+    "sha256": "D2CA9A14B432C6914612917129F20446DDD33A9BD7740AFAC704A5C357790C17"
   },
   "workbook": {
     "fileFormat": 50,
     "readOnlyAudit": true,
-    "worksheetCount": 281,
+    "worksheetCount": 283,
     "definedNameCount": 1758,
     "transactionalRecords": "Transactional DB!A6:BV1599",
     "transactionalRecordRows": 1594,
@@ -36,14 +36,19 @@
     "geometryIssueCount": 0,
     "developmentIdentifiedTargets": "Transactional DB!TransCopy_DevptSingle_A:N",
     "migrationManagerPresent": false,
-    "materialiserPresent": false
+    "materialiserPresent": false,
+    "capacityNameCount": 0,
+    "continuationNameCount": 0,
+    "expansionMode": "Structural shift, matching the current Excel VBA implementation.",
+    "capacityDecisionDate": "2026-09-04",
+    "capacityDecision": "Reserved no-shift capacity was withdrawn following client review. A separate proof candidate is retained outside the repository and is not authoritative."
   },
   "application": {
     "project": "Abovo Business Suite.vbproj",
     "compiledFileCount": 155,
-    "testVersion": "1.05",
-    "structureXmlSha256": "F7779CE04DBAD4ECEB994B8298838AA1B4F80B6838B1D2EB7D8D960E15FC73D6",
-    "projectSha256": "837CC4ABA9031BAF0D4B429E3E33FA92FE645BA850A422D0B61BC129276420B3",
+    "testVersion": "1.48",
+    "structureXmlSha256": "89C89191AB809BB3E81A79A54E61A05E35D99E2780579C6065628775CCA8BA29",
+    "projectSha256": "974514B3178207934216A3B470C17CF583E17095DC54C68FE8CF5A8491278676",
     "clientTestPackage": {
       "type": "ClickOnce offline install",
       "version": "1.0.0.0",
@@ -76,7 +81,7 @@
   },
   "workbookHealthAudit": {
     "auditDate": "2026-08-24",
-    "contractSha256": "F1BFE086682A87987400F78CE36FDE769BA30D492FD35D5B5EBAE839F9D0CF2B",
+    "contractSha256": "B248B1C733E1E3293536FBE1DBC9576D56FD4D34BEB74A3898B7F3D7333BCFBE",
     "report": "Library/Contract_XLSB_Audit_2026-08-24.pdf",
     "summary": "Library/Contract_XLSB_Audit_2026-08-24.md",
     "evidence": "Library/Contract_XLSB_Audit_Evidence_2026-08-24.json",

@@ -189,12 +189,7 @@ Namespace Abovo
             Dim TemplateRowHeight As Single = WSTarget.Rows(PriorBottomRow).Height
             Dim WasProtected As Boolean = WSTarget.IsProtected
             Dim UpdateStarted As Boolean = False
-
-#If DEBUG Then
-            Dim PerfTimer As System.Diagnostics.Stopwatch = System.Diagnostics.Stopwatch.StartNew()
-            Dim InsertElapsed As Long = 0
-            Dim TemplateElapsed As Long = 0
-#End If
+            Dim MutationStarted As Boolean = False
 
             Try
 
@@ -205,11 +200,8 @@ Namespace Abovo
 
                 'Insert all rows in one structural operation.  DevExpress updates
                 'workbook references as part of the row insertion.
+                MutationStarted = True
                 WSTarget.Rows.Insert(PriorBottomRow + 1, RowsToAdd)
-
-#If DEBUG Then
-                InsertElapsed = PerfTimer.ElapsedMilliseconds
-#End If
 
                 Dim SourceTemplate As CellRange =
                     WSTarget.Range.FromLTRB(UsedLeft,
@@ -272,10 +264,6 @@ Namespace Abovo
 
                 End If
 
-#If DEBUG Then
-                TemplateElapsed = PerfTimer.ElapsedMilliseconds - InsertElapsed
-#End If
-
                 'Explicitly set the intended named-range extent.  We use the saved
                 'pre-insert coordinates so the result does not depend on whether the
                 'live DefinedName was automatically adjusted during Rows.Insert.
@@ -300,16 +288,35 @@ Namespace Abovo
 
                 ThisTrans.BError = True
                 ThisTrans.StringReturn = ex.Message
-
-            Finally
-
-                If WasProtected AndAlso WSTarget IsNot Nothing Then
-                    ProtectWS(ModelID, WSTarget.Name)
+                ThisTrans.StrResponseMessage = ex.Message
+                If MutationStarted Then
+                    ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Insert rows", ex.Message, "Workbook Manager", TargetNamedRange)
                 End If
 
-                If UpdateStarted Then WB.EndUpdate()
+            Finally
+                Try
+                    If WasProtected AndAlso WSTarget IsNot Nothing Then ProtectWS(ModelID, WSTarget.Name)
+                Catch cleanupError As Exception
+                    ThisTrans.BError = True
+                    ThisTrans.StringReturn &= If(String.IsNullOrWhiteSpace(ThisTrans.StringReturn), String.Empty, Environment.NewLine) &
+                        "Worksheet protection restoration failed: " & cleanupError.Message
+                    If MutationStarted Then ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Insert rows", ThisTrans.StringReturn, "Workbook Manager", TargetNamedRange)
+                End Try
+                Try
+                    If UpdateStarted Then WB.EndUpdate()
+                Catch cleanupError As Exception
+                    ThisTrans.BError = True
+                    ThisTrans.StringReturn &= If(String.IsNullOrWhiteSpace(ThisTrans.StringReturn), String.Empty, Environment.NewLine) &
+                        "Workbook EndUpdate failed: " & cleanupError.Message
+                    If MutationStarted Then ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Insert rows", ThisTrans.StringReturn, "Workbook Manager", TargetNamedRange)
+                End Try
 
             End Try
+
+            If MutationStarted Then ExcelModels(ModelID).SetDirtyFlag()
 
             If Not ThisTrans.BError Then
                 Dim SyncResult As AbovoTransaction =
@@ -320,6 +327,9 @@ Namespace Abovo
                     ThisTrans.StringReturn =
                         "Rows were inserted, but Transactional DB synchronisation failed: " &
                         SyncResult.StringReturn
+                    ThisTrans.StrResponseMessage = ThisTrans.StringReturn
+                    ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Insert rows", ThisTrans.StringReturn, "Workbook Manager", TargetNamedRange)
                 End If
             End If
 
@@ -391,12 +401,7 @@ Namespace Abovo
 
             Dim WasProtected As Boolean = WSTarget.IsProtected
             Dim UpdateStarted As Boolean = False
-
-#If DEBUG Then
-            Dim PerfTimer As System.Diagnostics.Stopwatch = System.Diagnostics.Stopwatch.StartNew()
-            Dim InsertElapsed As Long = 0
-            Dim TemplateElapsed As Long = 0
-#End If
+            Dim MutationStarted As Boolean = False
 
             Try
 
@@ -407,11 +412,8 @@ Namespace Abovo
 
                 'Preserve the legacy insertion point: new columns are inserted to
                 'the left of the named range's prior right-hand column.
+                MutationStarted = True
                 WSTarget.Columns.Insert(PriorRightCol, ColsToAdd)
-
-#If DEBUG Then
-                InsertElapsed = PerfTimer.ElapsedMilliseconds
-#End If
 
                 Dim SourceTemplate As CellRange =
                     WSTarget.Range.FromLTRB(TemplateColumnIndex,
@@ -477,10 +479,6 @@ Namespace Abovo
 
                 End If
 
-#If DEBUG Then
-                TemplateElapsed = PerfTimer.ElapsedMilliseconds - InsertElapsed
-#End If
-
                 'InsertColumns historically relied on DevExpress to alter the named
                 'range implicitly.  Make the result explicit so later enhancements
                 'have one predictable contract.
@@ -505,16 +503,35 @@ Namespace Abovo
 
                 ThisTrans.BError = True
                 ThisTrans.StringReturn = ex.Message
-
-            Finally
-
-                If WasProtected AndAlso WSTarget IsNot Nothing Then
-                    ProtectWS(ModelID, WSTarget.Name)
+                ThisTrans.StrResponseMessage = ex.Message
+                If MutationStarted Then
+                    ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Insert columns", ex.Message, "Workbook Manager", TargetNamedRange)
                 End If
 
-                If UpdateStarted Then WB.EndUpdate()
+            Finally
+                Try
+                    If WasProtected AndAlso WSTarget IsNot Nothing Then ProtectWS(ModelID, WSTarget.Name)
+                Catch cleanupError As Exception
+                    ThisTrans.BError = True
+                    ThisTrans.StringReturn &= If(String.IsNullOrWhiteSpace(ThisTrans.StringReturn), String.Empty, Environment.NewLine) &
+                        "Worksheet protection restoration failed: " & cleanupError.Message
+                    If MutationStarted Then ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Insert columns", ThisTrans.StringReturn, "Workbook Manager", TargetNamedRange)
+                End Try
+                Try
+                    If UpdateStarted Then WB.EndUpdate()
+                Catch cleanupError As Exception
+                    ThisTrans.BError = True
+                    ThisTrans.StringReturn &= If(String.IsNullOrWhiteSpace(ThisTrans.StringReturn), String.Empty, Environment.NewLine) &
+                        "Workbook EndUpdate failed: " & cleanupError.Message
+                    If MutationStarted Then ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Insert columns", ThisTrans.StringReturn, "Workbook Manager", TargetNamedRange)
+                End Try
 
             End Try
+
+            If MutationStarted Then ExcelModels(ModelID).SetDirtyFlag()
 
             If Not ThisTrans.BError Then
                 Dim SyncResult As AbovoTransaction =
@@ -525,6 +542,9 @@ Namespace Abovo
                     ThisTrans.StringReturn =
                         "Columns were inserted, but Transactional DB synchronisation failed: " &
                         SyncResult.StringReturn
+                    ThisTrans.StrResponseMessage = ThisTrans.StringReturn
+                    ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Insert columns", ThisTrans.StringReturn, "Workbook Manager", TargetNamedRange)
                 End If
             End If
 
@@ -532,141 +552,186 @@ Namespace Abovo
 
         End Function
         Public Shared Function DeleteRows(ModelID As Integer,
-                                              TargetNamedRange As String,
-                                              Optional ByVal RowsToDelete As Integer = 1,
-                                              Optional ByVal JustFormats As Boolean = False,
-                                              Optional ByVal IgnoreFinalRow As Boolean = False,
-                                              Optional ByVal MinimumRowsToRetain As Integer = 3) As AbovoTransaction
+                                               TargetNamedRange As String,
+                                               Optional ByVal RowsToDelete As Integer = 1,
+                                               Optional ByVal JustFormats As Boolean = False,
+                                               Optional ByVal IgnoreFinalRow As Boolean = False,
+                                               Optional ByVal MinimumRowsToRetain As Integer = 3) As AbovoTransaction
+            Dim ThisTrans As New AbovoTransaction("DeleteRows")
+            Dim WB As IWorkbook = Nothing
+            Dim WSTarget As Worksheet = Nothing
+            Dim WasProtected As Boolean = False
+            Dim UpdateStarted As Boolean = False
+            Dim MutationStarted As Boolean = False
 
-            'On Error GoTo Err_Handler_A
+            Try
+                WB = ExcelModels(ModelID).WB
+                If WB Is Nothing Then Throw New InvalidOperationException("Workbook is not available.")
+                Dim TargetDefinedName As DefinedName = WB.DefinedNames.GetDefinedName(TargetNamedRange)
+                If TargetDefinedName Is Nothing OrElse TargetDefinedName.Range Is Nothing Then
+                    Throw New InvalidOperationException("Named range '" & TargetNamedRange & "' was not found.")
+                End If
+                WSTarget = TargetDefinedName.Range.Worksheet
+                Dim OutMessage As String = String.Empty
+                Dim CurrentRangeRows As Integer = TargetDefinedName.Range.RowCount
+                Dim PriorBottomRow As Integer = TargetDefinedName.Range.BottomRowIndex
+                If IgnoreFinalRow Then
+                    PriorBottomRow -= 1
+                    CurrentRangeRows -= 1
+                End If
+                Dim ActualRowsToDelete As Integer = RowsToDelete
+                If CurrentRangeRows - RowsToDelete < MinimumRowsToRetain Then
+                    ActualRowsToDelete = CurrentRangeRows - MinimumRowsToRetain
+                    OutMessage = "Maximum rows deletable is " & ActualRowsToDelete & ". "
+                End If
+                If ActualRowsToDelete <= 0 Then
+                    ThisTrans.BError = True
+                    ThisTrans.StringReturn = OutMessage & "No rows can be deleted."
+                    ThisTrans.StrResponseMessage = ThisTrans.StringReturn
+                    Return ThisTrans
+                End If
 
-            Dim WB As DevExpress.Spreadsheet.IWorkbook = ExcelModels(ModelID).WB
-            Dim ThisTrans As New AbovoTransaction
-            Dim TargetDefinedName As DevExpress.Spreadsheet.DefinedName = WB.DefinedNames.GetDefinedName(TargetNamedRange)
-            Dim WSTarget As DevExpress.Spreadsheet.Worksheet = TargetDefinedName.Range.Worksheet
-            Dim OutMessage As String = ""
-            Dim CurrentRangeRows As Integer = TargetDefinedName.Range.RowCount
-            Dim PriorBottomRow As Integer = TargetDefinedName.Range.BottomRowIndex
-
-            If IgnoreFinalRow Then
-
-                PriorBottomRow -= 1
-                CurrentRangeRows -= 1
-
-            End If
-
-            Dim ActualRowsToDelete As Integer = RowsToDelete
-
-            If CurrentRangeRows - RowsToDelete < MinimumRowsToRetain Then
-                ActualRowsToDelete = CurrentRangeRows - MinimumRowsToRetain
-                OutMessage = "Maximum rows deletable is " & ActualRowsToDelete & ". "
-            End If
-
-            If ActualRowsToDelete <= 0 Then
-                OutMessage += " No rows can be deleted."
-                ThisTrans.BError = True
+                WasProtected = WSTarget.IsProtected
+                WB.BeginUpdate()
+                UpdateStarted = True
+                If WasProtected Then UNProtectWS(ModelID, WSTarget.Name)
+                MutationStarted = True
+                WSTarget.Rows.Remove(PriorBottomRow - ActualRowsToDelete + 1, ActualRowsToDelete)
+                ExcelModels(ModelID).SetDirtyFlag()
+                ExcelModels(ModelID).ModelSpreadsheetControl.Options.Clipboard.AllowFormulasInBiff8 = False
+                ThisTrans.BSuccess = True
+                ThisTrans.BError = False
                 ThisTrans.StringReturn = OutMessage
-                Return ThisTrans
-            End If
-
-            UNProtectWS(ModelID, WSTarget.Name)
-
-            WSTarget.Rows.Remove(PriorBottomRow - ActualRowsToDelete + 1, ActualRowsToDelete)
-
-            ProtectWS(ModelID, WSTarget.Name)
-
-            TargetDefinedName = Nothing
-            WSTarget = Nothing
-            WB = Nothing
-
-            ThisTrans.BError = False
-            ThisTrans.StringReturn = OutMessage
-
-            ExcelModels(ModelID).ModelSpreadsheetControl.Options.Clipboard.AllowFormulasInBiff8 = False
-
-            Dim SyncResult As AbovoTransaction =
-                NotifyTransactionalDBStructuralChange(ModelID, TargetNamedRange)
-
-            If SyncResult.BError Then
+                ThisTrans.StrResponseMessage = OutMessage
+            Catch ex As Exception
+                ThisTrans.BSuccess = False
                 ThisTrans.BError = True
-                ThisTrans.StringReturn =
-                    "Rows were deleted, but Transactional DB synchronisation failed: " &
-                    SyncResult.StringReturn
+                ThisTrans.StringReturn = ex.Message
+                ThisTrans.StrResponseMessage = ex.Message
+                If MutationStarted Then ModelSafetyManager.MarkRecoveryRequired(
+                    ModelID, "Delete rows", ex.Message, "Workbook Manager", TargetNamedRange)
+            Finally
+                Try
+                    If WasProtected AndAlso WSTarget IsNot Nothing Then ProtectWS(ModelID, WSTarget.Name)
+                Catch cleanupError As Exception
+                    ThisTrans.BSuccess = False
+                    ThisTrans.BError = True
+                    ThisTrans.StringReturn &= If(String.IsNullOrWhiteSpace(ThisTrans.StringReturn), String.Empty, Environment.NewLine) &
+                        "Worksheet protection restoration failed: " & cleanupError.Message
+                    If MutationStarted Then ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Delete rows", ThisTrans.StringReturn, "Workbook Manager", TargetNamedRange)
+                End Try
+                Try
+                    If UpdateStarted Then WB.EndUpdate()
+                Catch cleanupError As Exception
+                    ThisTrans.BSuccess = False
+                    ThisTrans.BError = True
+                    ThisTrans.StringReturn &= If(String.IsNullOrWhiteSpace(ThisTrans.StringReturn), String.Empty, Environment.NewLine) &
+                        "Workbook EndUpdate failed: " & cleanupError.Message
+                    If MutationStarted Then ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Delete rows", ThisTrans.StringReturn, "Workbook Manager", TargetNamedRange)
+                End Try
+            End Try
+
+            If MutationStarted AndAlso Not ThisTrans.BError Then
+                Dim SyncResult As AbovoTransaction = NotifyTransactionalDBStructuralChange(ModelID, TargetNamedRange)
+                If SyncResult.BError Then
+                    ThisTrans.BSuccess = False
+                    ThisTrans.BError = True
+                    ThisTrans.StringReturn = "Rows were deleted, but Transactional DB synchronisation failed: " & SyncResult.StringReturn
+                    ThisTrans.StrResponseMessage = ThisTrans.StringReturn
+                    ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Delete rows", ThisTrans.StringReturn, "Workbook Manager", TargetNamedRange)
+                End If
             End If
-
-            Return ThisTrans
-
-            Exit Function
-
-Err_Handler_A:
-
-            ThisTrans.BError = True
-            ThisTrans.StringReturn = Err.Description
-
             Return ThisTrans
 
         End Function
 
         Public Shared Function DeleteColumns(ModelID As Integer, TargetNamedRange As String, Optional ByVal ColsToDelete As Integer = 1, Optional ByVal JustFormats As Boolean = False) As AbovoTransaction
+            Dim ThisTrans As New AbovoTransaction("DeleteColumns")
+            Dim WB As IWorkbook = Nothing
+            Dim WSTarget As Worksheet = Nothing
+            Dim WasProtected As Boolean = False
+            Dim UpdateStarted As Boolean = False
+            Dim MutationStarted As Boolean = False
 
-            'On Error GoTo Err_Handler_A
+            Try
+                WB = ExcelModels(ModelID).WB
+                If WB Is Nothing Then Throw New InvalidOperationException("Workbook is not available.")
+                Dim TargetDefinedName As DefinedName = WB.DefinedNames.GetDefinedName(TargetNamedRange)
+                If TargetDefinedName Is Nothing OrElse TargetDefinedName.Range Is Nothing Then
+                    Throw New InvalidOperationException("Named range '" & TargetNamedRange & "' was not found.")
+                End If
+                WSTarget = TargetDefinedName.Range.Worksheet
+                Dim OutMessage As String = String.Empty
+                Dim CurrentRangeCols As Integer = TargetDefinedName.Range.ColumnCount
+                Dim PriorRightCol As Integer = TargetDefinedName.Range.RightColumnIndex
+                Dim ActualColsToDelete As Integer = ColsToDelete
+                If CurrentRangeCols - ColsToDelete <= 3 Then
+                    ActualColsToDelete = CurrentRangeCols - 3
+                    OutMessage = "Maximum columns deletable is " & ActualColsToDelete & ". "
+                End If
+                If ActualColsToDelete <= 0 Then
+                    ThisTrans.BError = True
+                    ThisTrans.StringReturn = OutMessage & "No columns can be deleted."
+                    ThisTrans.StrResponseMessage = ThisTrans.StringReturn
+                    Return ThisTrans
+                End If
 
-            Dim WB As DevExpress.Spreadsheet.IWorkbook = ExcelModels(ModelID).WB
-            Dim ThisTrans As New AbovoTransaction
-            Dim TargetDefinedName As DevExpress.Spreadsheet.DefinedName = WB.DefinedNames.GetDefinedName(TargetNamedRange)
-            Dim WSTarget As DevExpress.Spreadsheet.Worksheet = TargetDefinedName.Range.Worksheet
-            Dim OutMessage As String = ""
-            Dim CurrentRangeCols As Integer = TargetDefinedName.Range.ColumnCount
-            Dim PriorRightCol As Integer = TargetDefinedName.Range.RightColumnIndex
-
-            Dim ActualColsToDelete As Integer = ColsToDelete
-
-            If CurrentRangeCols - ColsToDelete <= 3 Then
-                ActualColsToDelete = CurrentRangeCols - 3
-                OutMessage = "Maximum columns deletable is " & ActualColsToDelete & ". "
-            End If
-
-            If ActualColsToDelete < 0 Then
-                OutMessage += " No columns can be deleted."
-                ThisTrans.BError = True
+                WasProtected = WSTarget.IsProtected
+                WB.BeginUpdate()
+                UpdateStarted = True
+                If WasProtected Then UNProtectWS(ModelID, WSTarget.Name)
+                MutationStarted = True
+                WSTarget.Columns.Remove(PriorRightCol - ActualColsToDelete + 1, ActualColsToDelete)
+                ExcelModels(ModelID).SetDirtyFlag()
+                ExcelModels(ModelID).ModelSpreadsheetControl.Options.Clipboard.AllowFormulasInBiff8 = False
+                ThisTrans.BSuccess = True
+                ThisTrans.BError = False
                 ThisTrans.StringReturn = OutMessage
-                Return ThisTrans
-            End If
-
-            UNProtectWS(ModelID, WSTarget.Name)
-
-            WSTarget.Columns.Remove(PriorRightCol - ActualColsToDelete + 1, ActualColsToDelete)
-
-            ProtectWS(ModelID, WSTarget.Name)
-
-            TargetDefinedName = Nothing
-            WSTarget = Nothing
-            WB = Nothing
-
-            ThisTrans.BError = False
-            ThisTrans.StringReturn = OutMessage
-
-            ExcelModels(ModelID).ModelSpreadsheetControl.Options.Clipboard.AllowFormulasInBiff8 = False
-
-            Dim SyncResult As AbovoTransaction =
-                NotifyTransactionalDBStructuralChange(ModelID, TargetNamedRange)
-
-            If SyncResult.BError Then
+                ThisTrans.StrResponseMessage = OutMessage
+            Catch ex As Exception
+                ThisTrans.BSuccess = False
                 ThisTrans.BError = True
-                ThisTrans.StringReturn =
-                    "Columns were deleted, but Transactional DB synchronisation failed: " &
-                    SyncResult.StringReturn
+                ThisTrans.StringReturn = ex.Message
+                ThisTrans.StrResponseMessage = ex.Message
+                If MutationStarted Then ModelSafetyManager.MarkRecoveryRequired(
+                    ModelID, "Delete columns", ex.Message, "Workbook Manager", TargetNamedRange)
+            Finally
+                Try
+                    If WasProtected AndAlso WSTarget IsNot Nothing Then ProtectWS(ModelID, WSTarget.Name)
+                Catch cleanupError As Exception
+                    ThisTrans.BSuccess = False
+                    ThisTrans.BError = True
+                    ThisTrans.StringReturn &= If(String.IsNullOrWhiteSpace(ThisTrans.StringReturn), String.Empty, Environment.NewLine) &
+                        "Worksheet protection restoration failed: " & cleanupError.Message
+                    If MutationStarted Then ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Delete columns", ThisTrans.StringReturn, "Workbook Manager", TargetNamedRange)
+                End Try
+                Try
+                    If UpdateStarted Then WB.EndUpdate()
+                Catch cleanupError As Exception
+                    ThisTrans.BSuccess = False
+                    ThisTrans.BError = True
+                    ThisTrans.StringReturn &= If(String.IsNullOrWhiteSpace(ThisTrans.StringReturn), String.Empty, Environment.NewLine) &
+                        "Workbook EndUpdate failed: " & cleanupError.Message
+                    If MutationStarted Then ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Delete columns", ThisTrans.StringReturn, "Workbook Manager", TargetNamedRange)
+                End Try
+            End Try
+
+            If MutationStarted AndAlso Not ThisTrans.BError Then
+                Dim SyncResult As AbovoTransaction = NotifyTransactionalDBStructuralChange(ModelID, TargetNamedRange)
+                If SyncResult.BError Then
+                    ThisTrans.BSuccess = False
+                    ThisTrans.BError = True
+                    ThisTrans.StringReturn = "Columns were deleted, but Transactional DB synchronisation failed: " & SyncResult.StringReturn
+                    ThisTrans.StrResponseMessage = ThisTrans.StringReturn
+                    ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, "Delete columns", ThisTrans.StringReturn, "Workbook Manager", TargetNamedRange)
+                End If
             End If
-
-            Return ThisTrans
-
-            Exit Function
-
-Err_Handler_A:
-
-            ThisTrans.BError = True
-            ThisTrans.StringReturn = Err.Description
-
             Return ThisTrans
 
         End Function

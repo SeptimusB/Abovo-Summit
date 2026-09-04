@@ -1,14 +1,14 @@
 # Abovo Summit TestFileClean scope audit
 
-Audit date: 22 August 2026
+Audit date: 22 August 2026; authority update: 4 September 2026
 
 ## Current authority
 
 `Z:\Sandbox\TestFileClean.xlsb` is the authoritative workbook master. `Library/TestFileClean.xlsb` is an exact repository copy of that master:
 
-- Size: 11,812,164 bytes
-- SHA-256: `F1BFE086682A87987400F78CE36FDE769BA30D492FD35D5B5EBAE839F9D0CF2B`
-- Worksheets: 281
+- Size: 11,813,448 bytes
+- SHA-256: `D2CA9A14B432C6914612917129F20446DDD33A9BD7740AFAC704A5C357790C17`
+- Worksheets: 283
 - Defined names: 1,758
 - `Transactional_Records`: `Transactional DB!A6:BV1599` (1,594 rows by 74 columns)
 - Period fields: 40, from `2025/26` to `2064/65`
@@ -25,6 +25,12 @@ The workbook's formula-backed `Transactional DB` sheet and its workbook-defined 
 The twelve canonical source rules and all 89 `TransCopy_*` targets were checked read-only. Every target exists on `Transactional DB` and has the expected row count derived from its source named range. Development Identified therefore uses the original `TransCopy_DevptSingle_A:N` ranges on `Transactional DB`, not auxiliary sheets.
 
 Structural commands now return a failed `AbovoTransaction` if post-change Transactional DB synchronisation fails. Interface dependency invalidation still runs so an already-changed workbook cannot leave visible controls appearing current.
+
+### Development mirror capacity decision - 4 September 2026
+
+Following client review, the reserved-capacity prototype was withdrawn. The authoritative workbook contains no `_Capacity` or `_Continuation` names. `TransactionalDBSynchroniser` and the workbook's existing Excel/VBA implementation both retain the established structural-shift method for expanding or contracting Transactional DB mirror ranges.
+
+The separate `Z:\Sandbox\TestFileClean - Capacity Aware VBA Candidate.xlsb` file is retained only as a proof of concept. It is not a production contract or repository master and did not complete full runtime and round-trip validation before withdrawal.
 
 ## Analysis interfaces
 
@@ -170,7 +176,7 @@ Required manual integration validation remains:
 
 ## Contract XLSB health and calculation audit - 24 August 2026
 
-The authoritative `Z:\Sandbox\TestFileClean.xlsb` and repository copy remain byte-for-byte identical at SHA-256 `F1BFE086682A87987400F78CE36FDE769BA30D492FD35D5B5EBAE839F9D0CF2B`. The audit inspected an exact disposable copy through Excel with macros and events disabled and made no workbook or code remediation.
+At the time of the 24 August audit, its then-current authoritative workbook and repository copy were byte-for-byte identical. A reserved-capacity prototype briefly superseded it on 3 September 2026, but the client withdrew that design on 4 September 2026. The current authoritative master is the validated pre-capacity workbook identified above.
 
 The workbook is structurally healthy and natively fast on the audit workstation: 638,360 formula cells completed a full dependency rebuild in 2.152 seconds and warm full calculations averaged about 0.42 seconds. No broken defined names, external formula references, workbook connections, circular reference, or true full-column calculation formulas were found. Broad formula replacement is therefore not justified.
 

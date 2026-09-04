@@ -128,7 +128,7 @@ Namespace Abovo
                         EventTransaction = ImportModels.ImportStockRentModel(ModelID)
 
                     Case "ImportStockConditionSurvey"
-                        ImportModels.ImportStockConditionSurvey(ModelID)
+                        EventTransaction = ImportModels.ImportStockConditionSurvey(ModelID)
 
                     Case "ImportManagementServiceCosts"
                         EventTransaction = ImportModels.ImportManagementServiceCosts(ModelID)
