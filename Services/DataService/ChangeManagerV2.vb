@@ -411,6 +411,12 @@ Namespace Abovo
                     targetCell.Value = Convert.ToString(changedValue, CultureInfo.CurrentCulture)
                 Case "B"
                     targetCell.Value = If(ConvertToBoolean(changedValue), 1, 0)
+                Case "BOOL", "BOOLEAN"
+                    'Excel form-control linked cells are genuine Boolean values.
+                    'Keep the legacy B representation numeric for existing DIT data,
+                    'but preserve Boolean semantics where workbook formulas test the
+                    'linked cell directly.
+                    targetCell.Value = CellValue.FromObject(ConvertToBoolean(changedValue))
                 Case "I", "Y"
                     targetCell.Value = ConvertToInteger(changedValue)
                 Case "D", "DM"

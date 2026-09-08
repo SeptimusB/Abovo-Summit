@@ -83,6 +83,20 @@ Scenario, visibility, and window changes use the existing
 service, and then refresh both tabs from the workbook. No chart calculation or
 scenario result is maintained in a parallel UI model.
 
+Version 1.49 corrects the six shared series selectors. Their linked cells
+(`OW - Covenant Calculation!BL17:BQ17`) require genuine Excel Boolean values:
+numeric `0` and `1` are both treated as enabled by the workbook's direct
+Boolean tests. The selectors now use the typed change-manager route with an
+explicit Boolean format while legacy DIT `B` values retain their established
+numeric representation.
+
+Version 1.50 suppresses redundant Comparison 1-4 lines independently on each
+native chart when every plotted value is numerically identical to that chart's
+Base Case. Target and Base Case remain present, differing comparison series
+remain visible, and disabled or wholly empty comparison series are omitted.
+This is presentation-only de-duplication: it does not change the shared series
+selectors, captured scenario data, or any workbook cell.
+
 ## Validation still required with client data
 
 The demonstration workbook contains predominantly zero captured-scenario

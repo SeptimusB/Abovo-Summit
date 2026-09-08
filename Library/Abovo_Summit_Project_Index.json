@@ -46,7 +46,7 @@
   "application": {
     "project": "Abovo Business Suite.vbproj",
     "compiledFileCount": 155,
-    "testVersion": "1.48",
+    "testVersion": "1.50",
     "structureXmlSha256": "89C89191AB809BB3E81A79A54E61A05E35D99E2780579C6065628775CCA8BA29",
     "projectSha256": "974514B3178207934216A3B470C17CF583E17095DC54C68FE8CF5A8491278676",
     "clientTestPackage": {

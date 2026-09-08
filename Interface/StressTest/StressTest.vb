@@ -6006,9 +6006,15 @@ Public Class StressTest
         Chart.Series.Clear()
         Chart.Titles.Clear()
         For SeriesColumn As Integer = FirstSeriesColumn To LastSeriesColumn
+            Dim SeriesIndex As Integer = SeriesColumn - FirstSeriesColumn
+            If SeriesIndex >= 2 AndAlso
+               Not ShouldShowComparisonSeries(
+                   Sheet, SeriesColumn, FirstSeriesColumn + 1, 18, 37) Then
+                Continue For
+            End If
             Dim SeriesName As String = Sheet.Cells(17, SeriesColumn).DisplayText
             If String.IsNullOrWhiteSpace(SeriesName) Then
-                SeriesName = "Series " & (SeriesColumn - FirstSeriesColumn + 1).ToString()
+                SeriesName = "Series " & (SeriesIndex + 1).ToString()
             End If
             Dim NewSeries As New DevExpress.XtraCharts.Series(SeriesName, ViewType.Line)
             For RowIndex As Integer = 18 To 37
@@ -6017,7 +6023,7 @@ Public Class StressTest
                     Sheet.Cells(RowIndex, SeriesColumn))
             Next
             NewSeries.View.Color =
-                ComparativeSeriesColour(SeriesColumn - FirstSeriesColumn)
+                ComparativeSeriesColour(SeriesIndex)
             Chart.Series.Add(NewSeries)
         Next
         Chart.Legend.Visibility = DevExpress.Utils.DefaultBoolean.False
@@ -6030,6 +6036,37 @@ Public Class StressTest
         End If
 
     End Sub
+
+    Private Function ShouldShowComparisonSeries(
+        Sheet As DevExpress.Spreadsheet.Worksheet,
+        CandidateColumn As Integer,
+        BaseCaseColumn As Integer,
+        FirstRow As Integer,
+        LastRow As Integer) As Boolean
+
+        For RowIndex As Integer = FirstRow To LastRow
+            Dim CandidateCell As DevExpress.Spreadsheet.Cell =
+                Sheet.Cells(RowIndex, CandidateColumn)
+            Dim BaseCaseCell As DevExpress.Spreadsheet.Cell =
+                Sheet.Cells(RowIndex, BaseCaseColumn)
+            Dim CandidateIsNumeric As Boolean = CandidateCell.Value.IsNumeric
+            Dim BaseCaseIsNumeric As Boolean = BaseCaseCell.Value.IsNumeric
+
+            If CandidateIsNumeric <> BaseCaseIsNumeric Then Return True
+            If Not CandidateIsNumeric Then Continue For
+
+            Dim CandidateValue As Double = CandidateCell.Value.NumericValue
+            Dim BaseCaseValue As Double = BaseCaseCell.Value.NumericValue
+            Dim Scale As Double =
+                Math.Max(1.0R, Math.Max(Math.Abs(CandidateValue), Math.Abs(BaseCaseValue)))
+            If Math.Abs(CandidateValue - BaseCaseValue) > Scale * 0.0000000001R Then
+                Return True
+            End If
+        Next
+
+        Return False
+
+    End Function
 
     Private Sub ConfigureComparativeSummaryGrid(Grid As GridControl)
 
@@ -6795,7 +6832,7 @@ Public Class StressTest
         If Not ProcessStressTestCellChange(
                 Target,
                 Selector.Checked,
-                "B",
+                "BOOL",
                 "Stress-test comparison series visibility updated") Then
             RefreshNativeComparativeViews()
             Return
