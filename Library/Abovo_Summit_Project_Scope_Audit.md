@@ -1,10 +1,25 @@
-# Abovo Summit TestFileClean scope audit
+# Abovo Summit workbook scope audit
 
-Audit date: 22 August 2026; authority update: 4 September 2026
+Audit date: 22 August 2026; authority updates: 4 September and 11 September 2026
 
 ## Current authority
 
-`Z:\Sandbox\TestFileClean.xlsb` is the authoritative workbook master. `Library/TestFileClean.xlsb` is an exact repository copy of that master:
+From 11 September 2026, `Library/Blank BP v26_0001.xlsb` is the authoritative unpopulated master and `Library/Demo BP v26_0001.xlsb` is the authoritative pre-populated master and Debug auto-load workbook. Both are exact copies of the user-approved `C:\Sandbox` sources:
+
+- Blank size: 11,643,967 bytes
+- Blank SHA-256: `0B4C06800FE998E8733A5D8EB9CDEFA04F517750275BB0CFDD532928900F5B79`
+- Demo size: 12,617,838 bytes
+- Demo SHA-256: `1ED79726D8D1129C699242C9E8B3E988AC920EA7108D3C0B105BF9B0BC8A5E9C`
+- Worksheets: 285
+- Defined names: 1,761, with no broken or external definitions
+- Generated formulas: 678,983 in Demo; 678,969 in Blank
+- Blank difference: fourteen unlocked dummy/input formulas deliberately cleared from `Development BP Assumptions!S86:U86` and `Stock Condition Inputs!O9:O19`
+- Formula Generation VBA: disabled by fourteen paired `FormGenRemoval 11/9/26` markers, five guarded core procedures and inactive startup/worksheet-change entry points
+- `Transactional_Records`: `Transactional DB!A6:BV1599` (1,594 rows by 74 columns)
+- Close validation range: `Outputs_CheckSheet = Check Sheet!A9:H63`
+- Embedded VBA project: present
+
+`Library/TestFileClean.xlsb` is retained as the preceding contract baseline. Its last authoritative identity was:
 
 - Size: 11,813,448 bytes
 - SHA-256: `D2CA9A14B432C6914612917129F20446DDD33A9BD7740AFAC704A5C357790C17`

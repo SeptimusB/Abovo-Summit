@@ -5,6 +5,7 @@ Imports Abovo.LogDebugDev
 Imports Abovo.PresentationManager
 
 Imports DevExpress.CodeParser
+Imports DevExpress.Data.Async.Helpers
 Imports DevExpress.DataAccess.DataFederation
 Imports DevExpress.DataAccess.Wizard.Model
 Imports DevExpress.Skins
@@ -318,13 +319,18 @@ Public Class GroupInterfaceTemplate
 
     Private Shared Function CompactSummaryHtml(ByVal sourceHtml As String) As String
         If String.IsNullOrWhiteSpace(sourceHtml) Then Return sourceHtml
-        Const compactStyle As String =
+        Dim UserScale As Single = Abovo.PresentationScaleManager.UserScale
+        Dim FontSize As String = (8.0F * UserScale).ToString("0.##", Globalization.CultureInfo.InvariantCulture)
+        Dim RowHeight As String = Math.Max(14, CInt(Math.Round(18 * UserScale))).ToString()
+        Dim HorizontalPadding As String = Math.Max(2, CInt(Math.Round(3 * UserScale))).ToString()
+        Dim compactStyle As String =
             "<style type='text/css'>" &
-            "html,body{margin:0!important;padding:2px!important;font-size:8pt!important;}" &
+            "html,body{margin:0!important;padding:2px!important;font-size:" & FontSize & "pt!important;}" &
             "table{width:auto!important;margin:0!important;border-collapse:collapse!important;}" &
-            "tr{height:18px!important;min-height:18px!important;}" &
-            "td,th{height:18px!important;min-height:0!important;padding:1px 3px!important;" &
-            "font-size:8pt!important;line-height:1.05!important;white-space:nowrap!important;}" &
+            "tr{height:" & RowHeight & "px!important;min-height:" & RowHeight & "px!important;}" &
+            "td,th{height:" & RowHeight & "px!important;min-height:0!important;padding:1px " &
+            HorizontalPadding & "px!important;font-size:" & FontSize &
+            "pt!important;line-height:1.05!important;white-space:nowrap!important;}" &
             "</style>"
         Dim headEnd As Integer = sourceHtml.IndexOf("</head>", StringComparison.OrdinalIgnoreCase)
         If headEnd >= 0 Then Return sourceHtml.Insert(headEnd, compactStyle)
@@ -586,20 +592,21 @@ Public Class GroupInterfaceTemplate
 
     Sub SetInitialSizes()
 
-        If Screen.PrimaryScreen.Bounds.Width < 900 Then
+        Dim AvailableArea As Rectangle = Screen.FromPoint(Cursor.Position).WorkingArea
+        If AvailableArea.Width < 900 Then
 
-            Me.Width = Screen.PrimaryScreen.Bounds.Width * 0.85
-            Me.Height = Screen.PrimaryScreen.Bounds.Height * 0.85
+            Me.Width = CInt(AvailableArea.Width * 0.85)
+            Me.Height = CInt(AvailableArea.Height * 0.85)
 
-        ElseIf Screen.PrimaryScreen.Bounds.Width < 1190 Then
+        ElseIf AvailableArea.Width < 1190 Then
 
-            Me.Width = Screen.PrimaryScreen.Bounds.Width * 0.75
-            Me.Height = Screen.PrimaryScreen.Bounds.Height * 0.75
+            Me.Width = CInt(AvailableArea.Width * 0.75)
+            Me.Height = CInt(AvailableArea.Height * 0.75)
 
         Else
 
-            Me.Width = Screen.PrimaryScreen.Bounds.Width * 0.65
-            Me.Height = Screen.PrimaryScreen.Bounds.Height * 0.65
+            Me.Width = CInt(AvailableArea.Width * 0.65)
+            Me.Height = CInt(AvailableArea.Height * 0.65)
 
         End If
 
@@ -616,26 +623,55 @@ Public Class GroupInterfaceTemplate
 
         DockPanelNavigator.Width = SetWidth
         'DockManagerAssumptions.
-        Me.hideContainerRightDetail.Font = GetFont("Small", Me.ScaleFactor)
-        Me.BarAndDockingControllerAssumptions.AppearancesDocking.ActiveTab.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.BarAndDockingControllerAssumptions.AppearancesDocking.HidePanelButton.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.BarAndDockingControllerAssumptions.AppearancesDocking.HidePanelButtonActive.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.BarAndDockingControllerAssumptions.AppearancesDocking.PanelCaption.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.BarAndDockingControllerAssumptions.AppearancesDocking.PanelCaptionActive.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.BarTopBar.BarAppearance.Normal.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.BarStaticItemDescription.ItemAppearance.Normal.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.AccordionControlNavigator.Appearance.Group.Hovered.Font = GetFont("Medium", Me.ScaleFactor * 0.9)
-        Me.AccordionControlNavigator.Appearance.Group.Default.Font = GetFont("Medium", Me.ScaleFactor * 0.9)
-        Me.AccordionControlNavigator.Appearance.Group.Normal.Font = GetFont("Medium", Me.ScaleFactor * 0.9)
-        Me.AccordionControlNavigator.Appearance.Item.Normal.Font = GetFont("Small", Me.ScaleFactor)
-        Me.AccordionControlNavigator.Appearance.Item.Default.Font = GetFont("Small", Me.ScaleFactor)
-        Me.AccordionControlNavigator.Appearance.Item.Hovered.Font = GetFont("Small", Me.ScaleFactor)
-
     End Sub
     Sub ResizeFonts()
 
-        ScaleFactor = Me.Width / 2100
+        ScaleFactor = GetDisplayScale(Me)
 
+        Me.hideContainerRightDetail.Font = GetDisplayFont("Small", Me)
+        Me.BarAndDockingControllerAssumptions.AppearancesDocking.ActiveTab.Font = GetDisplayFont("Medium", Me)
+        Me.BarAndDockingControllerAssumptions.AppearancesDocking.HidePanelButton.Font = GetDisplayFont("Medium", Me)
+        Me.BarAndDockingControllerAssumptions.AppearancesDocking.HidePanelButtonActive.Font = GetDisplayFont("Medium", Me)
+        Me.BarAndDockingControllerAssumptions.AppearancesDocking.PanelCaption.Font = GetDisplayFont("Medium", Me)
+        Me.BarAndDockingControllerAssumptions.AppearancesDocking.PanelCaptionActive.Font = GetDisplayFont("Medium", Me)
+        Me.BarTopBar.BarAppearance.Normal.Font = GetDisplayFont("Medium", Me)
+        Me.BarStaticItemDescription.ItemAppearance.Normal.Font = GetDisplayFont("Medium", Me)
+        Me.AccordionControlNavigator.Appearance.Group.Hovered.Font = GetDisplayFont("Medium", Me)
+        Me.AccordionControlNavigator.Appearance.Group.Default.Font = GetDisplayFont("Medium", Me)
+        Me.AccordionControlNavigator.Appearance.Group.Normal.Font = GetDisplayFont("Medium", Me)
+        Me.AccordionControlNavigator.Appearance.Item.Normal.Font = GetDisplayFont("Small", Me)
+        Me.AccordionControlNavigator.Appearance.Item.Default.Font = GetDisplayFont("Small", Me)
+        Me.AccordionControlNavigator.Appearance.Item.Hovered.Font = GetDisplayFont("Small", Me)
+
+        For Each Element As DevExpress.XtraBars.Navigation.AccordionControlElement In
+            Me.AccordionControlNavigator.Elements
+            ApplyNavigatorElementFont(Element)
+        Next
+
+    End Sub
+
+    Private Sub ApplyNavigatorElementFont(
+        ByVal Element As DevExpress.XtraBars.Navigation.AccordionControlElement)
+
+        Dim FontClass As String =
+            If(Element.Style = DevExpress.XtraBars.Navigation.ElementStyle.Group, "Medium", "Small")
+        Dim ElementFont As Font = GetDisplayFont(FontClass, Me)
+
+        Element.Appearance.Default.Font = ElementFont
+        Element.Appearance.Normal.Font = ElementFont
+        Element.Appearance.Hovered.Font = ElementFont
+        Element.Appearance.Pressed.Font = ElementFont
+        Element.Appearance.Disabled.Font = ElementFont
+
+        Element.Appearance.Default.Options.UseFont = True
+        Element.Appearance.Normal.Options.UseFont = True
+        Element.Appearance.Hovered.Options.UseFont = True
+        Element.Appearance.Pressed.Options.UseFont = True
+        Element.Appearance.Disabled.Options.UseFont = True
+
+        For Each Child As DevExpress.XtraBars.Navigation.AccordionControlElement In Element.Elements
+            ApplyNavigatorElementFont(Child)
+        Next
     End Sub
     Private Sub TabbedViewDefault_QueryControl(sender As Object, e As DevExpress.XtraBars.Docking2010.Views.QueryControlEventArgs) Handles TabbedViewDefault.QueryControl
 
@@ -661,7 +697,6 @@ Public Class GroupInterfaceTemplate
     End Sub
     Private Sub GIT_ResizeEnd(sender As Object, e As EventArgs) Handles MyBase.ResizeEnd
 
-        ResizeFonts()
         ResizeControls()
 
 
@@ -809,8 +844,7 @@ Public Class GroupInterfaceTemplate
                 DataITemp.ClearLinks()
 
             Else
-
-                DataITemp.AddLink(Interfacelink)
+                If Interfacelink IsNot Nothing Then DataITemp.AddLink(Interfacelink)
 
             End If
 

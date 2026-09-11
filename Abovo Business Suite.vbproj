@@ -421,6 +421,9 @@
     <Compile Include="Interface\User Interface\FormMainScreen.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Interface\User Interface\ApplicationOptionsForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Interface\User Interface\GroupInterfaceTemplate.Designer.vb">
       <DependentUpon>GroupInterfaceTemplate.vb</DependentUpon>
     </Compile>

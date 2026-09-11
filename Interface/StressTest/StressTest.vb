@@ -2065,6 +2065,12 @@ Public Class StressTest
 
     End Sub
 
+    Private Sub ApplyPresentationScale()
+        FirstTabBaseFontSize = Me.Font.Size
+        ApplyResponsiveFirstTabScale()
+        Me.Invalidate(True)
+    End Sub
+
     Private Sub ApplyResponsiveFirstTabScale()
 
         If FirstTabBaseFontSize <= 0 OrElse
@@ -2079,8 +2085,8 @@ Public Class StressTest
         Dim WidthScale As Double = WorkspaceWidth / 1920.0
         Dim HeightScale As Double = XtraTabPageLMVP.ClientSize.Height / 980.0
         Dim Scale As Double = Math.Max(0.88, Math.Min(1.25, Math.Min(WidthScale, HeightScale)))
-        Dim FontSize As Single = CSng(Math.Max(9.5, FirstTabBaseFontSize * Scale))
-        ApplyControlFont(XtraTabPageLMVP, FontSize)
+        Dim MetricScale As Double = Scale * Abovo.PresentationScaleManager.UserScale
+        Dim FontSize As Single = FirstTabBaseFontSize
         Dim HeaderHeight As Single = CSng(Math.Max(112.0, 120.0 * Scale))
         TablePanelStressInputs.Rows(0).Height = HeaderHeight
 
@@ -2094,11 +2100,8 @@ Public Class StressTest
         For Each Grid As GridControl In FindControls(Of GridControl)(XtraTabPageLMVP)
             Dim View As GridView = TryCast(Grid.MainView, GridView)
             If View Is Nothing Then Continue For
-            View.Appearance.Row.Font = New Font(View.Appearance.Row.Font.FontFamily, FontSize)
-            View.Appearance.HeaderPanel.Font =
-                New Font(View.Appearance.HeaderPanel.Font.FontFamily, FontSize, FontStyle.Bold)
-            View.RowHeight = CInt(Math.Max(22, 27 * Scale))
-            View.ColumnPanelRowHeight = CInt(Math.Max(28, 34 * Scale))
+            View.RowHeight = CInt(Math.Max(22, 27 * MetricScale))
+            View.ColumnPanelRowHeight = CInt(Math.Max(28, 34 * MetricScale))
         Next
 
         If GridView2.Columns.Count > 1 Then
@@ -2111,15 +2114,6 @@ Public Class StressTest
                 Chart.Titles(0).DXFont =
                     New DXFont("Tahoma", Math.Min(FontSize, 9.5F), DXFontStyle.Bold)
             End If
-        Next
-
-    End Sub
-
-    Private Sub ApplyControlFont(Parent As Control, FontSize As Single)
-
-        For Each Child As Control In Parent.Controls
-            Child.Font = New Font(Child.Font.FontFamily, FontSize, Child.Font.Style)
-            If Child.HasChildren Then ApplyControlFont(Child, FontSize)
         Next
 
     End Sub

@@ -16,7 +16,7 @@ Namespace Abovo
         Public Shared WorkMode As String = "INTERFACE"
         Public Shared ReadOnly Property IsDev As Boolean = True
         Public Shared ReadOnly Property MaxGridHeight As Integer = CInt(Screen.PrimaryScreen.Bounds.Height * 0.7)
-        Public Shared ReadOnly Property DecVersionNumber As Decimal = 1.50D
+        Public Shared ReadOnly Property DecVersionNumber As Decimal = 1.54D
         Public Shared ReadOnly Property AppTitle As String = "abovo summit"
         Public Shared Property DefaultLrgFontSize As Integer = 12
         Public Shared Property DefaultMediumFontSize As Integer = 10
@@ -66,17 +66,16 @@ Namespace Abovo
         End Property
         Public Shared Sub Initialise()
 
-            WindowsFormsSettings.LoadApplicationSettings()
-
             FontManager.Initialise()
 
             internalAppState = 0
             SystemLogText = ""
             SetDefaults()
-            StandardFontSize = 10
-            DefaultLrgFontSize = CInt(Screen.PrimaryScreen.Bounds.Width / 200)
-            DefaultMediumFontSize = CInt(DefaultLrgFontSize * 0.75)
-            DefaultSmallFontSize = CInt(DefaultLrgFontSize * 0.55)
+            StandardFontSize = FontManager.DefaultFont.SizeInPoints
+            DefaultLrgFontSize = CInt(Math.Round(StandardFontSize + 2.0F))
+            DefaultMediumFontSize = CInt(Math.Round(StandardFontSize))
+            DefaultSmallFontSize = CInt(Math.Round(Math.Max(8.0F, StandardFontSize - 1.0F)))
+            SystemDefaultFont = New Font(FontManager.DefaultFont, FontStyle.Regular)
             MasterChangeLog.Initialise()
             MasterChangeLog.AddChangeLogEvent(New ChangeLogEvent With {
                 .ModelID = -1,
@@ -99,19 +98,19 @@ Namespace Abovo
 
                 Case "Large"
 
-                    FontSize = DefaultLrgFontSize * Scale
+                    FontSize = DefaultLrgFontSize
                     If FontSize < 9 Then FontSize = 9
                     If FontSize > 16 Then FontSize = 16
 
                 Case "Medium"
 
-                    FontSize = DefaultMediumFontSize * Scale
+                    FontSize = DefaultMediumFontSize
                     If FontSize < 7 Then FontSize = 7
                     If FontSize > 14 Then FontSize = 14
 
                 Case "Small"
 
-                    FontSize = DefaultSmallFontSize * Scale
+                    FontSize = DefaultSmallFontSize
                     If FontSize < 6 Then FontSize = 6
                     If FontSize > 12 Then FontSize = 12
 
@@ -140,6 +139,73 @@ Namespace Abovo
             Dim ReturnFont As New Font(SystemDefaultFont.FontFamily, FontSize, ReturnFontStyle)
 
             Return ReturnFont
+
+        End Function
+
+        Public Shared Function GetDisplayScale(ByVal ReferenceControl As Control) As Single
+
+            Const DesignWorkingWidth As Single = 1920.0F
+            Const DesignWorkingHeight As Single = 1080.0F
+            Const MaximumWorkspaceScale As Single = 2.0F
+
+            Dim TargetScreen As Screen =
+                If(ReferenceControl Is Nothing,
+                   Screen.FromPoint(Cursor.Position),
+                   Screen.FromControl(ReferenceControl))
+            Dim DeviceScale As Single = 1.0F
+
+            If ReferenceControl IsNot Nothing Then
+                Try
+                    Using G As Graphics = ReferenceControl.CreateGraphics()
+                        If G IsNot Nothing AndAlso G.DpiX > 0 Then
+                            DeviceScale = G.DpiX / 96.0F
+                        End If
+                    End Using
+                Catch
+                    DeviceScale = 1.0F
+                End Try
+            End If
+
+            'Screen.WorkingArea is expressed in device pixels for a DPI-aware
+            'process. Remove native DPI first so Windows scaling is not applied
+            'twice, then add bounded density for genuinely large workspaces.
+            Dim LogicalWidth As Single = TargetScreen.WorkingArea.Width / DeviceScale
+            Dim LogicalHeight As Single = TargetScreen.WorkingArea.Height / DeviceScale
+            Dim WorkspaceScale As Single =
+                Math.Min(
+                    LogicalWidth / DesignWorkingWidth,
+                    LogicalHeight / DesignWorkingHeight)
+
+            Dim AutomaticScale As Single =
+                Math.Min(
+                    MaximumWorkspaceScale,
+                    Math.Max(1.0F, WorkspaceScale))
+
+            Return AutomaticScale * PresentationScaleManager.UserScale
+
+        End Function
+
+        Public Shared Function GetDisplayFont(
+            ByVal FontClass As String,
+            ByVal ReferenceControl As Control,
+            Optional ByVal Bold As Boolean = False,
+            Optional ByVal Underline As Boolean = False,
+            Optional ByVal Italic As Boolean = False) As Font
+
+            Using BaseFont As Font =
+                GetFont(
+                    FontClass,
+                    1.0F,
+                    Bold,
+                    Underline,
+                    Italic)
+
+                Return New Font(
+                    BaseFont.FontFamily,
+                    BaseFont.SizeInPoints * GetDisplayScale(ReferenceControl),
+                    BaseFont.Style,
+                    GraphicsUnit.Point)
+            End Using
 
         End Function
 

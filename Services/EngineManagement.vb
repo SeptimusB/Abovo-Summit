@@ -56,7 +56,22 @@ Namespace Abovo
                 End If
 
                 Dim TryFundingDashboard As FundingDashboard = TryCast(Obj, FundingDashboard)
-                If TryFundingDashboard IsNot Nothing Then TryFundingDashboard.RefreshData()
+                If TryFundingDashboard IsNot Nothing Then
+                    TryFundingDashboard.RefreshData()
+                    Return
+                End If
+
+                Dim TryAnalyser As BPIncomeExpenditureAnalyser = TryCast(Obj, BPIncomeExpenditureAnalyser)
+                If TryAnalyser IsNot Nothing Then
+                    TryAnalyser.RefreshCalculatedData()
+                    Return
+                End If
+
+                Dim TryAnalyserV2 As BPIncomeExpenditureAnalyserV2 = TryCast(Obj, BPIncomeExpenditureAnalyserV2)
+                If TryAnalyserV2 IsNot Nothing Then
+                    TryAnalyserV2.RefreshCalculatedData()
+                    Return
+                End If
 
             End Sub
             Public Sub AddWorksheet(ByVal ws As DevExpress.Spreadsheet.Worksheet, SetID As Integer)

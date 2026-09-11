@@ -1,24 +1,39 @@
 {
-  "schemaVersion": 2,
-  "generatedAt": "2026-09-04T12:30:00+01:00",
-  "purpose": "Compact current contract index for the TestFileClean authoritative master and its Summit integration.",
+  "schemaVersion": 3,
+  "generatedAt": "2026-09-11T12:00:00+01:00",
+  "purpose": "Compact current contract index for the BP v26_0001 unpopulated and pre-populated masters and their Summit integration.",
   "security": {
     "containsWorkbook": false,
     "containsVbaSource": false,
     "containsPasswords": false
   },
   "authority": {
-    "masterSource": "Z:/Sandbox/TestFileClean.xlsb",
-    "repositoryCopy": "Library/TestFileClean.xlsb",
-    "repositoryFilenameRetainedForCompatibility": true,
-    "sizeBytes": 11813448,
-    "sha256": "D2CA9A14B432C6914612917129F20446DDD33A9BD7740AFAC704A5C357790C17"
+    "unpopulatedMaster": {
+      "source": "C:/Sandbox/Blank BP v26_0001.xlsb",
+      "repositoryCopy": "Library/Blank BP v26_0001.xlsb",
+      "sizeBytes": 11643967,
+      "sha256": "0B4C06800FE998E8733A5D8EB9CDEFA04F517750275BB0CFDD532928900F5B79"
+    },
+    "prepopulatedMaster": {
+      "source": "C:/Sandbox/Demo BP v26_0001.xlsb",
+      "repositoryCopy": "Library/Demo BP v26_0001.xlsb",
+      "sizeBytes": 12617838,
+      "sha256": "1ED79726D8D1129C699242C9E8B3E988AC920EA7108D3C0B105BF9B0BC8A5E9C"
+    },
+    "debugAutoOpen": "Library/Demo BP v26_0001.xlsb",
+    "precedingBaseline": {
+      "repositoryCopy": "Library/TestFileClean.xlsb",
+      "sha256": "D2CA9A14B432C6914612917129F20446DDD33A9BD7740AFAC704A5C357790C17"
+    }
   },
   "workbook": {
     "fileFormat": 50,
     "readOnlyAudit": true,
-    "worksheetCount": 283,
-    "definedNameCount": 1758,
+    "worksheetCount": 285,
+    "definedNameCount": 1761,
+    "demoFormulaCellCount": 678983,
+    "blankFormulaCellCount": 678969,
+    "blankIntentionalInputFormulaRemovalCount": 14,
     "transactionalRecords": "Transactional DB!A6:BV1599",
     "transactionalRecordRows": 1594,
     "transactionalRecordColumns": 74,
@@ -46,7 +61,7 @@
   "application": {
     "project": "Abovo Business Suite.vbproj",
     "compiledFileCount": 155,
-    "testVersion": "1.50",
+    "testVersion": "1.53",
     "structureXmlSha256": "89C89191AB809BB3E81A79A54E61A05E35D99E2780579C6065628775CCA8BA29",
     "projectSha256": "974514B3178207934216A3B470C17CF583E17095DC54C68FE8CF5A8491278676",
     "clientTestPackage": {

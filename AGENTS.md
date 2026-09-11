@@ -8,7 +8,7 @@
 - Increment the test-release version defined by AbovoAppCls/AbovoApp for each test delivery; reset the count only for the final user release.
 - Preserve Excel round-tripping: a workbook must remain usable in Summit, then Microsoft Excel/VBA, then Summit again without losing formulas, names, VBA behavior, or user edits.
 - Do not make any change to a utilised XLSB or XLSM that could impair its standalone Microsoft Excel or VBA functionality.
-- Treat `Z:\Sandbox\TestFileClean.xlsb` as the authoritative master. `Library/TestFileClean.xlsb` is its exact repository copy; its embedded VBA, workbook names/formulas/locks, and `Structure.xml` are the behavioral contract. Do not infer parity from similarly named VB methods alone.
+- Treat `Library/Blank BP v26_0001.xlsb` as the authoritative unpopulated master and `Library/Demo BP v26_0001.xlsb` as the authoritative pre-populated master. Debug runs auto-load the repository Demo master. Both files retain the fully generated calculation formulas and disabled Formula Generation VBA; the Blank intentionally clears fourteen unlocked dummy/input formulas. `Library/TestFileClean.xlsb` is retained only as the preceding contract baseline. Do not infer workbook parity from similarly named VB methods alone.
 - Read `Library/Abovo_Summit_Project_Scope_Audit.md` and `Library/Abovo_Summit_Project_Index.json` before broad workbook, migration, Transactional DB, or Stress Test changes.
 - Read `Library/Contract_XLSB_Audit_2026-08-24.md` and `Library/Contract_XLSB_Audit_Evidence_2026-08-24.json` before workbook, calculation-engine, Transactional DB, custom-function, structural-range, or validation changes.
 

@@ -81,6 +81,33 @@ Namespace Abovo
             AddHandler bgview.CustomDrawColumnHeader, AddressOf view_CustomDrawColumnHeader
             AddHandler bgview.MouseDown, AddressOf view_MouseDown
             AddHandler bgview.Layout, AddressOf view_Layout
+            AddHandler PresentationScaleManager.ScaleChanged, AddressOf PresentationScaleChanged
+        End Sub
+
+        Private Sub PresentationScaleChanged(
+            ByVal sender As Object,
+            ByVal e As PresentationScaleChangedEventArgs)
+
+            If bgview Is Nothing OrElse bgview.GridControl Is Nothing OrElse bgview.GridControl.IsDisposed Then
+                RemoveHandler PresentationScaleManager.ScaleChanged, AddressOf PresentationScaleChanged
+                Return
+            End If
+
+            CommitAndCloseEditor()
+            ScaleRepositoryItemFont(e.Ratio)
+            _EditorHeight = DrawEditorHelper.GetNaturalEditorHeight(_Item, Nothing)
+            _LastPaintedEditorBounds = Rectangle.Empty
+            bgview.LayoutChanged()
+        End Sub
+
+        Private Sub ScaleRepositoryItemFont(ByVal Ratio As Single)
+            If _Item Is Nothing OrElse _Item.Appearance.Font Is Nothing OrElse Ratio <= 0.0F Then Return
+            _Item.Appearance.Font = New Font(
+                _Item.Appearance.Font.FontFamily,
+                Math.Max(5.0F, _Item.Appearance.Font.SizeInPoints * Ratio),
+                _Item.Appearance.Font.Style,
+                GraphicsUnit.Point)
+            _Item.Appearance.Options.UseFont = True
         End Sub
 
         Private Sub view_Layout(ByVal sender As Object, ByVal e As EventArgs)
@@ -156,7 +183,7 @@ Namespace Abovo
 
         Public Function GetRightIndent() As Integer
             If _Column.OptionsColumn.AllowSort <> DevExpress.Utils.DefaultBoolean.False OrElse _Column.OptionsFilter.AllowFilter Then
-                Return 25
+                Return PresentationScaleManager.Scale(25)
             Else
                 Return 0
             End If
@@ -616,7 +643,32 @@ Namespace Abovo
             AddHandler _VGrid.CustomDrawRowHeaderCell, AddressOf VGrid_CustomDrawRowHeaderCell
             AddHandler _VGrid.MouseDown, AddressOf VGrid_MouseDown
             AddHandler _VGrid.Layout, AddressOf VGrid_Layout
+            AddHandler PresentationScaleManager.ScaleChanged, AddressOf PresentationScaleChanged
 
+        End Sub
+
+        Private Sub PresentationScaleChanged(
+            ByVal sender As Object,
+            ByVal e As PresentationScaleChangedEventArgs)
+
+            If _VGrid Is Nothing OrElse _VGrid.IsDisposed Then
+                RemoveHandler PresentationScaleManager.ScaleChanged, AddressOf PresentationScaleChanged
+                Return
+            End If
+
+            CloseEditor()
+            If _Item IsNot Nothing AndAlso _Item.Appearance.Font IsNot Nothing AndAlso e.Ratio > 0.0F Then
+                _Item.Appearance.Font = New Font(
+                    _Item.Appearance.Font.FontFamily,
+                    Math.Max(5.0F, _Item.Appearance.Font.SizeInPoints * e.Ratio),
+                    _Item.Appearance.Font.Style,
+                    GraphicsUnit.Point)
+                _Item.Appearance.Options.UseFont = True
+            End If
+            _EditorHeight = DrawEditorHelper.GetNaturalEditorHeight(_Item, Nothing)
+            _LastHeaderBounds = Rectangle.Empty
+            _VGrid.LayoutChanged()
+            _VGrid.Invalidate()
         End Sub
 
         Public Property EditValue As Object
@@ -633,11 +685,11 @@ Namespace Abovo
 
         Private Function GetEditorBounds(ByVal HeaderBounds As Rectangle) As Rectangle
 
-            Dim HorizontalPadding As Integer = 4
-            Dim VerticalPadding As Integer = 2
+            Dim HorizontalPadding As Integer = PresentationScaleManager.Scale(4)
+            Dim VerticalPadding As Integer = PresentationScaleManager.Scale(2)
             Dim EditorHeight As Integer = _EditorHeight
 
-            If EditorHeight <= 0 Then EditorHeight = 22
+            If EditorHeight <= 0 Then EditorHeight = PresentationScaleManager.Scale(22)
             EditorHeight = Math.Min(EditorHeight, Math.Max(1, HeaderBounds.Height - (2 * VerticalPadding)))
 
             Dim EditorWidth As Integer = Math.Max(1, HeaderBounds.Width - (2 * HorizontalPadding))

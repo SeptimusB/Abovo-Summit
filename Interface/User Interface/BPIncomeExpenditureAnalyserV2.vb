@@ -409,7 +409,8 @@ Public Class BPIncomeExpenditureAnalyserV2
         End If
 
         TransDBDataRange = definedName.Range
-        If CurrentDataSourceMode = AnalyserDataSourceMode.Comparison Then
+        If CurrentDataSourceMode = AnalyserDataSourceMode.Live OrElse
+           CurrentDataSourceMode = AnalyserDataSourceMode.Comparison Then
             TransDBDataRange.Calculate()
         End If
 
@@ -477,6 +478,23 @@ Public Class BPIncomeExpenditureAnalyserV2
             UpdateDataSourceButtons()
 
         End If
+
+    End Sub
+
+    Public Sub RefreshCalculatedData()
+
+        If IsDisposed OrElse Disposing Then Return
+
+        If IsHandleCreated AndAlso InvokeRequired Then
+            BeginInvoke(New MethodInvoker(AddressOf RefreshCalculatedData))
+            Return
+        End If
+
+        If DSAnalDataRange Is Nothing OrElse AmInactiveState Then Return
+
+        WrapCG_SOCI.WrappedCGC.RefreshDataSource()
+        WrapCG_CF.WrappedCGC.RefreshDataSource()
+        WrapCG_BS.WrappedCGC.RefreshDataSource()
 
     End Sub
 
@@ -2275,11 +2293,11 @@ Public Class BPIncomeExpenditureAnalyserV2
 
         If sender.GetRowLevel(e.RowHandle) = 0 Then
 
-            e.RowHeight += 20
+            e.RowHeight += Abovo.PresentationScaleManager.Scale(20)
 
         ElseIf sender.GetRowLevel(e.RowHandle) = 1 Then
 
-            e.RowHeight += 10
+            e.RowHeight += Abovo.PresentationScaleManager.Scale(10)
 
         End If
 

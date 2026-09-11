@@ -113,6 +113,7 @@ Public Class DataInterfaceTemplate
     Private BIsDirty As Boolean
 
     Private ControlsInitialised As Boolean = False
+    Private DisplayRelayoutQueued As Boolean = False
     Private SuppressSingleCellPosting As Boolean = False
     Private SuppressGridPosting As Boolean = False
     Private WorkbookPostingDepth As Integer = 0
@@ -1497,15 +1498,7 @@ SkipRefresh:
 
         If RootControl Is Nothing OrElse RootControl.IsDisposed Then Return
 
-        Dim CurrentScaleFactor As Single
-
-        If ParentGroupForm Is Nothing Then
-            CurrentScaleFactor = Me.Width / 1700
-        Else
-            CurrentScaleFactor = ParentGroupForm.Width / 1700
-        End If
-
-        Dim NewFont As Font = GetFont("Small", CurrentScaleFactor)
+        Dim NewFont As Font = GetDisplayFont("Medium", Me)
 
         ApplyFontToControlTree(RootControl, NewFont)
 
@@ -2425,10 +2418,10 @@ SkipRefresh:
 
         End If
 
-        'The interface font is already responsive to the host form size, while
-        'Windows/DevExpress may additionally DPI-scale the control.  Taking the
-        'larger factor gives us a useful physical minimum without multiplying the
-        'two factors together and over-inflating widths on a 4K display.
+        'The interface font is defined centrally at application startup, while
+        'Windows/DevExpress DPI-scales the control.  Taking the larger factor gives
+        'us a useful physical minimum without multiplying the two factors together
+        'and over-inflating widths on a high-DPI display.
         Return Math.Max(
             1.0F,
             Math.Max(DpiScale, FontScale))
@@ -4060,7 +4053,7 @@ SkipRefresh:
                                         .Appearance.ForeColor = Color.White
 
                                         .Appearance.Options.UseFont = True
-                                        .Appearance.Font = New Font("Segoe UI", 12, FontStyle.Regular)
+                                        .Appearance.Font = GetDisplayFont("Large", Me)
                                         '.Appearance.FontStyleDelta = FontStyle.Bold
                                         .Tag = InColumnEditorTag
 
@@ -4158,7 +4151,7 @@ SkipRefresh:
                                         .Appearance.ForeColor = Color.White
 
                                         .Appearance.Options.UseFont = True
-                                        .Appearance.Font = New Font("Segoe UI", 12, FontStyle.Regular)
+                                        .Appearance.Font = GetDisplayFont("Large", Me)
                                         '.Appearance.FontStyleDelta = FontStyle.Bold
                                         .Tag = InColumnEditorTag
 
@@ -5407,7 +5400,7 @@ SkipRefresh:
                                 .Appearance.BackColor = AbovoComboBGC
                                 .Appearance.ForeColor = Color.White
                                 .Appearance.Options.UseFont = True
-                                .Appearance.Font = New Font("Segoe UI", 12, FontStyle.Regular)
+                                .Appearance.Font = GetDisplayFont("Large", Me)
                                 .Tag = InColumnEditorTag
                             End With
 
@@ -5466,7 +5459,7 @@ SkipRefresh:
                                 .Appearance.BackColor = AbovoComboBGC
                                 .Appearance.ForeColor = Color.White
                                 .Appearance.Options.UseFont = True
-                                .Appearance.Font = New Font("Segoe UI", 12, FontStyle.Regular)
+                                .Appearance.Font = GetDisplayFont("Large", Me)
                                 .Tag = InColumnEditorTag
                             End With
 
@@ -7321,12 +7314,14 @@ NextCell:
     Private Sub InitialiseExportActions()
         Dim hasPdf As Boolean
         Dim hasExcel As Boolean
+        Dim hasOptions As Boolean
         For Each item As Object In WindowsUIButtonPanelActions.Buttons
             Dim existingButton As WindowsUIButton = TryCast(item, WindowsUIButton)
             If existingButton Is Nothing Then Continue For
             Dim existingTag As String = Convert.ToString(existingButton.Tag)
             If String.Equals(existingTag, "ExportPdf", StringComparison.OrdinalIgnoreCase) Then hasPdf = True
             If String.Equals(existingTag, "ExportExcel", StringComparison.OrdinalIgnoreCase) Then hasExcel = True
+            If String.Equals(existingTag, "Options", StringComparison.OrdinalIgnoreCase) Then hasOptions = True
         Next
 
         If Not hasPdf Then
@@ -7340,6 +7335,13 @@ NextCell:
                 New WindowsUIButton("Excel", False, Nothing, ButtonStyle.PushButton,
                     "Add interface data to the Excel export workspace", -1, True,
                     Nothing, True, False, True, "ExportExcel", -1, True))
+        End If
+        If Not hasOptions Then
+            WindowsUIButtonPanelActions.Buttons.Add(New WindowsUISeparator(Nothing, True, -1, True))
+            WindowsUIButtonPanelActions.Buttons.Add(
+                New WindowsUIButton("Scale", False, Nothing, ButtonStyle.PushButton,
+                    "Application interface scale and presentation options", -1, True,
+                    Nothing, True, False, True, "Options", -1, True))
         End If
     End Sub
 
@@ -7536,6 +7538,10 @@ SectionSelect:
                 If ActiveSpreadsheet IsNot Nothing Then WorksheetName = ActiveSpreadsheet.Name
 
                 Abovo.HelpManager.ShowDITHelp(Me, GSID, CSID, DITName, SectionName, WorksheetName)
+
+            Case "Options"
+
+                Abovo.PresentationScaleManager.ShowOptions(Me)
 
 
         End Select
@@ -10390,6 +10396,8 @@ SectionSelect:
         View.BeginUpdate()
 
         Try
+            Dim LiveGridDisplayScale As Single = GetDisplayScale(Me)
+
             With View
                 .OptionsBehavior.AllowAddRows = DefaultBoolean.False
                 .OptionsBehavior.AllowDeleteRows = DefaultBoolean.False
@@ -10415,9 +10423,13 @@ SectionSelect:
                 .OptionsView.RowAutoHeight = False
                 .OptionsView.ShowHorizontalLines = DefaultBoolean.True
                 .OptionsView.ShowVerticalLines = DefaultBoolean.True
-                .RowHeight = 22
-                .ColumnPanelRowHeight = 72
-                .UserCellPadding = New System.Windows.Forms.Padding(4, 1, 4, 1)
+                .RowHeight = CInt(Math.Round(22.0F * LiveGridDisplayScale))
+                .ColumnPanelRowHeight = CInt(Math.Round(72.0F * LiveGridDisplayScale))
+                .UserCellPadding = New System.Windows.Forms.Padding(
+                    CInt(Math.Round(4.0F * LiveGridDisplayScale)),
+                    CInt(Math.Round(1.0F * LiveGridDisplayScale)),
+                    CInt(Math.Round(4.0F * LiveGridDisplayScale)),
+                    CInt(Math.Round(1.0F * LiveGridDisplayScale)))
                 .VertScrollVisibility = DevExpress.XtraGrid.Views.Base.ScrollVisibility.Never
             End With
 
@@ -10828,8 +10840,10 @@ SectionSelect:
             SourceFontStyle = SourceFontStyle Or FontStyle.Underline
         End If
 
-        e.Appearance.Font =
-            New Font(e.Appearance.Font.FontFamily, e.Appearance.Font.Size, SourceFontStyle)
+        'Retain the DPI-aware application font and apply only the workbook-owned
+        'style.  Reconstructing Font objects here overrides central font handling
+        'and creates a disposable GDI object for every styled cell.
+        e.Appearance.FontStyleDelta = SourceFontStyle
         e.Appearance.Options.UseFont = True
 
         If View.IsCellSelected(e.RowHandle, e.Column) Then
@@ -10905,10 +10919,9 @@ SectionSelect:
         If SourceCell.Font.UnderlineType <> DevExpress.Spreadsheet.UnderlineType.None Then
             SourceFontStyle = SourceFontStyle Or FontStyle.Underline
         End If
-        e.Appearance.Font = New Font(
-            e.Appearance.Font.FontFamily,
-            e.Appearance.Font.Size,
-            SourceFontStyle)
+        'Retain the DPI-aware application font and apply only the workbook-owned
+        'style; the source workbook remains authoritative for emphasis.
+        e.Appearance.FontStyleDelta = SourceFontStyle
         e.Appearance.Options.UseFont = True
         Finally
             ApplyVGridSelectedCellAppearance(e)
@@ -12983,18 +12996,12 @@ SectionSelect:
 
         Dim HaveDoneGrid As Boolean = False
 
-        If ParentGroupForm Is Nothing Then
-            Scalefactor = Me.Width / 1700
-        Else
-            If ParentGroupForm IsNot Nothing Then
-                Scalefactor = ParentGroupForm.ClientSize.Width / 1700.0F
-            Else
-                Scalefactor = Me.ClientSize.Width / 1700.0F
-            End If
-        End If
+        Scalefactor = GetDisplayScale(Me)
 
 
-        Dim NewFont As Font = GetFont("Small", Scalefactor)
+        'DIT controls use the central normal UI font.  Workbook-backed grids apply
+        'cell emphasis in their style/draw handlers without replacing this font.
+        Dim NewFont As Font = GetDisplayFont("Medium", Me)
 
         For Each control In Me.Controls
 
@@ -13390,7 +13397,70 @@ TPans:
 
     Public Sub ResizeControlsCommand()
 
-        ResizeFonts()
+        QueueDisplayRelayout()
+
+    End Sub
+
+    Private Sub DataInterfaceTemplate_DpiChanged(
+        ByVal sender As Object,
+        ByVal e As DpiChangedEventArgs) Handles MyBase.DpiChanged
+
+        QueueDisplayRelayout()
+
+    End Sub
+
+    Private Sub QueueDisplayRelayout()
+
+        If Not ControlsInitialised OrElse IsDisposed OrElse Disposing Then Return
+        If DisplayRelayoutQueued Then Return
+
+        DisplayRelayoutQueued = True
+
+        Try
+            BeginInvoke(
+                New MethodInvoker(
+                    Sub()
+                        DisplayRelayoutQueued = False
+                        ReapplyCurrentDisplayLayout()
+                    End Sub))
+        Catch ex As ObjectDisposedException
+            DisplayRelayoutQueued = False
+        Catch ex As InvalidOperationException
+            DisplayRelayoutQueued = False
+        End Try
+
+    End Sub
+
+    Private Sub ReapplyCurrentDisplayLayout()
+
+        If IsDisposed OrElse Disposing OrElse TPs Is Nothing Then Return
+
+        Dim SelectedIndex As Integer = XtraTabControlNewGIT.SelectedTabPageIndex
+        If SelectedIndex < 0 OrElse SelectedIndex >= TPs.Length Then Return
+
+        Dim SelectedTP As TablePanel = TPs(SelectedIndex)
+        If SelectedTP Is Nothing OrElse SelectedTP.IsDisposed Then Return
+
+        Dim AvailableWidth As Integer =
+            If(ParentGroupForm Is Nothing,
+               Math.Max(1, ClientSize.Width - 40),
+               Math.Max(1, ParentGroupForm.ClientSize.Width - 40))
+
+        SelectedTP.SuspendLayout()
+
+        Try
+            SelectedTP.Width = AvailableWidth
+        Finally
+            SelectedTP.ResumeLayout(True)
+        End Try
+
+        SelectedTP.PerformLayout()
+
+        'Rebase grid geometry from the destination monitor and current content.
+        'ApplySectionFontAndGridLayout uses non-grow-only BestFit sizing, so a
+        'round trip through monitors cannot multiply or retain prior dimensions.
+        ApplySectionFontAndGridLayout(SelectedTP)
+        SelectedTP.PerformLayout()
 
     End Sub
     Sub AnalyseGrids()

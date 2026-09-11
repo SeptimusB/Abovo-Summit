@@ -343,6 +343,11 @@ Public Class BPIncomeExpenditureAnalyser
         Dim CTD As New BPIEAColumnDetector()
         TransDBDataRange = worksheet.Range("Transactional_Records")
 
+        'The workbook can contain valid Transactional DB formulas whose cached
+        'results still reflect the unpopulated master. Calculate the live range
+        'before RangeDataSource captures its initial values.
+        TransDBDataRange.Calculate()
+
         Dim RDSOptions As New RangeDataSourceOptions With {
             .UseFirstRowAsHeader = True,
             .PreserveFormulas = False,
@@ -392,6 +397,23 @@ Public Class BPIncomeExpenditureAnalyser
             AmInactiveState = False
 
         End If
+
+    End Sub
+
+    Public Sub RefreshCalculatedData()
+
+        If IsDisposed OrElse Disposing Then Return
+
+        If IsHandleCreated AndAlso InvokeRequired Then
+            BeginInvoke(New MethodInvoker(AddressOf RefreshCalculatedData))
+            Return
+        End If
+
+        If DSAnalDataRange Is Nothing OrElse AmInactiveState Then Return
+
+        WrapCG_SOCI.WrappedCGC.RefreshDataSource()
+        WrapCG_CF.WrappedCGC.RefreshDataSource()
+        WrapCG_BS.WrappedCGC.RefreshDataSource()
 
     End Sub
 

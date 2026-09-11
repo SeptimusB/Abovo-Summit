@@ -383,12 +383,22 @@ Public Class FFRWorkbookSheetView
 
         Dim SourceRow As Integer = Convert.ToInt32(Value, CultureInfo.InvariantCulture)
         Dim WorkbookHeight As Single = Workbook.Worksheets(SheetName).Rows(SourceRow).Height
+        Dim InterfaceScale As Single = Abovo.PresentationScaleManager.UserScale
         If CompactWorksheetLayout Then
-            e.RowHeight = Math.Max(18, Math.Min(30, CInt(Math.Ceiling(WorkbookHeight))))
+            e.RowHeight = Math.Max(
+                Abovo.PresentationScaleManager.Scale(18),
+                Math.Min(
+                    Abovo.PresentationScaleManager.Scale(30),
+                    CInt(Math.Ceiling(WorkbookHeight * InterfaceScale))))
         Else
-            Dim MinimumHeight As Integer = If(CompactRows, 18, DefaultRowHeight)
+            Dim MinimumHeight As Integer =
+                Abovo.PresentationScaleManager.Scale(If(CompactRows, 18, DefaultRowHeight))
             Dim Scale As Single = If(CompactRows, 1.0F, 1.35F)
-            e.RowHeight = Math.Max(MinimumHeight, Math.Min(180, CInt(Math.Ceiling(WorkbookHeight * Scale))))
+            e.RowHeight = Math.Max(
+                MinimumHeight,
+                Math.Min(
+                    Abovo.PresentationScaleManager.Scale(180),
+                    CInt(Math.Ceiling(WorkbookHeight * Scale * InterfaceScale))))
         End If
     End Sub
 

@@ -21,7 +21,7 @@ Imports DevExpress.XtraSpreadsheet.Forms
 Public Class FormMainScreen
 
 #If DEBUG Then
-    Private Const DebugAutoOpenModelPath As String = "Z:\Sandbox\TestFileClean.xlsb"
+    Private Const DebugAutoOpenModelFileName As String = "Demo BP v26_0001.xlsb"
 #End If
 
     Dim rs As New Resizer
@@ -52,9 +52,9 @@ Public Class FormMainScreen
 
         'SplashScreenManagerStartup.ShowWaitForm()
         DevExpress.XtraEditors.WindowsFormsSettings.SmartMouseWheelProcessing = False
-        WindowsFormsSettings.DefaultFont = New System.Drawing.Font("Segoe UI", 10)
 
         InitializeComponent()
+        InitialisePresentationOptionsAction()
         InitialiseDSAWorkspace()
 
         If String.IsNullOrWhiteSpace(ApplicationConfiguration.CurrentApplicationPath) Then
@@ -94,57 +94,58 @@ Public Class FormMainScreen
     End Sub
     Sub ResizeFonts()
 
-        ScaleFactor = Me.Width / 2100
+        ScaleFactor = GetDisplayScale(Me)
 
-        Me.GroupBoxProgramDetails.Font = GetFont("Small", Me.ScaleFactor)
+        Me.GroupBoxProgramDetails.Font = GetDisplayFont("Small", Me)
 
-        Me.hideContainerRight.Font = GetFont("Small", Me.ScaleFactor)
-        Me.BarAndDockingControllerMainScreen.AppearancesDocking.ActiveTab.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.BarAndDockingControllerMainScreen.AppearancesDocking.HidePanelButton.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.BarAndDockingControllerMainScreen.AppearancesDocking.HidePanelButtonActive.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.BarAndDockingControllerMainScreen.AppearancesDocking.PanelCaption.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.BarAndDockingControllerMainScreen.AppearancesDocking.PanelCaptionActive.Font = GetFont("Medium", Me.ScaleFactor)
+        Me.hideContainerRight.Font = GetDisplayFont("Small", Me)
+        Me.BarAndDockingControllerMainScreen.AppearancesDocking.ActiveTab.Font = GetDisplayFont("Medium", Me)
+        Me.BarAndDockingControllerMainScreen.AppearancesDocking.HidePanelButton.Font = GetDisplayFont("Medium", Me)
+        Me.BarAndDockingControllerMainScreen.AppearancesDocking.HidePanelButtonActive.Font = GetDisplayFont("Medium", Me)
+        Me.BarAndDockingControllerMainScreen.AppearancesDocking.PanelCaption.Font = GetDisplayFont("Medium", Me)
+        Me.BarAndDockingControllerMainScreen.AppearancesDocking.PanelCaptionActive.Font = GetDisplayFont("Medium", Me)
 
-        Me.BarAndDockingControllerMainScreen.AppearancesBar.Dock.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.BarAndDockingControllerMainScreen.AppearancesDocking.HidePanelButton.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.BarAndDockingControllerMainScreen.AppearancesDocking.PanelCaption.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.XtraTabControlMainNavigator.AppearancePage.HeaderActive.Font = GetFont("Medium", Me.ScaleFactor, False, True)
-        Me.XtraTabControlMainNavigator.AppearancePage.Header.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.XtraTabControlMainNavigator.Appearance.Font = GetFont("Medium", Me.ScaleFactor)
-        Me.XtraTabControlMainNavigator.AppearancePage.HeaderHotTracked.Font = GetFont("Medium", Me.ScaleFactor)
+        Me.BarAndDockingControllerMainScreen.AppearancesBar.Dock.Font = GetDisplayFont("Medium", Me)
+        Me.BarAndDockingControllerMainScreen.AppearancesDocking.HidePanelButton.Font = GetDisplayFont("Medium", Me)
+        Me.BarAndDockingControllerMainScreen.AppearancesDocking.PanelCaption.Font = GetDisplayFont("Medium", Me)
+        Me.XtraTabControlMainNavigator.AppearancePage.HeaderActive.Font = GetDisplayFont("Medium", Me, False, True)
+        Me.XtraTabControlMainNavigator.AppearancePage.Header.Font = GetDisplayFont("Medium", Me)
+        Me.XtraTabControlMainNavigator.Appearance.Font = GetDisplayFont("Medium", Me)
+        Me.XtraTabControlMainNavigator.AppearancePage.HeaderHotTracked.Font = GetDisplayFont("Medium", Me)
 
-        WindowsUIButtonPanelExitHelp.Font = GetFont("Small", Me.ScaleFactor)
-        Me.WindowsUIButtonPanelBPActions.Font = GetFont("Small", Me.ScaleFactor)
+        WindowsUIButtonPanelExitHelp.Font = GetDisplayFont("Small", Me)
+        Me.WindowsUIButtonPanelBPActions.Font = GetDisplayFont("Small", Me)
 
-        WindowsUIButtonPanelOpenCompare.AppearanceButton.Normal.Font = GetFont("Small", Me.ScaleFactor)
-        WindowsUIButtonPanelOpenCompare.AppearanceButton.Hovered.Font = GetFont("Small", Me.ScaleFactor)
-        WindowsUIButtonPanelOpenCompare.AppearanceButton.Pressed.Font = GetFont("Small", Me.ScaleFactor)
+        WindowsUIButtonPanelOpenCompare.AppearanceButton.Normal.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelOpenCompare.AppearanceButton.Hovered.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelOpenCompare.AppearanceButton.Pressed.Font = GetDisplayFont("Small", Me)
 
-        WindowsUIButtonPanelBPActions.AppearanceButton.Normal.Font = GetFont("Small", Me.ScaleFactor)
-        WindowsUIButtonPanelBPActions.AppearanceButton.Hovered.Font = GetFont("Small", Me.ScaleFactor)
-        WindowsUIButtonPanelBPActions.AppearanceButton.Pressed.Font = GetFont("Small", Me.ScaleFactor)
+        WindowsUIButtonPanelBPActions.AppearanceButton.Normal.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelBPActions.AppearanceButton.Hovered.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelBPActions.AppearanceButton.Pressed.Font = GetDisplayFont("Small", Me)
 
-        WindowsUIButtonPanelExitHelp.AppearanceButton.Normal.Font = GetFont("Small", Me.ScaleFactor)
-        WindowsUIButtonPanelExitHelp.AppearanceButton.Hovered.Font = GetFont("Small", Me.ScaleFactor)
-        WindowsUIButtonPanelExitHelp.AppearanceButton.Pressed.Font = GetFont("Small", Me.ScaleFactor)
+        WindowsUIButtonPanelExitHelp.AppearanceButton.Normal.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelExitHelp.AppearanceButton.Hovered.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelExitHelp.AppearanceButton.Pressed.Font = GetDisplayFont("Small", Me)
 
-        WindowsUIButtonPanelSaveClose.AppearanceButton.Normal.Font = GetFont("Small", Me.ScaleFactor)
-        WindowsUIButtonPanelSaveClose.AppearanceButton.Hovered.Font = GetFont("Small", Me.ScaleFactor)
-        WindowsUIButtonPanelSaveClose.AppearanceButton.Pressed.Font = GetFont("Small", Me.ScaleFactor)
+        WindowsUIButtonPanelSaveClose.AppearanceButton.Normal.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelSaveClose.AppearanceButton.Hovered.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelSaveClose.AppearanceButton.Pressed.Font = GetDisplayFont("Small", Me)
         'Me.GroupBoxFileActions.Font = GetFont("Small", Me.ScaleFactor)
 
     End Sub
     Sub SetInitialSizes()
 
-        If Screen.PrimaryScreen.Bounds.Width < 900 Then
-            Me.Width = Screen.PrimaryScreen.Bounds.Width * 0.9
-            Me.Height = Screen.PrimaryScreen.Bounds.Height * 0.9
-        ElseIf Screen.PrimaryScreen.Bounds.Width < 1190 Then
-            Me.Width = Screen.PrimaryScreen.Bounds.Width * 0.8
-            Me.Height = Screen.PrimaryScreen.Bounds.Height * 0.8
+        Dim AvailableArea As Rectangle = Screen.FromPoint(Cursor.Position).WorkingArea
+        If AvailableArea.Width < 900 Then
+            Me.Width = CInt(AvailableArea.Width * 0.9)
+            Me.Height = CInt(AvailableArea.Height * 0.9)
+        ElseIf AvailableArea.Width < 1190 Then
+            Me.Width = CInt(AvailableArea.Width * 0.8)
+            Me.Height = CInt(AvailableArea.Height * 0.8)
         Else
-            Me.Width = Screen.PrimaryScreen.Bounds.Width * 0.7
-            Me.Height = Screen.PrimaryScreen.Bounds.Height * 0.7
+            Me.Width = CInt(AvailableArea.Width * 0.7)
+            Me.Height = CInt(AvailableArea.Height * 0.7)
         End If
 
         ResizeFonts()
@@ -194,12 +195,35 @@ Public Class FormMainScreen
     End Sub
     Private Sub FormMainScreen_Load(sender As Object, e As EventArgs) Handles MyBase.Load
 #If DEBUG Then
-        If Not DesignMode AndAlso IO.File.Exists(DebugAutoOpenModelPath) Then
+        Dim DebugAutoOpenModelPath As String = ResolveDebugAutoOpenModelPath()
+        If Not DesignMode AndAlso Not String.IsNullOrWhiteSpace(DebugAutoOpenModelPath) Then
             BeginInvoke(New MethodInvoker(
                 Sub() OpenModelProceedureBP(DebugAutoOpenModelPath)))
         End If
 #End If
     End Sub
+#If DEBUG Then
+    Private Shared Function ResolveDebugAutoOpenModelPath() As String
+
+        Dim SearchDirectory As New IO.DirectoryInfo(Application.StartupPath)
+
+        While SearchDirectory IsNot Nothing
+            Dim CandidatePath As String = IO.Path.Combine(
+                SearchDirectory.FullName,
+                "Library",
+                DebugAutoOpenModelFileName)
+
+            If IO.File.Exists(CandidatePath) Then
+                Return CandidatePath
+            End If
+
+            SearchDirectory = SearchDirectory.Parent
+        End While
+
+        Return String.Empty
+
+    End Function
+#End If
     Private Sub SetBrowserText()
 
         WebBrowserProgramDetails.DocumentText = "<html><body><B>" +
@@ -385,6 +409,24 @@ Public Class FormMainScreen
             Me.Cursor = Cursors.Default
         End Try
 
+    End Sub
+
+    Private Sub InitialisePresentationOptionsAction()
+        For Each Item As Object In WindowsUIButtonPanelExitHelp.Buttons
+            Dim ExistingButton As WindowsUIButton = TryCast(Item, WindowsUIButton)
+            If ExistingButton IsNot Nothing AndAlso
+               String.Equals(Convert.ToString(ExistingButton.Tag), "Options", StringComparison.OrdinalIgnoreCase) Then
+                Return
+            End If
+        Next
+
+        WindowsUIButtonPanelExitHelp.Buttons.Add(
+            New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True))
+        WindowsUIButtonPanelExitHelp.Buttons.Add(
+            New WindowsUIButton("Scale", False, Nothing,
+                DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton,
+                "Application interface scale and presentation options",
+                -1, True, Nothing, True, False, True, "Options", -1, True))
     End Sub
 
     Private Sub InitialiseDSAWorkspace()
@@ -654,6 +696,10 @@ Public Class FormMainScreen
 
                 Abovo.HelpManager.ShowHelpHome(Me)
 
+            Case "Options"
+
+                Abovo.PresentationScaleManager.ShowOptions(Me)
+
         End Select
     End Sub
 
@@ -667,7 +713,6 @@ Public Class FormMainScreen
 
     Private Sub FormMainScreen_ResizeEnd(sender As Object, e As EventArgs) Handles MyBase.ResizeEnd
 
-        ResizeFonts()
         ResizeControls()
         PictureBoxAbovoLogo.Height = CInt(PictureBoxAbovoLogo.Width * 0.483)
         GroupBoxProgramDetails.Top = PictureBoxAbovoLogo.Bottom + ScaleUnits
@@ -679,7 +724,6 @@ Public Class FormMainScreen
         If Me.WindowState = FormWindowState.Maximized Then
 
             AmMaximised = True
-            ResizeFonts()
             ResizeControls()
 
         End If
