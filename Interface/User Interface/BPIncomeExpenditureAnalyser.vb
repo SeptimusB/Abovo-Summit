@@ -344,9 +344,9 @@ Public Class BPIncomeExpenditureAnalyser
         TransDBDataRange = worksheet.Range("Transactional_Records")
 
         'The workbook can contain valid Transactional DB formulas whose cached
-        'results still reflect the unpopulated master. Calculate the live range
-        'before RangeDataSource captures its initial values.
-        TransDBDataRange.Calculate()
+        'results still reflect the unpopulated master. Those formulas depend on
+        'many other worksheets, so a range/worksheet calculation is insufficient.
+        ExcelModels(ModelID).WBCalcEngine.CalculateDependencySensitiveFile()
 
         Dim RDSOptions As New RangeDataSourceOptions With {
             .UseFirstRowAsHeader = True,

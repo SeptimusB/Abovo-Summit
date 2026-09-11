@@ -411,7 +411,10 @@ Public Class BPIncomeExpenditureAnalyserV2
         TransDBDataRange = definedName.Range
         If CurrentDataSourceMode = AnalyserDataSourceMode.Live OrElse
            CurrentDataSourceMode = AnalyserDataSourceMode.Comparison Then
-            TransDBDataRange.Calculate()
+            'Live and comparison records contain cross-sheet formulas. A
+            'range/worksheet calculation does not resolve their dependencies
+            'when the XLSB was loaded with stale cached results.
+            ExcelModels(ModelID).WBCalcEngine.CalculateDependencySensitiveFile()
         End If
 
         Dim RDSOptions As New RangeDataSourceOptions With {

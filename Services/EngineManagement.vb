@@ -286,6 +286,26 @@ NextWS:
             RaiseEvent CalculationCompleted(Me, EventArgs.Empty)
 
         End Sub
+
+        Public Sub CalculateDependencySensitiveFile()
+
+            Dim Workbook As IWorkbook = ExcelModels(ModelID).WB
+            Dim PreviousEngine As CalculationEngineType = Workbook.Options.CalculationEngineType
+
+            Try
+                'A worksheet/range calculation cannot resolve every cross-sheet
+                'dependency in the BP model when an XLSB is loaded with cached
+                'results. Use the recursive engine for this calculation only and
+                'always restore the model's normal engine afterwards.
+                Workbook.Options.CalculationEngineType = CalculationEngineType.Recursive
+                Workbook.Calculate()
+                WBCalcDirty = False
+                WBCalcMinDirty = False
+            Finally
+                Workbook.Options.CalculationEngineType = PreviousEngine
+            End Try
+
+        End Sub
         Public Sub CalcManual()
 
             ExcelModels(ModelID).WB.DocumentSettings.Calculation.Mode = CalculationMode.Manual
