@@ -306,6 +306,9 @@ Public Class BPIncomeExpenditureAnalyser
         Formatter.FormatGridView(View_WrapCG_SOCI, WrapCG_SOCI.WrappedCGC, "Smaller")
         Formatter.FormatGridView(View_WrapCG_CF, WrapCG_CF.WrappedCGC, "Smaller")
         Formatter.FormatGridView(View_WrapCG_BS, WrapCG_BS.WrappedCGC, "Smaller")
+        ApplyAnalyserInteractionOptions(View_WrapCG_SOCI)
+        ApplyAnalyserInteractionOptions(View_WrapCG_CF)
+        ApplyAnalyserInteractionOptions(View_WrapCG_BS)
 
         GridView_Process_SetExpandedLevels(View_WrapCG_SOCI)
         GridView_Process_SetExpandedLevels(View_WrapCG_CF)
@@ -321,7 +324,10 @@ Public Class BPIncomeExpenditureAnalyser
         Dim ActiveSpreadsheet As DevExpress.Spreadsheet.Worksheet
         ActiveSpreadsheet = ExcelModels(SetModelID).WB.Worksheets("Transactional DB")
 
-        ExcelModels(ModelID).WBCalcEngine.AddActiveWorksheet(CalcEngID, ActiveSpreadsheet)
+        'The dependency-sensitive calculation was completed before the range
+        'datasource was created. Register the worksheet without calculating it
+        'a second time while the analyser opens.
+        ExcelModels(ModelID).WBCalcEngine.AddActiveWorksheet(CalcEngID, ActiveSpreadsheet, False)
 
         Exit Sub
 
@@ -658,8 +664,14 @@ Public Class BPIncomeExpenditureAnalyser
             .OptionsBehavior.AlignGroupSummaryInGroupRow = DefaultBoolean.False
             .OptionsView.GroupFooterShowMode = GroupFooterShowMode.VisibleIfExpanded
             .OptionsSelection.EnableAppearanceFocusedCell = False
-            .OptionsSelection.EnableAppearanceHotTrackedRow = False
+            .Appearance.HotTrackedRow.BackColor = AbovoBlue
+            .Appearance.HotTrackedRow.ForeColor = Color.White
+            .Appearance.HotTrackedRow.Options.UseBackColor = True
+            .Appearance.HotTrackedRow.Options.UseForeColor = True
+            .OptionsSelection.EnableAppearanceHotTrackedRow = True
             .OptionsSelection.EnableAppearanceFocusedRow = False
+            .OptionsSelection.MultiSelect = True
+            .OptionsSelection.MultiSelectMode = GridMultiSelectMode.CellSelect
             .OptionsView.AllowHtmlDrawGroups = True
             .OptionsView.AllowHtmlDrawHeaders = True
 
@@ -670,6 +682,34 @@ Public Class BPIncomeExpenditureAnalyser
         End With
 
     End Sub
+
+    Private Shared Sub ApplyAnalyserInteractionOptions(ByVal view As CustomGridView)
+        If view Is Nothing Then Return
+
+        With view
+            .OptionsSelection.MultiSelect = True
+            .OptionsSelection.MultiSelectMode = GridMultiSelectMode.CellSelect
+            .OptionsSelection.EnableAppearanceHotTrackedRow = True
+            .Appearance.HotTrackedRow.BackColor = AbovoBlue
+            .Appearance.HotTrackedRow.ForeColor = Color.White
+            .Appearance.HotTrackedRow.Options.UseBackColor = True
+            .Appearance.HotTrackedRow.Options.UseForeColor = True
+            .Appearance.SelectedRow.BackColor = Color.Wheat
+            .Appearance.SelectedRow.ForeColor = Color.Black
+            .Appearance.SelectedRow.Options.UseBackColor = True
+            .Appearance.SelectedRow.Options.UseForeColor = True
+        End With
+    End Sub
+
+    Private Shared Function IsPointerOverRow(ByVal view As CustomGridView,
+                                             ByVal rowHandle As Integer) As Boolean
+        If view Is Nothing OrElse view.GridControl Is Nothing Then Return False
+
+        Dim clientPoint As Point =
+            view.GridControl.PointToClient(System.Windows.Forms.Control.MousePosition)
+        Dim hitInfo As GridHitInfo = view.CalcHitInfo(clientPoint)
+        Return hitInfo IsNot Nothing AndAlso hitInfo.RowHandle = rowHandle
+    End Function
 
 #End Region
 
@@ -1111,6 +1151,7 @@ Public Class BPIncomeExpenditureAnalyser
     Private Sub GridView_CustomDraw_GroupFooterCells(ByVal sender As CustomGridView, ByVal e As FooterCellCustomDrawEventArgs)
 
         Dim RLev As Integer = sender.GetRowLevel(e.RowHandle)
+        e.Appearance.ForeColor = Color.Black
         Dim pen As Pen
         Select Case RLev
 
@@ -1157,6 +1198,10 @@ Public Class BPIncomeExpenditureAnalyser
 
         End If
 
+        If IsPointerOverRow(sender, e.RowHandle) Then
+            e.Cache.FillRectangle(e.Cache.GetSolidBrush(AbovoBlue), e.Bounds)
+            e.Appearance.ForeColor = Color.White
+        End If
 
         Dim FPoint1 As New PointF(e.Bounds.X, e.Bounds.Y)
         Dim FPoint2 As New PointF(e.Bounds.X + e.Bounds.Width, e.Bounds.Y)
@@ -1169,6 +1214,7 @@ Public Class BPIncomeExpenditureAnalyser
     Sub GridView_CustomDraw_RowFooter(ByVal sender As CustomGridView, ByVal e As RowObjectCustomDrawEventArgs)
 
         Dim NewBoldFont As Font = New Font(WindowsFormsSettings.DefaultFont, FontStyle.Bold)
+        e.Appearance.ForeColor = Color.Black
 
         Dim RLev As Integer = sender.GetRowLevel(e.RowHandle)
         Dim Rect As New Rectangle With {
@@ -1292,6 +1338,12 @@ Public Class BPIncomeExpenditureAnalyser
 
         End Select
 
+        Dim IsHighlighted As Boolean = IsPointerOverRow(sender, e.RowHandle)
+        If IsHighlighted Then
+            e.Appearance.BackColor = AbovoBlue
+            e.Appearance.ForeColor = Color.White
+        End If
+
         If Microsoft.VisualBasic.Right(Caption, 7) = "(MIN=0)" Then Caption = Microsoft.VisualBasic.Left(Caption, Len(Caption) - 17)
 
         Caption = Caption & " Total"
@@ -1299,8 +1351,8 @@ Public Class BPIncomeExpenditureAnalyser
         e.Cache.FillRectangle(e.Cache.GetSolidBrush(e.Appearance.BackColor), e.Bounds)
 
         Dim FPoint As New PointF(Rect.X, Rect.Y + (DefaultGridCellPadding / 2))
-        Dim BlackBrush As Brush = e.Cache.GetSolidBrush(Color.Black)
-        e.Cache.DrawString(Caption, NewBoldFont, BlackBrush, FPoint)
+        Dim TextBrush As Brush = e.Cache.GetSolidBrush(If(IsHighlighted, Color.White, Color.Black))
+        e.Cache.DrawString(Caption, NewBoldFont, TextBrush, FPoint)
 
         e.Handled = True
         LastPaintedFooterColour = e.Appearance.BackColor
@@ -1329,6 +1381,7 @@ Public Class BPIncomeExpenditureAnalyser
         Dim CurrentRow As GridGroupRowInfo = TryCast(e.Info, GridGroupRowInfo)
 
         e.Appearance.Font = NewBoldFont
+        e.Appearance.ForeColor = Color.Black
 
         Dim info As GridGroupRowInfo = TryCast(e.Info, GridGroupRowInfo)
 
@@ -1434,6 +1487,12 @@ Public Class BPIncomeExpenditureAnalyser
         'GroupHeadings(e.RowHandle) = info.GroupText
 
 
+        Dim IsHighlighted As Boolean = IsPointerOverRow(sender, e.RowHandle)
+        If IsHighlighted Then
+            BackColor = AbovoBlue
+            e.Appearance.ForeColor = Color.White
+        End If
+
         If Not IsGRExpanded Then
 
             Dim items As ArrayList = ExtractSummaryItems(view)
@@ -1492,6 +1551,17 @@ Public Class BPIncomeExpenditureAnalyser
             e.Handled = True
             Return
 
+        End If
+        Dim view As CustomGridView = TryCast(sender, CustomGridView)
+        Dim IsHotTracked As Boolean = view IsNot Nothing AndAlso
+                                         IsPointerOverRow(view, e.RowHandle)
+        Dim IsSelected As Boolean = view IsNot Nothing AndAlso
+                                    view.IsCellSelected(e.RowHandle, e.Column)
+        e.Appearance.ForeColor = Color.Black
+        If IsHotTracked Then
+            e.Cache.FillRectangle(e.Cache.GetSolidBrush(AbovoBlue), e.Bounds)
+        ElseIf IsSelected Then
+            e.Cache.FillRectangle(e.Cache.GetSolidBrush(Color.Wheat), e.Bounds)
         End If
         Dim NewRegFont As New Font(e.Appearance.GetFont, FontStyle.Regular)
         e.Appearance.Font = NewRegFont
@@ -1552,6 +1622,7 @@ Public Class BPIncomeExpenditureAnalyser
         End If
 
 
+        If IsHotTracked Then e.Appearance.ForeColor = Color.White
         e.Appearance.DrawString(e.Cache, strToWrite, e.Bounds)
         e.Handled = True
 
@@ -1611,8 +1682,9 @@ Public Class BPIncomeExpenditureAnalyser
 
         Dim values As Hashtable = view.GetGroupSummaryValues(e.RowHandle)
 
-        Dim RedBrush As Brush = e.Cache.GetSolidBrush(Color.Red)
-        Dim BlackBrush As Brush = e.Cache.GetSolidBrush(Color.Black)
+        Dim IsHighlighted As Boolean = IsPointerOverRow(view, e.RowHandle)
+        Dim RedBrush As Brush = e.Cache.GetSolidBrush(If(IsHighlighted, Color.White, Color.Red))
+        Dim BlackBrush As Brush = e.Cache.GetSolidBrush(If(IsHighlighted, Color.White, Color.Black))
 
         For Each item As GridGroupSummaryItem In items
 
