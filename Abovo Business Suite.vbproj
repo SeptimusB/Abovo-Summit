@@ -19,7 +19,7 @@
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
     <TargetFrameworkProfile />
-    <PublishUrl>Z:\Sandbox\Deploy\Summit Test 1.00\</PublishUrl>
+    <PublishUrl>Z:\Sandbox\Deploy\Summit Test 1.01\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
     <UpdateEnabled>false</UpdateEnabled>
@@ -32,7 +32,6 @@
     <ProductName>Abovo Summit Test</ProductName>
     <PublisherName>Abovo</PublisherName>
     <SuiteName>Abovo</SuiteName>
-    <AutorunEnabled>true</AutorunEnabled>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.0</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
@@ -456,6 +455,7 @@
     <Compile Include="Interface\Interface Services\FontManager.vb" />
     <Compile Include="Interface\Interface Services\FormSplashScreen.vb" />
     <Compile Include="Interface\Interface Services\GeneralFunctions.vb" />
+    <Compile Include="Interface\Interface Services\AnalyserVirtualSelectionManager.vb" />
     <Compile Include="Interface\Interface Services\WorkbookGridClipboardSupport.vb" />
     <Compile Include="Interface\Interface Services\ModelPostingChangeSupport.vb" />
     <Compile Include="Interface\Interface Services\HelpManager.vb" />

@@ -82,6 +82,7 @@ Public Class BPIncomeExpenditureAnalyser
     Private ActiveGridView As CustomGridView
     Private ActiveGridWrapper As CustomGridWrapper
     Private ActiveGridControl As GridControl
+    Private ReadOnly VirtualSelection As New AnalyserVirtualSelectionManager()
 
     'Things for hyperlinkLabelControls#group LastPaintedFooterColour
 
@@ -309,6 +310,9 @@ Public Class BPIncomeExpenditureAnalyser
         ApplyAnalyserInteractionOptions(View_WrapCG_SOCI)
         ApplyAnalyserInteractionOptions(View_WrapCG_CF)
         ApplyAnalyserInteractionOptions(View_WrapCG_BS)
+        VirtualSelection.Attach(View_WrapCG_SOCI)
+        VirtualSelection.Attach(View_WrapCG_CF)
+        VirtualSelection.Attach(View_WrapCG_BS)
 
         GridView_Process_SetExpandedLevels(View_WrapCG_SOCI)
         GridView_Process_SetExpandedLevels(View_WrapCG_CF)
@@ -370,6 +374,8 @@ Public Class BPIncomeExpenditureAnalyser
     End Sub
 
     Public Sub DisconectRDS()
+
+        VirtualSelection.Clear()
 
         If DSAnalDataRange IsNot Nothing Then
 
@@ -1198,9 +1204,15 @@ Public Class BPIncomeExpenditureAnalyser
 
         End If
 
-        If IsPointerOverRow(sender, e.RowHandle) Then
+        Dim IsHotTracked As Boolean = IsPointerOverRow(sender, e.RowHandle)
+        Dim IsVirtuallySelected As Boolean =
+            VirtualSelection.IsCellSelected(sender, e.RowHandle,
+                                            AnalyserVirtualRowKind.GroupFooter, e.Column)
+        If IsHotTracked Then
             e.Cache.FillRectangle(e.Cache.GetSolidBrush(AbovoBlue), e.Bounds)
             e.Appearance.ForeColor = Color.White
+        ElseIf IsVirtuallySelected Then
+            e.Cache.FillRectangle(e.Cache.GetSolidBrush(Color.Wheat), e.Bounds)
         End If
 
         Dim FPoint1 As New PointF(e.Bounds.X, e.Bounds.Y)
@@ -1338,10 +1350,15 @@ Public Class BPIncomeExpenditureAnalyser
 
         End Select
 
-        Dim IsHighlighted As Boolean = IsPointerOverRow(sender, e.RowHandle)
-        If IsHighlighted Then
+        Dim IsHotTracked As Boolean = IsPointerOverRow(sender, e.RowHandle)
+        Dim IsVirtuallySelected As Boolean =
+            VirtualSelection.IsSelected(sender, e.RowHandle, AnalyserVirtualRowKind.GroupFooter)
+        If IsHotTracked Then
             e.Appearance.BackColor = AbovoBlue
             e.Appearance.ForeColor = Color.White
+        ElseIf IsVirtuallySelected Then
+            e.Appearance.BackColor = Color.Wheat
+            e.Appearance.ForeColor = Color.Black
         End If
 
         If Microsoft.VisualBasic.Right(Caption, 7) = "(MIN=0)" Then Caption = Microsoft.VisualBasic.Left(Caption, Len(Caption) - 17)
@@ -1349,9 +1366,13 @@ Public Class BPIncomeExpenditureAnalyser
         Caption = Caption & " Total"
 
         e.Cache.FillRectangle(e.Cache.GetSolidBrush(e.Appearance.BackColor), e.Bounds)
+        If Not IsHotTracked Then
+            VirtualSelection.DrawSelectedCells(e.Cache, sender, e.RowHandle,
+                                               AnalyserVirtualRowKind.GroupFooter, e.Bounds)
+        End If
 
         Dim FPoint As New PointF(Rect.X, Rect.Y + (DefaultGridCellPadding / 2))
-        Dim TextBrush As Brush = e.Cache.GetSolidBrush(If(IsHighlighted, Color.White, Color.Black))
+        Dim TextBrush As Brush = e.Cache.GetSolidBrush(If(IsHotTracked, Color.White, Color.Black))
         e.Cache.DrawString(Caption, NewBoldFont, TextBrush, FPoint)
 
         e.Handled = True
@@ -1487,10 +1508,15 @@ Public Class BPIncomeExpenditureAnalyser
         'GroupHeadings(e.RowHandle) = info.GroupText
 
 
-        Dim IsHighlighted As Boolean = IsPointerOverRow(sender, e.RowHandle)
-        If IsHighlighted Then
+        Dim IsHotTracked As Boolean = IsPointerOverRow(sender, e.RowHandle)
+        Dim IsVirtuallySelected As Boolean =
+            VirtualSelection.IsSelected(sender, e.RowHandle, AnalyserVirtualRowKind.GroupHeading)
+        If IsHotTracked Then
             BackColor = AbovoBlue
             e.Appearance.ForeColor = Color.White
+        ElseIf IsVirtuallySelected Then
+            BackColor = Color.Wheat
+            e.Appearance.ForeColor = Color.Black
         End If
 
         If Not IsGRExpanded Then
@@ -1500,12 +1526,20 @@ Public Class BPIncomeExpenditureAnalyser
                 Return
             End If
             DrawBackground(e, view, DontDrawButton, BackColor, DontIndentTitle)
+            If Not IsHotTracked Then
+                VirtualSelection.DrawSelectedCells(e.Cache, sender, e.RowHandle,
+                                                   AnalyserVirtualRowKind.GroupHeading, e.Bounds)
+            End If
             DrawSummaryValues(e, view, items)
             e.Handled = True
 
         Else
 
             DrawBackground(e, view, DontDrawButton, BackColor, DontIndentTitle)
+            If Not IsHotTracked Then
+                VirtualSelection.DrawSelectedCells(e.Cache, sender, e.RowHandle,
+                                                   AnalyserVirtualRowKind.GroupHeading, e.Bounds)
+            End If
             e.Handled = True
 
         End If
@@ -1804,6 +1838,8 @@ Public Class BPIncomeExpenditureAnalyser
 #Region "Event Handlers"
 
     Private Sub GridView_Event_SingleClick(ByVal CGVSender As CustomGridView, ByVal e As MouseEventArgs)
+
+        If VirtualSelection.ProcessClick(CGVSender, e) Then Return
 
         Dim hitInfo As GridHitInfo = CGVSender.CalcHitInfo(e.Location)
 
