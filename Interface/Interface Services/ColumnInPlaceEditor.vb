@@ -25,16 +25,16 @@ Namespace Abovo
             Dim DateItem As RepositoryItemDateEdit = TryCast(Item, RepositoryItemDateEdit)
             If DateItem Is Nothing Then Exit Sub
 
-            'Use one date format for both the custom-painted editor and the
-            'temporary live editor.  In .NET custom date formats, lower-case
-            'dd/yyyy are the day/year tokens.
+            'Keep the established long display text, but use the client's compact
+            'numeric format while the temporary editor has focus.
             With DateItem
                 .DisplayFormat.FormatType = FormatType.DateTime
                 .DisplayFormat.FormatString = "dd-MMM-yyyy"
                 .EditFormat.FormatType = FormatType.DateTime
-                .EditFormat.FormatString = "dd-MMM-yyyy"
-                .Mask.EditMask = "dd-MMM-yyyy"
-                .UseMaskAsDisplayFormat = True
+                .EditFormat.FormatString = "dd/MM/yy"
+                .Mask.MaskType = DevExpress.XtraEditors.Mask.MaskType.DateTimeAdvancingCaret
+                .Mask.EditMask = "dd/MM/yy"
+                .UseMaskAsDisplayFormat = False
             End With
 
         End Sub
@@ -126,6 +126,13 @@ Namespace Abovo
             End Get
             Set(ByVal value As Object)
                 _EditValue = value
+                If _ActiveEditor IsNot Nothing AndAlso Not _ActiveEditor.IsDisposed Then
+                    _ActiveEditor.EditValue = value
+                End If
+                If bgview IsNot Nothing AndAlso bgview.GridControl IsNot Nothing AndAlso
+                   Not bgview.GridControl.IsDisposed Then
+                    bgview.GridControl.Invalidate()
+                End If
             End Set
         End Property
 
@@ -407,6 +414,8 @@ Namespace Abovo
             ActiveEditor.Properties.Appearance.BackColor = _Item.Appearance.BackColor
             ActiveEditor.Properties.Appearance.Options.UseForeColor = True
             ActiveEditor.Properties.Appearance.ForeColor = _Item.Appearance.ForeColor
+            ActiveEditor.Properties.Appearance.Options.UseFont = True
+            ActiveEditor.Properties.Appearance.Font = _Item.Appearance.Font
 
             ActiveEditor.Tag = Tag
             ActiveEditor.Parent = bgview.GridControl
@@ -677,6 +686,18 @@ Namespace Abovo
             End Get
             Set(ByVal value As Object)
                 _EditValue = value
+                If _ActiveEditor IsNot Nothing AndAlso Not _ActiveEditor.IsDisposed Then
+                    If _ValueChangedHandler IsNot Nothing Then
+                        RemoveHandler _ActiveEditor.EditValueChanged, _ValueChangedHandler
+                    End If
+                    Try
+                        _ActiveEditor.EditValue = value
+                    Finally
+                        If _ValueChangedHandler IsNot Nothing Then
+                            AddHandler _ActiveEditor.EditValueChanged, _ValueChangedHandler
+                        End If
+                    End Try
+                End If
                 If _VGrid IsNot Nothing AndAlso Not _VGrid.IsDisposed Then
                     _VGrid.InvalidateRow(_Row)
                 End If
@@ -759,6 +780,8 @@ Namespace Abovo
             _ActiveEditor.Properties.Appearance.BackColor = _Item.Appearance.BackColor
             _ActiveEditor.Properties.Appearance.Options.UseForeColor = True
             _ActiveEditor.Properties.Appearance.ForeColor = _Item.Appearance.ForeColor
+            _ActiveEditor.Properties.Appearance.Options.UseFont = True
+            _ActiveEditor.Properties.Appearance.Font = _Item.Appearance.Font
 
             'CreateEditor/Properties.Assign does not reliably copy RepositoryItem.Tag.
             'The EditValueChanged event may be raised with either the BaseEdit or its

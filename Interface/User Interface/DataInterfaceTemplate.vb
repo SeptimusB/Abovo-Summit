@@ -143,6 +143,7 @@ Public Class DataInterfaceTemplate
     Private VGridCategoryExtenders As New List(Of VGridCategoryButtonExtender)
     Private VGridCategoryExtendersBySection As New Dictionary(Of Integer, List(Of VGridCategoryButtonExtender))
     Private VGridInplaceEditorHelpersBySection As New Dictionary(Of Integer, List(Of VGridRowInplaceEditorHelper))
+    Private InColumnEditorTagsBySection As New Dictionary(Of Integer, List(Of Object))
 
     Private Class VGridLayoutTag
 
@@ -696,6 +697,7 @@ Public Class DataInterfaceTemplate
         End If
 
         RefreshSingleCellControlsFromWorkbook()
+        RefreshInColumnEditorsFromWorkbook()
 
 SkipGridRefresh:
 
@@ -775,6 +777,83 @@ SkipRefresh:
             SuppressSingleCellPosting = previousSuppression
         End Try
     End Sub
+
+    Private Sub RegisterInColumnEditorTag(ByVal sectionID As Integer,
+                                          ByVal editorTag As Object)
+        If editorTag Is Nothing Then Return
+        Dim sectionTags As List(Of Object) = Nothing
+        If Not InColumnEditorTagsBySection.TryGetValue(sectionID, sectionTags) Then
+            sectionTags = New List(Of Object)()
+            InColumnEditorTagsBySection(sectionID) = sectionTags
+        End If
+        If Not sectionTags.Contains(editorTag) Then sectionTags.Add(editorTag)
+    End Sub
+
+    Private Sub RefreshInColumnEditorsFromWorkbook()
+        If ExcelModels Is Nothing OrElse ModelID < 0 OrElse ModelID >= ExcelModels.Length OrElse
+           ExcelModels(ModelID) Is Nothing OrElse ExcelModels(ModelID).WB Is Nothing Then Return
+
+        Dim workbook As IWorkbook = ExcelModels(ModelID).WB
+        For Each sectionTags As List(Of Object) In InColumnEditorTagsBySection.Values
+            For Each editorTag As Object In sectionTags.ToArray()
+                Try
+                    Dim comboTag As InColumnEditorTagCombo = TryCast(editorTag, InColumnEditorTagCombo)
+                    If comboTag IsNot Nothing Then
+                        Dim targetCell As DevExpress.Spreadsheet.Cell = GetInColumnEditorCell(
+                            workbook, comboTag.EditingNRName,
+                            comboTag.EditingNRIndexPosition, comboTag.NROrientation)
+                        Dim value As Object = If(targetCell.Value.IsEmpty, Nothing, targetCell.DisplayText)
+                        comboTag.InitialValue = value
+                        comboTag.LastEditorValue = value
+                        If comboTag.LinkedComboBoxEdit IsNot Nothing Then
+                            comboTag.LinkedComboBoxEdit.EditValue = value
+                        End If
+                        If comboTag.InPlaceColumnHelper IsNot Nothing Then
+                            comboTag.InPlaceColumnHelper.EditValue = value
+                        End If
+                        If comboTag.InPlaceVGridRowHelper IsNot Nothing Then
+                            comboTag.InPlaceVGridRowHelper.EditValue = value
+                        End If
+                        Continue For
+                    End If
+
+                    Dim dateTag As InColumnEditorTagDateEdit =
+                        TryCast(editorTag, InColumnEditorTagDateEdit)
+                    If dateTag Is Nothing Then Continue For
+                    Dim targetDateCell As DevExpress.Spreadsheet.Cell = GetInColumnEditorCell(
+                        workbook, dateTag.EditingNRName,
+                        dateTag.EditingNRIndexPosition, dateTag.NROrientation)
+                    Dim dateValue As Object = EditorValueFromCell(targetDateCell, "D")
+                    dateTag.InitialValue = dateValue
+                    dateTag.LastEditorValue = dateValue
+                    If dateTag.LinkedDateBoxEdit IsNot Nothing Then
+                        dateTag.LinkedDateBoxEdit.EditValue = dateValue
+                    End If
+                    If dateTag.InPlaceColumnHelper IsNot Nothing Then
+                        dateTag.InPlaceColumnHelper.EditValue = dateValue
+                    End If
+                    If dateTag.InPlaceVGridRowHelper IsNot Nothing Then
+                        dateTag.InPlaceVGridRowHelper.EditValue = dateValue
+                    End If
+                Catch ex As Exception
+                    Debug.WriteLine("In-column editor refresh failed: " & ex.Message)
+                End Try
+            Next
+        Next
+    End Sub
+
+    Private Shared Function GetInColumnEditorCell(
+        ByVal workbook As IWorkbook,
+        ByVal namedRange As String,
+        ByVal index As Integer,
+        ByVal orientation As Orientation) As DevExpress.Spreadsheet.Cell
+
+        Dim targetRange As DevExpress.Spreadsheet.CellRange = workbook.Range(namedRange)
+        If orientation = Orientation.Horizontal Then
+            Return targetRange(0, index)
+        End If
+        Return targetRange(index, 0)
+    End Function
 
     Private Sub RegisterSingleCellHistoryRefresh(ByVal editor As Control,
                                                  ByVal worksheet As DevExpress.Spreadsheet.Worksheet)
@@ -984,6 +1063,7 @@ SkipRefresh:
         GridActionExtendersBySection.Clear()
         VGridCategoryExtendersBySection.Clear()
         VGridInplaceEditorHelpersBySection.Clear()
+        InColumnEditorTagsBySection.Clear()
 
         'Message filters are Application-wide, not owned/disposed automatically
         'with the form. Always remove the previous instance before rebuilding the
@@ -1545,6 +1625,12 @@ SkipRefresh:
 
         Next
 
+        For Each VerticalGrid As VGridControl In FindChildControls(Of VGridControl)(RootControl)
+
+            ApplyVGridDisplayFont(VerticalGrid, NewFont)
+
+        Next
+
         'Size every GridControl from DevExpress' own calculated content size.
         'This is intentionally view-agnostic: it covers GridView AND BandedGridView
         'and includes headers, rows, footer panels and scrollbars.
@@ -1619,6 +1705,13 @@ SkipRefresh:
             VG.ForceInitialize()
             VG.BestFit()
 
+            'Changing the VGrid control width later in this layout pass can make
+            'DevExpress compress the row-header/record widths that BestFit has just
+            'calculated. Preserve those content-driven results and restore them
+            'after the control receives its final viewport width.
+            Dim BestFitRowHeaderWidth As Integer = VG.RowHeaderWidth
+            Dim BestFitRecordWidth As Integer = VG.RecordWidth
+
             'BestFit is content-driven and can become much too aggressive on
             'wide VGrids such as Funding, particularly on 4K/high-DPI displays:
             'DevExpress reduces the common RecordWidth until every facility is
@@ -1635,18 +1728,20 @@ SkipRefresh:
                     VG,
                     NewFont)
 
-            If VG.RecordWidth < MinimumRecordWidth Then
-                VG.RecordWidth = MinimumRecordWidth
-            End If
+            Dim RequiredRecordWidth As Integer =
+                Math.Max(BestFitRecordWidth, MinimumRecordWidth)
+
+            VG.RecordWidth = RequiredRecordWidth
 
             Dim MinimumRowHeaderWidth As Integer =
                 GetMinimumVGridRowHeaderWidth(
                     VG,
                     NewFont)
 
-            If VG.RowHeaderWidth < MinimumRowHeaderWidth Then
-                VG.RowHeaderWidth = MinimumRowHeaderWidth
-            End If
+            Dim RequiredRowHeaderWidth As Integer =
+                Math.Max(BestFitRowHeaderWidth, MinimumRowHeaderWidth)
+
+            VG.RowHeaderWidth = RequiredRowHeaderWidth
 
             'Most VGrid interfaces use the XtraTabPage as their vertical scroll
             'owner. Funding Assumptions V2 is intentionally different: its native
@@ -1666,6 +1761,13 @@ SkipRefresh:
                     AvailableVGridWidth)
 
             VG.Width = PreferredVGridWidth
+
+            'Setting Width can invoke DevExpress' internal band auto-sizing and
+            'shrink the dimensions above. Reapply the post-bind sizes so captions
+            'remain fully visible; the existing horizontal scrollbar owns any
+            'overflow rather than the grid ellipsising its content.
+            VG.RowHeaderWidth = RequiredRowHeaderWidth
+            VG.RecordWidth = RequiredRecordWidth
 
             'VGrid is inverted: DataCellRange.RowCount is the number of RECORDS
             '(displayed across the control), not the number of visible VGrid rows.
@@ -2642,6 +2744,8 @@ SkipRefresh:
             VGridInplaceEditorHelpersBySection.Remove(SectionIndex)
 
         End If
+
+        InColumnEditorTagsBySection.Remove(SectionIndex)
 
         Dim Extenders As List(Of VGridCategoryButtonExtender) = Nothing
 
@@ -4081,6 +4185,7 @@ SkipRefresh:
                                     helper.EditValue = OriginColTag.EditRepNRHereInitialValue
                                     helper.LinkedComboBoxEdit = EditControl
                                     EditControl.InPlaceColumnHelper = helper
+                                    RegisterInColumnEditorTag(SetSectionID, InColumnEditorTag)
 
 
                                 ElseIf UCase(OriginColTag.EditRepNRHereEditor) = "DATE" Then
@@ -4179,6 +4284,7 @@ SkipRefresh:
                                     helper.EditValue = OriginColTag.EditRepNRHereInitialValue
                                     helper.LinkedDateEdit = EditControl
                                     EditControl.InPlaceColumnHelper = helper
+                                    RegisterInColumnEditorTag(SetSectionID, InColumnEditorTag)
 
                                 End If
                             End If
@@ -5423,6 +5529,7 @@ SkipRefresh:
                             EditControl.Tag = InColumnEditorTag
                             ColTag.InColumnEditorCombo = EditControl
                             ColTag.HasIncolumnEditor = True
+                            RegisterInColumnEditorTag(SetSectionID, InColumnEditorTag)
 
                             Dim SectionHelpers As List(Of VGridRowInplaceEditorHelper) = Nothing
                             If Not VGridInplaceEditorHelpersBySection.TryGetValue(SetSectionID, SectionHelpers) Then
@@ -5482,6 +5589,7 @@ SkipRefresh:
                             EditControl.Tag = InColumnEditorTag
                             ColTag.InColumnEditorDate = EditControl
                             ColTag.HasIncolumnEditor = True
+                            RegisterInColumnEditorTag(SetSectionID, InColumnEditorTag)
 
                             Dim SectionHelpers As List(Of VGridRowInplaceEditorHelper) = Nothing
                             If Not VGridInplaceEditorHelpersBySection.TryGetValue(SetSectionID, SectionHelpers) Then
@@ -13051,7 +13159,7 @@ SectionSelect:
 
 BandedGridViews:
 
-        If BandGridViewsCount < 0 Then GoTo TextBoxes
+        If BandGridViewsCount < 0 Then GoTo VerticalGridViews
 
         If Me.UsedBANDedGridVIEWS.Length > 0 Then
 
@@ -13085,6 +13193,18 @@ BandedGridViews:
                 'End If
 
                 BGV.EndUpdate()
+
+            Next
+
+        End If
+
+VerticalGridViews:
+
+        If VertGridControls IsNot Nothing Then
+
+            For Each VerticalGrid As VGridControl In VertGridControls
+
+                ApplyVGridDisplayFont(VerticalGrid, NewFont)
 
             Next
 
@@ -13398,6 +13518,100 @@ TPans:
     Public Sub ResizeControlsCommand()
 
         QueueDisplayRelayout()
+
+    End Sub
+
+    Private Shared Sub ApplyVGridDisplayFont(ByVal VerticalGrid As VGridControl,
+                                             ByVal DisplayFont As Font)
+
+        If VerticalGrid Is Nothing OrElse VerticalGrid.IsDisposed OrElse DisplayFont Is Nothing Then Return
+
+        VerticalGrid.BeginUpdate()
+
+        Try
+            VerticalGrid.Font = DisplayFont
+
+            With VerticalGrid.Appearance.RecordValue
+                .Font = DisplayFont
+                .Options.UseFont = True
+            End With
+
+            With VerticalGrid.Appearance.FocusedCell
+                .Font = DisplayFont
+                .Options.UseFont = True
+            End With
+
+            With VerticalGrid.Appearance.FocusedRecord
+                .Font = DisplayFont
+                .Options.UseFont = True
+            End With
+
+            Dim BoldDisplayFont As New Font(
+                DisplayFont.FontFamily,
+                DisplayFont.SizeInPoints,
+                FontStyle.Bold,
+                GraphicsUnit.Point)
+
+            With VerticalGrid.Appearance.RowHeaderPanel
+                .Font = BoldDisplayFont
+                .Options.UseFont = True
+            End With
+
+            With VerticalGrid.Appearance.Category
+                .Font = BoldDisplayFont
+                .Options.UseFont = True
+            End With
+
+            With VerticalGrid.Appearance.Caption
+                .Font = BoldDisplayFont
+                .Options.UseFont = True
+            End With
+
+            For Each Row As BaseRow In VerticalGrid.Rows
+                ApplyVGridRowCaptionMetrics(Row, DisplayFont, BoldDisplayFont)
+            Next
+        Finally
+            VerticalGrid.EndUpdate()
+        End Try
+
+        VerticalGrid.LayoutChanged()
+        VerticalGrid.Invalidate()
+
+    End Sub
+
+    Private Shared Sub ApplyVGridRowCaptionMetrics(ByVal Row As BaseRow,
+                                                    ByVal DisplayFont As Font,
+                                                    ByVal BoldDisplayFont As Font)
+
+        If Row Is Nothing Then Return
+
+        Dim Caption As String = If(Row.Properties.Caption, String.Empty)
+        Dim NormalisedCaption As String =
+            Caption.Replace(vbCrLf, vbLf).Replace(vbCr, vbLf)
+        Dim CaptionLineCount As Integer =
+            Math.Max(1, NormalisedCaption.Split(New String() {vbLf}, StringSplitOptions.None).Length)
+
+        Row.MaxCaptionLineCount = CaptionLineCount
+
+        Dim CaptionFont As Font =
+            If(TypeOf Row Is CategoryRow, BoldDisplayFont, DisplayFont)
+        Dim LineHeight As Integer =
+            TextRenderer.MeasureText(
+                "Ag",
+                CaptionFont,
+                Size.Empty,
+                TextFormatFlags.NoPadding Or TextFormatFlags.SingleLine).Height
+
+        'Rows are initially created using the pre-scale GridView row height. Rebase
+        'them from the final VGrid font so explicit line breaks are never clipped
+        'and a first-column editor receives the same usable height as its display.
+        Row.Height = Math.Max(
+            BaseRow.MinHeight,
+            (LineHeight * CaptionLineCount) + 12)
+
+        For Each ChildRow As BaseRow In Row.ChildRows
+            ApplyVGridRowCaptionMetrics(ChildRow, DisplayFont, BoldDisplayFont)
+        Next
 
     End Sub
 
