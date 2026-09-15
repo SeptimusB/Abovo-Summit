@@ -6,6 +6,7 @@ Option Infer On
 Imports System.Globalization
 Imports System.Text.RegularExpressions
 Imports Abovo
+Imports Abovo.AbovoAppCls
 Imports Abovo.CustomGrid
 Imports Abovo.ExportServices
 Imports Abovo.FileManager
@@ -338,12 +339,18 @@ Public Class BPIncomeExpenditureAnalyserV2
         Formatter.FormatGridView(View_WrapCG_SOCI, WrapCG_SOCI.WrappedCGC, "Smaller")
         Formatter.FormatGridView(View_WrapCG_CF, WrapCG_CF.WrappedCGC, "Smaller")
         Formatter.FormatGridView(View_WrapCG_BS, WrapCG_BS.WrappedCGC, "Smaller")
+        ApplyAnalyserDataRowFont(View_WrapCG_SOCI)
+        ApplyAnalyserDataRowFont(View_WrapCG_CF)
+        ApplyAnalyserDataRowFont(View_WrapCG_BS)
         ApplyAnalyserInteractionOptions(View_WrapCG_SOCI)
         ApplyAnalyserInteractionOptions(View_WrapCG_CF)
         ApplyAnalyserInteractionOptions(View_WrapCG_BS)
-        VirtualSelection.Attach(View_WrapCG_SOCI)
-        VirtualSelection.Attach(View_WrapCG_CF)
-        VirtualSelection.Attach(View_WrapCG_BS)
+        VirtualSelection.Attach(View_WrapCG_SOCI, AddressOf GridView_Process_ExpandChildRows,
+                                AddressOf CollapseAnalyserBranch)
+        VirtualSelection.Attach(View_WrapCG_CF, AddressOf GridView_Process_ExpandChildRows,
+                                AddressOf CollapseAnalyserBranch)
+        VirtualSelection.Attach(View_WrapCG_BS, AddressOf GridView_Process_ExpandChildRows,
+                                AddressOf CollapseAnalyserBranch)
         ApplyAnalyserFooterAppearance(View_WrapCG_SOCI)
         ApplyAnalyserFooterAppearance(View_WrapCG_CF)
         ApplyAnalyserFooterAppearance(View_WrapCG_BS)
@@ -351,6 +358,10 @@ Public Class BPIncomeExpenditureAnalyserV2
         GridView_Process_SetExpandedLevels(View_WrapCG_SOCI)
         GridView_Process_SetExpandedLevels(View_WrapCG_CF)
         GridView_Process_SetExpandedLevels(View_WrapCG_BS)
+
+        ApplyDescriptionColumnBestFit(View_WrapCG_SOCI)
+        ApplyDescriptionColumnBestFit(View_WrapCG_CF)
+        ApplyDescriptionColumnBestFit(View_WrapCG_BS)
 
         XtraTabControlAnalyser.SelectedTabPage = XtraTabPageSOCIWrapped
 
@@ -983,8 +994,8 @@ Public Class BPIncomeExpenditureAnalyserV2
         AddHandler CGV.CustomDrawRowFooterCell, AddressOf GridView_CustomDraw_GroupFooterCells
         AddHandler CGV.CustomDrawGroupRowCell, AddressOf GridView_CustomDraw_GroupRowCell
         AddHandler CGV.CustomColumnDisplayText, AddressOf GridView_CustomColumnDisplayText
-        AddHandler CGV.Click, AddressOf GridView_Event_SingleClick
         AddHandler CGV.GroupRowExpanding, AddressOf GridView_Event_GroupRowExpanding
+        AddHandler CGV.GroupRowCollapsing, AddressOf GridView_GroupRowCollapsing
 
     End Sub
     Sub GridView_InitialisationProcess_AddSummaries(CGV As CustomGridView)
@@ -1161,15 +1172,34 @@ Public Class BPIncomeExpenditureAnalyserV2
         End With
     End Sub
 
-    Private Shared Function IsPointerOverRow(ByVal view As CustomGridView,
-                                             ByVal rowHandle As Integer) As Boolean
-        If view Is Nothing OrElse view.GridControl Is Nothing Then Return False
+    Private Sub ApplyAnalyserDataRowFont(ByVal view As CustomGridView)
+        If view Is Nothing Then Return
+        view.Appearance.Row.Font =
+            New Font(view.Appearance.GroupRow.Font.FontFamily,
+                     view.Appearance.GroupRow.Font.SizeInPoints,
+                     FontStyle.Regular,
+                     GraphicsUnit.Point)
+        view.Appearance.Row.Options.UseFont = True
+    End Sub
 
-        Dim clientPoint As Point =
-            view.GridControl.PointToClient(System.Windows.Forms.Control.MousePosition)
-        Dim hitInfo As GridHitInfo = view.CalcHitInfo(clientPoint)
-        Return hitInfo IsNot Nothing AndAlso hitInfo.RowHandle = rowHandle
-    End Function
+    Private Shared Sub ApplyDescriptionColumnBestFit(ByVal view As CustomGridView)
+        If view Is Nothing OrElse view.GridControl Is Nothing Then Return
+
+        Dim descriptionColumn As GridColumn = view.Columns.ColumnByFieldName("ItemDesc")
+        If descriptionColumn Is Nothing Then Return
+
+        view.GridControl.ForceInitialize()
+        descriptionColumn.BestFit()
+
+        'BestFit runs after binding, grouping and final font formatting. Retain
+        'a little breathing room for custom-drawn totals and expansion glyphs.
+        Dim fittedWidth As Integer = CInt(Math.Ceiling(descriptionColumn.Width * 1.15R))
+        If view.GridControl.ClientSize.Width > 0 Then
+            fittedWidth = Math.Min(fittedWidth,
+                                   CInt(Math.Ceiling(view.GridControl.ClientSize.Width * 0.45R)))
+        End If
+        descriptionColumn.Width = Math.Max(descriptionColumn.Width, fittedWidth)
+    End Sub
 
 #End Region
 
@@ -1457,6 +1487,14 @@ Public Class BPIncomeExpenditureAnalyserV2
 
             e.Appearance.FontStyleDelta = FontStyle.Regular
 
+            If VirtualSelection.IsHotTracked(
+                GV, e.RowHandle, AnalyserVirtualRowKind.DataRow) Then
+                e.Appearance.BackColor = AbovoBlue
+                e.Appearance.ForeColor = Color.White
+                e.Appearance.Options.UseBackColor = True
+                e.Appearance.Options.UseForeColor = True
+            End If
+
         Else
 
             e.Appearance.FontStyleDelta = FontStyle.Bold
@@ -1509,6 +1547,10 @@ Public Class BPIncomeExpenditureAnalyserV2
     End Sub
     Private Sub GridView_GroupRowCollapsing(ByVal sender As Object, e As DevExpress.XtraGrid.Views.Base.RowAllowEventArgs)
 
+        If VirtualSelection.ShouldSuppressNativeGroupAction Then
+            e.Allow = False
+            Return
+        End If
 
         'If e.RowHandle Then
         '    e.Allow = False
@@ -1517,6 +1559,10 @@ Public Class BPIncomeExpenditureAnalyserV2
     End Sub
     Private Sub GridView_Event_GroupRowExpanding(ByVal sender As CustomGridView, e As DevExpress.XtraGrid.Views.Base.RowAllowEventArgs)
 
+        If VirtualSelection.ShouldSuppressNativeGroupAction Then
+            e.Allow = False
+            Return
+        End If
 
         Dim RLev As Integer = sender.GetRowLevel(e.RowHandle)
 
@@ -1670,15 +1716,16 @@ Public Class BPIncomeExpenditureAnalyserV2
 
         End If
 
-        Dim IsHotTracked As Boolean = IsPointerOverRow(sender, e.RowHandle)
+        Dim IsHotTracked As Boolean =
+            VirtualSelection.IsHotTracked(sender, e.RowHandle, AnalyserVirtualRowKind.GroupFooter)
         Dim IsVirtuallySelected As Boolean =
             VirtualSelection.IsCellSelected(sender, e.RowHandle,
                                             AnalyserVirtualRowKind.GroupFooter, e.Column)
-        If IsHotTracked Then
+        If IsVirtuallySelected Then
+            e.Cache.FillRectangle(e.Cache.GetSolidBrush(Color.Wheat), e.Bounds)
+        ElseIf IsHotTracked Then
             e.Cache.FillRectangle(e.Cache.GetSolidBrush(AbovoBlue), e.Bounds)
             e.Appearance.ForeColor = Color.White
-        ElseIf IsVirtuallySelected Then
-            e.Cache.FillRectangle(e.Cache.GetSolidBrush(Color.Wheat), e.Bounds)
         End If
 
         Dim FPoint1 As New PointF(e.Bounds.X, e.Bounds.Y)
@@ -1819,15 +1866,17 @@ Public Class BPIncomeExpenditureAnalyserV2
 
         End Select
 
-        Dim IsHotTracked As Boolean = IsPointerOverRow(sender, e.RowHandle)
+        Dim IsHotTracked As Boolean =
+            VirtualSelection.IsHotTracked(sender, e.RowHandle, AnalyserVirtualRowKind.GroupFooter)
         Dim IsVirtuallySelected As Boolean =
             VirtualSelection.IsSelected(sender, e.RowHandle, AnalyserVirtualRowKind.GroupFooter)
-        If IsHotTracked Then
-            e.Appearance.BackColor = AbovoBlue
-            e.Appearance.ForeColor = Color.White
-        ElseIf IsVirtuallySelected Then
+        e.Appearance.ForeColor = Color.Black
+        If IsVirtuallySelected Then
             e.Appearance.BackColor = Color.Wheat
             e.Appearance.ForeColor = Color.Black
+        ElseIf IsHotTracked Then
+            e.Appearance.BackColor = AbovoBlue
+            e.Appearance.ForeColor = Color.White
         End If
 
         If Microsoft.VisualBasic.Right(Caption, 7) = "(MIN=0)" Then Caption = Microsoft.VisualBasic.Left(Caption, Len(Caption) - 17)
@@ -1835,10 +1884,8 @@ Public Class BPIncomeExpenditureAnalyserV2
         Caption = Caption & " Total"
 
         e.Cache.FillRectangle(e.Cache.GetSolidBrush(e.Appearance.BackColor), e.Bounds)
-        If Not IsHotTracked Then
-            VirtualSelection.DrawSelectedCells(e.Cache, sender, e.RowHandle,
-                                               AnalyserVirtualRowKind.GroupFooter, e.Bounds)
-        End If
+        VirtualSelection.DrawSelectedCells(e.Cache, sender, e.RowHandle,
+                                           AnalyserVirtualRowKind.GroupFooter, e.Bounds)
 
         Dim FPoint As New PointF(Rect.X, Rect.Y + (DefaultGridCellPadding / 2))
         Dim TextBrush As Brush = e.Cache.GetSolidBrush(If(IsHotTracked, Color.White, Color.Black))
@@ -1978,15 +2025,17 @@ Public Class BPIncomeExpenditureAnalyserV2
         'GroupHeadings(e.RowHandle) = info.GroupText
 
 
-        Dim IsHotTracked As Boolean = IsPointerOverRow(sender, e.RowHandle)
+        Dim IsHotTracked As Boolean =
+            VirtualSelection.IsHotTracked(sender, e.RowHandle, AnalyserVirtualRowKind.GroupHeading)
         Dim IsVirtuallySelected As Boolean =
             VirtualSelection.IsSelected(sender, e.RowHandle, AnalyserVirtualRowKind.GroupHeading)
-        If IsHotTracked Then
-            BackColor = AbovoBlue
-            e.Appearance.ForeColor = Color.White
-        ElseIf IsVirtuallySelected Then
+        e.Appearance.ForeColor = Color.Black
+        If IsVirtuallySelected Then
             BackColor = Color.Wheat
             e.Appearance.ForeColor = Color.Black
+        ElseIf IsHotTracked Then
+            BackColor = AbovoBlue
+            e.Appearance.ForeColor = Color.White
         End If
 
         If Not IsGRExpanded Then
@@ -1996,20 +2045,16 @@ Public Class BPIncomeExpenditureAnalyserV2
                 Return
             End If
             DrawBackground(e, view, DontDrawButton, BackColor, DontIndentTitle)
-            If Not IsHotTracked Then
-                VirtualSelection.DrawSelectedCells(e.Cache, sender, e.RowHandle,
-                                                   AnalyserVirtualRowKind.GroupHeading, e.Bounds)
-            End If
+            VirtualSelection.DrawSelectedCells(e.Cache, sender, e.RowHandle,
+                                               AnalyserVirtualRowKind.GroupHeading, e.Bounds)
             DrawSummaryValues(e, view, items)
             e.Handled = True
 
         Else
 
             DrawBackground(e, view, DontDrawButton, BackColor, DontIndentTitle)
-            If Not IsHotTracked Then
-                VirtualSelection.DrawSelectedCells(e.Cache, sender, e.RowHandle,
-                                                   AnalyserVirtualRowKind.GroupHeading, e.Bounds)
-            End If
+            VirtualSelection.DrawSelectedCells(e.Cache, sender, e.RowHandle,
+                                               AnalyserVirtualRowKind.GroupHeading, e.Bounds)
             e.Handled = True
 
         End If
@@ -2038,14 +2083,16 @@ Public Class BPIncomeExpenditureAnalyserV2
         End If
         Dim view As CustomGridView = TryCast(sender, CustomGridView)
         Dim IsHotTracked As Boolean = view IsNot Nothing AndAlso
-                                         IsPointerOverRow(view, e.RowHandle)
+            VirtualSelection.IsHotTracked(view, e.RowHandle, AnalyserVirtualRowKind.DataRow)
         Dim IsSelected As Boolean = view IsNot Nothing AndAlso
-                                    view.IsCellSelected(e.RowHandle, e.Column)
+            (VirtualSelection.IsCellSelected(
+                view, e.RowHandle, AnalyserVirtualRowKind.DataRow, e.Column) OrElse
+             view.IsCellSelected(e.RowHandle, e.Column))
         e.Appearance.ForeColor = Color.Black
-        If IsHotTracked Then
-            e.Cache.FillRectangle(e.Cache.GetSolidBrush(AbovoBlue), e.Bounds)
-        ElseIf IsSelected Then
+        If IsSelected Then
             e.Cache.FillRectangle(e.Cache.GetSolidBrush(Color.Wheat), e.Bounds)
+        ElseIf IsHotTracked Then
+            e.Cache.FillRectangle(e.Cache.GetSolidBrush(AbovoBlue), e.Bounds)
         End If
         e.Appearance.FontStyleDelta = FontStyle.Regular
         'If GridViewAnalysis.GetRowLevel(e.RowHandle) < 1 Then
@@ -2105,7 +2152,7 @@ Public Class BPIncomeExpenditureAnalyserV2
         End If
 
 
-        If IsHotTracked Then e.Appearance.ForeColor = Color.White
+        If IsHotTracked AndAlso Not IsSelected Then e.Appearance.ForeColor = Color.White
         e.Appearance.DrawString(e.Cache, strToWrite, e.Bounds)
         e.Handled = True
 
@@ -2168,7 +2215,8 @@ Public Class BPIncomeExpenditureAnalyserV2
         Dim values As Hashtable = view.GetGroupSummaryValues(e.RowHandle)
         If values Is Nothing Then Return
 
-        Dim IsHighlighted As Boolean = IsPointerOverRow(view, e.RowHandle)
+        Dim IsHighlighted As Boolean =
+            VirtualSelection.IsHotTracked(view, e.RowHandle, AnalyserVirtualRowKind.GroupHeading)
         Dim RedBrush As Brush = e.Cache.GetSolidBrush(If(IsHighlighted, Color.White, Color.Red))
         Dim BlackBrush As Brush = e.Cache.GetSolidBrush(If(IsHighlighted, Color.White, Color.Black))
 
@@ -2291,45 +2339,13 @@ Public Class BPIncomeExpenditureAnalyserV2
 
     Private Sub GridView_Event_SingleClick(ByVal CGVSender As CustomGridView, ByVal e As MouseEventArgs)
 
-        If VirtualSelection.ProcessClick(CGVSender, e) Then Return
-
-        Dim hitInfo As GridHitInfo = CGVSender.CalcHitInfo(e.Location)
-
-        If hitInfo.HitTest = GridHitTest.Row AndAlso CGVSender.IsGroupRow(hitInfo.RowHandle) Then
-
-            If e.Button = MouseButtons.Left Then
-
-                CGVSender.SetRowExpanded(hitInfo.RowHandle, Not CGVSender.GetRowExpanded(hitInfo.RowHandle), False)
-
-            ElseIf e.Button = MouseButtons.Right Then
-
-                If Not CGVSender.GetRowExpanded(hitInfo.RowHandle) Then
-
-                    GridView_Process_ExpandChildRows(CGVSender, hitInfo.RowHandle)
-
-                Else
-
-                    CGVSender.SetRowExpanded(hitInfo.RowHandle, False, True)
-
-                End If
-
-            End If
-
-        End If
-
-
-
-
+        VirtualSelection.ProcessClick(CGVSender, e)
 
     End Sub
-    Private Sub GridView_Event_DoubleClick(ByVal sender As Object, ByVal e As MouseEventArgs)
-
-        Dim hitInfo As GridHitInfo = sender.CalcHitInfo(e.Location)
-        If hitInfo.HitTest = GridHitTest.Row AndAlso sender.IsGroupRow(hitInfo.RowHandle) Then
-
-            sender.SetRowExpanded(hitInfo.RowHandle, Not sender.GetRowExpanded(hitInfo.RowHandle), True)
-
-        End If
+    Private Shared Sub CollapseAnalyserBranch(ByVal view As CustomGridView,
+                                              ByVal rowHandle As Integer)
+        If view Is Nothing OrElse Not view.IsGroupRow(rowHandle) Then Return
+        view.SetRowExpanded(rowHandle, False, True)
     End Sub
     Sub GridView_Event_PopupMenuShowing(ByVal sender As Object, ByVal e As DevExpress.XtraGrid.Views.Grid.PopupMenuShowingEventArgs)
 

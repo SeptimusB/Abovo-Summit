@@ -5,6 +5,8 @@ Imports Abovo.PresentationManager
 Imports DevExpress
 Imports DevExpress.Utils
 Imports DevExpress.XtraBars.Docking2010
+Imports System.Net
+Imports System.Text
 Public Class FileInstanceInterface
 
     Inherits System.Windows.Forms.UserControl
@@ -55,7 +57,50 @@ Public Class FileInstanceInterface
         FFRInit = False
         FileManager.RegisterModelInterface(BPModelID, Me)
         ConfigureModelActions()
+        LayoutFileActionControls()
 
+    End Sub
+
+    Private Sub FileInstanceInterface_Resize(sender As Object, e As EventArgs) Handles MyBase.Resize
+        LayoutFileActionControls()
+    End Sub
+
+    Private Sub LayoutFileActionControls()
+        If GroupBoxFileActions Is Nothing OrElse WebBrowserBPInfo Is Nothing OrElse
+           WindowsUIButtonPanelBPActions Is Nothing OrElse
+           WindowsUIButtonPanelSaveClose Is Nothing Then Return
+
+        Dim inset As Integer = Math.Max(8, PresentationScaleManager.Scale(12))
+        Dim gap As Integer = Math.Max(6, PresentationScaleManager.Scale(8))
+        Dim contentTop As Integer = Math.Max(inset * 2, GroupBoxFileActions.Font.Height + inset)
+        Dim rightPanelWidth As Integer =
+            Math.Max(PresentationScaleManager.Scale(135),
+                     Math.Min(PresentationScaleManager.Scale(190),
+                              CInt(GroupBoxFileActions.ClientSize.Width * 0.16R)))
+        Dim actionPanelHeight As Integer =
+            Math.Max(PresentationScaleManager.Scale(100),
+                     Math.Min(PresentationScaleManager.Scale(140),
+                              CInt(GroupBoxFileActions.ClientSize.Height * 0.24R)))
+        Dim contentWidth As Integer =
+            Math.Max(20, GroupBoxFileActions.ClientSize.Width - rightPanelWidth - (inset * 2) - gap)
+        Dim contentBottom As Integer = GroupBoxFileActions.ClientSize.Height - inset
+        Dim actionTop As Integer = Math.Max(contentTop + 20, contentBottom - actionPanelHeight)
+
+        WindowsUIButtonPanelSaveClose.SetBounds(
+            inset + contentWidth + gap,
+            contentTop,
+            rightPanelWidth,
+            Math.Max(20, contentBottom - contentTop))
+        WindowsUIButtonPanelBPActions.SetBounds(
+            inset,
+            actionTop,
+            contentWidth,
+            Math.Max(20, contentBottom - actionTop))
+        WebBrowserBPInfo.SetBounds(
+            inset,
+            contentTop,
+            contentWidth,
+            Math.Max(20, actionTop - contentTop - gap))
     End Sub
     Private Sub ConfigureModelActions()
 
@@ -192,9 +237,11 @@ Public Class FileInstanceInterface
     End Sub
     Public Sub PopulateFileInfo()
 
-        ScaleUnits = CInt(Screen.PrimaryScreen.Bounds.Width / 300)
+        ScaleUnits = GetDisplayScale(Me)
 
-        Dim StrFileDescription As String
+        Dim prominentFontPixels As Integer = Math.Max(16, CInt(Math.Round(17.0F * ScaleUnits)))
+        Dim detailFontPixels As Integer = Math.Max(14, CInt(Math.Round(15.0F * ScaleUnits)))
+        Dim StrFileDescription As New StringBuilder()
 
         MyFilePath = ExcelModels(BPModelID).FileName
         MyCompanyName = ExcelModels(BPModelID).WBStructure.CompanyName
@@ -204,18 +251,35 @@ Public Class FileInstanceInterface
                "Abovo model",
                ExcelModels(BPModelID).Profile.DisplayName)
 
-        StrFileDescription = "<html><body><p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.5) & "px'>Model type: " & ModelDescription & "<br/>"
-        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.5) & "px'>Model name: " & ExcelModels(BPModelID).WBStructure.CompanyName & "<br/>"
-        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.5) & "px'>Start Date: " & ExcelModels(BPModelID).WBStructure.StartDate & " (<a href='editbpdate'>edit</a>)<br/>"
-        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.3) & "px'>File Name: " & ExcelModels(BPModelID).FileName & "<br/>"
-        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.3) & "px'>Opened: " & Now().ToString & "<br/>"
+        StrFileDescription.Append("<html><head><style>")
+        StrFileDescription.Append("body{font-family:Verdana,sans-serif;font-size:")
+        StrFileDescription.Append(detailFontPixels)
+        StrFileDescription.Append("px;line-height:1.35;margin:8px;color:#202020;overflow-wrap:anywhere;}")
+        StrFileDescription.Append(".primary{font-size:")
+        StrFileDescription.Append(prominentFontPixels)
+        StrFileDescription.Append("px;margin:0 0 5px 0;}.detail{margin:0 0 3px 0;}")
+        StrFileDescription.Append("</style></head><body>")
+        StrFileDescription.Append("<div class='primary'>Model type: ")
+        StrFileDescription.Append(WebUtility.HtmlEncode(ModelDescription))
+        StrFileDescription.Append("</div><div class='primary'>Model name: ")
+        StrFileDescription.Append(WebUtility.HtmlEncode(ExcelModels(BPModelID).WBStructure.CompanyName))
+        StrFileDescription.Append("</div><div class='primary'>Start Date: ")
+        StrFileDescription.Append(WebUtility.HtmlEncode(Convert.ToString(ExcelModels(BPModelID).WBStructure.StartDate)))
+        StrFileDescription.Append(" (<a href='editbpdate'>edit</a>)</div><div class='detail'>File Name: ")
+        StrFileDescription.Append(WebUtility.HtmlEncode(ExcelModels(BPModelID).FileName))
+        StrFileDescription.Append("</div><div class='detail'>Opened: ")
+        StrFileDescription.Append(WebUtility.HtmlEncode(Now().ToString()))
+        StrFileDescription.Append("</div><div class='detail'>Created: ")
+        StrFileDescription.Append(WebUtility.HtmlEncode(ExcelModels(BPModelID).FileInfo.CreationTime.ToString()))
+        StrFileDescription.Append("</div><div class='detail'>Last Previous Access: ")
+        StrFileDescription.Append(WebUtility.HtmlEncode(ExcelModels(BPModelID).FileInfo.LastAccessTime.ToString()))
+        StrFileDescription.Append("</div><div class='detail'>Size: ")
+        StrFileDescription.Append(WebUtility.HtmlEncode(
+            Format((ExcelModels(BPModelID).FileInfo.Length / 1000000), "###.##") & "Mb"))
+        StrFileDescription.Append("</div></body></html>")
 
-        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.3) & "px'>Created: " & ExcelModels(BPModelID).FileInfo.CreationTime & "<br/>"
-        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.3) & "px'>Last Previous Access: " & ExcelModels(BPModelID).FileInfo.LastAccessTime & "<br/>"
-        StrFileDescription += "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.3) & "px'>Size: " & Format((ExcelModels(BPModelID).FileInfo.Length / 1000000), "###.##") & "Mb<br/>"
-        StrFileDescription += "</body></html>"
-
-        WebBrowserBPInfo.DocumentText = StrFileDescription
+        WebBrowserBPInfo.DocumentText = StrFileDescription.ToString()
+        LayoutFileActionControls()
 
     End Sub
     Private Sub WindowsUIButtonPanelSaveClose_ButtonClick(sender As Object, e As ButtonEventArgs) Handles WindowsUIButtonPanelSaveClose.ButtonClick
@@ -272,21 +336,22 @@ Public Class FileInstanceInterface
         End Try
     End Function
     Sub SetScale()
-        Dim ScaleFactor As Single
-        ScaleFactor = Me.Width / 700
+        Me.WindowsUIButtonPanelBPActions.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelBPActions.AppearanceButton.Normal.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelBPActions.AppearanceButton.Hovered.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelBPActions.AppearanceButton.Pressed.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelSaveClose.AppearanceButton.Normal.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelSaveClose.AppearanceButton.Hovered.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelSaveClose.AppearanceButton.Pressed.Font = GetDisplayFont("Small", Me)
+        Me.GroupBoxFileActions.Font = GetDisplayFont("Small", Me)
+        LayoutFileActionControls()
+    End Sub
 
-
-        Me.WindowsUIButtonPanelBPActions.Font = GetFont("Small", ScaleFactor)
-
-
-        WindowsUIButtonPanelBPActions.AppearanceButton.Normal.Font = GetFont("Small", ScaleFactor)
-        WindowsUIButtonPanelBPActions.AppearanceButton.Hovered.Font = GetFont("Small", ScaleFactor)
-        WindowsUIButtonPanelBPActions.AppearanceButton.Pressed.Font = GetFont("Small", ScaleFactor)
-
-
-        WindowsUIButtonPanelSaveClose.AppearanceButton.Normal.Font = GetFont("Small", ScaleFactor)
-        WindowsUIButtonPanelSaveClose.AppearanceButton.Hovered.Font = GetFont("Small", ScaleFactor)
-        WindowsUIButtonPanelSaveClose.AppearanceButton.Pressed.Font = GetFont("Small", ScaleFactor)
-        Me.GroupBoxFileActions.Font = GetFont("Small", ScaleFactor)
+    Private Sub ApplyPresentationScale()
+        SetScale()
+        If ExcelModels IsNot Nothing AndAlso BPModelID >= 0 AndAlso
+           BPModelID < ExcelModels.Length AndAlso ExcelModels(BPModelID) IsNot Nothing Then
+            PopulateFileInfo()
+        End If
     End Sub
 End Class

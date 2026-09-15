@@ -1,5 +1,6 @@
 Imports System.Collections
 Imports System.Collections.Generic
+Imports System.ComponentModel
 Imports System.Drawing
 Imports System.Linq
 Imports System.Windows.Forms
@@ -32,21 +33,70 @@ Namespace Abovo
 
         Private ReadOnly AttachedViews As New HashSet(Of CustomGridView)()
         Private ReadOnly Selections As New List(Of VisualRowSelection)()
+        Private ReadOnly ExpandBranchActions As New Dictionary(
+            Of CustomGridView, Action(Of CustomGridView, Integer))()
+        Private ReadOnly CollapseBranchActions As New Dictionary(
+            Of CustomGridView, Action(Of CustomGridView, Integer))()
+        Private ReadOnly ContextMenus As New Dictionary(Of CustomGridView, ContextMenuStrip)()
+        Private ReadOnly GroupClickTimer As New Timer()
         Private DragView As CustomGridView
         Private DragStart As Point
         Private DragCurrent As Point
         Private DragCandidate As Boolean
         Private Dragging As Boolean
         Private DragIsAdditive As Boolean
+        Private DragAnchorRowHandle As Integer
+        Private DragAnchorKind As AnalyserVirtualRowKind
+        Private DragAnchorValid As Boolean
         Private SuppressNextClick As Boolean
+        Private HoverView As CustomGridView
+        Private HoverRowHandle As Integer
+        Private HoverKind As AnalyserVirtualRowKind
+        Private HasHover As Boolean
+        Private PendingGroupView As CustomGridView
+        Private PendingGroupRowHandle As Integer
+        Private HasPendingGroupClick As Boolean
+        Private ApplyingGroupAction As Boolean
+        Private SuppressNativeGroupActionValue As Boolean
 
-        Public Sub Attach(ByVal view As CustomGridView)
+        Public ReadOnly Property IsApplyingGroupAction As Boolean
+            Get
+                Return ApplyingGroupAction
+            End Get
+        End Property
+
+        Public ReadOnly Property ShouldSuppressNativeGroupAction As Boolean
+            Get
+                Return SuppressNativeGroupActionValue AndAlso Not ApplyingGroupAction
+            End Get
+        End Property
+
+        Public Sub New()
+            GroupClickTimer.Interval = Math.Max(100, SystemInformation.DoubleClickTime)
+            AddHandler GroupClickTimer.Tick, AddressOf GroupClickTimer_Tick
+        End Sub
+
+        Public Sub Attach(
+            ByVal view As CustomGridView,
+            Optional ByVal expandBranch As Action(Of CustomGridView, Integer) = Nothing,
+            Optional ByVal collapseBranch As Action(Of CustomGridView, Integer) = Nothing)
             If view Is Nothing OrElse Not AttachedViews.Add(view) Then Return
+            If expandBranch IsNot Nothing Then ExpandBranchActions(view) = expandBranch
+            If collapseBranch IsNot Nothing Then CollapseBranchActions(view) = collapseBranch
             AddHandler view.KeyDown, AddressOf View_KeyDown
-            AddHandler view.PopupMenuShowing, AddressOf View_PopupMenuShowing
+            AddHandler view.Click, AddressOf View_Click
+            AddHandler view.DoubleClick, AddressOf View_DoubleClick
             AddHandler view.MouseDown, AddressOf View_MouseDown
             AddHandler view.MouseMove, AddressOf View_MouseMove
             AddHandler view.MouseUp, AddressOf View_MouseUp
+            AddHandler view.MouseLeave, AddressOf View_MouseLeave
+
+            If view.GridControl IsNot Nothing Then
+                Dim analyserMenu As New ContextMenuStrip()
+                ContextMenus(view) = analyserMenu
+                view.GridControl.ContextMenuStrip = analyserMenu
+                AddHandler analyserMenu.Opening, AddressOf ContextMenu_Opening
+            End If
         End Sub
 
         Public Function ProcessClick(ByVal view As CustomGridView,
@@ -74,9 +124,17 @@ Namespace Abovo
                 view.ClearSelection()
             End If
 
+            Dim selectedColumn As GridColumn = GetColumnAtX(view, e.X)
+            If selectedColumn Is Nothing Then
+                selectedColumn = GetSelectableVisibleColumns(view).FirstOrDefault()
+            End If
+            If selectedColumn Is Nothing Then Return False
+
             Dim existing As VisualRowSelection = FindSelection(view, rowHandle, kind)
-            If existing IsNot Nothing AndAlso isControlClick AndAlso existing.WholeRow Then
-                Selections.Remove(existing)
+            If existing IsNot Nothing AndAlso isControlClick AndAlso
+               existing.Fields.Contains(selectedColumn.FieldName) Then
+                existing.Fields.Remove(selectedColumn.FieldName)
+                If existing.Fields.Count = 0 Then Selections.Remove(existing)
             Else
                 If existing Is Nothing Then
                     existing = New VisualRowSelection With {
@@ -84,11 +142,8 @@ Namespace Abovo
                     }
                     Selections.Add(existing)
                 End If
-                existing.WholeRow = True
-                existing.Fields.Clear()
-                For Each column As GridColumn In GetSelectableVisibleColumns(view)
-                    existing.Fields.Add(column.FieldName)
-                Next
+                existing.WholeRow = False
+                existing.Fields.Add(selectedColumn.FieldName)
             End If
             InvalidateAttachedViews()
             Return kind = AnalyserVirtualRowKind.GroupFooter OrElse isControlClick OrElse isShiftClick
@@ -108,6 +163,19 @@ Namespace Abovo
             If column Is Nothing Then Return False
             Dim selection As VisualRowSelection = FindSelection(view, rowHandle, kind)
             Return selection IsNot Nothing AndAlso selection.Fields.Contains(column.FieldName)
+        End Function
+
+        Public Function HasRowSelection(ByVal view As CustomGridView,
+                                        ByVal rowHandle As Integer,
+                                        ByVal kind As AnalyserVirtualRowKind) As Boolean
+            Return FindSelection(view, rowHandle, kind) IsNot Nothing
+        End Function
+
+        Public Function IsHotTracked(ByVal view As CustomGridView,
+                                     ByVal rowHandle As Integer,
+                                     ByVal kind As AnalyserVirtualRowKind) As Boolean
+            Return HasHover AndAlso Object.ReferenceEquals(HoverView, view) AndAlso
+                   HoverRowHandle = rowHandle AndAlso HoverKind = kind
         End Function
 
         Public Sub DrawSelectedCells(ByVal cache As GraphicsCache,
@@ -140,6 +208,7 @@ Namespace Abovo
             DragCandidate = False
             Dragging = False
             DragView = Nothing
+            DragAnchorValid = False
             If hadSelection Then InvalidateAttachedViews()
         End Sub
 
@@ -147,18 +216,28 @@ Namespace Abovo
             Dim view As CustomGridView = TryCast(sender, CustomGridView)
             If view Is Nothing OrElse e.Button <> MouseButtons.Left Then Return
             Dim hitInfo As GridHitInfo = view.CalcHitInfo(e.Location)
-            If Not IsSelectableHit(view, hitInfo) Then Return
+            SuppressNativeGroupActionValue =
+                hitInfo IsNot Nothing AndAlso hitInfo.HitTest = GridHitTest.Row AndAlso
+                view.IsGroupRow(hitInfo.RowHandle)
+            Dim anchorRowHandle As Integer
+            Dim anchorKind As AnalyserVirtualRowKind
+            If Not TryGetVisualRow(view, hitInfo, anchorRowHandle, anchorKind) Then Return
             DragView = view
             DragStart = e.Location
             DragCurrent = e.Location
             DragCandidate = True
             Dragging = False
             DragIsAdditive = (Control.ModifierKeys And Keys.Control) = Keys.Control
+            DragAnchorRowHandle = anchorRowHandle
+            DragAnchorKind = anchorKind
+            DragAnchorValid = True
         End Sub
 
         Private Sub View_MouseMove(ByVal sender As Object, ByVal e As MouseEventArgs)
             Dim view As CustomGridView = TryCast(sender, CustomGridView)
-            If view Is Nothing OrElse Not DragCandidate OrElse Not Object.ReferenceEquals(view, DragView) OrElse
+            If view Is Nothing Then Return
+            UpdateHover(view, e.Location)
+            If Not DragCandidate OrElse Not Object.ReferenceEquals(view, DragView) OrElse
                (e.Button And MouseButtons.Left) <> MouseButtons.Left Then Return
             If Not Dragging Then
                 Dim dragSize As Size = SystemInformation.DragSize
@@ -186,6 +265,34 @@ Namespace Abovo
             DragCandidate = False
             Dragging = False
             DragView = Nothing
+            DragAnchorValid = False
+        End Sub
+
+        Private Sub View_MouseLeave(ByVal sender As Object, ByVal e As EventArgs)
+            Dim view As CustomGridView = TryCast(sender, CustomGridView)
+            If view Is Nothing OrElse Not HasHover OrElse
+               Not Object.ReferenceEquals(HoverView, view) Then Return
+            HasHover = False
+            HoverView = Nothing
+            InvalidateAttachedViews()
+        End Sub
+
+        Private Sub UpdateHover(ByVal view As CustomGridView, ByVal location As Point)
+            Dim hitInfo As GridHitInfo = view.CalcHitInfo(location)
+            Dim rowHandle As Integer
+            Dim kind As AnalyserVirtualRowKind
+            Dim found As Boolean = TryGetVisualRow(view, hitInfo, rowHandle, kind)
+            If found AndAlso HasHover AndAlso Object.ReferenceEquals(HoverView, view) AndAlso
+               HoverRowHandle = rowHandle AndAlso HoverKind = kind Then Return
+            If Not found AndAlso (Not HasHover OrElse Not Object.ReferenceEquals(HoverView, view)) Then Return
+
+            HasHover = found
+            HoverView = If(found, view, Nothing)
+            If found Then
+                HoverRowHandle = rowHandle
+                HoverKind = kind
+            End If
+            InvalidateAttachedViews()
         End Sub
 
         Private Sub ApplyDragRectangle(ByVal view As CustomGridView)
@@ -199,7 +306,7 @@ Namespace Abovo
             Dim columns As List(Of GridColumn) = GetColumnsIntersecting(view, selectionRectangle)
             If columns.Count = 0 Then Return
             Dim lastKey As String = Nothing
-            For y As Integer = selectionRectangle.Top To selectionRectangle.Bottom Step 2
+            For y As Integer = selectionRectangle.Top To selectionRectangle.Bottom
                 Dim sampleX As Integer = Math.Max(selectionRectangle.Left,
                     Math.Min(selectionRectangle.Right - 1, GetColumnCentre(view, columns(0))))
                 Dim hitInfo As GridHitInfo = view.CalcHitInfo(New Point(sampleX, y))
@@ -209,25 +316,35 @@ Namespace Abovo
                 Dim key As String = rowHandle.ToString() & ":" & CInt(kind).ToString()
                 If key = lastKey Then Continue For
                 lastKey = key
-
-                If kind = AnalyserVirtualRowKind.DataRow Then
-                    For Each column As GridColumn In columns
-                        view.SelectCell(rowHandle, column)
-                    Next
-                End If
-                Dim selection As VisualRowSelection = FindSelection(view, rowHandle, kind)
-                If selection Is Nothing Then
-                    selection = New VisualRowSelection With {
-                        .View = view, .RowHandle = rowHandle, .Kind = kind, .OrderY = y
-                    }
-                    Selections.Add(selection)
-                End If
-                selection.WholeRow = False
-                For Each column As GridColumn In columns
-                    selection.Fields.Add(column.FieldName)
-                Next
+                AddDraggedRow(view, rowHandle, kind, columns, y)
             Next
+            If DragAnchorValid Then
+                AddDraggedRow(view, DragAnchorRowHandle, DragAnchorKind, columns, DragStart.Y)
+            End If
             InvalidateAttachedViews()
+        End Sub
+
+        Private Sub AddDraggedRow(ByVal view As CustomGridView,
+                                  ByVal rowHandle As Integer,
+                                  ByVal kind As AnalyserVirtualRowKind,
+                                  ByVal columns As IEnumerable(Of GridColumn),
+                                  ByVal orderY As Integer)
+            If kind = AnalyserVirtualRowKind.DataRow Then
+                For Each column As GridColumn In columns
+                    view.SelectCell(rowHandle, column)
+                Next
+            End If
+            Dim selection As VisualRowSelection = FindSelection(view, rowHandle, kind)
+            If selection Is Nothing Then
+                selection = New VisualRowSelection With {
+                    .View = view, .RowHandle = rowHandle, .Kind = kind, .OrderY = orderY
+                }
+                Selections.Add(selection)
+            End If
+            selection.WholeRow = False
+            For Each column As GridColumn In columns
+                selection.Fields.Add(column.FieldName)
+            Next
         End Sub
 
         Private Shared Function NormaliseRectangle(ByVal startPoint As Point,
@@ -264,6 +381,18 @@ Namespace Abovo
             Dim columnInfo As GridColumnInfoArgs = info.ColumnsInfo(column)
             If columnInfo Is Nothing Then Return 0
             Return columnInfo.Bounds.Left + (columnInfo.Bounds.Width \ 2)
+        End Function
+
+        Private Shared Function GetColumnAtX(ByVal view As CustomGridView,
+                                             ByVal x As Integer) As GridColumn
+            Dim info As GridViewInfo = TryCast(view.GetViewInfo(), GridViewInfo)
+            If info Is Nothing Then Return Nothing
+            For Each column As GridColumn In GetSelectableVisibleColumns(view)
+                Dim columnInfo As GridColumnInfoArgs = info.ColumnsInfo(column)
+                If columnInfo IsNot Nothing AndAlso x >= columnInfo.Bounds.Left AndAlso
+                   x < columnInfo.Bounds.Right Then Return column
+            Next
+            Return Nothing
         End Function
 
         Private Shared Function GetSelectableVisibleColumns(ByVal view As CustomGridView) As List(Of GridColumn)
@@ -345,21 +474,206 @@ Namespace Abovo
             End If
         End Sub
 
+        Private Sub View_Click(ByVal sender As Object, ByVal e As EventArgs)
+            Dim view As CustomGridView = TryCast(sender, CustomGridView)
+            Dim mouseEvent As MouseEventArgs = TryCast(e, MouseEventArgs)
+            If view Is Nothing OrElse mouseEvent Is Nothing Then Return
+
+            ProcessClick(view, mouseEvent)
+            If mouseEvent.Button <> MouseButtons.Left Then Return
+
+            Dim hitInfo As GridHitInfo = view.CalcHitInfo(mouseEvent.Location)
+            If hitInfo Is Nothing OrElse hitInfo.HitTest <> GridHitTest.Row OrElse
+               Not view.IsGroupRow(hitInfo.RowHandle) Then Return
+
+            PendingGroupView = view
+            PendingGroupRowHandle = hitInfo.RowHandle
+            HasPendingGroupClick = True
+            GroupClickTimer.Stop()
+            GroupClickTimer.Start()
+        End Sub
+
+        Private Sub View_DoubleClick(ByVal sender As Object, ByVal e As EventArgs)
+            Dim view As CustomGridView = TryCast(sender, CustomGridView)
+            If view Is Nothing OrElse Not HasPendingGroupClick OrElse
+               Not Object.ReferenceEquals(view, PendingGroupView) Then Return
+
+            GroupClickTimer.Stop()
+            Dim rowHandle As Integer = PendingGroupRowHandle
+            HasPendingGroupClick = False
+            PendingGroupView = Nothing
+            Try
+                If Not view.IsGroupRow(rowHandle) Then Return
+
+                If view.GetRowExpanded(rowHandle) Then
+                    Dim collapseAction As Action(Of CustomGridView, Integer) = Nothing
+                    If CollapseBranchActions.TryGetValue(view, collapseAction) Then
+                        RunManagedGroupAction(Sub() collapseAction(view, rowHandle))
+                    End If
+                Else
+                    Dim expandAction As Action(Of CustomGridView, Integer) = Nothing
+                    If ExpandBranchActions.TryGetValue(view, expandAction) Then
+                        RunManagedGroupAction(Sub() expandAction(view, rowHandle))
+                    End If
+                End If
+            Finally
+                SuppressNativeGroupActionValue = False
+            End Try
+        End Sub
+
+        Private Sub GroupClickTimer_Tick(ByVal sender As Object, ByVal e As EventArgs)
+            GroupClickTimer.Stop()
+            If Not HasPendingGroupClick Then Return
+
+            Dim view As CustomGridView = PendingGroupView
+            Dim rowHandle As Integer = PendingGroupRowHandle
+            HasPendingGroupClick = False
+            PendingGroupView = Nothing
+            Try
+                If view Is Nothing OrElse Not view.IsGroupRow(rowHandle) Then Return
+                RunManagedGroupAction(
+                    Sub() view.SetRowExpanded(
+                        rowHandle, Not view.GetRowExpanded(rowHandle), False))
+            Finally
+                SuppressNativeGroupActionValue = False
+            End Try
+        End Sub
+
+        Private Sub RunManagedGroupAction(ByVal action As Action)
+            If action Is Nothing Then Return
+            ApplyingGroupAction = True
+            Try
+                action()
+            Finally
+                ApplyingGroupAction = False
+            End Try
+        End Sub
+
         Private Sub View_PopupMenuShowing(ByVal sender As Object,
                                           ByVal e As PopupMenuShowingEventArgs)
             Dim view As CustomGridView = TryCast(sender, CustomGridView)
-            If view Is Nothing OrElse e Is Nothing OrElse e.Menu Is Nothing OrElse
-               Not HasSelection(view) Then Return
-            Dim copyItem As New DXMenuItem("Copy selected analyser cells")
-            AddHandler copyItem.Click, Sub() CopySelections(view)
-            e.Menu.Items.Add(copyItem)
+            If view Is Nothing OrElse e Is Nothing OrElse e.Menu Is Nothing Then Return
+
+            'The analyser deliberately exposes only its rectangular clipboard
+            'commands; filtering and other standard grid actions are not relevant.
+            e.Menu.Items.Clear()
+            Dim hasSelectionValue As Boolean = HasSelection(view)
+            If hasSelectionValue Then
+                Dim copyItem As New DXMenuItem("Copy selected analyser cells")
+                AddHandler copyItem.Click, Sub() CopySelections(view)
+                e.Menu.Items.Add(copyItem)
+
+                Dim copyWithPeriodItem As New DXMenuItem("Copy with year/period")
+                AddHandler copyWithPeriodItem.Click, Sub() CopySelections(view, True)
+                e.Menu.Items.Add(copyWithPeriodItem)
+            End If
+
+            Dim hitInfo As GridHitInfo = e.HitInfo
+            If hitInfo Is Nothing OrElse Not view.IsGroupRow(hitInfo.RowHandle) Then Return
+
+            Dim rowHandle As Integer = hitInfo.RowHandle
+            If view.GetRowExpanded(rowHandle) Then
+                Dim collapseAction As Action(Of CustomGridView, Integer) = Nothing
+                If CollapseBranchActions.TryGetValue(view, collapseAction) Then
+                    Dim collapseItem As New DXMenuItem("Collapse branch")
+                    collapseItem.BeginGroup = hasSelectionValue
+                    AddHandler collapseItem.Click, Sub() collapseAction(view, rowHandle)
+                    e.Menu.Items.Add(collapseItem)
+                End If
+            Else
+                Dim expandAction As Action(Of CustomGridView, Integer) = Nothing
+                If ExpandBranchActions.TryGetValue(view, expandAction) Then
+                    Dim expandItem As New DXMenuItem("Expand branch")
+                    expandItem.BeginGroup = hasSelectionValue
+                    AddHandler expandItem.Click, Sub() expandAction(view, rowHandle)
+                    e.Menu.Items.Add(expandItem)
+                End If
+            End If
+        End Sub
+
+        Private Sub ContextMenu_Opening(ByVal sender As Object,
+                                        ByVal e As CancelEventArgs)
+            Dim analyserMenu As ContextMenuStrip = TryCast(sender, ContextMenuStrip)
+            If analyserMenu Is Nothing Then Return
+            Dim view As CustomGridView =
+                ContextMenus.FirstOrDefault(
+                    Function(item) Object.ReferenceEquals(item.Value, analyserMenu)).Key
+            If view Is Nothing OrElse view.GridControl Is Nothing Then
+                e.Cancel = True
+                Return
+            End If
+
+            analyserMenu.Items.Clear()
+            Dim hasSelectionValue As Boolean = HasSelection(view)
+            If hasSelectionValue Then
+                Dim copyItem As New ToolStripMenuItem("Copy selected analyser cells")
+                AddHandler copyItem.Click, Sub() CopySelections(view)
+                analyserMenu.Items.Add(copyItem)
+
+                Dim copyWithPeriodItem As New ToolStripMenuItem("Copy with year/period")
+                AddHandler copyWithPeriodItem.Click, Sub() CopySelections(view, True)
+                analyserMenu.Items.Add(copyWithPeriodItem)
+            End If
+
+            Dim clientPoint As Point =
+                view.GridControl.PointToClient(Control.MousePosition)
+            Dim hitInfo As GridHitInfo = view.CalcHitInfo(clientPoint)
+            If hitInfo IsNot Nothing AndAlso view.IsGroupRow(hitInfo.RowHandle) Then
+                If hasSelectionValue Then analyserMenu.Items.Add(New ToolStripSeparator())
+                Dim rowHandle As Integer = hitInfo.RowHandle
+                If view.GetRowExpanded(rowHandle) Then
+                    Dim collapseAction As Action(Of CustomGridView, Integer) = Nothing
+                    If CollapseBranchActions.TryGetValue(view, collapseAction) Then
+                        Dim collapseItem As New ToolStripMenuItem("Collapse branch")
+                        AddHandler collapseItem.Click,
+                            Sub() RunManagedGroupAction(
+                                Sub() collapseAction(view, rowHandle))
+                        analyserMenu.Items.Add(collapseItem)
+                    End If
+                Else
+                    Dim expandAction As Action(Of CustomGridView, Integer) = Nothing
+                    If ExpandBranchActions.TryGetValue(view, expandAction) Then
+                        Dim expandItem As New ToolStripMenuItem("Expand branch")
+                        AddHandler expandItem.Click,
+                            Sub() RunManagedGroupAction(
+                                Sub() expandAction(view, rowHandle))
+                        analyserMenu.Items.Add(expandItem)
+                    End If
+                End If
+            End If
+            e.Cancel = analyserMenu.Items.Count = 0
         End Sub
 
         Private Function HasSelection(ByVal view As CustomGridView) As Boolean
+            SynchroniseNativeCellSelections(view)
             Return Selections.Any(Function(item) Object.ReferenceEquals(item.View, view))
         End Function
 
-        Private Sub CopySelections(ByVal view As CustomGridView)
+        Private Sub SynchroniseNativeCellSelections(ByVal view As CustomGridView)
+            If view Is Nothing Then Return
+
+            For Each selectedCell In view.GetSelectedCells()
+                If selectedCell.RowHandle < 0 OrElse selectedCell.Column Is Nothing OrElse
+                   IsInternalColumn(selectedCell.Column.FieldName) Then Continue For
+
+                Dim selection As VisualRowSelection =
+                    FindSelection(view, selectedCell.RowHandle, AnalyserVirtualRowKind.DataRow)
+                If selection Is Nothing Then
+                    selection = New VisualRowSelection With {
+                        .View = view,
+                        .RowHandle = selectedCell.RowHandle,
+                        .Kind = AnalyserVirtualRowKind.DataRow,
+                        .OrderY = view.GetVisibleIndex(selectedCell.RowHandle)
+                    }
+                    Selections.Add(selection)
+                End If
+                selection.WholeRow = False
+                selection.Fields.Add(selectedCell.Column.FieldName)
+            Next
+        End Sub
+
+        Private Sub CopySelections(ByVal view As CustomGridView,
+                                   Optional ByVal includeYearAndPeriod As Boolean = False)
             Dim selectedRows As List(Of VisualRowSelection) =
                 Selections.Where(Function(item) Object.ReferenceEquals(item.View, view)).
                     OrderBy(Function(item) item.OrderY).ThenBy(Function(item) CInt(item.Kind)).ToList()
@@ -372,11 +686,41 @@ Namespace Abovo
                 Where(Function(column) selectedFields.Contains(column.FieldName)).ToList()
             If columns.Count = 0 Then Return
             Dim clipboardRows As New List(Of String)()
+            If includeYearAndPeriod Then
+                clipboardRows.AddRange(BuildColumnHeadingRows(columns))
+            End If
             For Each selection As VisualRowSelection In selectedRows
                 clipboardRows.Add(BuildClipboardRow(selection, columns))
             Next
             Clipboard.SetText(String.Join(ControlChars.CrLf, clipboardRows), TextDataFormat.UnicodeText)
         End Sub
+
+        Private Shared Function BuildColumnHeadingRows(
+            ByVal columns As List(Of GridColumn)) As IEnumerable(Of String)
+
+            Dim yearHeadings(columns.Count - 1) As String
+            Dim periodHeadings(columns.Count - 1) As String
+            Dim hasPeriodHeading As Boolean
+
+            For index As Integer = 0 To columns.Count - 1
+                Dim caption As String = If(columns(index).Caption, String.Empty).
+                    Replace(ControlChars.CrLf, ControlChars.Lf).
+                    Replace(ControlChars.Cr, ControlChars.Lf)
+                Dim captionParts As String() = caption.Split(New Char() {ControlChars.Lf},
+                                                             StringSplitOptions.None)
+                yearHeadings(index) = captionParts(0).Trim()
+                If captionParts.Length > 1 Then
+                    periodHeadings(index) = String.Join(" ", captionParts.Skip(1)).Trim()
+                    hasPeriodHeading = hasPeriodHeading OrElse periodHeadings(index).Length > 0
+                End If
+            Next
+
+            Dim result As New List(Of String) From {
+                String.Join(ControlChars.Tab, yearHeadings)
+            }
+            If hasPeriodHeading Then result.Add(String.Join(ControlChars.Tab, periodHeadings))
+            Return result
+        End Function
 
         Private Shared Function BuildClipboardRow(ByVal selection As VisualRowSelection,
                                                   ByVal columns As List(Of GridColumn)) As String

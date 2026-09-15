@@ -422,8 +422,12 @@ Public Class FormMainScreen
 
         WindowsUIButtonPanelExitHelp.Buttons.Add(
             New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True))
+        Dim SettingsImageOptions As New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions With {
+            .SvgImage = DevExpress.Images.ImageResourceCache.Default.GetSvgImage("images/setup/properties_32x32.svg"),
+            .SvgImageSize = New Size(32, 32)
+        }
         WindowsUIButtonPanelExitHelp.Buttons.Add(
-            New WindowsUIButton("Scale", False, Nothing,
+            New WindowsUIButton("Settings", True, SettingsImageOptions,
                 DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton,
                 "Application interface scale and presentation options",
                 -1, True, Nothing, True, False, True, "Options", -1, True))
