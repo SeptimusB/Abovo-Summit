@@ -216,13 +216,33 @@ Namespace Abovo
 
             workbook.BeginUpdate()
             Try
-                snapshotSheet.GetUsedRange().ClearContents()
-                comparisonSheet.GetUsedRange().ClearContents()
+                'Snapshot validity is persisted by the two local named-range
+                'headers. Clearing only those headers invalidates both analyser
+                'datasources immediately and after save/reopen without paying to
+                'clear hundreds of thousands of obsolete body cells. The next
+                'snapshot creation clears and replaces both dedicated sheets.
+                ClearSnapshotHeader(workbook, snapshotSheet, SnapshotRangeName)
+                ClearSnapshotHeader(workbook, comparisonSheet, ComparisonRangeName)
             Finally
                 workbook.EndUpdate()
             End Try
 
             FileManager.ExcelModels(modelID).IsDirty = True
+        End Sub
+
+        Private Shared Sub ClearSnapshotHeader(ByVal workbook As IWorkbook,
+                                               ByVal worksheet As Worksheet,
+                                               ByVal rangeName As String)
+            Dim snapshotRange As CellRange =
+                ResolveNamedRange(workbook, worksheet, rangeName)
+
+            If snapshotRange Is Nothing OrElse snapshotRange.RowCount = 0 Then Return
+
+            worksheet.Range.FromLTRB(
+                snapshotRange.LeftColumnIndex,
+                snapshotRange.TopRowIndex,
+                snapshotRange.RightColumnIndex,
+                snapshotRange.TopRowIndex).ClearContents()
         End Sub
 
         Private Shared Function RequireWorksheet(ByVal workbook As IWorkbook,

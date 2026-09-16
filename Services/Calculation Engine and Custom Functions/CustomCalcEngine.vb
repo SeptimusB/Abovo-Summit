@@ -1,6 +1,5 @@
 ﻿Imports DevExpress.Spreadsheet
 Imports DevExpress.Spreadsheet.Formulas
-Imports System.Diagnostics
 Namespace Abovo
     Public Class CustomCalcEngine
         Implements DevExpress.XtraSpreadsheet.Services.ICustomCalculationService
@@ -9,9 +8,6 @@ Namespace Abovo
         Private _CheckSheetID As Integer = -1
         Private _ComparisonSheetID As Integer = -1
         Public ModelID As Integer = -1
-#If DEBUG Then
-        Private CalculationStopwatch As Stopwatch
-#End If
         Public Property DontCalcTDBS As Boolean
             Get
                 Return _DontCalcTDBS
@@ -49,10 +45,6 @@ Namespace Abovo
         End Sub
 
         Public Function OnBeginCalculation() As Boolean Implements DevExpress.XtraSpreadsheet.Services.ICustomCalculationService.OnBeginCalculation
-#If DEBUG Then
-            CalculationStopwatch = Stopwatch.StartNew()
-            Debug.WriteLine("[Calculation Benchmark] Custom service begin: model=" & ModelID & ", skipTransactionalDB=" & _DontCalcTDBS)
-#End If
             Return True
         End Function
         Public Sub OnBeginCellCalculation(ByVal args As CellCalculationArgs) Implements DevExpress.XtraSpreadsheet.Services.ICustomCalculationService.OnBeginCellCalculation
@@ -64,13 +56,6 @@ Namespace Abovo
             Return False
         End Function
         Public Sub OnEndCalculation() Implements DevExpress.XtraSpreadsheet.Services.ICustomCalculationService.OnEndCalculation
-#If DEBUG Then
-            If CalculationStopwatch IsNot Nothing Then
-                CalculationStopwatch.Stop()
-                Debug.WriteLine("[Calculation Benchmark] Custom service end: model=" & ModelID & ", elapsed=" & CalculationStopwatch.ElapsedMilliseconds & " ms, skipTransactionalDB=" & _DontCalcTDBS)
-                CalculationStopwatch = Nothing
-            End If
-#End If
         End Sub
         Public Sub OnEndCellCalculation(ByVal cellKey As CellKey, ByVal startValue As CellValue, ByVal endValue As CellValue) Implements DevExpress.XtraSpreadsheet.Services.ICustomCalculationService.OnEndCellCalculation
         End Sub
@@ -96,10 +81,6 @@ Namespace Abovo
                 CalculateDeferredWorksheet(Workbook, "Transactional DB")
                 If TransactionalDBSnapshotManager.HasValidSnapshot(ModelID) Then
                     CalculateDeferredWorksheet(Workbook, "TDB Comparison")
-                Else
-#If DEBUG Then
-                    Debug.WriteLine("[Calculation Benchmark] Deferred worksheet 'TDB Comparison': skipped (no valid snapshot)")
-#End If
                 End If
                 CalculateDeferredWorksheet(Workbook, "Check Sheet")
             Finally
@@ -110,14 +91,7 @@ Namespace Abovo
         Private Sub CalculateDeferredWorksheet(ByVal Workbook As IWorkbook,
                                                ByVal WorksheetName As String)
             If Not Workbook.Worksheets.Contains(WorksheetName) Then Return
-#If DEBUG Then
-            Dim WorksheetStopwatch As Stopwatch = Stopwatch.StartNew()
-#End If
             Workbook.Worksheets(WorksheetName).Calculate()
-#If DEBUG Then
-            WorksheetStopwatch.Stop()
-            Debug.WriteLine("[Calculation Benchmark] Deferred worksheet '" & WorksheetName & "': " & WorksheetStopwatch.ElapsedMilliseconds & " ms")
-#End If
         End Sub
     End Class
 End Namespace
