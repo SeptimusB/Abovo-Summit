@@ -8,8 +8,8 @@ Imports DevExpress.XtraSpreadsheet.API.Native.Implementation
 Namespace Abovo
     Public Class InterfaceManager
 
-        Public Shared GroupInterfaces() As GroupInterfaceObject
-        Private Shared GroupInterfaceCount As Integer
+        Public GroupInterfaces() As GroupInterfaceObject
+        Private GroupInterfaceCount As Integer
         Public ModelID As Integer
         Sub New(SetModelID As Integer)
 
@@ -126,6 +126,12 @@ Namespace Abovo
 
         Public Sub ActivateHistoryEntry(ByVal entry As InterfaceHistoryEntry)
             If entry Is Nothing OrElse entry.ModelID <> ModelID Then Return
+            If FileManager.ExcelModels Is Nothing OrElse
+               ModelID < 0 OrElse ModelID >= FileManager.ExcelModels.Length Then Return
+            Dim targetModel As FileManager.ExcelModel = FileManager.ExcelModels(ModelID)
+            If targetModel Is Nothing OrElse targetModel.IsClosing OrElse
+               targetModel.InterfaceHistory Is Nothing OrElse
+               targetModel.InterfaceHistory.InstanceID <> entry.ModelInstanceID Then Return
 
             Try
                 Select Case entry.DestinationKind
@@ -171,8 +177,8 @@ Namespace Abovo
             End Try
         End Sub
 
-        Private Shared Function FindGroupInterface(ByVal modelID As Integer,
-                                                   ByVal gsid As Integer) As GroupInterfaceTemplate
+        Private Function FindGroupInterface(ByVal modelID As Integer,
+                                            ByVal gsid As Integer) As GroupInterfaceTemplate
             If GroupInterfaces Is Nothing Then Return Nothing
 
             For Each candidate As GroupInterfaceObject In GroupInterfaces

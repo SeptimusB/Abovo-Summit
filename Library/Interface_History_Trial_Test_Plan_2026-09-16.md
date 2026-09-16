@@ -2,9 +2,9 @@
 
 ## Scope
 
-The trial adds a model-scoped, most-recently-used Interface History list to every Group Interface Template (GIT) right sidebar. It records all standard DIT and special/class interfaces activated through a GIT, plus the Financial Forecast Return (FFR) and Stress Test. FormMain and transient dialogs are deliberately excluded.
+The trial adds a most-recently-used Interface History list to every Group Interface Template (GIT) right sidebar. It records all standard DIT and special/class interfaces activated through a GIT, plus the Financial Forecast Return (FFR) and Stress Test. FormMain and transient dialogs are deliberately excluded. When two or more full models are open, the user can switch between **This model** and **All models**.
 
-History is session-only and is not written to the XLSB or user settings. Revisiting a destination moves its existing record to the top rather than creating a duplicate. Hidden interface objects are reactivated; they are not deliberately disposed or recreated.
+History entries are session-only and are not written to the XLSB or user settings. Revisiting a destination moves its existing record to the top rather than creating a duplicate. Hidden interface objects are reactivated; they are not deliberately disposed or recreated. The history scope choice alone is persisted as a user preference.
 
 ## Principal risks and controls
 
@@ -16,7 +16,10 @@ History is session-only and is not written to the XLSB or user settings. Revisit
 | Duplicate entries accumulate | Medium | A stable destination key is removed and reinserted at the top on every visit | Visit A, B, A and confirm the order is A, B with two rows only |
 | Stress Test modal behaviour causes re-entrancy or a second form | High | History calls the existing Stress Test launcher and preserved instance | Open, alter state, hide, reopen from history, then repeat several times |
 | FFR is reconstructed or loses its selected page | High | History calls the existing preserved FFR instance | Select a non-default FFR page, hide and restore it through history |
-| One model displays or activates another model's history | High | Each workbook model owns a separate history service | Open two models, navigate in each and compare their sidebar lists and activation targets |
+| This model displays or activates another model's history | High | Each workbook model owns a separate history service; the coordinator filters by model | Open two models and confirm This model lists only its own entries |
+| All models activates the wrong model or a reused numeric model ID | High | Entries carry a unique open-model instance token checked before activation | Navigate between two model types, close one, reopen it, and verify stale entries cannot navigate |
+| GIT windows for one model overwrite another model's windows | High | GIT registries are now instance-owned rather than shared | Open GITs in two models, close one model and activate GITs in the other |
+| Scope control appears with one model or forgets the choice | Medium | The control appears only with two or more full models; choice is user-scoped | Check the one-model and two-model states, then restart Summit with two models |
 | Sidebar subscribers survive model shutdown | High | Each history view unsubscribes when its GIT is disposed; the service is disposed during model close | Close a model with several GITs open, reopen another model and watch for errors or stale rows |
 | A history failure blocks ordinary navigation | High | History recording is ancillary and guarded; activation failures are reported to System Messages | Exercise navigation during rapid hide/show and model-close boundaries; ordinary navigation must continue |
 | Double-clicking headers or blank grid space opens an item | Medium | Mouse hit testing accepts data rows only | Double-click each column header and empty grid area; nothing should open |
@@ -35,15 +38,19 @@ History is session-only and is not written to the XLSB or user settings. Revisit
 7. Open FFR, select a non-default page, hide it, and restore it from history without losing that page.
 8. Open Stress Test, select a non-default tab or scenario, hide it, and restore it from history without creating a second form.
 9. Double-click history column headers and blank space and confirm no navigation occurs. Confirm Enter activates the focused data row.
-10. Open a second model and confirm its history is independent of the first model.
-11. Close a model while multiple history-enabled GITs are open, then open another model and confirm no stale entries or event errors appear.
-12. Repeat representative navigation under the client's font scale and monitor/DPI arrangement.
+10. Open a second model, ideally of another supported type. Confirm the switch appears; This model lists only local entries and All models lists both with model names.
+11. Double-click a foreign-model entry in All models. Confirm the exact preserved GIT/document, FFR or Stress Test instance activates; repeat in the opposite direction.
+12. Close FFR and Stress Test using X, then restore each through history. Confirm their prior tab/scenario state remains and no replacement instance was created.
+13. Close one model while the other remains open. Confirm closed-model entries disappear, the scope control hides, and the remaining model's GITs still work.
+14. Reopen a model into a potentially reused numeric slot. Confirm earlier closed-model entries cannot activate it.
+15. Restart Summit, open two models and confirm the chosen scope returns.
+16. Repeat representative navigation under the client's font scale and monitor/DPI arrangement.
 
 ## Pass criteria
 
 - The list is newest-first and contains no repeated logical destinations.
 - Each action returns to the original hidden interface object with its UI state preserved.
-- Side-by-side GITs and multiple models do not cross-route.
+- Side-by-side GITs and multiple models do not cross-route; All models activates the selected model.
 - FFR and Stress Test preserve their existing show/hide semantics.
 - Ordinary interface navigation remains functional if history recording or restoration cannot complete.
 - No unhandled exception, stale event callback, workbook mutation or material navigation delay is observed.

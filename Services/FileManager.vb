@@ -1233,6 +1233,8 @@ Namespace Abovo
                 ReDim Preserve ExcelModels(ExcelModelCount)
             End If
 
+            InterfaceHistoryCoordinator.NotifyChanged()
+
         End Sub
         Private InternalCompanyName As String = ""
         Public Property CompanyName As String
@@ -1563,6 +1565,8 @@ Namespace Abovo
                     InternalFileState = 2
                     ApplicationConfiguration.ActiveModelID = NewModelID
                 End If
+
+                InterfaceHistoryCoordinator.NotifyChanged()
 
                 Result.BSuccess = True
                 Result.IntReturnCode = 0
