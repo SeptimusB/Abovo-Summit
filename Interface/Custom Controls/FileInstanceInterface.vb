@@ -199,42 +199,57 @@ Public Class FileInstanceInterface
 
 
             Case "GoFFR"
-
-                If Not FFRInit Then
-                    Me.Cursor = Cursors.WaitCursor
-                    FFRer = New FFRForm(BPModelID)
-                    FFRer.Show()
-                    FFRInit = True
-                    Me.Cursor = Cursors.Default
-                Else
-
-                    FFRer.Show()
-
-                End If
+                ShowFFRInterface()
 
 
 
 
             Case "StressTest"
-
-                If Not STInit Then
-
-                    StressTester = New StressTest(BPModelID)
-                    StressTester.SetActive()
-                    StressTester.ShowDialog()
-
-                    STInit = True
-
-                Else
-
-                    StressTester.SetActive()
-                    StressTester.ShowDialog()
-
-                End If
+                ShowStressTestInterface()
 
         End Select
 
     End Sub
+
+    Public Sub ShowFFRInterface()
+        If Not FFRInit OrElse FFRer Is Nothing OrElse FFRer.IsDisposed Then
+            Me.Cursor = Cursors.WaitCursor
+            Try
+                FFRer = New FFRForm(BPModelID)
+                FFRInit = True
+            Finally
+                Me.Cursor = Cursors.Default
+            End Try
+        End If
+
+        FFRer.Show()
+        FFRer.Activate()
+        FFRer.BringToFront()
+
+        If ExcelModels(BPModelID).InterfaceHistory IsNot Nothing Then
+            ExcelModels(BPModelID).InterfaceHistory.RecordStandalone(
+                InterfaceHistoryDestinationKind.FinancialForecastReturn,
+                "Financial Forecast Return",
+                "Model")
+        End If
+    End Sub
+
+    Public Sub ShowStressTestInterface()
+        If Not STInit OrElse StressTester Is Nothing OrElse StressTester.IsDisposed Then
+            StressTester = New StressTest(BPModelID)
+            STInit = True
+        End If
+
+        StressTester.SetActive()
+        If ExcelModels(BPModelID).InterfaceHistory IsNot Nothing Then
+            ExcelModels(BPModelID).InterfaceHistory.RecordStandalone(
+                InterfaceHistoryDestinationKind.StressTest,
+                "Stress Test",
+                "Model")
+        End If
+        StressTester.ShowDialog()
+    End Sub
+
     Public Sub PopulateFileInfo()
 
         ScaleUnits = GetDisplayScale(Me)

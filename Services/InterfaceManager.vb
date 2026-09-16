@@ -123,6 +123,71 @@ Namespace Abovo
 
 
         End Sub
+
+        Public Sub ActivateHistoryEntry(ByVal entry As InterfaceHistoryEntry)
+            If entry Is Nothing OrElse entry.ModelID <> ModelID Then Return
+
+            Try
+                Select Case entry.DestinationKind
+                    Case InterfaceHistoryDestinationKind.GroupInterface
+                        Dim target As GroupInterfaceTemplate = entry.HostGroupInterface
+
+                        If target Is Nothing OrElse target.IsDisposed Then
+                            target = FindGroupInterface(entry.ModelID, entry.GSID)
+                        End If
+
+                        If target Is Nothing Then
+                            ShowGroupInterface(entry.ModelID,
+                                               entry.GSID,
+                                               "Maximised",
+                                               entry.AreaName,
+                                               FileManager.ExcelModels(entry.ModelID).InstanceInterface)
+                            target = FindGroupInterface(entry.ModelID, entry.GSID)
+                        End If
+
+                        If target Is Nothing OrElse target.IsDisposed Then Return
+                        If Not target.Visible Then target.Show()
+                        If target.WindowState = FormWindowState.Minimized Then
+                            target.WindowState = FormWindowState.Normal
+                        End If
+                        target.Activate()
+                        target.BringToFront()
+                        target.ShowInterface(entry.ModelID,
+                                             entry.CSID,
+                                             entry.ShowSpecial,
+                                             entry.SpecialData)
+
+                    Case InterfaceHistoryDestinationKind.FinancialForecastReturn
+                        FileManager.ExcelModels(entry.ModelID).InstanceInterface.ShowFFRInterface()
+
+                    Case InterfaceHistoryDestinationKind.StressTest
+                        FileManager.ExcelModels(entry.ModelID).InstanceInterface.ShowStressTestInterface()
+                End Select
+            Catch ex As Exception
+                SystemMessageManager.Publish(entry.ModelID,
+                    "The interface could not be restored from history: " & ex.Message,
+                    SystemMessageSeverity.Warning,
+                    "Interface history")
+            End Try
+        End Sub
+
+        Private Shared Function FindGroupInterface(ByVal modelID As Integer,
+                                                   ByVal gsid As Integer) As GroupInterfaceTemplate
+            If GroupInterfaces Is Nothing Then Return Nothing
+
+            For Each candidate As GroupInterfaceObject In GroupInterfaces
+                If candidate Is Nothing OrElse
+                   candidate.ModelId <> modelID OrElse
+                   candidate.GSID <> gsid OrElse
+                   candidate.RenderedForm Is Nothing OrElse
+                   candidate.RenderedForm.IsDisposed Then Continue For
+
+                Return candidate.RenderedForm
+            Next
+
+            Return Nothing
+        End Function
+
         Sub CloseInterfaces()
 
             Dim IntCheck As GroupInterfaceObject

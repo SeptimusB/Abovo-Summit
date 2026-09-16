@@ -166,6 +166,7 @@ Namespace Abovo
             Public WBStructureManager As StructureManager
             Public WBData As DataManager
             Public WBInterface As InterfaceManager
+            Public InterfaceHistory As InterfaceHistoryService
             Public WBCalcEngine As CalcEngine
             Public WBCalculationService As CustomCalcEngine
             Public WBDataPres As PresentationManager
@@ -207,6 +208,7 @@ Namespace Abovo
                     WBStructureManager = New StructureManager(SetModelID)
                     WBData = New DataManager(SetModelID)
                     WBCalcEngine = New CalcEngine(SetModelID)
+                    InterfaceHistory = New InterfaceHistoryService(SetModelID)
                     WBInterface = New InterfaceManager(SetModelID)
                     WBDataPres = New PresentationManager(SetModelID)
                     RDSM = New RDSManager(SetModelID)
@@ -1035,6 +1037,12 @@ Namespace Abovo
                 End Try
 
                 Try
+                    If InterfaceHistory IsNot Nothing Then InterfaceHistory.Dispose()
+                Catch ex As Exception
+                    WriteLog("Error disposing interface history: " & ex.Message, FileName)
+                End Try
+
+                Try
                     If InterfaceDependencies IsNot Nothing Then InterfaceDependencies.Clear()
                 Catch ex As Exception
                     WriteLog("Error clearing interface dependencies: " & ex.Message, FileName)
@@ -1078,6 +1086,7 @@ Namespace Abovo
                 ExpendAnalyser = Nothing
                 ExpendAnalyserV2 = Nothing
                 WBInterface = Nothing
+                InterfaceHistory = Nothing
                 WBData = Nothing
                 WBCalcEngine = Nothing
                 WBCalculationService = Nothing

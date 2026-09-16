@@ -593,6 +593,7 @@
     <Compile Include="Services\DataService\ChangeLogModels.vb" />
     <Compile Include="Services\DataService\ChangeManagerV2.vb" />
     <Compile Include="Services\SystemMessageManager.vb" />
+    <Compile Include="Services\InterfaceHistoryService.vb" />
     <Compile Include="Services\DataService\RDSManager.vb" />
     <Compile Include="Services\DataService\DataClasses\AssumptionsCollection.vb" />
     <Compile Include="Services\DataService\DataClasses\BPStockCollection.vb" />

@@ -58,6 +58,9 @@ Public Class GroupInterfaceTemplate
     Private OpenGroupID As Integer
     Private InterfaceMode As String
     Private SidebarMessageView As SystemMessageView
+    Private SidebarHistoryView As InterfaceHistoryView
+    Private SidebarHistoryContainer As AccordionContentContainer
+    Private SidebarHistoryElement As AccordionControlElement
     Private SidebarRefreshTimer As Timer
     Private SidebarEventsAttached As Boolean
     Public Sub New()
@@ -348,6 +351,23 @@ Public Class GroupInterfaceTemplate
         SidebarMessageView = New SystemMessageView(MyModelID) With {.Dock = DockStyle.Fill}
         AccordionContentContainerSystemMessages.Controls.Add(SidebarMessageView)
 
+        SidebarHistoryContainer = New AccordionContentContainer With {
+            .Name = "AccordionContentContainerInterfaceHistory",
+            .Size = New Size(540, 230)}
+        SidebarHistoryView = New InterfaceHistoryView(
+            MyModelID,
+            ExcelModels(MyModelID).InterfaceHistory) With {.Dock = DockStyle.Fill}
+        SidebarHistoryContainer.Controls.Add(SidebarHistoryView)
+        AccordionControlSum.Controls.Add(SidebarHistoryContainer)
+
+        SidebarHistoryElement = New AccordionControlElement With {
+            .ContentContainer = SidebarHistoryContainer,
+            .Name = "AccordionControlElementInterfaceHistory",
+            .Style = ElementStyle.Item,
+            .Text = "Interface History",
+            .Expanded = False}
+        AccordionControlSum.Elements.Add(SidebarHistoryElement)
+
         For Each browser As WebBrowser In {WebBrowserBPSum, WebBrowserDevSum,
                                            WebBrowserFundSum, WebBrowserAboutHelp,
                                            WebBrowserFile}
@@ -478,6 +498,10 @@ Public Class GroupInterfaceTemplate
         If SidebarMessageView IsNot Nothing Then
             SidebarMessageView.Dispose()
             SidebarMessageView = Nothing
+        End If
+        If SidebarHistoryView IsNot Nothing Then
+            SidebarHistoryView.Dispose()
+            SidebarHistoryView = Nothing
         End If
     End Sub
 
@@ -1011,6 +1035,32 @@ Public Class GroupInterfaceTemplate
 
         End If
 
+        RecordInterfaceVisit(SetModelID, SetCSID, ShowSpecial, SpecialData)
+    End Sub
+
+    Private Sub RecordInterfaceVisit(ByVal setModelID As Integer,
+                                     ByVal setCSID As Integer,
+                                     ByVal showSpecial As Boolean,
+                                     ByVal specialData As String)
+        Try
+            If ExcelModels(setModelID).InterfaceHistory Is Nothing Then Return
+
+            Dim child As ChildStructure =
+                ExcelModels(setModelID).WBStructure.GroupStructures(GSID).
+                    ResolveChildStructure(setCSID)
+            If child Is Nothing Then Return
+
+            ExcelModels(setModelID).InterfaceHistory.RecordGroupInterface(
+                Me,
+                GSID,
+                setCSID,
+                child.CSName,
+                MyName,
+                showSpecial,
+                specialData)
+        Catch ex As Exception
+            Debug.WriteLine("Interface history record failed: " & ex.ToString())
+        End Try
     End Sub
     Private Sub RightPanelButtonClick(sender As Object, e As ContextItemClickEventArgs) Handles AccordionControlSum.ContextButtonClick
 
