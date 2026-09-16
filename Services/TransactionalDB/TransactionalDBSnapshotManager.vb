@@ -160,6 +160,43 @@ Namespace Abovo
             End Try
         End Function
 
+        Public Shared Function HasPersistedSnapshot(ByVal modelID As Integer) As Boolean
+            Try
+                If FileManager.ExcelModels Is Nothing OrElse
+                   modelID < 0 OrElse modelID >= FileManager.ExcelModels.Length OrElse
+                   FileManager.ExcelModels(modelID) Is Nothing OrElse
+                   FileManager.ExcelModels(modelID).WB Is Nothing Then Return False
+
+                Dim workbook As IWorkbook = FileManager.ExcelModels(modelID).WB
+                Dim snapshotSheet As Worksheet = RequireWorksheet(workbook, SnapshotWorksheetName)
+                Dim comparisonSheet As Worksheet = RequireWorksheet(workbook, ComparisonWorksheetName)
+                Dim snapshotRange As CellRange = ResolveNamedRange(workbook, snapshotSheet, SnapshotRangeName)
+                Dim comparisonRange As CellRange = ResolveNamedRange(workbook, comparisonSheet, ComparisonRangeName)
+
+                If snapshotRange Is Nothing OrElse
+                   comparisonRange Is Nothing OrElse
+                   snapshotRange.Worksheet Is Nothing OrElse
+                   comparisonRange.Worksheet Is Nothing OrElse
+                   Not String.Equals(snapshotRange.Worksheet.Name, SnapshotWorksheetName, StringComparison.OrdinalIgnoreCase) OrElse
+                   Not String.Equals(comparisonRange.Worksheet.Name, ComparisonWorksheetName, StringComparison.OrdinalIgnoreCase) OrElse
+                   Not HasMatchingGeometry(snapshotRange, comparisonRange) Then Return False
+
+                Dim HasHeader As Boolean = False
+
+                For columnIndex As Integer = 0 To snapshotRange.ColumnCount - 1
+                    Dim snapshotHeader As String = snapshotRange(0, columnIndex).Value.ToString()
+                    Dim comparisonHeader As String = comparisonRange(0, columnIndex).Value.ToString()
+
+                    If Not String.Equals(snapshotHeader, comparisonHeader, StringComparison.Ordinal) Then Return False
+                    If Not String.IsNullOrWhiteSpace(snapshotHeader) Then HasHeader = True
+                Next
+
+                Return HasHeader
+            Catch
+                Return False
+            End Try
+        End Function
+
         Public Shared Sub InvalidateSnapshot(ByVal modelID As Integer)
             If FileManager.ExcelModels Is Nothing OrElse
                modelID < 0 OrElse modelID >= FileManager.ExcelModels.Length OrElse

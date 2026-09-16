@@ -869,6 +869,7 @@ Namespace Abovo
             Dim MutationFailed As Boolean = False
             Dim CleanupFailures As New List(Of String)
             Dim BulkMutationGuardStarted As Boolean = False
+            Dim SnapshotWasPresent As Boolean = TransactionalDBSnapshotManager.HasPersistedSnapshot(ModelID)
             Dim ShiftBoundsByWorksheet As New Dictionary(Of String, WorksheetShiftBounds)(StringComparer.OrdinalIgnoreCase)
             'Every mirror on a worksheet shifts the same used column span. Calling
             'GetUsedRange for each mirror is particularly expensive on Transactional
@@ -965,17 +966,22 @@ Namespace Abovo
                     End Try
                 End If
 
-                If StructuralChangeAttempted Then
+                If StructuralChangeAttempted AndAlso SnapshotWasPresent Then
                     Try
-                        TransactionalDBSnapshotManager.InvalidateSnapshot(ModelID)
+                        Dim SnapshotStillValid As Boolean =
+                            TransactionalDBSnapshotManager.HasValidSnapshot(ModelID)
 
-                        If ExcelModels(ModelID).ExpendAnalyserV2 IsNot Nothing Then
-                            ExcelModels(ModelID).ExpendAnalyserV2.NotifySnapshotInvalidated()
+                        If Not SnapshotStillValid Then
+                            TransactionalDBSnapshotManager.InvalidateSnapshot(ModelID)
+
+                            If ExcelModels(ModelID).ExpendAnalyserV2 IsNot Nothing Then
+                                ExcelModels(ModelID).ExpendAnalyserV2.NotifySnapshotInvalidated()
+                            End If
                         End If
                     Catch ex As Exception
                         SystemMessageManager.Publish(
                             ModelID,
-                            "Transactional DB data changed, but the analyser snapshot notification failed: " & ex.Message,
+                            "The Transactional DB structure changed, but the analyser snapshot could not be validated: " & ex.Message,
                             SystemMessageSeverity.Warning,
                             "Transactional DB Synchroniser")
                     End Try

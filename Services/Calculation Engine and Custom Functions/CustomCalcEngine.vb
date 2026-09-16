@@ -94,7 +94,13 @@ Namespace Abovo
             _DontCalcTDBS = False
             Try
                 CalculateDeferredWorksheet(Workbook, "Transactional DB")
-                CalculateDeferredWorksheet(Workbook, "TDB Comparison")
+                If TransactionalDBSnapshotManager.HasValidSnapshot(ModelID) Then
+                    CalculateDeferredWorksheet(Workbook, "TDB Comparison")
+                Else
+#If DEBUG Then
+                    Debug.WriteLine("[Calculation Benchmark] Deferred worksheet 'TDB Comparison': skipped (no valid snapshot)")
+#End If
+                End If
                 CalculateDeferredWorksheet(Workbook, "Check Sheet")
             Finally
                 _DontCalcTDBS = PreviousDontCalcTDBS
