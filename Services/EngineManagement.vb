@@ -1,6 +1,8 @@
 ﻿Imports DevExpress.Spreadsheet
 Imports Abovo.FileManager
 Imports DevExpress.CodeParser
+Imports System.Diagnostics
+Imports System.Threading
 
 Namespace Abovo
     Public Class CalcEngine
@@ -15,6 +17,8 @@ Namespace Abovo
         Private ActiveObjects(-1) As ActiveObject
         Public ActiveObjectCount As Integer = 0
         Private ActiveObjIndex As Integer = -1
+        Private DependencySensitiveCalculationCurrent As Boolean = False
+        Private Shared BenchmarkSequence As Integer
 
 #Region "Calclulation and engine"
         Public ModelID As Integer
@@ -113,7 +117,14 @@ Namespace Abovo
                 If ActiveObj IsNot Nothing Then
 
                     Try
+#If DEBUG Then
+                        Dim ObjectStopwatch As Stopwatch = Stopwatch.StartNew()
+#End If
                         ActiveObj.RefreshObjData()
+#If DEBUG Then
+                        ObjectStopwatch.Stop()
+                        Debug.WriteLine("[Calculation Benchmark] Interface refresh '" & ActiveObj.Obj.GetType().Name & "': " & ObjectStopwatch.ElapsedMilliseconds & " ms")
+#End If
                     Catch ex As Exception
                         Dim ObjectName As String = "Active interface"
                         If ActiveObj.Obj IsNot Nothing Then ObjectName = ActiveObj.Obj.GetType().Name
@@ -131,13 +142,47 @@ Namespace Abovo
         End Sub
         Sub CalculateWSs()
 
+            'Any ordinary calculation request may follow a workbook edit.  Until
+            'that request completes a full workbook pass, a subsequently-bound
+            'analyser must assume that cross-sheet cached values may be stale.
+            Dim HadDependencySensitiveCalculation As Boolean =
+                DependencySensitiveCalculationCurrent
+            DependencySensitiveCalculationCurrent = False
+
+#If DEBUG Then
+            Dim BenchmarkID As Integer = Interlocked.Increment(BenchmarkSequence)
+            Dim TotalStopwatch As Stopwatch = Stopwatch.StartNew()
+            Dim FullPassMilliseconds As Long = 0
+            Dim WorksheetMilliseconds As Long = 0
+            Debug.WriteLine("[Calculation Benchmark] #" & BenchmarkID & " CalculateWSs begin: activeObjects=" & ActiveObjectCount & ", activeWorksheetSlots=" & (ActiveWSCount + 1))
+#End If
+
             If ActiveObjectCount > 1 Then
 
+#If DEBUG Then
+                Dim FullPassStopwatch As Stopwatch = Stopwatch.StartNew()
+#End If
                 CalcFile()
-
+                'A staged pass refreshes a model that already had its initial
+                'recursive calculation, but cannot certify a newly loaded XLSB.
+                DependencySensitiveCalculationCurrent =
+                    HadDependencySensitiveCalculation
+#If DEBUG Then
+                FullPassStopwatch.Stop()
+                FullPassMilliseconds = FullPassStopwatch.ElapsedMilliseconds
+                TotalStopwatch.Stop()
+                Debug.WriteLine("[Calculation Benchmark] #" & BenchmarkID & " CalculateWSs end after staged full pass: total=" & TotalStopwatch.ElapsedMilliseconds & " ms, fullPass=" & FullPassMilliseconds & " ms, no duplicate active-sheet pass")
+#End If
+                Exit Sub
             End If
 
-            If ActiveWSCount = -1 Then Exit Sub
+            If ActiveWSCount = -1 Then
+#If DEBUG Then
+                TotalStopwatch.Stop()
+                Debug.WriteLine("[Calculation Benchmark] #" & BenchmarkID & " CalculateWSs end: total=" & TotalStopwatch.ElapsedMilliseconds & " ms, fullPass=" & FullPassMilliseconds & " ms, activeSheets=0 ms, refresh=0 ms")
+#End If
+                Exit Sub
+            End If
                 Dim CalcedWSsCount As Integer = -1
                 Dim CalcedWSs(-1) As DevExpress.Spreadsheet.Worksheet
 
@@ -153,14 +198,22 @@ Namespace Abovo
 
                             Next
 
+#If DEBUG Then
+                            WorksheetMilliseconds += BenchmarkWorksheet(ws, BenchmarkID)
+#Else
                             ws.Calculate()
+#End If
                             CalcedWSsCount += 1
                             ReDim Preserve CalcedWSs(CalcedWSsCount)
                             CalcedWSs(CalcedWSsCount) = ws
 
                         Else
 
+#If DEBUG Then
+                            WorksheetMilliseconds += BenchmarkWorksheet(ws, BenchmarkID)
+#Else
                             ws.Calculate()
+#End If
                             CalcedWSsCount += 1
                             ReDim Preserve CalcedWSs(CalcedWSsCount)
                             CalcedWSs(CalcedWSsCount) = ws
@@ -176,8 +229,19 @@ NextWS:
 
             WBCalcMinDirty = False
 
+#If DEBUG Then
+            Dim RefreshStopwatch As Stopwatch = Stopwatch.StartNew()
+#End If
             RefreshObjsData()
+#If DEBUG Then
+            RefreshStopwatch.Stop()
+#End If
             RaiseEvent CalculationCompleted(Me, EventArgs.Empty)
+
+#If DEBUG Then
+            TotalStopwatch.Stop()
+            Debug.WriteLine("[Calculation Benchmark] #" & BenchmarkID & " CalculateWSs end: total=" & TotalStopwatch.ElapsedMilliseconds & " ms, fullPass=" & FullPassMilliseconds & " ms, activeSheets=" & WorksheetMilliseconds & " ms, refresh=" & RefreshStopwatch.ElapsedMilliseconds & " ms")
+#End If
 
         End Sub
 
@@ -276,33 +340,110 @@ NextWS:
 
             'If FileManager.BIsSaving Then Exit Sub
 
-            If CalMode = 1 Then ExcelModels(ModelID).WB.Calculate()
-            If CalMode = 2 Then ExcelModels(ModelID).WB.CalculateFull()
-            If CalMode = 3 Then ExcelModels(ModelID).WB.CalculateFullRebuild()
+            'Direct full-calculation callers must not certify the initial XLSB
+            'cache. CalculateWSs restores this marker only if Recursive had
+            'already established it before the ordinary calculation request.
+            DependencySensitiveCalculationCurrent = False
+
+            Dim Workbook As IWorkbook = ExcelModels(ModelID).WB
+
+#If DEBUG Then
+            Dim BenchmarkID As Integer = Interlocked.Increment(BenchmarkSequence)
+            Dim TotalStopwatch As Stopwatch = Stopwatch.StartNew()
+            Dim WorkbookStopwatch As Stopwatch = Stopwatch.StartNew()
+            Dim SkipTransactionalDB As Boolean =
+                ExcelModels(ModelID).WBCalculationService IsNot Nothing AndAlso
+                ExcelModels(ModelID).WBCalculationService.DontCalcTDBS
+            Debug.WriteLine("[Calculation Benchmark] #" & BenchmarkID & " CalcFile begin: mode=" & CalMode & ", engine=" & Workbook.Options.CalculationEngineType.ToString() & ", multiThreading=" & Workbook.DocumentSettings.Calculation.EnableMultiThreading & ", threads=" & Workbook.DocumentSettings.Calculation.ThreadCount & ", processorCount=" & Environment.ProcessorCount & ", customService=" & (ExcelModels(ModelID).WBCalculationService IsNot Nothing) & ", skipTransactionalDB=" & SkipTransactionalDB)
+#End If
+
+            If CalMode = 1 Then Workbook.Calculate()
+            If CalMode = 2 Then Workbook.CalculateFull()
+            If CalMode = 3 Then Workbook.CalculateFullRebuild()
+
+#If DEBUG Then
+            WorkbookStopwatch.Stop()
+            Dim DeferredStopwatch As Stopwatch = Stopwatch.StartNew()
+#End If
+
+            Dim CalculationService As CustomCalcEngine =
+                ExcelModels(ModelID).WBCalculationService
+            If CalculationService IsNot Nothing AndAlso
+               CalculationService.DontCalcTDBS AndAlso
+               Workbook.Options.CalculationEngineType = CalculationEngineType.ChainBased Then
+                CalculationService.CalculateDeferredWorksheets(Workbook)
+            End If
+
+            'A staged pass alone cannot establish valid initial XLSB caches.
+            'Only CalculateDependencySensitiveFile can set the initial marker.
+
+#If DEBUG Then
+            DeferredStopwatch.Stop()
+            Dim RefreshStopwatch As Stopwatch = Stopwatch.StartNew()
+#End If
 
             WBCalcDirty = False
             WBCalcMinDirty = False
             RefreshObjsData()
+#If DEBUG Then
+            RefreshStopwatch.Stop()
+#End If
             RaiseEvent CalculationCompleted(Me, EventArgs.Empty)
+
+#If DEBUG Then
+            TotalStopwatch.Stop()
+            Debug.WriteLine("[Calculation Benchmark] #" & BenchmarkID & " CalcFile end: total=" & TotalStopwatch.ElapsedMilliseconds & " ms, ordinarySheets=" & WorkbookStopwatch.ElapsedMilliseconds & " ms, deferredSheets=" & DeferredStopwatch.ElapsedMilliseconds & " ms, refreshAndEvents=" & RefreshStopwatch.ElapsedMilliseconds & " ms")
+#End If
 
         End Sub
 
-        Public Sub CalculateDependencySensitiveFile()
+#If DEBUG Then
+        Private Function BenchmarkWorksheet(ByVal Worksheet As DevExpress.Spreadsheet.Worksheet,
+                                            ByVal BenchmarkID As Integer) As Long
+            Dim WorksheetStopwatch As Stopwatch = Stopwatch.StartNew()
+            Worksheet.Calculate()
+            WorksheetStopwatch.Stop()
+            Debug.WriteLine("[Calculation Benchmark] #" & BenchmarkID & " active worksheet '" & Worksheet.Name & "': " & WorksheetStopwatch.ElapsedMilliseconds & " ms")
+            Return WorksheetStopwatch.ElapsedMilliseconds
+        End Function
+#End If
+
+        Public Sub CalculateDependencySensitiveFile(Optional ByVal Reason As String = "Unspecified",
+                                                    Optional ByVal Force As Boolean = False)
 
             Dim Workbook As IWorkbook = ExcelModels(ModelID).WB
             Dim PreviousEngine As CalculationEngineType = Workbook.Options.CalculationEngineType
 
+            If Not Force AndAlso DependencySensitiveCalculationCurrent Then
+#If DEBUG Then
+                Debug.WriteLine("[Calculation Benchmark] dependency-sensitive calculation skipped: reason=" & Reason & ", cachedResultCurrent=True")
+#End If
+                Exit Sub
+            End If
+
+            DependencySensitiveCalculationCurrent = False
+
+#If DEBUG Then
+            Dim BenchmarkID As Integer = Interlocked.Increment(BenchmarkSequence)
+            Dim TotalStopwatch As Stopwatch = Stopwatch.StartNew()
+            Debug.WriteLine("[Calculation Benchmark] #" & BenchmarkID & " dependency-sensitive calculation begin: reason=" & Reason & ", force=" & Force & ", strategy=Recursive, previousEngine=" & PreviousEngine.ToString() & ", multiThreading=" & Workbook.DocumentSettings.Calculation.EnableMultiThreading & ", threads=" & Workbook.DocumentSettings.Calculation.ThreadCount)
+#End If
+
             Try
-                'A worksheet/range calculation cannot resolve every cross-sheet
-                'dependency in the BP model when an XLSB is loaded with cached
-                'results. Use the recursive engine for this calculation only and
-                'always restore the model's normal engine afterwards.
+                'A staged ChainBased pass still leaves stale XLSB cached values
+                'on first analyser binding.  The recursive whole-workbook pass
+                'is required here; later bindings can reuse this result.
                 Workbook.Options.CalculationEngineType = CalculationEngineType.Recursive
                 Workbook.Calculate()
                 WBCalcDirty = False
                 WBCalcMinDirty = False
+                DependencySensitiveCalculationCurrent = True
             Finally
                 Workbook.Options.CalculationEngineType = PreviousEngine
+#If DEBUG Then
+                TotalStopwatch.Stop()
+                Debug.WriteLine("[Calculation Benchmark] #" & BenchmarkID & " dependency-sensitive calculation end: reason=" & Reason & ", total=" & TotalStopwatch.ElapsedMilliseconds & " ms")
+#End If
             End Try
 
         End Sub

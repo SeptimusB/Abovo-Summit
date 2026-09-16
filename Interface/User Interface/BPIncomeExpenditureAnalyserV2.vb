@@ -435,7 +435,9 @@ Public Class BPIncomeExpenditureAnalyserV2
             'Live and comparison records contain cross-sheet formulas. A
             'range/worksheet calculation does not resolve their dependencies
             'when the XLSB was loaded with stale cached results.
-            ExcelModels(ModelID).WBCalcEngine.CalculateDependencySensitiveFile()
+            ExcelModels(ModelID).WBCalcEngine.CalculateDependencySensitiveFile(
+                "Analysis V2 " & CurrentDataSourceMode.ToString() & " datasource",
+                CurrentDataSourceMode = AnalyserDataSourceMode.Comparison)
         End If
 
         Dim RDSOptions As New RangeDataSourceOptions With {

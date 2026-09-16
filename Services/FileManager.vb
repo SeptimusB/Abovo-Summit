@@ -156,6 +156,8 @@ Namespace Abovo
         End Sub
         Public Class ExcelModel
 
+            Private Const UseCustomCalculationService As Boolean = True
+
             Public ModelSpreadsheetControl As SpreadsheetControl
             Public SSViewer As MainModelViewer
             Public WB As IWorkbook
@@ -332,14 +334,20 @@ Namespace Abovo
                                 "The workbook is missing the 'Transactional DB' worksheet.")
                         End If
 
-                        WBCalculationService = New CustomCalcEngine(ModelID) With {
-                            .TransDBSheetID = TransactionSheetID,
-                            .DontCalcTDBS = True
-                        }
+                        If UseCustomCalculationService Then
+                            WBCalculationService = New CustomCalcEngine(ModelID) With {
+                                .TransDBSheetID = TransactionSheetID,
+                                .ComparisonSheetID = GetSheetID(ModelID, "TDB Comparison"),
+                                .CheckSheetID = GetSheetID(ModelID, "Check Sheet"),
+                                .DontCalcTDBS = True
+                            }
 
-                        WB.AddService(
-                            GetType(DevExpress.XtraSpreadsheet.Services.ICustomCalculationService),
-                            WBCalculationService)
+                            WB.AddService(
+                                GetType(DevExpress.XtraSpreadsheet.Services.ICustomCalculationService),
+                                WBCalculationService)
+                        Else
+                            WBCalculationService = Nothing
+                        End If
 
                         TransDBM = New TransDBManager(ModelID)
                         TransDBSync = New TransactionalDBSynchroniser(ModelID)

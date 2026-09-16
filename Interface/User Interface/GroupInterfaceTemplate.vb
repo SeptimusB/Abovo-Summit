@@ -208,7 +208,9 @@ Public Class GroupInterfaceTemplate
         AccordionControlElementDev.Visible = HasDevelopmentSummary
 
         Debug.WriteLine("GroupInterfaceTemplate sidebar refresh started. ModelID=" &
-                        MyModelID.ToString() & ", reason=" & refreshReason)
+                        MyModelID.ToString() & ", GSID=" & GSID.ToString() &
+                        ", instance=" & System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Me).ToString() &
+                        ", reason=" & refreshReason)
 
         'Navigation, interface construction, calculation-completed notifications and
         'history changes refresh the displayed snapshot only.  A full workbook
@@ -279,7 +281,9 @@ Public Class GroupInterfaceTemplate
         If SidebarMessageView IsNot Nothing Then SidebarMessageView.RefreshMessages()
         DockPanelDetail.Text = "Summary — updated " & Now().ToString("HH:mm:ss")
         Debug.WriteLine("GroupInterfaceTemplate sidebar refresh completed. ModelID=" &
-                        MyModelID.ToString() & ", reason=" & refreshReason)
+                        MyModelID.ToString() & ", GSID=" & GSID.ToString() &
+                        ", instance=" & System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Me).ToString() &
+                        ", reason=" & refreshReason)
 
     End Sub
 
@@ -338,6 +342,9 @@ Public Class GroupInterfaceTemplate
     End Function
 
     Private Sub InitialiseRightSidebar()
+        'Keep the auto-hide tab available, but do not make the user wait for
+        'the dock panel to slide closed or open.
+        DockManagerAssumptions.AutoHideSpeed = 10000
         SidebarMessageView = New SystemMessageView(MyModelID) With {.Dock = DockStyle.Fill}
         AccordionContentContainerSystemMessages.Controls.Add(SidebarMessageView)
 

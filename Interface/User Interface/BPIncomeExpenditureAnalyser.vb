@@ -367,7 +367,8 @@ Public Class BPIncomeExpenditureAnalyser
         'The workbook can contain valid Transactional DB formulas whose cached
         'results still reflect the unpopulated master. Those formulas depend on
         'many other worksheets, so a range/worksheet calculation is insufficient.
-        ExcelModels(ModelID).WBCalcEngine.CalculateDependencySensitiveFile()
+        ExcelModels(ModelID).WBCalcEngine.CalculateDependencySensitiveFile(
+            "Analysis V1 datasource")
 
         Dim RDSOptions As New RangeDataSourceOptions With {
             .UseFirstRowAsHeader = True,
