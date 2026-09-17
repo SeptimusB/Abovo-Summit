@@ -393,7 +393,7 @@ Public Class BPIncomeExpenditureAnalyserV2
 
 #Region "Form initialisation, non-grid events and data"
 
-    Sub Form_InitilisationProcess_SetDataSource()
+    Sub Form_InitilisationProcess_SetDataSource(Optional ByVal calculateDependencies As Boolean = True)
 
         Dim worksheetName As String = TransactionalDBSnapshotManager.SourceWorksheetName
         Dim rangeName As String = TransactionalDBSnapshotManager.SourceRangeName
@@ -430,8 +430,9 @@ Public Class BPIncomeExpenditureAnalyserV2
         End If
 
         TransDBDataRange = definedName.Range
-        If CurrentDataSourceMode = AnalyserDataSourceMode.Live OrElse
-           CurrentDataSourceMode = AnalyserDataSourceMode.Comparison Then
+        If calculateDependencies AndAlso
+           (CurrentDataSourceMode = AnalyserDataSourceMode.Live OrElse
+            CurrentDataSourceMode = AnalyserDataSourceMode.Comparison) Then
             'Live and comparison records contain cross-sheet formulas. A
             'range/worksheet calculation does not resolve their dependencies
             'when the XLSB was loaded with stale cached results.
@@ -481,7 +482,7 @@ Public Class BPIncomeExpenditureAnalyserV2
         DisconnectRDS()
     End Sub
 
-    Public Sub ReconnectRDS()
+    Public Sub ReconnectRDS(Optional ByVal calculateDependencies As Boolean = True)
 
         If DSAnalDataRange Is Nothing Then
 
@@ -491,7 +492,7 @@ Public Class BPIncomeExpenditureAnalyserV2
                 HasSnapshots = False
             End If
 
-            Form_InitilisationProcess_SetDataSource()
+            Form_InitilisationProcess_SetDataSource(calculateDependencies)
             WrapCG_SOCI.WrappedCGC.DataSource = DSAnalDataRange
             WrapCG_CF.WrappedCGC.DataSource = DSAnalDataRange
             WrapCG_BS.WrappedCGC.DataSource = DSAnalDataRange
@@ -503,6 +504,9 @@ Public Class BPIncomeExpenditureAnalyserV2
             AmInactiveState = False
             RestoreAnalyserGridState(PendingGridState)
             PendingGridState = Nothing
+            ApplyDescriptionColumnBestFit(WrapCG_SOCI.WrappedGridView)
+            ApplyDescriptionColumnBestFit(WrapCG_CF.WrappedGridView)
+            ApplyDescriptionColumnBestFit(WrapCG_BS.WrappedGridView)
             UpdateDataSourceButtons()
 
         End If
@@ -518,11 +522,14 @@ Public Class BPIncomeExpenditureAnalyserV2
             Return
         End If
 
-        If DSAnalDataRange Is Nothing OrElse AmInactiveState Then Return
+        If DSAnalDataRange Is Nothing OrElse AmInactiveState OrElse
+           CurrentDataSourceMode = AnalyserDataSourceMode.Snapshot Then Return
 
-        WrapCG_SOCI.WrappedCGC.RefreshDataSource()
-        WrapCG_CF.WrappedCGC.RefreshDataSource()
-        WrapCG_BS.WrappedCGC.RefreshDataSource()
+        'The calculation chain was rebuilt before the initial datasource bind.
+        'Ordinary edits now update its dependents incrementally; only the
+        'RangeDataSource needs recreating to pick up changed values and flags.
+        DisconnectRDS()
+        ReconnectRDS(False)
 
     End Sub
 
@@ -1191,16 +1198,40 @@ Public Class BPIncomeExpenditureAnalyserV2
         If descriptionColumn Is Nothing Then Return
 
         view.GridControl.ForceInitialize()
+        Dim previousWidth As Integer = descriptionColumn.Width
         descriptionColumn.BestFit()
 
-        'BestFit runs after binding, grouping and final font formatting. Retain
-        'a little breathing room for custom-drawn totals and expansion glyphs.
+        'BestFit measures data cells, but the visible statement headings and
+        'totals are custom-drawn group rows. Measure their workbook captions as
+        'well so a sparse model cannot collapse the description column.
         Dim fittedWidth As Integer = CInt(Math.Ceiling(descriptionColumn.Width * 1.15R))
-        If view.GridControl.ClientSize.Width > 0 Then
-            fittedWidth = Math.Min(fittedWidth,
-                                   CInt(Math.Ceiling(view.GridControl.ClientSize.Width * 0.45R)))
+        Dim rows As System.Collections.IList =
+            TryCast(view.GridControl.DataSource, System.Collections.IList)
+        If rows IsNot Nothing AndAlso view.GroupedColumns.Count > 0 Then
+            Dim groupFont As Font = If(view.Appearance.GroupRow.Font, view.GridControl.Font)
+            Dim measuredCaptions As New HashSet(Of String)(StringComparer.Ordinal)
+
+            For groupLevel As Integer = 0 To view.GroupedColumns.Count - 1
+                Dim groupColumn As GridColumn = view.GroupedColumns(groupLevel)
+                For rowIndex As Integer = 0 To rows.Count - 1
+                    Dim caption As String = Convert.ToString(
+                        view.GetListSourceRowCellValue(rowIndex, groupColumn),
+                        CultureInfo.CurrentCulture)
+                    If String.IsNullOrWhiteSpace(caption) Then Continue For
+
+                    If IsOrderingField(groupColumn.FieldName) AndAlso caption.Length >= 5 Then
+                        caption = caption.Substring(5)
+                    End If
+                    If Not measuredCaptions.Add(groupLevel.ToString() & ":" & caption) Then Continue For
+
+                    Dim captionWidth As Integer = TextRenderer.MeasureText(
+                        caption & " Total", groupFont).Width + 35 + (groupLevel * 18)
+                    fittedWidth = Math.Max(fittedWidth, captionWidth)
+                Next
+            Next
         End If
-        descriptionColumn.Width = Math.Max(descriptionColumn.Width, fittedWidth)
+
+        descriptionColumn.Width = Math.Max(previousWidth, fittedWidth)
     End Sub
 
 #End Region
@@ -1242,7 +1273,10 @@ Public Class BPIncomeExpenditureAnalyserV2
                     End If
 
                     Dim dummyCount As Integer
-                    If TryGetGroupSummaryInteger(GV, GRC, 1, dummyCount) AndAlso
+                    'A level-0 statement group can contain only heading-only rows.
+                    'Keep it open so those headings remain visible in a blank model.
+                    If GV.GetRowLevel(GRC) > 0 AndAlso
+                       TryGetGroupSummaryInteger(GV, GRC, 1, dummyCount) AndAlso
                        dummyCount = 1 Then
 
                         If GRExpanded Then GV.SetRowExpanded(GRC, False, True)
@@ -1582,7 +1616,7 @@ Public Class BPIncomeExpenditureAnalyserV2
 
         End If
 
-        If TryGetGroupSummaryInteger(
+        If RLev > 0 AndAlso TryGetGroupSummaryInteger(
             sender, e.RowHandle, 1, summaryValue) Then
 
             If summaryValue > 0 Then
@@ -1983,7 +2017,7 @@ Public Class BPIncomeExpenditureAnalyserV2
 
         Dim childRecordCount2 As Integer
 
-        If TryGetGroupSummaryInteger(
+        If RLev > 0 AndAlso TryGetGroupSummaryInteger(
             sender, e.RowHandle, 1, childRecordCount2) AndAlso
            childRecordCount2 = 1 Then
 

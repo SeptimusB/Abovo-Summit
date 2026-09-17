@@ -121,14 +121,14 @@ Namespace Abovo
             HideColumn("SeverityText")
             HideColumn("Location")
             HideColumn("UserName")
-            SetColumn("EventID", "ID", 50, 0)
+            HideColumn("EventID")
             Dim timeColumn = MessageGridView.Columns.ColumnByFieldName("TimeStamp")
             If timeColumn IsNot Nothing Then
                 timeColumn.Caption = "Time"
                 timeColumn.DisplayFormat.FormatType = FormatType.DateTime
                 timeColumn.DisplayFormat.FormatString = "HH:mm:ss"
                 timeColumn.Width = 75
-                timeColumn.VisibleIndex = 1
+                timeColumn.VisibleIndex = 0
                 timeColumn.SortOrder = DevExpress.Data.ColumnSortOrder.Descending
                 timeColumn.SortIndex = 0
             End If
@@ -137,9 +137,9 @@ Namespace Abovo
                 eventColumn.SortOrder = DevExpress.Data.ColumnSortOrder.Descending
                 eventColumn.SortIndex = 1
             End If
-            SetColumn("Severity", "Severity", 85, 2)
-            SetColumn("Message", "Message", 300, 3)
-            SetColumn("Source", "Source", 120, 4)
+            SetColumn("Severity", "Severity", 85, 1)
+            SetColumn("Message", "Message", 300, 2)
+            SetColumn("Source", "Source", 120, 3)
         End Sub
 
         Private Sub HideColumn(ByVal fieldName As String)

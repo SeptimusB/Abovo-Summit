@@ -204,3 +204,9 @@ Future workbook, calculation-engine, Transactional DB, custom-function, structur
 - `Library/Contract_XLSB_Audit_2026-08-24.pdf`
 - `Library/Contract_XLSB_Audit_2026-08-24.md`
 - `Library/Contract_XLSB_Audit_Evidence_2026-08-24.json`
+
+## Survey Input interface mapping - 16 September 2026
+
+Read-only inspection of the current Demo master confirmed five 40-year stock-condition blocks on `Stock Condition Inputs`. `Rep_SCond_01` through `Rep_SCond_05` each cover 40 rows by 13 cost-category columns; `StockCondCats` is the horizontal 13-category header range. The year columns are `VertYears` (`A9:B48`) and `A55:B94`, `A101:B140`, `A147:B186`, `A193:B232` respectively. Each block's calculated total is the immediately following Q column. Archetype labels are in `A6`, `A52`, `A98`, `A144`, and `A190`.
+
+The original Survey Input `MergeDownAndPivot` definition derived its dataset row count from the two-column `VertYears` range, producing an incorrect two-row interface. The corrected `Structure.xml` uses `MergeAcross` and one workbook-backed section per block. XML parsing and Debug/Release builds passed; visual interaction, edits, save/reopen, and Excel/VBA round-trip remain manual checks. The XLSB was not modified.

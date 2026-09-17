@@ -63,6 +63,8 @@ Public Class GroupInterfaceTemplate
     Private SidebarHistoryElement As AccordionControlElement
     Private SidebarRefreshTimer As Timer
     Private SidebarEventsAttached As Boolean
+    Private SidebarHiddenReady As Boolean
+    Private SidebarHideTransition As Boolean
     Public Sub New()
 
         ' This call is required by the designer.
@@ -381,6 +383,8 @@ Public Class GroupInterfaceTemplate
         SidebarRefreshTimer = New Timer With {.Interval = 400}
         AddHandler SidebarRefreshTimer.Tick, AddressOf SidebarRefreshTimer_Tick
         AddHandler DockPanelDetail.CustomButtonClick, AddressOf DockPanelDetail_CustomButtonClick
+        AddHandler DockPanelDetail.Collapsed, AddressOf DockPanelDetail_Collapsed
+        AddHandler DockPanelDetail.Expanded, AddressOf DockPanelDetail_Expanded
 
         If ExcelModels(MyModelID).WBCalcEngine IsNot Nothing Then
             AddHandler ExcelModels(MyModelID).WBCalcEngine.CalculationCompleted,
@@ -422,19 +426,46 @@ Public Class GroupInterfaceTemplate
         RefreshSummaryData("Automatic")
     End Sub
 
+    Private Sub DockPanelDetail_Collapsed(ByVal sender As Object,
+                                          ByVal e As DevExpress.XtraBars.Docking.DockPanelEventArgs)
+        SidebarHiddenReady = True
+    End Sub
+
+    Private Sub DockPanelDetail_Expanded(ByVal sender As Object,
+                                         ByVal e As DevExpress.XtraBars.Docking.DockPanelEventArgs)
+        If Not SidebarHiddenReady OrElse SidebarHideTransition OrElse
+           IsDisposed OrElse Disposing Then Return
+        SidebarHiddenReady = False
+        BeginInvoke(New MethodInvoker(
+            Sub()
+                If IsDisposed OrElse Disposing Then Return
+                If DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide Then
+                    DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.Visible
+                End If
+            End Sub))
+    End Sub
+
     Private Sub DockPanelDetail_CustomButtonClick(
         ByVal sender As Object,
         ByVal e As DevExpress.XtraBars.Docking2010.ButtonEventArgs)
 
         If DockPanelDetail.CustomHeaderButtons.Count > 1 AndAlso
            Object.ReferenceEquals(e.Button, DockPanelDetail.CustomHeaderButtons(1)) Then
+            SidebarHideTransition = True
+            SidebarHiddenReady = False
             DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide
             BeginInvoke(New MethodInvoker(
                 Sub()
                     If IsDisposed OrElse Disposing Then Return
-                    If DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide Then
-                        DockPanelDetail.HideSliding()
-                    End If
+                    Try
+                        If DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide Then
+                            DockPanelDetail.HideSliding()
+                        End If
+                    Finally
+                        SidebarHideTransition = False
+                        SidebarHiddenReady =
+                            DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide
+                    End Try
                 End Sub))
             Return
         End If
@@ -466,10 +497,9 @@ Public Class GroupInterfaceTemplate
     End Function
 
     Private Function CreateSidebarHtml(ByVal body As String) As String
-        Dim fontSize As Integer = Math.Max(8, CInt(ScaleUnits * 0.85F))
         Return "<!doctype html><html><head><meta charset='utf-8'><style>" &
-            "body{font-family:Segoe UI,Arial,sans-serif;font-size:" & fontSize.ToString() &
-            "px;color:#333;margin:6px;background:#fff;line-height:1.15}h2{color:#075da8;font-size:1.15em;margin:0 0 6px}" &
+            "body{font-family:Segoe UI,Arial,sans-serif;font-size:8.5pt;color:#333;margin:6px;background:#fff;line-height:1.15}" &
+            "h2{color:#075da8;font-size:1.15em;margin:0 0 6px}" &
             "a{color:#075da8}p{margin:3px 0}dl{display:grid;grid-template-columns:minmax(85px,35%) 1fr;gap:3px 6px;margin:4px 0}" &
             "dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}</style></head><body>" & body & "</body></html>"
     End Function
@@ -489,6 +519,8 @@ Public Class GroupInterfaceTemplate
                     AddressOf WorkbookHistoryChanged
             End If
         End If
+        RemoveHandler DockPanelDetail.Collapsed, AddressOf DockPanelDetail_Collapsed
+        RemoveHandler DockPanelDetail.Expanded, AddressOf DockPanelDetail_Expanded
         SidebarEventsAttached = False
         If SidebarRefreshTimer IsNot Nothing Then
             SidebarRefreshTimer.Stop()

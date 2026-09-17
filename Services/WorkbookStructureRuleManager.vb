@@ -1133,6 +1133,9 @@ Namespace Abovo
             Dim MutationStarted As Boolean = False
             Dim BulkMutationGuardStarted As Boolean = False
             Dim PreviousCalculationMode As WorkbookCalculationMode = WB.Options.CalculationMode
+            Dim benchmark As System.Diagnostics.Stopwatch =
+                System.Diagnostics.Stopwatch.StartNew()
+            Dim mutationMs As Long = 0
 
             Try
 
@@ -1235,6 +1238,7 @@ Namespace Abovo
 
             End Try
 
+            mutationMs = benchmark.ElapsedMilliseconds
             If Not Result.BError Then
 
                 Dim PostActionResult As AbovoTransaction =
@@ -1255,6 +1259,15 @@ Namespace Abovo
             End If
 
             If MutationStarted Then ExcelModels(ModelID).IsDirty = True
+            System.Diagnostics.Trace.WriteLine(
+                "[Population Benchmark] Structure insert: model=" & ModelID.ToString() &
+                ", rule=" & Rule.RuleID &
+                ", records=" & RecordCount.ToString() &
+                ", workbookMutation=" & mutationMs.ToString() & " ms" &
+                ", postActions=" &
+                (benchmark.ElapsedMilliseconds - mutationMs).ToString() & " ms" &
+                ", total=" & benchmark.ElapsedMilliseconds.ToString() & " ms" &
+                ", outcome=" & If(Result.BError, "failed", "ok"))
             Return Result
 
         End Function
@@ -1618,6 +1631,8 @@ Namespace Abovo
                                         ByVal ChangedWorksheets As IEnumerable(Of String)) As AbovoTransaction
 
             Dim Result As New AbovoTransaction With {.BError = False}
+            Dim benchmark As System.Diagnostics.Stopwatch =
+                System.Diagnostics.Stopwatch.StartNew()
             'Do TransactionDB once after all linked workbook sheets are structurally
             'consistent.  This avoids synchronising an intermediate half-updated state.
             If Not String.IsNullOrWhiteSpace(Rule.TransactionDBSyncNamedRange) Then
@@ -1648,6 +1663,7 @@ Namespace Abovo
 
             End If
 
+            Dim syncMs As Long = benchmark.ElapsedMilliseconds
             'Invalidate every interface section dependent on any linked worksheet.
             'The existing dependency manager will rebuild only visible/current sections
             'and leave hidden/lazy sections dirty until they are needed.
@@ -1662,6 +1678,15 @@ Namespace Abovo
 
             End If
 
+            System.Diagnostics.Trace.WriteLine(
+                "[Population Benchmark] Structure post-actions: model=" &
+                ModelID.ToString() &
+                ", rule=" & Rule.RuleID &
+                ", tdbSync=" & syncMs.ToString() & " ms" &
+                ", dependencies=" &
+                (benchmark.ElapsedMilliseconds - syncMs).ToString() & " ms" &
+                ", total=" & benchmark.ElapsedMilliseconds.ToString() & " ms" &
+                ", outcome=" & If(Result.BError, "failed", "ok"))
             Return Result
 
         End Function

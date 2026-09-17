@@ -21,7 +21,7 @@ Imports DevExpress.XtraSpreadsheet.Forms
 Public Class FormMainScreen
 
 #If DEBUG Then
-    Private Const DebugAutoOpenModelFileName As String = "Demo BP v26_0001.xlsb"
+    Private Const DebugAutoOpenModelPath As String = "C:\Sandbox\BP v26_0001 - New Blank.xlsb"
 #End If
 
     Dim rs As New Resizer
@@ -204,23 +204,9 @@ Public Class FormMainScreen
     End Sub
 #If DEBUG Then
     Private Shared Function ResolveDebugAutoOpenModelPath() As String
-
-        Dim SearchDirectory As New IO.DirectoryInfo(Application.StartupPath)
-
-        While SearchDirectory IsNot Nothing
-            Dim CandidatePath As String = IO.Path.Combine(
-                SearchDirectory.FullName,
-                "Library",
-                DebugAutoOpenModelFileName)
-
-            If IO.File.Exists(CandidatePath) Then
-                Return CandidatePath
-            End If
-
-            SearchDirectory = SearchDirectory.Parent
-        End While
-
-        Return String.Empty
+        Return If(IO.File.Exists(DebugAutoOpenModelPath),
+                  DebugAutoOpenModelPath,
+                  String.Empty)
 
     End Function
 #End If

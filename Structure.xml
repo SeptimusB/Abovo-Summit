@@ -3374,26 +3374,26 @@
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Repairs &amp; Maintenance</GroupName>
-      <CSInterfaceSection Name="Business Plan Stocktypes">
-        <ISName>Business Plan Stock Types</ISName>
+      <CSInterfaceSection Name="All Stock">
+        <ISName>All Stock</ISName>
         <ISLABEL>TRUE</ISLABEL>
         <ISLABELSource>A6</ISLABELSource>
         <ISLABELPreText/>
         <ISLABELPostText/>
         <ISDatasource>
-          <ISDName>Survey Input </ISDName>
+          <ISDName>Survey Input - All Stock</ISDName>
           <ISDID>0</ISDID>
           <DSSource>NR</DSSource>
           <SourceDataFormat>Rows</SourceDataFormat>
-          <ColsExpandBy>NR</ColsExpandBy>
+          <ColsExpandBy>None</ColsExpandBy>
           <RO>FALSE</RO>
           <RowsExpandBy>None</RowsExpandBy>
-          <DSType>MergeDownAndPivot</DSType>
+          <DSType>MergeAcross</DSType>
           <AddColumnTotal>TRUE</AddColumnTotal>
           <AddRowTotal>TRUE</AddRowTotal>
           <MergeSources>Down</MergeSources>
           <MergedHeader>False</MergedHeader>
-          <Pivot>TRUE</Pivot>
+          <Pivot>FALSE</Pivot>
           <ExpandsBy>NONE</ExpandsBy>
           <CellRangeDataSource>
             <Worksheet>Stock Condition Inputs</Worksheet>
@@ -3418,19 +3418,14 @@
             <NRDSName>Rep_SCond_01</NRDSName>
             <PositID>1</PositID>
             <DataFieldDefinition>
-              <FieldName>Cost NONE</FieldName>
+              <FieldName>Cost</FieldName>
               <DataFormat>I</DataFormat>
               <ShowSummary>SUM</ShowSummary>
               <RepeatsByNR>TRUE</RepeatsByNR>
               <RepeatingNR>StockCondCats</RepeatingNR>
               <RepeatingHeaderText>Category Cost (£'000)</RepeatingHeaderText>
               <EditNR>NRRI</EditNR>
-              <TipText>
-                For each stock type you can add a percentage of rent that will be lost each year due to void properties.
-                Each entry is from a year, so if you assume voids are 2%  from year 1 and then 4% from year 3 then you need to enter "3" as the year and 4% in the entry box. Voids would continue run at 4% until another change is added in later years.
-                Different increase / decrease rates can be used for each different stock type, but where there are multiple year changes, please ensure all boxes are completed with the required percentage.
-                Entering a year in the bottom box will prompt an option to add more rows.
-              </TipText>
+              <TipText>Enter the annual stock condition works cost for this category at year-one prices. The categories are defined on Repairs &amp; Maint. Assumptions.</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
           <CellRangeDataSource>
@@ -3444,7 +3439,7 @@
             <DataFieldDefinition>
               <IsColCalculated>TRUE</IsColCalculated>
               <RO>TRUE</RO>
-              <FieldName>Total vblf (£,000)</FieldName>
+              <FieldName>Total (£'000)</FieldName>
               <DataFormat>I</DataFormat>
             </DataFieldDefinition>
           </CellRangeDataSource>
@@ -3455,6 +3450,294 @@
           <DataSource>0</DataSource>
         </IElement>
 
+      </CSInterfaceSection>
+      <CSInterfaceSection Name="Archetype 2">
+        <ISName>Archetype 2</ISName>
+        <ISLABEL>TRUE</ISLABEL>
+        <ISLABELSource>A52</ISLABELSource>
+        <ISLABELPreText>2: </ISLABELPreText>
+        <ISDatasource>
+          <ISDName>Survey Input - Archetype 2</ISDName>
+          <ISDID>0</ISDID>
+          <DSSource>NR</DSSource>
+          <SourceDataFormat>Rows</SourceDataFormat>
+          <ColsExpandBy>None</ColsExpandBy>
+          <RO>FALSE</RO>
+          <RowsExpandBy>None</RowsExpandBy>
+          <DSType>MergeAcross</DSType>
+          <AddColumnTotal>TRUE</AddColumnTotal>
+          <AddRowTotal>TRUE</AddRowTotal>
+          <MergeSources>Down</MergeSources>
+          <MergedHeader>False</MergedHeader>
+          <Pivot>FALSE</Pivot>
+          <ExpandsBy>NONE</ExpandsBy>
+          <CellRangeDataSource>
+            <Worksheet>Stock Condition Inputs</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>A55:B94</DataRange>
+            <PositID>3</PositID>
+            <DataFieldDefinition>
+              <RO>TRUE</RO>
+              <FieldName>BP Year</FieldName>
+              <DataFormat>I</DataFormat>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <RO>TRUE</RO>
+              <FieldName>Year</FieldName>
+              <DataFormat>S</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Stock Condition Inputs</Worksheet>
+            <NRDSName>Rep_SCond_02</NRDSName>
+            <PositID>1</PositID>
+            <DataFieldDefinition>
+              <FieldName>Cost</FieldName>
+              <DataFormat>I</DataFormat>
+              <ShowSummary>SUM</ShowSummary>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>StockCondCats</RepeatingNR>
+              <RepeatingHeaderText>Category Cost (£'000)</RepeatingHeaderText>
+              <EditNR>NRRI</EditNR>
+              <TipText>Enter the annual stock condition works cost for this category at year-one prices. The categories are defined on Repairs &amp; Maint. Assumptions.</TipText>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Stock Condition Inputs</Worksheet>
+            <NRDSName>Rep_SCond_02</NRDSName>
+            <IsCalculated>TRUE</IsCalculated>
+            <IsOffSet>TRUE</IsOffSet>
+            <OffSetNR>Rep_SCond_02</OffSetNR>
+            <OffSetBy>C1</OffSetBy>
+            <PositID>1</PositID>
+            <DataFieldDefinition>
+              <IsColCalculated>TRUE</IsColCalculated>
+              <RO>TRUE</RO>
+              <FieldName>Total (£'000)</FieldName>
+              <DataFormat>I</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>Grid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+      <CSInterfaceSection Name="Archetype 3">
+        <ISName>Archetype 3</ISName>
+        <ISLABEL>TRUE</ISLABEL>
+        <ISLABELSource>A98</ISLABELSource>
+        <ISLABELPreText>3: </ISLABELPreText>
+        <ISDatasource>
+          <ISDName>Survey Input - Archetype 3</ISDName>
+          <ISDID>0</ISDID>
+          <DSSource>NR</DSSource>
+          <SourceDataFormat>Rows</SourceDataFormat>
+          <ColsExpandBy>None</ColsExpandBy>
+          <RO>FALSE</RO>
+          <RowsExpandBy>None</RowsExpandBy>
+          <DSType>MergeAcross</DSType>
+          <AddColumnTotal>TRUE</AddColumnTotal>
+          <AddRowTotal>TRUE</AddRowTotal>
+          <MergeSources>Down</MergeSources>
+          <MergedHeader>False</MergedHeader>
+          <Pivot>FALSE</Pivot>
+          <ExpandsBy>NONE</ExpandsBy>
+          <CellRangeDataSource>
+            <Worksheet>Stock Condition Inputs</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>A101:B140</DataRange>
+            <PositID>3</PositID>
+            <DataFieldDefinition>
+              <RO>TRUE</RO>
+              <FieldName>BP Year</FieldName>
+              <DataFormat>I</DataFormat>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <RO>TRUE</RO>
+              <FieldName>Year</FieldName>
+              <DataFormat>S</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Stock Condition Inputs</Worksheet>
+            <NRDSName>Rep_SCond_03</NRDSName>
+            <PositID>1</PositID>
+            <DataFieldDefinition>
+              <FieldName>Cost</FieldName>
+              <DataFormat>I</DataFormat>
+              <ShowSummary>SUM</ShowSummary>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>StockCondCats</RepeatingNR>
+              <RepeatingHeaderText>Category Cost (£'000)</RepeatingHeaderText>
+              <EditNR>NRRI</EditNR>
+              <TipText>Enter the annual stock condition works cost for this category at year-one prices. The categories are defined on Repairs &amp; Maint. Assumptions.</TipText>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Stock Condition Inputs</Worksheet>
+            <NRDSName>Rep_SCond_03</NRDSName>
+            <IsCalculated>TRUE</IsCalculated>
+            <IsOffSet>TRUE</IsOffSet>
+            <OffSetNR>Rep_SCond_03</OffSetNR>
+            <OffSetBy>C1</OffSetBy>
+            <PositID>1</PositID>
+            <DataFieldDefinition>
+              <IsColCalculated>TRUE</IsColCalculated>
+              <RO>TRUE</RO>
+              <FieldName>Total (£'000)</FieldName>
+              <DataFormat>I</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>Grid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+      <CSInterfaceSection Name="Archetype 4">
+        <ISName>Archetype 4</ISName>
+        <ISLABEL>TRUE</ISLABEL>
+        <ISLABELSource>A144</ISLABELSource>
+        <ISLABELPreText>4: </ISLABELPreText>
+        <ISDatasource>
+          <ISDName>Survey Input - Archetype 4</ISDName>
+          <ISDID>0</ISDID>
+          <DSSource>NR</DSSource>
+          <SourceDataFormat>Rows</SourceDataFormat>
+          <ColsExpandBy>None</ColsExpandBy>
+          <RO>FALSE</RO>
+          <RowsExpandBy>None</RowsExpandBy>
+          <DSType>MergeAcross</DSType>
+          <AddColumnTotal>TRUE</AddColumnTotal>
+          <AddRowTotal>TRUE</AddRowTotal>
+          <MergeSources>Down</MergeSources>
+          <MergedHeader>False</MergedHeader>
+          <Pivot>FALSE</Pivot>
+          <ExpandsBy>NONE</ExpandsBy>
+          <CellRangeDataSource>
+            <Worksheet>Stock Condition Inputs</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>A147:B186</DataRange>
+            <PositID>3</PositID>
+            <DataFieldDefinition>
+              <RO>TRUE</RO>
+              <FieldName>BP Year</FieldName>
+              <DataFormat>I</DataFormat>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <RO>TRUE</RO>
+              <FieldName>Year</FieldName>
+              <DataFormat>S</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Stock Condition Inputs</Worksheet>
+            <NRDSName>Rep_SCond_04</NRDSName>
+            <PositID>1</PositID>
+            <DataFieldDefinition>
+              <FieldName>Cost</FieldName>
+              <DataFormat>I</DataFormat>
+              <ShowSummary>SUM</ShowSummary>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>StockCondCats</RepeatingNR>
+              <RepeatingHeaderText>Category Cost (£'000)</RepeatingHeaderText>
+              <EditNR>NRRI</EditNR>
+              <TipText>Enter the annual stock condition works cost for this category at year-one prices. The categories are defined on Repairs &amp; Maint. Assumptions.</TipText>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Stock Condition Inputs</Worksheet>
+            <NRDSName>Rep_SCond_04</NRDSName>
+            <IsCalculated>TRUE</IsCalculated>
+            <IsOffSet>TRUE</IsOffSet>
+            <OffSetNR>Rep_SCond_04</OffSetNR>
+            <OffSetBy>C1</OffSetBy>
+            <PositID>1</PositID>
+            <DataFieldDefinition>
+              <IsColCalculated>TRUE</IsColCalculated>
+              <RO>TRUE</RO>
+              <FieldName>Total (£'000)</FieldName>
+              <DataFormat>I</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>Grid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
+      </CSInterfaceSection>
+      <CSInterfaceSection Name="Archetype 5">
+        <ISName>Archetype 5</ISName>
+        <ISLABEL>TRUE</ISLABEL>
+        <ISLABELSource>A190</ISLABELSource>
+        <ISLABELPreText>5: </ISLABELPreText>
+        <ISDatasource>
+          <ISDName>Survey Input - Archetype 5</ISDName>
+          <ISDID>0</ISDID>
+          <DSSource>NR</DSSource>
+          <SourceDataFormat>Rows</SourceDataFormat>
+          <ColsExpandBy>None</ColsExpandBy>
+          <RO>FALSE</RO>
+          <RowsExpandBy>None</RowsExpandBy>
+          <DSType>MergeAcross</DSType>
+          <AddColumnTotal>TRUE</AddColumnTotal>
+          <AddRowTotal>TRUE</AddRowTotal>
+          <MergeSources>Down</MergeSources>
+          <MergedHeader>False</MergedHeader>
+          <Pivot>FALSE</Pivot>
+          <ExpandsBy>NONE</ExpandsBy>
+          <CellRangeDataSource>
+            <Worksheet>Stock Condition Inputs</Worksheet>
+            <NRDSName>CR</NRDSName>
+            <DataRange>A193:B232</DataRange>
+            <PositID>3</PositID>
+            <DataFieldDefinition>
+              <RO>TRUE</RO>
+              <FieldName>BP Year</FieldName>
+              <DataFormat>I</DataFormat>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <RO>TRUE</RO>
+              <FieldName>Year</FieldName>
+              <DataFormat>S</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Stock Condition Inputs</Worksheet>
+            <NRDSName>Rep_SCond_05</NRDSName>
+            <PositID>1</PositID>
+            <DataFieldDefinition>
+              <FieldName>Cost</FieldName>
+              <DataFormat>I</DataFormat>
+              <ShowSummary>SUM</ShowSummary>
+              <RepeatsByNR>TRUE</RepeatsByNR>
+              <RepeatingNR>StockCondCats</RepeatingNR>
+              <RepeatingHeaderText>Category Cost (£'000)</RepeatingHeaderText>
+              <EditNR>NRRI</EditNR>
+              <TipText>Enter the annual stock condition works cost for this category at year-one prices. The categories are defined on Repairs &amp; Maint. Assumptions.</TipText>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+          <CellRangeDataSource>
+            <Worksheet>Stock Condition Inputs</Worksheet>
+            <NRDSName>Rep_SCond_05</NRDSName>
+            <IsCalculated>TRUE</IsCalculated>
+            <IsOffSet>TRUE</IsOffSet>
+            <OffSetNR>Rep_SCond_05</OffSetNR>
+            <OffSetBy>C1</OffSetBy>
+            <PositID>1</PositID>
+            <DataFieldDefinition>
+              <IsColCalculated>TRUE</IsColCalculated>
+              <RO>TRUE</RO>
+              <FieldName>Total (£'000)</FieldName>
+              <DataFormat>I</DataFormat>
+            </DataFieldDefinition>
+          </CellRangeDataSource>
+        </ISDatasource>
+        <IElement>
+          <Type>Grid</Type>
+          <DataSource>0</DataSource>
+        </IElement>
       </CSInterfaceSection>
     </ChildStructure>
     <ChildStructure Name="Repairs Rephasing">

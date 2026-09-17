@@ -17,6 +17,15 @@ Namespace Abovo
         End Sub
 
         Public Shared Sub BeginBulkWorkbookMutation(ByVal modelID As Integer)
+            'Structural changes can rewrite formulas and named-range geometry.
+            'The next analyser binding must rebuild the chain before relying on
+            'incremental calculations again.
+            If FileManager.ExcelModels IsNot Nothing AndAlso
+               modelID >= 0 AndAlso modelID < FileManager.ExcelModels.Length AndAlso
+               FileManager.ExcelModels(modelID) IsNot Nothing AndAlso
+               FileManager.ExcelModels(modelID).WBCalcEngine IsNot Nothing Then
+                FileManager.ExcelModels(modelID).WBCalcEngine.InvalidateDependencyGraph()
+            End If
             SyncLock BulkMutationCounts
                 Dim count As Integer = 0
                 BulkMutationCounts.TryGetValue(modelID, count)
@@ -35,6 +44,14 @@ Namespace Abovo
                     BulkMutationCounts(modelID) = count - 1
                 End If
             End SyncLock
+            'A calculation performed inside a structural operation must not
+            'certify the model after later range/formula changes in that operation.
+            If FileManager.ExcelModels IsNot Nothing AndAlso
+               modelID >= 0 AndAlso modelID < FileManager.ExcelModels.Length AndAlso
+               FileManager.ExcelModels(modelID) IsNot Nothing AndAlso
+               FileManager.ExcelModels(modelID).WBCalcEngine IsNot Nothing Then
+                FileManager.ExcelModels(modelID).WBCalcEngine.MarkPotentialWorkbookChange()
+            End If
         End Sub
 
         Public Shared Function IsBulkWorkbookMutationInProgress(ByVal modelID As Integer) As Boolean

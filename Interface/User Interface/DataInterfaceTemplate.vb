@@ -84,7 +84,7 @@ Public Class DataInterfaceTemplate
     Private ActiveWorkbook As IWorkbook
     'InterfaceTag
     Private InterfaceTag As AbovoInterfaceTag
-    Private CalcEngID As Integer
+    Private CalcEngID As Integer = -1
 
     'Private Data Variables
     Private ModelID As Integer
@@ -603,22 +603,92 @@ Public Class DataInterfaceTemplate
 
     Public Shadows Sub Deactivate()
 
-        ExcelModels(ModelID).WBCalcEngine.RemoveActiveObject(CalcEngID)
+        Dim engine As CalcEngine = ExcelModels(ModelID).WBCalcEngine
+        Dim wasActivated As Boolean = AmActivated
+        Dim beforeCount As Integer = engine.ActiveObjectCount
+        engine.RemoveActiveObject(Me)
+        CalcEngID = -1
 
         AmActivated = False
+        If wasActivated Then
+            System.Diagnostics.Trace.WriteLine(
+                "[Navigation Benchmark] DIT deactivate: model=" & ModelID.ToString() &
+                ", CSID=" & CSID.ToString() &
+                ", activeObjects=" & beforeCount.ToString() & "->" &
+                engine.ActiveObjectCount.ToString() &
+                ", activeWorksheets=" & engine.ActiveWorksheetRegistrationCount.ToString())
+        End If
 
     End Sub
     Public Sub Reactivate()
 
-        ExcelModels(ModelID).WBCalcEngine.AddActiveObject(Me)
+        If AmActivated Then Return
+        Dim engine As CalcEngine = ExcelModels(ModelID).WBCalcEngine
+        Dim beforeCount As Integer = engine.ActiveObjectCount
+        Dim timer As System.Diagnostics.Stopwatch = System.Diagnostics.Stopwatch.StartNew()
+        Dim registrationMs As Long = 0
+        Dim calculationMs As Long = 0
+        Dim sectionMs As Long = 0
+        Dim refreshMs As Long = 0
+        Dim stage As String = "registration"
+        Dim succeeded As Boolean = False
+        Dim calculationSkipped As Boolean = False
 
-        ExcelModels(ModelID).WBCalcEngine.CalcFile()
+        Try
+            'A hidden interface may have a stale registration from a prior
+            'activation. Remove by object identity, then retain the new ID.
+            engine.RemoveActiveObject(Me)
+            CalcEngID = engine.AddActiveObject(Me)
+            If ActiveSpreadsheet IsNot Nothing Then
+                engine.AddActiveWorksheet(CalcEngID, ActiveSpreadsheet, False)
+            End If
+            registrationMs = timer.ElapsedMilliseconds
 
-        AmActivated = True
+            stage = "calculation"
+            calculationSkipped = engine.NavigationCalculationCurrent
+            If calculationSkipped Then
+                System.Diagnostics.Trace.WriteLine(
+                    "[Navigation Benchmark] CalcFile skipped: DIT model=" &
+                    ModelID.ToString() & ", CSID=" & CSID.ToString() &
+                    ", generation=" & engine.NavigationCalculationGeneration.ToString())
+            Else
+                engine.CalcFile(1, "DIT model=" & ModelID.ToString() &
+                                ", CSID=" & CSID.ToString())
+            End If
+            calculationMs = timer.ElapsedMilliseconds - registrationMs
 
-        EnsureSectionBuilt(XtraTabControlNewGIT.SelectedTabPageIndex)
-        RefreshData()
-        UpdateTabPage()
+            AmActivated = True
+            stage = "section"
+            EnsureSectionBuilt(XtraTabControlNewGIT.SelectedTabPageIndex)
+            sectionMs = timer.ElapsedMilliseconds - registrationMs - calculationMs
+
+            stage = "refresh"
+            RefreshData()
+            UpdateTabPage()
+            refreshMs = timer.ElapsedMilliseconds - registrationMs - calculationMs - sectionMs
+            succeeded = True
+        Catch
+            engine.RemoveActiveObject(Me)
+            CalcEngID = -1
+            AmActivated = False
+            Throw
+        Finally
+            System.Diagnostics.Trace.WriteLine(
+                "[Navigation Benchmark] DIT reactivate: model=" & ModelID.ToString() &
+                ", CSID=" & CSID.ToString() &
+                ", registration=" & registrationMs.ToString() & " ms" &
+                ", calculation=" & calculationMs.ToString() & " ms" &
+                ", calculationSkipped=" & calculationSkipped.ToString() &
+                ", section=" & sectionMs.ToString() & " ms" &
+                ", refresh=" & refreshMs.ToString() & " ms" &
+                ", total=" & timer.ElapsedMilliseconds.ToString() & " ms" &
+                ", activeObjects=" & beforeCount.ToString() & "->" &
+                engine.ActiveObjectCount.ToString() &
+                ", activeWorksheets=" & engine.ActiveWorksheetRegistrationCount.ToString() &
+                ", objectSlots=" & engine.ActiveObjectSlotCount.ToString() &
+                ", worksheetSlots=" & engine.ActiveWorksheetSlotCount.ToString() &
+                ", outcome=" & If(succeeded, "ok", "failed at " & stage))
+        End Try
 
     End Sub
 
@@ -1016,7 +1086,8 @@ SkipRefresh:
 
             Try
                 If model.WBCalcEngine IsNot Nothing Then
-                    model.WBCalcEngine.RemoveActiveObject(CalcEngID)
+                    model.WBCalcEngine.RemoveActiveObject(Me)
+                    CalcEngID = -1
                 End If
             Catch
                 'Continue with control/data-source disposal.
@@ -12195,6 +12266,11 @@ SectionSelect:
                     End If
 
                     Dim StructureResult As AbovoTransaction = Nothing
+                    Dim actionBenchmark As System.Diagnostics.Stopwatch =
+                        System.Diagnostics.Stopwatch.StartNew()
+                    Dim mutationMs As Long = 0
+                    Dim sectionMs As Long = 0
+                    Dim rulesMs As Long = 0
 
                     Try
 
@@ -12292,6 +12368,7 @@ SectionSelect:
                             StructureResult,
                             "Data Interface",
                             StructuralRuleID)
+                        mutationMs = actionBenchmark.ElapsedMilliseconds
                         If StructureResult IsNot Nothing AndAlso
                            StructureResult.BError Then
 
@@ -12321,6 +12398,7 @@ SectionSelect:
                         Cursor.Current = Cursors.WaitCursor
 
                         RebuildAllSections()
+                        sectionMs = actionBenchmark.ElapsedMilliseconds - mutationMs
 
                         Me.UseWaitCursor = True
                         Me.Cursor = Cursors.WaitCursor
@@ -12328,9 +12406,23 @@ SectionSelect:
 
                         ResizeFonts()
                         UpdateAllRules()
+                        rulesMs =
+                            actionBenchmark.ElapsedMilliseconds - mutationMs - sectionMs
 
                     Finally
 
+                        System.Diagnostics.Trace.WriteLine(
+                            "[Population Benchmark] DIT add-lines: model=" &
+                            ModelID.ToString() &
+                            ", rule=" & StructuralRuleID &
+                            ", adjustment=" & LineAdjustment.ToString() &
+                            ", structuralAction=" & mutationMs.ToString() & " ms" &
+                            ", sectionRebuild=" & sectionMs.ToString() & " ms" &
+                            ", fontsAndRules=" & rulesMs.ToString() & " ms" &
+                            ", total=" & actionBenchmark.ElapsedMilliseconds.ToString() & " ms" &
+                            ", outcome=" &
+                            If(StructureResult Is Nothing, "cancelled",
+                               If(StructureResult.BError, "failed", "ok")))
                         Me.UseWaitCursor = False
                         Me.Cursor = Cursors.Default
                         Cursor.Current = Cursors.Default

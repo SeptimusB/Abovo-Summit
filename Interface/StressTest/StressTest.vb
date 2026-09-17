@@ -5022,6 +5022,12 @@ Public Class StressTest
 
     Private Sub CalculateStressWorkbook(Optional UseRecursiveEngine As Boolean = False)
 
+        'Stress Test writes ranges directly rather than posting every scenario
+        'value through ChangeManager. Never reuse a prior navigation result if
+        'this calculation fails or is interrupted.
+        If ExcelModels(ModelID).WBCalcEngine IsNot Nothing Then
+            ExcelModels(ModelID).WBCalcEngine.MarkPotentialWorkbookChange()
+        End If
         Dim PreviousEngine As DevExpress.Spreadsheet.CalculationEngineType =
             ActiveWorkbook.Options.CalculationEngineType
 
@@ -5152,7 +5158,7 @@ Public Class StressTest
                 ActiveWorkbook.DefinedNames.GetDefinedName("StressLiveInfo").Range,
                 ActiveWorkbook.DefinedNames.GetDefinedName(
                     "S" & ScenarioIndex.ToString() & "Data").Range)
-            ExcelModels(ModelID).IsDirty = True
+            ExcelModels(ModelID).SetDirtyFlag()
             RefreshAllNativeScenarioSelectors()
             RefreshNativePlanner()
             RefreshNativeDashboard()
@@ -5277,6 +5283,9 @@ Public Class StressTest
 
     Private Sub SetWorkbookStressMode(Enabled As Boolean)
 
+        If ExcelModels(ModelID).WBCalcEngine IsNot Nothing Then
+            ExcelModels(ModelID).WBCalcEngine.MarkPotentialWorkbookChange()
+        End If
         ActiveWorkbook.DefinedNames.GetDefinedName("StressTestMode").Range(0, 0).Value =
             CellValue.FromObject(If(Enabled, "Y", "N"))
         ActiveWorkbook.DefinedNames.GetDefinedName("Mode").RefersTo =

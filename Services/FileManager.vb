@@ -237,6 +237,9 @@ Namespace Abovo
             Sub SetDirtyFlag()
 
                 IsDirty = True
+                If WBCalcEngine IsNot Nothing Then
+                    WBCalcEngine.MarkPotentialWorkbookChange()
+                End If
 
             End Sub
             Sub ProcessSheetChange()
@@ -442,7 +445,7 @@ Namespace Abovo
 
                 Cell.Value = Value
 
-                IsDirty = True
+                SetDirtyFlag()
 
                 Return True
 

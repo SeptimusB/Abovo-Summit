@@ -15,7 +15,56 @@ Namespace Abovo
         Private ActiveObjects(-1) As ActiveObject
         Public ActiveObjectCount As Integer = 0
         Private ActiveObjIndex As Integer = -1
-        Private DependencySensitiveCalculationCurrent As Boolean = False
+        Private DependencyGraphPrepared As Boolean = False
+        Private NavigationMutationGeneration As Long = 0
+        Private NavigationCalculatedGeneration As Long = -1
+
+        Public ReadOnly Property NavigationCalculationCurrent As Boolean
+            Get
+                Return System.Threading.Interlocked.Read(NavigationMutationGeneration) =
+                       System.Threading.Interlocked.Read(NavigationCalculatedGeneration)
+            End Get
+        End Property
+
+        Public ReadOnly Property NavigationCalculationGeneration As Long
+            Get
+                Return System.Threading.Interlocked.Read(NavigationMutationGeneration)
+            End Get
+        End Property
+
+        Public Sub MarkPotentialWorkbookChange()
+            System.Threading.Interlocked.Increment(NavigationMutationGeneration)
+        End Sub
+
+        Private Sub MarkNavigationCalculationCurrentIfUnchanged(ByVal requestedGeneration As Long)
+            If Not ModelSafetyManager.IsBulkWorkbookMutationInProgress(ModelID) AndAlso
+               System.Threading.Interlocked.Read(NavigationMutationGeneration) = requestedGeneration Then
+                System.Threading.Interlocked.Exchange(
+                    NavigationCalculatedGeneration, requestedGeneration)
+            End If
+        End Sub
+
+        Public ReadOnly Property ActiveWorksheetRegistrationCount As Integer
+            Get
+                Dim count As Integer = 0
+                For Each worksheet As Worksheet In ActiveWSs
+                    If worksheet IsNot Nothing Then count += 1
+                Next
+                Return count
+            End Get
+        End Property
+
+        Public ReadOnly Property ActiveObjectSlotCount As Integer
+            Get
+                Return ActiveObjects.Length
+            End Get
+        End Property
+
+        Public ReadOnly Property ActiveWorksheetSlotCount As Integer
+            Get
+                Return ActiveWSs.Length
+            End Get
+        End Property
 
 #Region "Calclulation and engine"
         Public ModelID As Integer
@@ -130,22 +179,20 @@ Namespace Abovo
             Next
 
         End Sub
-        Sub CalculateWSs()
+        Sub CalculateWSs(Optional ByVal InvalidateNavigation As Boolean = True,
+                         Optional ByVal MetricContext As String = Nothing)
 
-            'Any ordinary calculation request may follow a workbook edit.  Until
-            'that request completes a full workbook pass, a subsequently-bound
-            'analyser must assume that cross-sheet cached values may be stale.
-            Dim HadDependencySensitiveCalculation As Boolean =
-                DependencySensitiveCalculationCurrent
-            DependencySensitiveCalculationCurrent = False
-
+            'This is also called for edit, undo and redo. A single active
+            'worksheet pass does not certify cross-sheet/deferred results.
+            'Interface registration also calls this method to populate its
+            'initial worksheet, but registration is not a workbook mutation.
+            Dim timer As System.Diagnostics.Stopwatch =
+                If(String.IsNullOrEmpty(MetricContext), Nothing,
+                   System.Diagnostics.Stopwatch.StartNew())
+            If InvalidateNavigation Then MarkPotentialWorkbookChange()
             If ActiveObjectCount > 1 Then
 
-                CalcFile()
-                'A staged pass refreshes a model that already had its initial
-                'recursive calculation, but cannot certify a newly loaded XLSB.
-                DependencySensitiveCalculationCurrent =
-                    HadDependencySensitiveCalculation
+                CalcFile(1, MetricContext)
                 Exit Sub
             End If
 
@@ -187,11 +234,22 @@ NextWS:
 
                 Next
 
+            Dim worksheetMs As Long = If(timer Is Nothing, 0, timer.ElapsedMilliseconds)
 
             WBCalcMinDirty = False
 
             RefreshObjsData()
             RaiseEvent CalculationCompleted(Me, EventArgs.Empty)
+            If timer IsNot Nothing Then
+                System.Diagnostics.Trace.WriteLine(
+                    "[Population Benchmark] CalculateWSs: " & MetricContext &
+                    ", worksheetCalc=" & worksheetMs.ToString() & " ms" &
+                    ", refreshAndEvents=" &
+                    (timer.ElapsedMilliseconds - worksheetMs).ToString() & " ms" &
+                    ", total=" & timer.ElapsedMilliseconds.ToString() & " ms" &
+                    ", activeObjects=" & ActiveObjectCount.ToString() &
+                    ", activeWorksheets=" & ActiveWorksheetRegistrationCount.ToString())
+            End If
 
         End Sub
 
@@ -216,15 +274,23 @@ NextWS:
 
             End If
 
-            'add the object
-            ActiveObjIndex += 1
+            Dim objectIndex As Integer = -1
+            For index As Integer = 0 To ActiveObjIndex
+                If ActiveObjects(index) Is Nothing Then
+                    objectIndex = index
+                    Exit For
+                End If
+            Next
+            If objectIndex = -1 Then
+                ActiveObjIndex += 1
+                ReDim Preserve ActiveObjects(ActiveObjIndex)
+                objectIndex = ActiveObjIndex
+            End If
 
-            ReDim Preserve ActiveObjects(ActiveObjIndex)
-
-            ActiveObjects(ActiveObjIndex) = New ActiveObject(Pusher)
-            ActiveObjects(ActiveObjIndex).ObjectID = ActiveObjIndex
+            ActiveObjects(objectIndex) = New ActiveObject(Pusher)
+            ActiveObjects(objectIndex).ObjectID = objectIndex
             ActiveObjectCount += 1
-            Return ActiveObjIndex
+            Return objectIndex
 
         End Function
 
@@ -234,11 +300,13 @@ NextWS:
 
             If ActiveObjects(ObjectID) IsNot Nothing Then
 
-                For Each tws In ActiveObjects(ObjectID).TaggedWorksheets
-
-                    ActiveWSs(tws.WSID) = Nothing
-
-                Next
+                If ActiveObjects(ObjectID).TaggedWorksheets IsNot Nothing Then
+                    For Each tws In ActiveObjects(ObjectID).TaggedWorksheets
+                        If tws.WSID >= 0 AndAlso tws.WSID < ActiveWSs.Length Then
+                            ActiveWSs(tws.WSID) = Nothing
+                        End If
+                    Next
+                End If
 
                 ActiveObjects(ObjectID) = Nothing
 
@@ -259,7 +327,6 @@ NextWS:
                    Object.ReferenceEquals(activeObject.Obj, pusher) Then
 
                     RemoveActiveObject(objectIndex)
-                    Return
                 End If
             Next
 
@@ -268,16 +335,36 @@ NextWS:
                                            ws As DevExpress.Spreadsheet.Worksheet,
                                            Optional ByVal CalculateNow As Boolean = True) As Integer
 
-            If ActiveObjects(ObjectID) IsNot Nothing Then
+            If ObjectID >= 0 AndAlso ObjectID < ActiveObjects.Length AndAlso
+               ActiveObjects(ObjectID) IsNot Nothing AndAlso ws IsNot Nothing Then
 
-                ActiveWSCount += 1
-                ReDim Preserve ActiveWSs(ActiveWSCount)
-                ActiveWSs(ActiveWSCount) = ws
-                ActiveObjects(ObjectID).AddWorksheet(ws, ActiveWSCount)
+                Dim activeObject As ActiveObject = ActiveObjects(ObjectID)
+                If activeObject.TaggedWorksheets IsNot Nothing Then
+                    For Each taggedWorksheet In activeObject.TaggedWorksheets
+                        If Object.ReferenceEquals(taggedWorksheet.WS, ws) Then
+                            Return taggedWorksheet.WSID
+                        End If
+                    Next
+                End If
 
-                If CalculateNow Then CalculateWSs()
+                Dim worksheetIndex As Integer = -1
+                For index As Integer = 0 To ActiveWSCount
+                    If ActiveWSs(index) Is Nothing Then
+                        worksheetIndex = index
+                        Exit For
+                    End If
+                Next
+                If worksheetIndex = -1 Then
+                    ActiveWSCount += 1
+                    ReDim Preserve ActiveWSs(ActiveWSCount)
+                    worksheetIndex = ActiveWSCount
+                End If
+                ActiveWSs(worksheetIndex) = ws
+                activeObject.AddWorksheet(ws, worksheetIndex)
 
-                Return ActiveWSCount
+                If CalculateNow Then CalculateWSs(False)
+
+                Return worksheetIndex
 
             Else
 
@@ -286,36 +373,72 @@ NextWS:
             End If
 
         End Function
-        Public Sub CalcFile(Optional ByVal CalMode As Byte = 1)
+        Public Sub CalcFile(Optional ByVal CalMode As Byte = 1,
+                            Optional ByVal MetricContext As String = Nothing)
 
             'If FileManager.BIsSaving Then Exit Sub
 
-            'Direct full-calculation callers must not certify the initial XLSB
-            'cache. CalculateWSs restores this marker only if Recursive had
-            'already established it before the ordinary calculation request.
-            DependencySensitiveCalculationCurrent = False
-
             Dim Workbook As IWorkbook = ExcelModels(ModelID).WB
+            Dim timer As System.Diagnostics.Stopwatch =
+                If(String.IsNullOrEmpty(MetricContext), Nothing,
+                   System.Diagnostics.Stopwatch.StartNew())
+            Dim ordinaryMs As Long = 0
+            Dim deferredMs As Long = 0
+            Dim refreshMs As Long = 0
+            Dim stage As String = "workbook"
+            Dim succeeded As Boolean = False
+            Dim requestedGeneration As Long =
+                System.Threading.Interlocked.Read(NavigationMutationGeneration)
 
-            If CalMode = 1 Then Workbook.Calculate()
-            If CalMode = 2 Then Workbook.CalculateFull()
-            If CalMode = 3 Then Workbook.CalculateFullRebuild()
+            Try
+                If CalMode = 1 Then Workbook.Calculate()
+                If CalMode = 2 Then Workbook.CalculateFull()
+                If CalMode = 3 Then Workbook.CalculateFullRebuild()
+                If timer IsNot Nothing Then ordinaryMs = timer.ElapsedMilliseconds
 
-            Dim CalculationService As CustomCalcEngine =
-                ExcelModels(ModelID).WBCalculationService
-            If CalculationService IsNot Nothing AndAlso
-               CalculationService.DontCalcTDBS AndAlso
-               Workbook.Options.CalculationEngineType = CalculationEngineType.ChainBased Then
-                CalculationService.CalculateDeferredWorksheets(Workbook)
-            End If
+                stage = "deferred worksheets"
+                Dim CalculationService As CustomCalcEngine =
+                    ExcelModels(ModelID).WBCalculationService
+                If CalculationService IsNot Nothing AndAlso
+                   CalculationService.DontCalcTDBS AndAlso
+                   Workbook.Options.CalculationEngineType = CalculationEngineType.ChainBased Then
+                    CalculationService.CalculateDeferredWorksheets(Workbook)
+                End If
+                If timer IsNot Nothing Then deferredMs = timer.ElapsedMilliseconds - ordinaryMs
 
-            'A staged pass alone cannot establish valid initial XLSB caches.
-            'Only CalculateDependencySensitiveFile can set the initial marker.
+                stage = "interface refresh"
+                WBCalcDirty = False
+                WBCalcMinDirty = False
+                RefreshObjsData()
+                If timer IsNot Nothing Then
+                    refreshMs = timer.ElapsedMilliseconds - ordinaryMs - deferredMs
+                End If
 
-            WBCalcDirty = False
-            WBCalcMinDirty = False
-            RefreshObjsData()
-            RaiseEvent CalculationCompleted(Me, EventArgs.Empty)
+                stage = "completion events"
+                RaiseEvent CalculationCompleted(Me, EventArgs.Empty)
+                If CalMode >= 1 AndAlso CalMode <= 3 Then
+                    MarkNavigationCalculationCurrentIfUnchanged(requestedGeneration)
+                End If
+                succeeded = True
+            Finally
+                If Not succeeded Then MarkPotentialWorkbookChange()
+                If timer IsNot Nothing Then
+                    Dim benchmarkPrefix As String =
+                        If(MetricContext.StartsWith("DIT ", StringComparison.Ordinal),
+                           "[Navigation Benchmark]", "[Population Benchmark]")
+                    System.Diagnostics.Trace.WriteLine(
+                        benchmarkPrefix & " CalcFile: " & MetricContext &
+                        ", ordinary=" & ordinaryMs.ToString() & " ms" &
+                        ", deferred=" & deferredMs.ToString() & " ms" &
+                        ", interfaces=" & refreshMs.ToString() & " ms" &
+                        ", total=" & timer.ElapsedMilliseconds.ToString() & " ms" &
+                        ", activeObjects=" & ActiveObjectCount.ToString() &
+                        ", activeWorksheets=" & ActiveWorksheetRegistrationCount.ToString() &
+                        ", generation=" & NavigationCalculationGeneration.ToString() &
+                        ", navigationCurrent=" & NavigationCalculationCurrent.ToString() &
+                        ", outcome=" & If(succeeded, "ok", "failed at " & stage))
+                End If
+            End Try
 
         End Sub
 
@@ -323,27 +446,63 @@ NextWS:
                                                     Optional ByVal Force As Boolean = False)
 
             Dim Workbook As IWorkbook = ExcelModels(ModelID).WB
-            Dim PreviousEngine As CalculationEngineType = Workbook.Options.CalculationEngineType
-
-            If Not Force AndAlso DependencySensitiveCalculationCurrent Then
-                Exit Sub
-            End If
-
-            DependencySensitiveCalculationCurrent = False
-
-            Try
-                'A staged ChainBased pass still leaves stale XLSB cached values
-                'on first analyser binding.  The recursive whole-workbook pass
-                'is required here; later bindings can reuse this result.
-                Workbook.Options.CalculationEngineType = CalculationEngineType.Recursive
+            Dim requestedGeneration As Long =
+                System.Threading.Interlocked.Read(NavigationMutationGeneration)
+            If Not Force AndAlso DependencyGraphPrepared Then
+                'The analyser may have been hidden while a single DIT worksheet
+                'was calculated. Bring all dirty dependencies and the deferred
+                'Transactional DB sheets current before binding it again.
                 Workbook.Calculate()
+                Dim DeferredService As CustomCalcEngine =
+                    ExcelModels(ModelID).WBCalculationService
+                If DeferredService IsNot Nothing AndAlso
+                   DeferredService.DontCalcTDBS AndAlso
+                   Workbook.Options.CalculationEngineType = CalculationEngineType.ChainBased Then
+                    DeferredService.CalculateDeferredWorksheets(Workbook)
+                End If
                 WBCalcDirty = False
                 WBCalcMinDirty = False
-                DependencySensitiveCalculationCurrent = True
+                MarkNavigationCalculationCurrentIfUnchanged(requestedGeneration)
+                Return
+            End If
+
+            Dim PreviousEngine As CalculationEngineType = Workbook.Options.CalculationEngineType
+            Dim CalculationService As CustomCalcEngine =
+                ExcelModels(ModelID).WBCalculationService
+            Dim PreviousSkipTransactionalDB As Boolean =
+                If(CalculationService Is Nothing, False, CalculationService.DontCalcTDBS)
+
+            DependencyGraphPrepared = False
+
+            Try
+                'The imported XLSB needs its calculation chain rebuilt once.
+                'Afterward ordinary edits can recalculate their dependents
+                'incrementally, including the separately deferred worksheets.
+                If CalculationService IsNot Nothing Then
+                    CalculationService.DontCalcTDBS = False
+                End If
+                Workbook.Options.CalculationEngineType = CalculationEngineType.ChainBased
+                Workbook.CalculateFullRebuild()
+                WBCalcDirty = False
+                WBCalcMinDirty = False
+                DependencyGraphPrepared = True
             Finally
-                Workbook.Options.CalculationEngineType = PreviousEngine
+                Try
+                    Workbook.Options.CalculationEngineType = PreviousEngine
+                Finally
+                    If CalculationService IsNot Nothing Then
+                        CalculationService.DontCalcTDBS = PreviousSkipTransactionalDB
+                    End If
+                End Try
             End Try
 
+            MarkNavigationCalculationCurrentIfUnchanged(requestedGeneration)
+
+        End Sub
+
+        Public Sub InvalidateDependencyGraph()
+            DependencyGraphPrepared = False
+            MarkPotentialWorkbookChange()
         End Sub
         Public Sub CalcManual()
 

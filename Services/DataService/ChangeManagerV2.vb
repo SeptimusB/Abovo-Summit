@@ -109,12 +109,23 @@ Namespace Abovo
             Dim result As New AbovoAppCls.AbovoTransaction("ModelChangeManagerV2.ProcessChange")
             If targetCell Is Nothing Then Return FailedChange(sentEvent, sentEvent.WSName, sentEvent.CellAddress, New InvalidOperationException("The target cell was not found."))
 
+            Dim benchmark As System.Diagnostics.Stopwatch =
+                System.Diagnostics.Stopwatch.StartNew()
             Dim before As CellSnapshotV2 = CellSnapshotV2.Capture(targetCell)
             Dim automaticGroup As Boolean = ActiveGroup Is Nothing
             Dim group As ChangeHistoryGroupV2 = If(ActiveGroup, CreateGroup(sentEvent.Description))
+            Dim setupMs As Long = benchmark.ElapsedMilliseconds
+            Dim writeMs As Long = 0
+            Dim calculationMs As Long = 0
+            Dim outcome As String = "failed"
             Try
                 WriteTypedValue(targetCell, sentEvent.ChangedValue, sentEvent.DataFormat)
-                FileManager.ExcelModels(ModelID).WBCalcEngine.CalculateWSs()
+                writeMs = benchmark.ElapsedMilliseconds - setupMs
+                FileManager.ExcelModels(ModelID).WBCalcEngine.CalculateWSs(
+                    True,
+                    "Edit model=" & ModelID.ToString() &
+                    ", worksheet=" & targetCell.Worksheet.Name)
+                calculationMs = benchmark.ElapsedMilliseconds - setupMs - writeMs
 
                 'Calculation is allowed to normalise a posted value.  History must
                 'therefore describe the authoritative post-calculation cell, not
@@ -123,6 +134,7 @@ Namespace Abovo
                 If before.Matches(targetCell) Then
                     result.BSuccess = True
                     result.StrResponseMessage = "The workbook value is unchanged."
+                    outcome = "unchanged"
                     Return result
                 End If
                 Dim entry As New ChangeHistoryEntryV2 With {
@@ -139,6 +151,7 @@ Namespace Abovo
                 result.BSuccess = True
                 result.StrResponseMessage = "Change applied."
                 If automaticGroup Then RaiseHistoryChanged(False, {targetCell.Worksheet.Name})
+                outcome = "ok"
                 Return result
             Catch ex As Exception
                 Dim rollbackFailures As New List(Of String)
@@ -148,7 +161,10 @@ Namespace Abovo
                     rollbackFailures.Add("Restore cell: " & rollbackError.Message)
                 End Try
                 Try
-                    FileManager.ExcelModels(ModelID).WBCalcEngine.CalculateWSs()
+                    FileManager.ExcelModels(ModelID).WBCalcEngine.CalculateWSs(
+                        True,
+                        "Edit rollback model=" & ModelID.ToString() &
+                        ", worksheet=" & targetCell.Worksheet.Name)
                 Catch rollbackError As Exception
                     rollbackFailures.Add("Recalculate restored workbook: " & rollbackError.Message)
                 End Try
@@ -160,7 +176,19 @@ Namespace Abovo
                         "Change Manager",
                         targetCell.Worksheet.Name & "!" & targetCell.GetReferenceA1())
                 End If
+                outcome = If(rollbackFailures.Count = 0, "rolled back", "recovery required")
                 Return FailedChange(sentEvent, targetCell.Worksheet.Name, targetCell.GetReferenceA1(), ex)
+            Finally
+                System.Diagnostics.Trace.WriteLine(
+                    "[Population Benchmark] Edit: model=" & ModelID.ToString() &
+                    ", worksheet=" & targetCell.Worksheet.Name &
+                    ", setup=" & setupMs.ToString() & " ms" &
+                    ", write=" & writeMs.ToString() & " ms" &
+                    ", calculation=" & calculationMs.ToString() & " ms" &
+                    ", journalAndRefresh=" &
+                    (benchmark.ElapsedMilliseconds - setupMs - writeMs - calculationMs).ToString() & " ms" &
+                    ", total=" & benchmark.ElapsedMilliseconds.ToString() & " ms" &
+                    ", outcome=" & outcome)
             End Try
         End Function
 
