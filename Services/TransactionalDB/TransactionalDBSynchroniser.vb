@@ -772,6 +772,8 @@ Namespace Abovo
 
             Dim Result As New AbovoTransaction With {.BError = False}
             If IsSynchronising Then Return Result
+            Dim benchmark As System.Diagnostics.Stopwatch =
+                System.Diagnostics.Stopwatch.StartNew()
 
             Dim WB As IWorkbook = GetWorkbook()
 
@@ -857,6 +859,32 @@ Namespace Abovo
                 Return Result
             End If
 
+            Dim analyserV2Present As Boolean =
+                ExcelModels(ModelID).ExpendAnalyserV2 IsNot Nothing
+            Dim analyserV2Visibility As String = "absent"
+            If analyserV2Present Then
+                Try
+                    analyserV2Visibility =
+                        If(ExcelModels(ModelID).ExpendAnalyserV2.Visible,
+                           "visible", "hidden")
+                Catch
+                    'Visibility is diagnostic only; never interrupt a workbook
+                    'structural change because the control is being closed.
+                    analyserV2Visibility = "unknown"
+                End Try
+            End If
+            Dim setupMs As Long = 0
+            Dim disconnectMs As Long = 0
+            Dim resizeMs As Long = 0
+            Dim endUpdateMs As Long = 0
+            Dim snapshotMs As Long = 0
+            Dim restoreMs As Long = 0
+            Dim restoreCalculationModeMs As Long = 0
+            Dim restoreCalculationEngineMs As Long = 0
+            Dim restoreHistoryMs As Long = 0
+            Dim reconnectV1Ms As Long = 0
+            Dim reconnectV2Ms As Long = 0
+            Dim analyserV2RefreshDeferred As Boolean = False
             Dim RDSDisconnected As Boolean = False
             Dim RDSV2Disconnected As Boolean = False
             Dim PreviousCalculationMode As WorkbookCalculationMode = WB.Options.CalculationMode
@@ -887,6 +915,7 @@ Namespace Abovo
                     Bounds.RightColumnIndex = Math.Max(Bounds.RightColumnIndex, Item.RightColumnIndex)
                 End If
             Next
+            setupMs = benchmark.ElapsedMilliseconds
             Try
 
                 IsSynchronising = True
@@ -912,6 +941,7 @@ Namespace Abovo
                 WB.BeginUpdate()
                 UpdateStarted = True
 
+                Dim disconnectStartMs As Long = benchmark.ElapsedMilliseconds
                 If ExcelModels(ModelID).ExpendAnalyser IsNot Nothing Then
 
                     ExcelModels(ModelID).ExpendAnalyser.DisconectRDS()
@@ -927,6 +957,8 @@ Namespace Abovo
 
                 End If
 
+                disconnectMs = benchmark.ElapsedMilliseconds - disconnectStartMs
+                Dim resizeStartMs As Long = benchmark.ElapsedMilliseconds
                 For Each Item As MirrorResizeWorkItem In WorkItems
                     StructuralChangeAttempted = True
                     Dim Bounds As WorksheetShiftBounds = ShiftBoundsByWorksheet(Item.WorksheetName)
@@ -948,6 +980,7 @@ Namespace Abovo
                     End If
 
                 Next
+                resizeMs = benchmark.ElapsedMilliseconds - resizeStartMs
 
             Catch ex As Exception
 
@@ -957,6 +990,7 @@ Namespace Abovo
 
             Finally
 
+                Dim endUpdateStartMs As Long = benchmark.ElapsedMilliseconds
                 If UpdateStarted Then
 
                     Try
@@ -965,7 +999,9 @@ Namespace Abovo
                         CleanupFailures.Add("End workbook update: " & ex.Message)
                     End Try
                 End If
+                endUpdateMs = benchmark.ElapsedMilliseconds - endUpdateStartMs
 
+                Dim snapshotStartMs As Long = benchmark.ElapsedMilliseconds
                 If StructuralChangeAttempted AndAlso SnapshotWasPresent Then
                     Try
                         Dim SnapshotStillValid As Boolean =
@@ -986,36 +1022,52 @@ Namespace Abovo
                             "Transactional DB Synchroniser")
                     End Try
                 End If
+                snapshotMs = benchmark.ElapsedMilliseconds - snapshotStartMs
 
+                Dim restoreStartMs As Long = benchmark.ElapsedMilliseconds
+                Dim restoreCalculationModeStartMs As Long =
+                    benchmark.ElapsedMilliseconds
                 Try
                     WB.Options.CalculationMode = PreviousCalculationMode
                 Catch ex As Exception
                     CleanupFailures.Add("Restore calculation mode: " & ex.Message)
                 End Try
+                restoreCalculationModeMs =
+                    benchmark.ElapsedMilliseconds - restoreCalculationModeStartMs
 
 
                 If CalculationEngineChanged Then
 
+                    Dim restoreCalculationEngineStartMs As Long =
+                        benchmark.ElapsedMilliseconds
                     Try
                         WB.Options.CalculationEngineType = PreviousCalculationEngineType
                     Catch ex As Exception
                         CleanupFailures.Add("Restore calculation engine: " & ex.Message)
                     End Try
+                    restoreCalculationEngineMs =
+                        benchmark.ElapsedMilliseconds - restoreCalculationEngineStartMs
 
 
                 End If
 
                 If HistoryChanged Then
 
+                    Dim restoreHistoryStartMs As Long =
+                        benchmark.ElapsedMilliseconds
                     Try
                         WB.History.IsEnabled = PreviousHistoryEnabled
                     Catch ex As Exception
                         CleanupFailures.Add("Restore workbook history: " & ex.Message)
                     End Try
+                    restoreHistoryMs =
+                        benchmark.ElapsedMilliseconds - restoreHistoryStartMs
 
 
                 End If
+                restoreMs = benchmark.ElapsedMilliseconds - restoreStartMs
 
+                Dim reconnectV1StartMs As Long = benchmark.ElapsedMilliseconds
                 If RDSDisconnected AndAlso ExcelModels(ModelID).ExpendAnalyser IsNot Nothing Then
 
                     Try
@@ -1026,16 +1078,30 @@ Namespace Abovo
 
 
                 End If
+                reconnectV1Ms = benchmark.ElapsedMilliseconds - reconnectV1StartMs
 
+                Dim reconnectV2StartMs As Long = benchmark.ElapsedMilliseconds
                 If RDSV2Disconnected AndAlso ExcelModels(ModelID).ExpendAnalyserV2 IsNot Nothing Then
 
                     Try
-                        ExcelModels(ModelID).ExpendAnalyserV2.ReconnectRDS()
+                        If StructuralChangeAttempted AndAlso
+                           Not Result.BError AndAlso CleanupFailures.Count = 0 Then
+                            'Keep population responsive. The live range datasource
+                            'was detached before shifting rows; rebuild it only
+                            'when the user returns to or refreshes Analysis V2.
+                            ExcelModels(ModelID).ExpendAnalyserV2.DeferStructuralRefresh()
+                            analyserV2RefreshDeferred = True
+                        Else
+                            'A failed or incomplete mutation still needs the
+                            'established immediate recovery path.
+                            ExcelModels(ModelID).ExpendAnalyserV2.ReconnectRDS()
+                        End If
                     Catch ex As Exception
-                        CleanupFailures.Add("Reconnect Analysis V2 data source: " & ex.Message)
+                        CleanupFailures.Add("Restore Analysis V2 data source: " & ex.Message)
                     End Try
 
                 End If
+                reconnectV2Ms = benchmark.ElapsedMilliseconds - reconnectV2StartMs
 
 
                 IsSynchronising = False
@@ -1070,6 +1136,33 @@ Namespace Abovo
                 Result.StrResponseMessage = Result.StringReturn
             End If
 
+            Dim totalMs As Long = benchmark.ElapsedMilliseconds
+            Dim measuredMs As Long =
+                setupMs + disconnectMs + resizeMs + endUpdateMs +
+                snapshotMs + restoreMs + reconnectV1Ms + reconnectV2Ms
+            System.Diagnostics.Trace.WriteLine(
+                "[TDB Sync Benchmark] model=" & ModelID.ToString() &
+                ", mirrors=" & WorkItems.Count.ToString() &
+                ", analyserV2Present=" & analyserV2Present.ToString() &
+                ", analyserV2Visibility=" & analyserV2Visibility &
+                ", snapshotPresent=" & SnapshotWasPresent.ToString() &
+                ", setup=" & setupMs.ToString() & " ms" &
+                ", disconnect=" & disconnectMs.ToString() & " ms" &
+                ", resize=" & resizeMs.ToString() & " ms" &
+                ", endUpdate=" & endUpdateMs.ToString() & " ms" &
+                ", snapshot=" & snapshotMs.ToString() & " ms" &
+                ", restore=" & restoreMs.ToString() & " ms" &
+                ", restoreCalculationMode=" &
+                restoreCalculationModeMs.ToString() & " ms" &
+                ", restoreCalculationEngine=" &
+                restoreCalculationEngineMs.ToString() & " ms" &
+                ", restoreHistory=" & restoreHistoryMs.ToString() & " ms" &
+                ", reconnectV1=" & reconnectV1Ms.ToString() & " ms" &
+                ", reconnectV2=" & reconnectV2Ms.ToString() & " ms" &
+                ", analyserV2RefreshDeferred=" & analyserV2RefreshDeferred.ToString() &
+                ", other=" & Math.Max(0, totalMs - measuredMs).ToString() & " ms" &
+                ", total=" & totalMs.ToString() & " ms" &
+                ", outcome=" & If(Result.BError, "failed", "ok"))
             Return Result
 
         End Function
@@ -1109,6 +1202,14 @@ Namespace Abovo
                                                    ByVal CachedShiftRight As Integer) As AbovoTransaction
 
             Dim Result As New AbovoTransaction With {.BError = False}
+            Dim benchmark As System.Diagnostics.Stopwatch =
+                System.Diagnostics.Stopwatch.StartNew()
+            Dim changed As Boolean = False
+            Dim operation As String = String.Empty
+            Dim fastPath As Boolean = False
+            Dim shiftMs As Long = 0
+            Dim fillMs As Long = 0
+            Dim nameResizeMs As Long = 0
 
             Try
 
@@ -1130,11 +1231,13 @@ Namespace Abovo
                 Dim CurrentRows As Integer = OriginalRange.RowCount
 
                 If CurrentRows = RequiredRows Then Return Result
+                changed = True
 
                 'The final row is the mirror footer.  Formula/data rows are added
                 'or removed immediately before that footer, exactly as in the
                 'Summit_Compatibility SetTransDBMirrorRangeSize VBA routine.
                 If RequiredRows > CurrentRows Then
+                    operation = "expand"
 
                     Dim RowsToAdd As Integer = RequiredRows - CurrentRows
                     Dim LastFormulaRow As Integer = RangeBottom - 1
@@ -1151,7 +1254,9 @@ Namespace Abovo
                     Dim ShiftRight As Integer = Math.Max(CachedShiftRight, RangeRight)
                     Dim UseFastPath As Boolean =
                         ShiftLeft >= 0 AndAlso ShiftRight >= ShiftLeft AndAlso ShiftRight <= 16383
+                    fastPath = UseFastPath
 
+                    Dim shiftStartMs As Long = benchmark.ElapsedMilliseconds
                     If UseFastPath Then
 
                         Dim InsertRange As CellRange =
@@ -1167,7 +1272,9 @@ Namespace Abovo
                         WS.Rows.Insert(RangeBottom, RowsToAdd)
 
                     End If
+                    shiftMs = benchmark.ElapsedMilliseconds - shiftStartMs
 
+                    Dim fillStartMs As Long = benchmark.ElapsedMilliseconds
                     Dim SourceTemplate As CellRange =
                         WS.Range.FromLTRB(RangeLeft,
                                           LastFormulaRow,
@@ -1187,7 +1294,9 @@ Namespace Abovo
                             WS.Rows(RowIndex).Height = TemplateHeight
                         Next
                     End If
+                    fillMs = benchmark.ElapsedMilliseconds - fillStartMs
 
+                    Dim nameResizeStartMs As Long = benchmark.ElapsedMilliseconds
                     Dim ExpandedRange As CellRange =
                         WS.Range.FromLTRB(RangeLeft,
                                           RangeTop,
@@ -1199,9 +1308,11 @@ Namespace Abovo
                     Else
                         WS.DefinedNames.GetDefinedName(TargetNamedRange).Range = ExpandedRange
                     End If
+                    nameResizeMs = benchmark.ElapsedMilliseconds - nameResizeStartMs
 
 
                 Else
+                    operation = "contract"
 
                     Dim RowsToDelete As Integer = CurrentRows - RequiredRows
 
@@ -1219,7 +1330,9 @@ Namespace Abovo
                     Dim ShiftRight As Integer = Math.Max(CachedShiftRight, RangeRight)
                     Dim UseFastPath As Boolean =
                         ShiftLeft >= 0 AndAlso ShiftRight >= ShiftLeft AndAlso ShiftRight <= 16383
+                    fastPath = UseFastPath
 
+                    Dim shiftStartMs As Long = benchmark.ElapsedMilliseconds
                     If UseFastPath Then
 
                         Dim DeleteRange As CellRange =
@@ -1235,7 +1348,9 @@ Namespace Abovo
                         WS.Rows.Remove(FirstDeleteRow, RowsToDelete)
 
                     End If
+                    shiftMs = benchmark.ElapsedMilliseconds - shiftStartMs
 
+                    Dim nameResizeStartMs As Long = benchmark.ElapsedMilliseconds
                     Dim ContractedRange As CellRange =
                         WS.Range.FromLTRB(RangeLeft,
                                           RangeTop,
@@ -1247,6 +1362,7 @@ Namespace Abovo
                     Else
                         WS.DefinedNames.GetDefinedName(TargetNamedRange).Range = ContractedRange
                     End If
+                    nameResizeMs = benchmark.ElapsedMilliseconds - nameResizeStartMs
 
 
                 End If
@@ -1256,6 +1372,22 @@ Namespace Abovo
                 Result.BError = True
                 Result.StringReturn = ex.Message
 
+            Finally
+                If changed Then
+                    Dim totalMs As Long = benchmark.ElapsedMilliseconds
+                    System.Diagnostics.Trace.WriteLine(
+                        "[TDB Mirror Benchmark] model=" & ModelID.ToString() &
+                        ", range=" & TargetNamedRange &
+                        ", operation=" & operation &
+                        ", fastPath=" & fastPath.ToString() &
+                        ", shift=" & shiftMs.ToString() & " ms" &
+                        ", fill=" & fillMs.ToString() & " ms" &
+                        ", nameResize=" & nameResizeMs.ToString() & " ms" &
+                        ", other=" &
+                        Math.Max(0, totalMs - shiftMs - fillMs - nameResizeMs).ToString() & " ms" &
+                        ", total=" & totalMs.ToString() & " ms" &
+                        ", outcome=" & If(Result.BError, "failed", "ok"))
+                End If
             End Try
 
             Return Result

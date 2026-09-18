@@ -90,6 +90,10 @@ Public Class BPIncomeExpenditureAnalyserV2
     Private CurrentDataSourceMode As AnalyserDataSourceMode = AnalyserDataSourceMode.Live
     Private UpdatingDataSourceButtons As Boolean = False
     Private PendingGridState As AnalyserGridStateBundle
+    Private StructuralRefreshDeferred As Boolean = False
+    Private DeferredRefreshPanel As PanelControl
+    Private DeferredRefreshLabel As LabelControl
+    Private DeferredRefreshButton As SimpleButton
     Private gridInfo As GridViewInfo = Nothing
     Private ActiveGridView As CustomGridView
     Private ActiveGridWrapper As CustomGridWrapper
@@ -138,6 +142,8 @@ Public Class BPIncomeExpenditureAnalyserV2
     Public Sub New(SetModelID As Integer, MyParent As GroupInterfaceTemplate)
 
         InitializeComponent()
+
+        InitialiseDeferredRefreshNotice()
 
         Formatter = New ObjectFormatter
 
@@ -395,6 +401,8 @@ Public Class BPIncomeExpenditureAnalyserV2
 
     Sub Form_InitilisationProcess_SetDataSource(Optional ByVal calculateDependencies As Boolean = True)
 
+        Dim benchmark As System.Diagnostics.Stopwatch =
+            System.Diagnostics.Stopwatch.StartNew()
         Dim worksheetName As String = TransactionalDBSnapshotManager.SourceWorksheetName
         Dim rangeName As String = TransactionalDBSnapshotManager.SourceRangeName
 
@@ -430,6 +438,8 @@ Public Class BPIncomeExpenditureAnalyserV2
         End If
 
         TransDBDataRange = definedName.Range
+        Dim nameLookupMs As Long = benchmark.ElapsedMilliseconds
+        Dim dependencyStartMs As Long = benchmark.ElapsedMilliseconds
         If calculateDependencies AndAlso
            (CurrentDataSourceMode = AnalyserDataSourceMode.Live OrElse
             CurrentDataSourceMode = AnalyserDataSourceMode.Comparison) Then
@@ -438,9 +448,12 @@ Public Class BPIncomeExpenditureAnalyserV2
             'when the XLSB was loaded with stale cached results.
             ExcelModels(ModelID).WBCalcEngine.CalculateDependencySensitiveFile(
                 "Analysis V2 " & CurrentDataSourceMode.ToString() & " datasource",
-                CurrentDataSourceMode = AnalyserDataSourceMode.Comparison)
+                 CurrentDataSourceMode = AnalyserDataSourceMode.Comparison)
         End If
+        Dim dependencyCalculationMs As Long =
+            benchmark.ElapsedMilliseconds - dependencyStartMs
 
+        Dim dataSourceStartMs As Long = benchmark.ElapsedMilliseconds
         Dim RDSOptions As New RangeDataSourceOptions With {
             .UseFirstRowAsHeader = True,
             .PreserveFormulas = False,
@@ -451,6 +464,17 @@ Public Class BPIncomeExpenditureAnalyserV2
         }
 
         DSAnalDataRange = TransDBDataRange.GetDataSource(RDSOptions)
+        Dim dataSourceCreationMs As Long =
+            benchmark.ElapsedMilliseconds - dataSourceStartMs
+        System.Diagnostics.Trace.WriteLine(
+            "[Analyser V2 DataSource Benchmark] model=" & ModelID.ToString() &
+            ", mode=" & CurrentDataSourceMode.ToString() &
+            ", calculateDependencies=" & calculateDependencies.ToString() &
+            ", nameLookup=" & nameLookupMs.ToString() & " ms" &
+            ", dependencyCalculation=" &
+            dependencyCalculationMs.ToString() & " ms" &
+            ", dataSourceCreation=" & dataSourceCreationMs.ToString() & " ms" &
+            ", total=" & benchmark.ElapsedMilliseconds.ToString() & " ms")
 
     End Sub
 
@@ -477,6 +501,118 @@ Public Class BPIncomeExpenditureAnalyserV2
 
     End Sub
 
+    Private Sub InitialiseDeferredRefreshNotice()
+        DeferredRefreshPanel = New PanelControl With {
+            .Dock = DockStyle.Top,
+            .Height = Math.Max(42, Me.Font.Height + 18),
+            .Visible = False
+        }
+        DeferredRefreshPanel.Appearance.BackColor = Color.FromArgb(255, 242, 204)
+        DeferredRefreshPanel.Appearance.Options.UseBackColor = True
+
+        DeferredRefreshButton = New SimpleButton With {
+            .Dock = DockStyle.Right,
+            .Width = 160,
+            .Text = "Refresh analysis"
+        }
+        AddHandler DeferredRefreshButton.Click, AddressOf DeferredRefreshButton_Click
+
+        DeferredRefreshLabel = New LabelControl With {
+            .Dock = DockStyle.Fill,
+            .AutoSizeMode = LabelAutoSizeMode.None,
+            .Text = "Analysis is out of date after a structural change. Refresh before using these figures."
+        }
+        DeferredRefreshLabel.Appearance.ForeColor = Color.FromArgb(102, 60, 0)
+        DeferredRefreshLabel.Appearance.Options.UseForeColor = True
+
+        DeferredRefreshPanel.Controls.Add(DeferredRefreshLabel)
+        DeferredRefreshPanel.Controls.Add(DeferredRefreshButton)
+        Me.Controls.Add(DeferredRefreshPanel)
+        DeferredRefreshPanel.BringToFront()
+    End Sub
+
+    Friend Sub DeferStructuralRefresh()
+        If IsDisposed OrElse Disposing Then Return
+
+        StructuralRefreshDeferred = True
+        DeferredRefreshPanel.Visible = True
+        XtraTabControlAnalyser.Enabled = False
+        System.Diagnostics.Trace.WriteLine(
+            "[Analyser V2 Deferred Refresh] model=" & ModelID.ToString() &
+            ", state=deferred")
+    End Sub
+
+    Public Sub RefreshDeferredIfNeeded()
+        EnsureDeferredAnalysisCurrent()
+    End Sub
+
+    Private Function EnsureDeferredAnalysisCurrent() As Boolean
+        If Not StructuralRefreshDeferred Then Return True
+        If IsDisposed OrElse Disposing Then Return False
+
+        Dim refreshBenchmark As System.Diagnostics.Stopwatch =
+            System.Diagnostics.Stopwatch.StartNew()
+        Me.Cursor = Cursors.WaitCursor
+        DeferredRefreshLabel.Text = "Refreshing analysis..."
+        DeferredRefreshPanel.Refresh()
+        Try
+            If DSAnalDataRange IsNot Nothing Then DisconnectRDS()
+            ReconnectRDS(True)
+            StructuralRefreshDeferred = False
+            DeferredRefreshPanel.Visible = False
+            XtraTabControlAnalyser.Enabled = True
+            System.Diagnostics.Trace.WriteLine(
+                "[Analyser V2 Deferred Refresh] model=" & ModelID.ToString() &
+                ", state=current, total=" &
+                refreshBenchmark.ElapsedMilliseconds.ToString() & " ms")
+            Return True
+        Catch ex As Exception
+            Try
+                DisconnectRDS()
+            Catch
+                'Keep the analyser visibly stale if a partial bind cannot be cleaned up.
+            End Try
+            DeferredRefreshLabel.Text =
+                "Analysis is out of date. Refresh analysis to retry."
+            DeferredRefreshPanel.Visible = True
+            XtraTabControlAnalyser.Enabled = False
+            System.Diagnostics.Trace.WriteLine(
+                "[Analyser V2 Deferred Refresh] model=" & ModelID.ToString() &
+                ", state=failed, total=" &
+                refreshBenchmark.ElapsedMilliseconds.ToString() & " ms" &
+                ", error=" & ex.Message)
+            XtraMessageBox.Show(
+                Me,
+                "The analysis could not be refreshed." & vbCrLf & vbCrLf & ex.Message,
+                "Analysis out of date",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+            Return False
+        Finally
+            Me.Cursor = Cursors.Default
+        End Try
+    End Function
+
+    Private Sub DeferredRefreshButton_Click(ByVal sender As Object,
+                                             ByVal e As EventArgs)
+        RefreshDeferredIfNeeded()
+    End Sub
+
+    Private Sub BPIncomeExpenditureAnalyserV2_VisibleChanged(
+        ByVal sender As Object,
+        ByVal e As EventArgs) Handles Me.VisibleChanged
+
+        If Not StructuralRefreshDeferred OrElse Not Me.Visible OrElse
+           Not IsHandleCreated OrElse IsDisposed OrElse Disposing Then Return
+
+        Try
+            BeginInvoke(New MethodInvoker(AddressOf RefreshDeferredIfNeeded))
+        Catch ex As InvalidOperationException
+            'A retained document can lose its handle during model shutdown.
+            'The explicit refresh action remains available if it is shown again.
+        End Try
+    End Sub
+
     <Obsolete("Use DisconnectRDS.")>
     Public Sub DisconectRDS()
         DisconnectRDS()
@@ -486,28 +622,87 @@ Public Class BPIncomeExpenditureAnalyserV2
 
         If DSAnalDataRange Is Nothing Then
 
+            Dim benchmark As System.Diagnostics.Stopwatch =
+                System.Diagnostics.Stopwatch.StartNew()
             If CurrentDataSourceMode <> AnalyserDataSourceMode.Live AndAlso
                Not TransactionalDBSnapshotManager.HasValidSnapshot(ModelID) Then
                 CurrentDataSourceMode = AnalyserDataSourceMode.Live
                 HasSnapshots = False
             End If
+            Dim snapshotCheckMs As Long = benchmark.ElapsedMilliseconds
 
+            Dim setupStartMs As Long = benchmark.ElapsedMilliseconds
             Form_InitilisationProcess_SetDataSource(calculateDependencies)
+            Dim setupMs As Long = benchmark.ElapsedMilliseconds - setupStartMs
+
+            Dim bindSOCIStartMs As Long = benchmark.ElapsedMilliseconds
             WrapCG_SOCI.WrappedCGC.DataSource = DSAnalDataRange
+            Dim bindSOCIMs As Long = benchmark.ElapsedMilliseconds - bindSOCIStartMs
+            Dim bindCFStartMs As Long = benchmark.ElapsedMilliseconds
             WrapCG_CF.WrappedCGC.DataSource = DSAnalDataRange
+            Dim bindCFMs As Long = benchmark.ElapsedMilliseconds - bindCFStartMs
+            Dim bindBSStartMs As Long = benchmark.ElapsedMilliseconds
             WrapCG_BS.WrappedCGC.DataSource = DSAnalDataRange
+            Dim bindBSMs As Long = benchmark.ElapsedMilliseconds - bindBSStartMs
 
+            Dim refreshSOCIStartMs As Long = benchmark.ElapsedMilliseconds
             WrapCG_SOCI.WrappedCGC.RefreshDataSource()
+            Dim refreshSOCIMs As Long =
+                benchmark.ElapsedMilliseconds - refreshSOCIStartMs
+            Dim refreshCFStartMs As Long = benchmark.ElapsedMilliseconds
             WrapCG_CF.WrappedCGC.RefreshDataSource()
+            Dim refreshCFMs As Long =
+                benchmark.ElapsedMilliseconds - refreshCFStartMs
+            Dim refreshBSStartMs As Long = benchmark.ElapsedMilliseconds
             WrapCG_BS.WrappedCGC.RefreshDataSource()
+            Dim refreshBSMs As Long =
+                benchmark.ElapsedMilliseconds - refreshBSStartMs
 
+            Dim stateStartMs As Long = benchmark.ElapsedMilliseconds
             AmInactiveState = False
             RestoreAnalyserGridState(PendingGridState)
             PendingGridState = Nothing
+            Dim stateMs As Long = benchmark.ElapsedMilliseconds - stateStartMs
+
+            Dim bestFitSOCIStartMs As Long = benchmark.ElapsedMilliseconds
             ApplyDescriptionColumnBestFit(WrapCG_SOCI.WrappedGridView)
+            Dim bestFitSOCIMs As Long =
+                benchmark.ElapsedMilliseconds - bestFitSOCIStartMs
+            Dim bestFitCFStartMs As Long = benchmark.ElapsedMilliseconds
             ApplyDescriptionColumnBestFit(WrapCG_CF.WrappedGridView)
+            Dim bestFitCFMs As Long = benchmark.ElapsedMilliseconds - bestFitCFStartMs
+            Dim bestFitBSStartMs As Long = benchmark.ElapsedMilliseconds
             ApplyDescriptionColumnBestFit(WrapCG_BS.WrappedGridView)
+            Dim bestFitBSMs As Long = benchmark.ElapsedMilliseconds - bestFitBSStartMs
+
+            Dim buttonsStartMs As Long = benchmark.ElapsedMilliseconds
             UpdateDataSourceButtons()
+            Dim buttonsMs As Long = benchmark.ElapsedMilliseconds - buttonsStartMs
+
+            Dim totalMs As Long = benchmark.ElapsedMilliseconds
+            Dim measuredMs As Long =
+                snapshotCheckMs + setupMs + bindSOCIMs + bindCFMs + bindBSMs +
+                refreshSOCIMs + refreshCFMs + refreshBSMs + stateMs +
+                bestFitSOCIMs + bestFitCFMs + bestFitBSMs + buttonsMs
+            System.Diagnostics.Trace.WriteLine(
+                "[Analyser V2 Reconnect Benchmark] model=" & ModelID.ToString() &
+                ", mode=" & CurrentDataSourceMode.ToString() &
+                ", calculateDependencies=" & calculateDependencies.ToString() &
+                ", snapshotCheck=" & snapshotCheckMs.ToString() & " ms" &
+                ", setup=" & setupMs.ToString() & " ms" &
+                ", bindSOCI=" & bindSOCIMs.ToString() & " ms" &
+                ", bindCF=" & bindCFMs.ToString() & " ms" &
+                ", bindBS=" & bindBSMs.ToString() & " ms" &
+                ", refreshSOCI=" & refreshSOCIMs.ToString() & " ms" &
+                ", refreshCF=" & refreshCFMs.ToString() & " ms" &
+                ", refreshBS=" & refreshBSMs.ToString() & " ms" &
+                ", state=" & stateMs.ToString() & " ms" &
+                ", bestFitSOCI=" & bestFitSOCIMs.ToString() & " ms" &
+                ", bestFitCF=" & bestFitCFMs.ToString() & " ms" &
+                ", bestFitBS=" & bestFitBSMs.ToString() & " ms" &
+                ", buttons=" & buttonsMs.ToString() & " ms" &
+                ", other=" & Math.Max(0, totalMs - measuredMs).ToString() & " ms" &
+                ", total=" & totalMs.ToString() & " ms")
 
         End If
 
@@ -522,7 +717,8 @@ Public Class BPIncomeExpenditureAnalyserV2
             Return
         End If
 
-        If DSAnalDataRange Is Nothing OrElse AmInactiveState OrElse
+        If StructuralRefreshDeferred OrElse DSAnalDataRange Is Nothing OrElse
+           AmInactiveState OrElse
            CurrentDataSourceMode = AnalyserDataSourceMode.Snapshot Then Return
 
         'The calculation chain was rebuilt before the initial datasource bind.
@@ -563,6 +759,8 @@ Public Class BPIncomeExpenditureAnalyserV2
 
             Case "ExportXL"
 
+                If Not EnsureDeferredAnalysisCurrent() Then Return
+
                 Gridview_Process_ExportGridsToExcel()
 
             Case "OpenHome"
@@ -574,6 +772,7 @@ Public Class BPIncomeExpenditureAnalyserV2
                 FormMainScreen.BringToFront()
 
             Case "Snapshot"
+                If Not EnsureDeferredAnalysisCurrent() Then Return
                 CreateTransactionalDBSnapshot(ButSender)
             Case "SideBySide"
 
@@ -672,6 +871,8 @@ Public Class BPIncomeExpenditureAnalyserV2
     End Sub
 
     Private Sub SwitchDataSource(ByVal requestedMode As AnalyserDataSourceMode)
+        If Not EnsureDeferredAnalysisCurrent() Then Return
+
         If requestedMode <> AnalyserDataSourceMode.Live AndAlso
            Not TransactionalDBSnapshotManager.HasValidSnapshot(ModelID) Then
             HasSnapshots = False

@@ -263,3 +263,191 @@ The manual comparison should use the same unchanged workbook baseline twice:
 Stock -> Rents -> Stock, edit, Rents, edit, Stock, Cash Journals, add five
 lines; repeat with Analysis V2 already open. Check displayed analyser values
 as well as timings, and keep the analyser's first-load cost separate.
+
+## Test version 1.99: Transactional DB sync phase timing
+
+The paired Cash Journals five-row test measured 8,070 ms without Analysis V2
+and 24,948 ms with it. Transactional DB sync contributed 5,861 ms and
+22,191 ms respectively, accounting for nearly all of the 16,878 ms
+difference. The synchroniser already disconnects and reconnects the V2
+RangeDataSource around mirror resizing; the aggregate number cannot tell
+which phase caused the extra time.
+
+This trial adds `[TDB Sync Benchmark]` timings for request/bounds setup,
+analyser disconnect, mirror resizing, EndUpdate, snapshot invalidation,
+calculation/history restoration and V1/V2 reconnect. It records whether
+Analysis V2 exists and is visible, plus whether a snapshot was present.
+`[TDB Mirror Benchmark]` splits each resized named range into row/cell
+shift, template fill and named-range resize. No synchronisation, snapshot,
+binding or workbook logic was changed.
+
+Compare three five-row Cash Journals inserts from identical disposable
+workbook baselines: (1) analyser never opened, (2) Analysis V2 visible, and
+(3) Analysis V2 opened then hidden before the insert. Check the analyser's
+figures and expansion state when it is shown after case 3. This establishes
+whether deferred hidden-analyser reconnection would be useful and safe to
+trial; it is not implemented in this version.
+
+Validation: Debug and Release `Any CPU` solution builds passed on
+2026-09-17. Runtime comparisons and the Summit-Excel-Summit round trip
+remain manual; no workbook file was changed for this timing trial.
+
+## Test version 2.00: calculation-setting restore breakdown
+
+The first bare/no-analyser run of version 1.99 completed the five-row insert
+in 6,933 ms. Transactional DB sync was 4,654 ms, including 1,894 ms mirror
+resize and 2,546 ms in the combined settings/history restoration phase.
+No analyser or snapshot was present. Version 2.00 reports separate
+`restoreCalculationMode`, `restoreCalculationEngine` and
+`restoreHistory` timings within the existing `restore` phase. This is
+diagnostic only; it does not alter calculation settings or their order.
+Debug and Release `Any CPU` solution builds passed on 2026-09-17.
+
+## Test version 2.01: Analysis V2 reconnect timing
+
+On the same five-row Cash Journals insertion, the bare run took 6,752 ms,
+Analysis V2 visible took 23,215 ms, and Analysis V2 opened then hidden took
+23,053 ms. The hidden run confirmed `analyserV2Present=True` and
+`analyserV2Visibility=hidden`. Reconnection consumed 11,516 ms visible
+and 11,332 ms hidden; the mirror shift consumed 6,015 ms visible and
+5,928 ms hidden, versus 1,578 ms bare. Calculation-engine restoration
+remained near 2.4 seconds in all runs. Hiding V2 does not currently avoid
+reconnection or the higher mirror-shift cost.
+
+Version 2.01 adds read-only `[Analyser V2 DataSource Benchmark]` timings
+for dependency calculation and RangeDataSource creation, and
+`[Analyser V2 Reconnect Benchmark]` timings for each grid's binding,
+refresh and description best-fit, plus state restoration. No recalculation
+or binding behavior has changed. Reopening the hidden analyser after a
+structural insert still requires manual value and expansion-state checks.
+Debug and Release `Any CPU` solution builds passed on 2026-09-17.
+
+## Test version 2.02: controlled analyser-release isolation
+
+The proposed "open V2, navigate away, insert" test did not release V2:
+ordinary navigation retains its document. The run reported
+`analyserV2Present=True`, `analyserV2Visibility=hidden`, a 5,937 ms
+mirror shift and a 10,871 ms reconnect dependency calculation, matching
+the prior hidden run. The navigation advice was therefore incorrect.
+
+For an explicit A/B test, the Debug build only now interprets holding
+Ctrl+Shift while clicking the Analysis V2 host window's title-bar X as
+hide-and-release. The release is queued on the UI thread and uses the
+existing model resource registry callback, which disconnects the
+RangeDataSource, unregisters the analyser and disposes its document. A
+`[TDB Isolation Benchmark] analyser released` line confirms completion.
+Normal X, Release builds, and workbook contents are unchanged. After
+release, the subsequent insert should report `analyserV2Present=False`;
+compare its mirror shift with the ordinary bare and retained-V2 runs.
+This hook is temporary test instrumentation and must be removed after the
+isolation result is captured.
+Debug and Release `Any CPU` solution builds passed on 2026-09-17.
+
+## Test version 2.03: isolation result and hook removal
+
+The controlled run confirmed `[TDB Isolation Benchmark] analyser released`
+and `analyserV2Present=False` before the five-row insert. It completed in
+10,496 ms: 5,022 ms for mirror shift, 304 ms fill, 2,504 ms for calculation
+engine restoration, and no analyser reconnect. For comparison, the bare
+version 2.01 run took 7,245 ms with a 1,624 ms mirror shift; the retained
+visible V2 run took 23,156 ms with a 5,994 ms shift and 11,506 ms reconnect.
+
+Releasing V2 removes the expensive reconnect but leaves most of the
+post-V2-open mirror-shift cost. This single controlled test suggests that
+the retained analyser alone is not the cause of the slower shift; the
+calculation/dependency state established while opening it may contribute.
+The Ctrl+Shift title-bar X diagnostic hook has now been removed from the
+source, restoring the ordinary hide-and-preserve close behavior in Debug
+as well as Release. The timing instrumentation remains.
+Debug and Release `Any CPU` solution builds passed on 2026-09-17.
+
+## Test version 2.04: warm calculation without Analysis V2
+
+Version 2.04 temporarily adds a Debug-only Ctrl+Shift+F12 shortcut on an
+Assumptions GroupInterfaceTemplate with no Analysis V2 instance. It calls
+the same `CalcEngine.CalculateDependencySensitiveFile` entry point used
+by V2, with `Force=True` to guarantee the full dependency rebuild path.
+It logs `[TDB Warm Calculation Benchmark]` when completed. It creates no
+analyser or RangeDataSource and does not change any user input or workbook
+structure. The normal V2 first-open call uses `Force=False` but takes
+the same rebuild branch while the dependency graph is unprepared.
+
+For the controlled comparison, start from the same disposable workbook
+baseline as the bare run, open Cash Journals without opening V2, press
+Ctrl+Shift+F12 once and wait for `outcome=ok`, then add five lines.
+The following TDB sync must report `analyserV2Present=False`. Compare
+its mirror shift with the ordinary bare and open-then-released tests.
+Remove this shortcut after the result is captured.
+Debug and Release `Any CPU` solution builds passed on 2026-09-17.
+
+## Test version 2.05: one-shot warm calculation control
+
+The version 2.04 run reported two successful warm full rebuilds (13,559 ms
+and 12,190 ms), no V2 analyser, and a 7,109 ms mirror shift during the
+five-row insert. This supports an association between full dependency
+rebuild and slower structural shifting without V2, but two rebuilds
+confound comparison with V2's one first-open rebuild. The Debug-only
+shortcut now permits one successful warm calculation per Assumptions
+window and logs `skipped: already run in this window` on key repeat.
+Rerun from an unchanged disposable workbook baseline and accept only a
+single `outcome=ok` warm marker before the insert.
+Debug and Release `Any CPU` solution builds passed on 2026-09-17.
+
+## Test version 2.06: one-shot result and shortcut removal
+
+The one-shot run reported one 13,088 ms full dependency rebuild, a
+subsequent key-repeat skip, and no V2 instance. Five Cash Journals lines
+then took 11,033 ms. The mirror shift was 5,335 ms, versus 1,624 ms in
+the un-warmed bare run and 5,022 ms after V2 was opened and explicitly
+released. The large post-rebuild shift cost therefore persists without
+any live analyser or RangeDataSource. The visible-V2 run's 5,994 ms
+shift suggests the retained analyser may add a smaller further cost,
+but one run per condition is insufficient to quantify that difference.
+
+The Ctrl+Shift+F12 diagnostic shortcut is now removed; normal GIT
+navigation and close behavior are restored. Phase timing remains.
+Debug and Release `Any CPU` solution builds passed on 2026-09-17.
+
+## Test version 2.08: defer Analysis V2 rebuild after structural changes
+
+Using `C:\Sandbox\Deprecated\DispTesst.xlsb` as the disposable Debug
+auto-open file, five Cash Journals lines took 6,780 ms without Analysis V2
+and 23,520 ms with it visible. The visible run spent 11,514 ms reconnecting
+V2 (11,225 ms in dependency calculation); mirror shifting rose from
+1,587 ms to 6,270 ms. The latter cost is not addressed by this change.
+
+After a successful Transactional DB mirror resize, the synchroniser now
+leaves V2's live RangeDataSource disconnected and marks its view out of date.
+The analyser shows a visible notice and disables its empty grids rather than
+presenting blank values as current. Its Refresh analysis button rebuilds and
+rebinds the datasource; returning to a retained analyser document also
+refreshes it. Ordinary calculation refreshes cannot silently reconnect it
+while this structural-refresh state is pending. Export, snapshot creation
+and datasource switching first require a successful refresh. Failed or
+incomplete structural mutations retain the prior immediate reconnect path.
+No XLSB content, formula, name, or VBA is changed.
+
+Manual trial: restart Debug without saving a previous five-line insert,
+open Cash Journals with Analysis V2 visible and add five lines. The insert
+should log `analyserV2RefreshDeferred=True` with no expensive V2 reconnect;
+the analyser notice should be visible and its grids unavailable. Click
+Refresh analysis (or navigate away and back) and confirm the deferred
+refresh log reports `state=current`, all three tabs contain the new records,
+and group expansion, selection, copy and export still work. Repeat while
+V2 is hidden, and verify snapshot invalidation, subsequent ordinary edits,
+model save, Excel/VBA reopen and Summit reopen on a disposable copy.
+Debug and Release `Any CPU` solution builds passed on 2026-09-18;
+runtime/UI and Excel round-trip checks remain open.
+
+The 18 September client trial confirmed `analyserV2RefreshDeferred=True`.
+Five lines took 11,751 ms, versus 23,520 ms with immediate V2 reconnect
+and 6,780 ms with no analyser. The deferred path spent 153 ms in the V2
+cleanup stage; the later user-triggered refresh took 11,510 ms and
+reported `state=current`. The client confirmed the out-of-date notice,
+refreshed data and retained expansion state. This validates moving the
+rebuild out of the population step, not eliminating its calculation cost.
+Mirror shifting still took 5,889 ms and calculation-engine restoration
+2,465 ms during the insert. The temporary `DispTesst.xlsb` Debug
+auto-open path was reverted to its prior setting after the trial.
+Hidden-analyser, failure recovery, save/Excel/VBA/reopen and wider
+structural-domain checks remain manual validation items.

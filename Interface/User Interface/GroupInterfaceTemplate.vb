@@ -946,6 +946,12 @@ Public Class GroupInterfaceTemplate
 
             DocumentManagerAssumptions.View.ActivateDocument(doc.Control)
 
+            Dim resumedAnalyser As BPIncomeExpenditureAnalyserV2 =
+                TryCast(doc.Control, BPIncomeExpenditureAnalyserV2)
+            If resumedAnalyser IsNot Nothing Then
+                resumedAnalyser.RefreshDeferredIfNeeded()
+            End If
+
             Me.BarStaticItemDescription.Caption = " " & ExcelModels(SetModelID).WBStructure.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ResolveChildStructure(SetCSID).CSName
 
         Else
