@@ -125,25 +125,25 @@ Namespace Abovo
                         ExecuteFormulaGeneration(ModelID, True, EventTransaction)
 
                     Case "ImportSingleDSA_File"
-                        EventTransaction = DSAImport.ImportSingleDSA_File(ModelID)
+                        EventTransaction = DSAImport.ImportSingleDSA_File(ModelID, ActioningForm)
 
                     Case "ImportConsolDSA_File"
-                        EventTransaction = DSAImport.ImportConsolDSA_File(ModelID)
+                        EventTransaction = DSAImport.ImportConsolDSA_File(ModelID, ActioningForm)
 
                     Case "ImportMultiDSA_Files"
-                        EventTransaction = DSAImport.DSA_Folder(ModelID)
+                        EventTransaction = DSAImport.DSA_Folder(ModelID, ActioningForm)
 
                     Case "ImportDSA_Template"
-                        EventTransaction = DSAImport.ImportDSA_Template(ModelID)
+                        EventTransaction = DSAImport.ImportDSA_Template(ModelID, ActioningForm)
 
                     Case "ImportStockRentModel"
-                        EventTransaction = ImportModels.ImportStockRentModel(ModelID)
+                        EventTransaction = ImportModels.ImportStockRentModel(ModelID, ActioningForm)
 
                     Case "ImportStockConditionSurvey"
-                        EventTransaction = ImportModels.ImportStockConditionSurvey(ModelID)
+                        EventTransaction = ImportModels.ImportStockConditionSurvey(ModelID, ActioningForm)
 
                     Case "ImportManagementServiceCosts"
-                        EventTransaction = ImportModels.ImportManagementServiceCosts(ModelID)
+                        EventTransaction = ImportModels.ImportManagementServiceCosts(ModelID, ActioningForm)
 
                 End Select
 

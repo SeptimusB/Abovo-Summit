@@ -201,8 +201,11 @@ Public Class FFRForm
             If OpenDialog.ShowDialog(Me) <> DialogResult.OK Then Return
 
             Dim ReturnWorkbook As New Workbook()
+            Dim Activity As FormSplashScreen = Nothing
             Try
                 Cursor = Cursors.WaitCursor
+                Activity = New FormSplashScreen(
+                    Me, "Creating FFR return", "Loading the provider template...")
                 ReturnWorkbook.Options.CalculationMode = WorkbookCalculationMode.Manual
                 ReturnWorkbook.Options.CalculationEngineType = CalculationEngineType.ChainBased
                 ReturnWorkbook.DocumentSettings.Calculation.EnableMultiThreading = False
@@ -213,6 +216,8 @@ Public Class FFRForm
                        ReturnWorkbook.Worksheets("Cover Sheet").Cells("B4").DisplayText,
                        "Spreadsheet Import Template - Financial Forecast Return (FFR)",
                        StringComparison.Ordinal) Then
+                    Activity.Dispose()
+                    Activity = Nothing
                     XtraMessageBox.Show(
                         Me,
                         "The selected file is not a provider-specific Financial Forecast Return template.",
@@ -223,6 +228,7 @@ Public Class FFRForm
                 End If
 
                 Dim MappingCount As Integer = SourceWorkbook.Range("FFRRangeNames").RowCount
+                Activity.Update("Copying business-plan values...")
                 ReturnWorkbook.BeginUpdate()
                 Try
                     For MappingIndex As Integer = 1 To MappingCount - 1
@@ -238,6 +244,8 @@ Public Class FFRForm
                 Finally
                     ReturnWorkbook.EndUpdate()
                 End Try
+                Activity.Dispose()
+                Activity = Nothing
 
                 Using SaveDialog As New SaveFileDialog With {
                     .Filter = "Excel macro-enabled workbook|*.xlsm",
@@ -247,7 +255,12 @@ Public Class FFRForm
                     .Title = "Save the completed FFR return"
                 }
                     If SaveDialog.ShowDialog(Me) <> DialogResult.OK Then Return
+                    Activity = New FormSplashScreen(
+                        Me, "Saving FFR return", "Writing the completed workbook...")
                     ReturnWorkbook.SaveDocument(SaveDialog.FileName, DocumentFormat.Xlsm)
+                    Activity.Complete("FFR return saved.")
+                    Activity.Dispose()
+                    Activity = Nothing
 
                     If XtraMessageBox.Show(
                             Me,
@@ -259,6 +272,10 @@ Public Class FFRForm
                     End If
                 End Using
             Catch ex As Exception
+                If Activity IsNot Nothing Then
+                    Activity.Dispose()
+                    Activity = Nothing
+                End If
                 XtraMessageBox.Show(
                     Me,
                     "The FFR return could not be created: " & ex.Message,
@@ -266,6 +283,7 @@ Public Class FFRForm
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error)
             Finally
+                If Activity IsNot Nothing Then Activity.Dispose()
                 Cursor = Cursors.Default
                 ReturnWorkbook.Dispose()
             End Try

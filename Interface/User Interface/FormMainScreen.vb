@@ -336,7 +336,9 @@ Public Class FormMainScreen
                     ErrorMessage = "The model could not be opened."
                 End If
 
-                ProgressPanel("Error opening file: " & ErrorMessage, "Abovo BP", 2)
+                If SplashScreenManagerMainForm.IsSplashFormVisible Then
+                    SplashScreenManagerMainForm.CloseWaitForm()
+                End If
                 MessageBox.Show(Me,
                                 ErrorMessage,
                                 "Error Opening File",
@@ -369,9 +371,12 @@ Public Class FormMainScreen
                     Throw New InvalidOperationException("The loaded model type is not recognised.")
             End Select
 
-            ProgressPanel("Finished.", "Abovo BP", 2)
+            ProgressPanel("Model ready.", "Abovo BP", 2)
 
         Catch ex As Exception
+            If SplashScreenManagerMainForm.IsSplashFormVisible Then
+                SplashScreenManagerMainForm.CloseWaitForm()
+            End If
             If OpenedModelID >= 0 Then
                 Try
                     If ExcelModels IsNot Nothing AndAlso
@@ -602,7 +607,7 @@ Public Class FormMainScreen
 
             Case Else
 
-                SplashScreenManagerMainForm.SetWaitFormCaption("Finished")
+                SplashScreenManagerMainForm.SetWaitFormCaption("Complete")
                 SplashScreenManagerMainForm.SetWaitFormDescription(strDisplayText)
                 SplashScreenManagerMainForm.CloseWaitForm()
 

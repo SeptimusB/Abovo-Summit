@@ -403,17 +403,21 @@ Public Class GroupInterfaceTemplate
     Private Sub CalculateSidebarWorkbook(ByVal workbook As DevExpress.Spreadsheet.IWorkbook,
                                          ByVal refreshReason As String)
         If workbook Is Nothing Then Return
+        Dim Activity As FormSplashScreen = Nothing
         Dim previousEngine As DevExpress.Spreadsheet.CalculationEngineType =
             workbook.Options.CalculationEngineType
         Dim previousCursor As Cursor = Me.Cursor
         Dim previousUseWaitCursor As Boolean = Me.UseWaitCursor
         Try
+            Activity = New FormSplashScreen(
+                Me, "Calculating model", "Refreshing all workbook results...")
             Me.UseWaitCursor = True
             Me.Cursor = Cursors.WaitCursor
             System.Windows.Forms.Cursor.Current = Cursors.WaitCursor
             workbook.Options.CalculationEngineType =
                 DevExpress.Spreadsheet.CalculationEngineType.Recursive
             workbook.CalculateFull()
+            Activity.Complete("Calculation complete.")
             Debug.WriteLine("GroupInterfaceTemplate sidebar workbook calculated. ModelID=" &
                             MyModelID.ToString() & ", reason=" & refreshReason)
         Catch ex As Exception
@@ -424,6 +428,7 @@ Public Class GroupInterfaceTemplate
                 SystemMessageSeverity.Warning,
                 "Summary refresh")
         Finally
+            If Activity IsNot Nothing Then Activity.Dispose()
             Try
                 workbook.Options.CalculationEngineType = previousEngine
             Finally
@@ -1175,19 +1180,24 @@ Public Class GroupInterfaceTemplate
                         ExcelModels(MyModelID).ResourceRegistry.ReleaseCurrent(
                             ModelResourceKeys.TransactionalRecordsRangeDataSource)
 
-                        Dim NewSAI As New BPIncomeExpenditureAnalyserV2(MyModelID, Me)
-                        NewSAI.Tag = documentTag
-                        ExcelModels(MyModelID).ExpendAnalyserV2 = NewSAI
-                        RegisterAnalysisV2(NewSAI)
+                        Using Activity As New FormSplashScreen(
+                            Me, "Opening analysis", "Calculating the analyser datasource...")
+                            Dim NewSAI As New BPIncomeExpenditureAnalyserV2(MyModelID, Me)
+                            NewSAI.Tag = documentTag
+                            ExcelModels(MyModelID).ExpendAnalyserV2 = NewSAI
+                            RegisterAnalysisV2(NewSAI)
 
-                        Try
-                            DocumentManagerAssumptions.View.AddDocument(NewSAI)
-                            DocumentManagerAssumptions.View.ActivateDocument(NewSAI)
-                        Catch
-                            ExcelModels(MyModelID).ResourceRegistry.ReleaseCurrent(
-                                ModelResourceKeys.TransactionalRecordsRangeDataSource)
-                            Throw
-                        End Try
+                            Try
+                                Activity.Update("Binding the analyser grids...")
+                                DocumentManagerAssumptions.View.AddDocument(NewSAI)
+                                DocumentManagerAssumptions.View.ActivateDocument(NewSAI)
+                                Activity.Complete("Analysis ready.")
+                            Catch
+                                ExcelModels(MyModelID).ResourceRegistry.ReleaseCurrent(
+                                    ModelResourceKeys.TransactionalRecordsRangeDataSource)
+                                Throw
+                            End Try
+                        End Using
 
                     Case "WebInterface"
                         Dim NewSAI As New WebInterfaceTemplate(MyModelID, resolvedGSID, SetCSID)

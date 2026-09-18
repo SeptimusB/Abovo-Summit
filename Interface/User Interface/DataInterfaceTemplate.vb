@@ -12262,6 +12262,7 @@ SectionSelect:
                     Dim mutationMs As Long = 0
                     Dim sectionMs As Long = 0
                     Dim rulesMs As Long = 0
+                    Dim Activity As FormSplashScreen = Nothing
 
                     Try
 
@@ -12314,6 +12315,10 @@ SectionSelect:
                         'Keep the busy indication active for the entire mutation AND
                         'interface rebuild. RebuildAllSections can recreate child
                         'controls, so UseWaitCursor is used as well as Cursor.
+                        Activity = New FormSplashScreen(
+                            Me.FindForm(),
+                            If(LineAdjustment > 0, "Adding lines", "Deleting lines"),
+                            "Updating workbook structure...")
                         Me.UseWaitCursor = True
                         Me.Cursor = Cursors.WaitCursor
                         Cursor.Current = Cursors.WaitCursor
@@ -12363,6 +12368,8 @@ SectionSelect:
                         If StructureResult IsNot Nothing AndAlso
                            StructureResult.BError Then
 
+                            Activity.Dispose()
+                            Activity = Nothing
                             Me.UseWaitCursor = False
                             Me.Cursor = Cursors.Default
                             Cursor.Current = Cursors.Default
@@ -12388,6 +12395,7 @@ SectionSelect:
                         Me.Cursor = Cursors.WaitCursor
                         Cursor.Current = Cursors.WaitCursor
 
+                        Activity.Update("Rebuilding the interface...")
                         RebuildAllSections()
                         sectionMs = actionBenchmark.ElapsedMilliseconds - mutationMs
 
@@ -12397,11 +12405,13 @@ SectionSelect:
 
                         ResizeFonts()
                         UpdateAllRules()
+                        Activity.Complete("Lines updated.")
                         rulesMs =
                             actionBenchmark.ElapsedMilliseconds - mutationMs - sectionMs
 
                     Finally
 
+                        If Activity IsNot Nothing Then Activity.Dispose()
                         System.Diagnostics.Trace.WriteLine(
                             "[Population Benchmark] DIT add-lines: model=" &
                             ModelID.ToString() &

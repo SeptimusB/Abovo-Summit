@@ -5138,7 +5138,11 @@ Public Class StressTest
         Dim CapturedDataWasProtected As Boolean = CapturedDataSheet.IsProtected
         UNProtectWS(ModelID, PlannerSheet.Name)
         UNProtectWS(ModelID, CapturedDataSheet.Name)
+        Dim Activity As FormSplashScreen = Nothing
+        Dim CaptureSucceeded As Boolean = False
         Try
+            Activity = New FormSplashScreen(
+                Me, "Capturing scenario", "Copying live assumptions...")
             CopyRangeValues(
                 ActiveWorkbook.DefinedNames.GetDefinedName("LiveAssumptions").Range,
                 ActiveWorkbook.DefinedNames.GetDefinedName(
@@ -5154,6 +5158,7 @@ Public Class StressTest
                 "ImportMode" & ScenarioIndex.ToString()).Range(0, 0).Value =
                 CellValue.FromObject("Use assumptions below")
             CalculateStressWorkbook(True)
+            Activity.Update("Saving calculated scenario results...")
             CopyRangeValues(
                 ActiveWorkbook.DefinedNames.GetDefinedName("StressLiveInfo").Range,
                 ActiveWorkbook.DefinedNames.GetDefinedName(
@@ -5163,10 +5168,18 @@ Public Class StressTest
             RefreshNativePlanner()
             RefreshNativeDashboard()
             RefreshNativeComparativeViews()
+            CaptureSucceeded = True
         Finally
-            If PlannerWasProtected Then ProtectWS(ModelID, PlannerSheet.Name)
-            If CapturedDataWasProtected Then ProtectWS(ModelID, CapturedDataSheet.Name)
-            Me.Cursor = Cursors.Default
+            Try
+                If PlannerWasProtected Then ProtectWS(ModelID, PlannerSheet.Name)
+                If CapturedDataWasProtected Then ProtectWS(ModelID, CapturedDataSheet.Name)
+                If CaptureSucceeded AndAlso Activity IsNot Nothing Then
+                    Activity.Complete("Scenario captured.")
+                End If
+            Finally
+                If Activity IsNot Nothing Then Activity.Dispose()
+                Me.Cursor = Cursors.Default
+            End Try
         End Try
         DevExpress.XtraEditors.XtraMessageBox.Show(
             "The current live assumptions and results were captured as " &
@@ -5207,7 +5220,12 @@ Public Class StressTest
         UNProtectWS(ModelID, PlannerSheet.Name)
         UNProtectWS(ModelID, CapturedDataSheet.Name)
         UNProtectWS(ModelID, LivePlannerSheet.Name)
+        Dim Activity As FormSplashScreen = Nothing
+        Dim GenerationSucceeded As Boolean = False
         Try
+        Try
+            Activity = New FormSplashScreen(
+                Me, "Generating dashboard", "Calculating the base scenario...")
             SetWorkbookStressMode(False)
             LiveAssumptions.ClearContents()
             LiveAssumptionsA.ClearContents()
@@ -5218,8 +5236,17 @@ Public Class StressTest
 
             Dim Names As List(Of String) = WorkbookScenarioNames()
             For ScenarioIndex As Integer = 1 To 10
+                If Activity Is Nothing Then
+                    Activity = New FormSplashScreen(
+                        Me, "Generating dashboard", "Continuing scenario calculations...")
+                End If
                 Me.Text = "Generating dashboard - " & Names(ScenarioIndex)
-                Windows.Forms.Application.DoEvents()
+                If Activity IsNot Nothing Then
+                    Activity.Update(
+                        "Scenario " & ScenarioIndex.ToString() & " of 10: " &
+                        If(String.IsNullOrWhiteSpace(Names(ScenarioIndex)),
+                           "unused", Names(ScenarioIndex)))
+                End If
                 Dim TargetData As DevExpress.Spreadsheet.CellRange =
                     ActiveWorkbook.DefinedNames.GetDefinedName(
                         "S" & ScenarioIndex.ToString() & "Data").Range
@@ -5234,7 +5261,14 @@ Public Class StressTest
                 If Not String.Equals(
                         ImportMode, "Use assumptions below",
                         StringComparison.OrdinalIgnoreCase) Then
+                    'The import opens a file picker; do not cover it with a wait form.
+                    If Activity IsNot Nothing Then
+                        Activity.Dispose()
+                        Activity = Nothing
+                    End If
                     If Not ImportScenarioResults(Names(ScenarioIndex), TargetData) Then Continue For
+                    Activity = New FormSplashScreen(
+                        Me, "Generating dashboard", "Continuing scenario calculations...")
                 Else
                     SetWorkbookStressMode(True)
                     CopyRangeValues(
@@ -5252,12 +5286,18 @@ Public Class StressTest
                     SetWorkbookStressMode(False)
                 End If
             Next
+            GenerationSucceeded = True
         Catch ex As Exception
+            If Activity IsNot Nothing Then
+                Activity.Dispose()
+                Activity = Nothing
+            End If
             DevExpress.XtraEditors.XtraMessageBox.Show(
                 "Dashboard generation stopped: " & ex.Message,
                 "Multivariable dashboard", MessageBoxButtons.OK, MessageBoxIcon.Error)
         Finally
             Try
+                If Activity IsNot Nothing Then Activity.Update("Restoring live assumptions...")
                 RestoreRange(LiveAssumptions, SavedLive)
                 RestoreRange(LiveAssumptionsA, SavedLiveA)
                 ActiveWorkbook.DefinedNames.GetDefinedName(
@@ -5274,10 +5314,20 @@ Public Class StressTest
             End Try
         End Try
 
+        If GenerationSucceeded AndAlso Activity Is Nothing Then
+            Activity = New FormSplashScreen(
+                Me, "Generating dashboard", "Refreshing dashboard views...")
+        End If
         RefreshAllNativeScenarioSelectors()
         RefreshNativeDashboard()
         RefreshNativeComparativeViews()
         XtraTabControlStressTest.SelectedTabPage = XtraTabPageDashboard
+        If GenerationSucceeded AndAlso Activity IsNot Nothing Then
+            Activity.Complete("Dashboard ready.")
+        End If
+        Finally
+            If Activity IsNot Nothing Then Activity.Dispose()
+        End Try
 
     End Sub
 

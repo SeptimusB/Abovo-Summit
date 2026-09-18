@@ -552,12 +552,15 @@ Public Class BPIncomeExpenditureAnalyserV2
 
         Dim refreshBenchmark As System.Diagnostics.Stopwatch =
             System.Diagnostics.Stopwatch.StartNew()
+        Dim Activity As FormSplashScreen = New FormSplashScreen(
+            Me.FindForm(), "Refreshing analysis", "Calculating the analyser datasource...")
         Me.Cursor = Cursors.WaitCursor
         DeferredRefreshLabel.Text = "Refreshing analysis..."
         DeferredRefreshPanel.Refresh()
         Try
             If DSAnalDataRange IsNot Nothing Then DisconnectRDS()
             ReconnectRDS(True)
+            Activity.Update("Restoring the analyser view...")
             StructuralRefreshDeferred = False
             DeferredRefreshPanel.Visible = False
             XtraTabControlAnalyser.Enabled = True
@@ -565,8 +568,11 @@ Public Class BPIncomeExpenditureAnalyserV2
                 "[Analyser V2 Deferred Refresh] model=" & ModelID.ToString() &
                 ", state=current, total=" &
                 refreshBenchmark.ElapsedMilliseconds.ToString() & " ms")
+            Activity.Complete("Analysis ready.")
             Return True
         Catch ex As Exception
+            Activity.Dispose()
+            Activity = Nothing
             Try
                 DisconnectRDS()
             Catch
@@ -589,6 +595,7 @@ Public Class BPIncomeExpenditureAnalyserV2
                 MessageBoxIcon.Warning)
             Return False
         Finally
+            If Activity IsNot Nothing Then Activity.Dispose()
             Me.Cursor = Cursors.Default
         End Try
     End Function

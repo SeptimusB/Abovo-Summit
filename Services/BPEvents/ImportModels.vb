@@ -16,7 +16,9 @@ Namespace Abovo
         Dim BPFile As String
         Dim MSFile As String
 
-        Public Shared Function ImportStockRentModel(ModelID As Integer) As AbovoTransaction
+        Public Shared Function ImportStockRentModel(
+            ModelID As Integer,
+            Optional Owner As System.Windows.Forms.Form = Nothing) As AbovoTransaction
 
             Const AllYears As Integer = 30
             Dim Result As New AbovoTransaction("ImportStockRentModel")
@@ -24,6 +26,7 @@ Namespace Abovo
             Dim Journal As New WorkbookCellJournal
             Dim MutationStarted As Boolean = False
             Dim StructuralMutation As Boolean = False
+            Dim Activity As FormSplashScreen = Nothing
 
             Try
                 Dim BusinessPlan As IWorkbook = FileManager.GetWorkBook(ModelID)
@@ -43,6 +46,10 @@ Namespace Abovo
                     End If
 
                     Dim RentModelPath As String = FileDialog.FileName
+                    If Owner IsNot Nothing AndAlso Owner.IsHandleCreated Then
+                        Activity = New FormSplashScreen(
+                            Owner, "Importing rent model", "Loading the selected workbook...")
+                    End If
                     Dim FileOpenResult As AbovoTransaction =
                         FileManager.OpenModel(
                             RentModelPath,
@@ -64,6 +71,7 @@ Namespace Abovo
                 'Resolve the complete transfer contract before changing the business
                 'plan. This prevents a partially imported model when a required name
                 'or worksheet is missing from the selected rent file.
+                If Activity IsNot Nothing Then Activity.Update("Validating import ranges...")
                 Dim TransferDate As CellRange = GetRequiredRange(BusinessPlan, "TransferDate", "business plan")
                 Dim TargetBPCats As CellRange = GetRequiredRange(BusinessPlan, "BPCats", "business plan")
                 Dim TargetStock As CellRange = GetRequiredRange(BusinessPlan, "StTrans", "business plan")
@@ -114,6 +122,7 @@ Namespace Abovo
                 End If
 
                 MutationStarted = True
+                If Activity IsNot Nothing Then Activity.Update("Applying rent data...")
                 TargetBPCats.CopyFrom(SourceBPCats, PasteSpecial.Values)
                 TargetStock.CopyFrom(SourceStock, PasteSpecial.Values)
                 TargetRents.CopyFrom(SourceRents, PasteSpecial.Values)
@@ -155,6 +164,7 @@ Namespace Abovo
                 TargetTimestamp.Value = DateTime.Now
 
                 FileManager.ExcelModels(ModelID).SetDirtyFlag()
+                If Activity IsNot Nothing Then Activity.Update("Calculating the business plan...")
                 FileManager.ExcelModels(ModelID).WBCalcEngine.CalcFile()
 
                 Result.BSuccess = True
@@ -163,6 +173,7 @@ Namespace Abovo
                 Result.StrResponseMessage = Result.StringReturn
 
             Catch ex As Exception
+                If Activity IsNot Nothing Then Activity.Update("Checking import recovery...")
                 Result.BError = True
                 Result.BSuccess = False
                 Result.StringReturn = ex.Message
@@ -199,7 +210,12 @@ Namespace Abovo
             Finally
                 Try
                     If RentModelID >= 0 Then FileManager.CloseModel(RentModelID)
+                    If Activity IsNot Nothing AndAlso
+                       Result.BSuccess AndAlso Not Result.BError Then
+                        Activity.Complete("Rent data imported.")
+                    End If
                 Finally
+                    If Activity IsNot Nothing Then Activity.Dispose()
                     Journal.Dispose()
                 End Try
             End Try
@@ -224,7 +240,9 @@ Namespace Abovo
                 " is missing the required named range '" & RangeName & "'.")
 
         End Function
-        Public Shared Function ImportManagementServiceCosts(ModelID As Integer) As AbovoTransaction
+        Public Shared Function ImportManagementServiceCosts(
+            ModelID As Integer,
+            Optional Owner As System.Windows.Forms.Form = Nothing) As AbovoTransaction
 
             Const ImportYears As Integer = 5
             Const TargetSheetName As String = "Management Costs Assumptions"
@@ -236,6 +254,7 @@ Namespace Abovo
             Dim TargetWasProtected As Boolean = False
             Dim Journal As New WorkbookCellJournal
             Dim MutationStarted As Boolean = False
+            Dim Activity As FormSplashScreen = Nothing
 
             Try
                 Dim BusinessPlan As IWorkbook = FileManager.GetWorkBook(ModelID)
@@ -253,6 +272,11 @@ Namespace Abovo
                     End If
 
                     SourcePath = FileDialog.FileName
+                    If Owner IsNot Nothing AndAlso Owner.IsHandleCreated Then
+                        Activity = New FormSplashScreen(
+                            Owner, "Importing management costs",
+                            "Loading the selected workbook...")
+                    End If
                     Dim OpenResult As AbovoTransaction =
                         FileManager.OpenModel(SourcePath,
                                               New IO.FileInfo(SourcePath),
@@ -267,6 +291,7 @@ Namespace Abovo
                 If SourceModel Is Nothing Then
                     Throw New InvalidOperationException("The selected management-cost model could not be loaded.")
                 End If
+                If Activity IsNot Nothing Then Activity.Update("Validating import ranges...")
                 RequireWorksheet(BusinessPlan, TargetSheetName, "business plan")
                 RequireWorksheet(SourceModel, SourceSummarySheetName, "management-cost model")
                 RequireWorksheet(SourceModel, SourceGlobalSheetName, "management-cost model")
@@ -330,6 +355,7 @@ Namespace Abovo
                 If TargetWasProtected Then UNProtectWS(ModelID, TargetSheetName)
 
                 MutationStarted = True
+                If Activity IsNot Nothing Then Activity.Update("Applying management costs...")
                 TargetServices.CopyFrom(SourceServices, PasteSpecial.Values, True)
                 For YearIndex As Integer = 0 To ImportYears - 1
                     SourceYear(0, 0).Value = YearIndex + 1
@@ -344,6 +370,7 @@ Namespace Abovo
                 TargetTimestamp(0, 0).Value = CellValue.FromObject(DateTime.Now)
 
                 FileManager.ExcelModels(ModelID).SetDirtyFlag()
+                If Activity IsNot Nothing Then Activity.Update("Calculating the business plan...")
                 FileManager.ExcelModels(ModelID).WBCalcEngine.CalcFile()
                 Result.BSuccess = True
                 Result.BError = False
@@ -351,6 +378,7 @@ Namespace Abovo
                 Result.StrResponseMessage = Result.StringReturn
 
             Catch ex As Exception
+                If Activity IsNot Nothing Then Activity.Update("Checking import recovery...")
                 Result.BError = True
                 Result.BSuccess = False
                 Result.StringReturn = ex.Message
@@ -401,7 +429,12 @@ Namespace Abovo
                 End If
                 Try
                     If SourceModelID >= 0 Then FileManager.CloseModel(SourceModelID)
+                    If Activity IsNot Nothing AndAlso
+                       Result.BSuccess AndAlso Not Result.BError Then
+                        Activity.Complete("Management costs imported.")
+                    End If
                 Finally
+                    If Activity IsNot Nothing Then Activity.Dispose()
                     Journal.Dispose()
                 End Try
             End Try
@@ -427,11 +460,14 @@ Namespace Abovo
                 Anchor.TopRowIndex + SourceRange.RowCount - 1)
         End Function
 
-        Public Shared Function ImportStockConditionSurvey(SetModelID As Integer) As AbovoTransaction
+        Public Shared Function ImportStockConditionSurvey(
+            SetModelID As Integer,
+            Optional Owner As System.Windows.Forms.Form = Nothing) As AbovoTransaction
             Dim Result As New AbovoTransaction("ImportStockConditionSurvey")
             Dim ActiveRMModelID As Integer = -1
             Dim Journal As New WorkbookCellJournal
             Dim MutationStarted As Boolean = False
+            Dim Activity As FormSplashScreen = Nothing
 
             Try
                 Dim BusPlanFile As IWorkbook = FileManager.GetWorkBook(SetModelID)
@@ -449,6 +485,11 @@ Namespace Abovo
                     FileToOpen = FileDialog.FileName
                 End Using
 
+                If Owner IsNot Nothing AndAlso Owner.IsHandleCreated Then
+                    Activity = New FormSplashScreen(
+                        Owner, "Importing stock condition",
+                        "Loading the selected workbook...")
+                End If
                 Dim FileOpenResult As AbovoTransaction =
                     FileManager.OpenModel(FileToOpen, New IO.FileInfo(FileToOpen), FileManager.WorkbookOpenMode.ImportSource)
                 If FileOpenResult.BError Then Throw New IO.InvalidDataException(FileOpenResult.StrResponseMessage)
@@ -456,6 +497,7 @@ Namespace Abovo
 
                 Dim ActiveRMModel As IWorkbook = FileManager.GetWorkBook(ActiveRMModelID)
                 If ActiveRMModel Is Nothing Then Throw New InvalidOperationException("The selected stock-condition model could not be loaded.")
+                If Activity IsNot Nothing Then Activity.Update("Validating survey data...")
                 RequireWorksheet(ActiveRMModel, "Totals", "stock-condition model")
                 Dim TargetFile As CellRange = GetRequiredRange(BusPlanFile, "SCSfile", "business plan")
                 Dim TargetTimestamp As CellRange = GetRequiredRange(BusPlanFile, "Datestampscs", "business plan")
@@ -467,9 +509,11 @@ Namespace Abovo
                 ActiveRMModel.Calculate()
 
                 MutationStarted = True
+                If Activity IsNot Nothing Then Activity.Update("Applying stock-condition data...")
                 TargetFile(0, 0).SetValueFromText(SourceFileCell.DisplayText)
                 TargetTimestamp(0, 0).SetValue(Now())
                 FileManager.ExcelModels(SetModelID).SetDirtyFlag()
+                If Activity IsNot Nothing Then Activity.Update("Calculating the business plan...")
                 FileManager.ExcelModels(SetModelID).WBCalcEngine.CalcFile()
 
                 Result.BSuccess = True
@@ -477,6 +521,7 @@ Namespace Abovo
                 Result.StringReturn = "Stock-condition survey details imported successfully."
                 Result.StrResponseMessage = Result.StringReturn
             Catch ex As Exception
+                If Activity IsNot Nothing Then Activity.Update("Checking import recovery...")
                 Result.BError = True
                 Result.BSuccess = False
                 Result.StringReturn = ex.Message
@@ -506,6 +551,12 @@ Namespace Abovo
                     SystemMessageManager.Publish(SetModelID, Result.StrResponseMessage,
                         SystemMessageSeverity.Error, "Import Models", "Stock Condition Survey")
                 Finally
+                    If Activity IsNot Nothing Then
+                        If Result.BSuccess AndAlso Not Result.BError Then
+                            Activity.Complete("Stock condition imported.")
+                        End If
+                        Activity.Dispose()
+                    End If
                     Journal.Dispose()
                 End Try
             End Try

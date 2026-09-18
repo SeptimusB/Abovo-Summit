@@ -10,22 +10,34 @@ Namespace Abovo
         Private Const EarliestVersion As Double = 4.0988
         Private Const EarliestConsol As Double = 5.01
 
-        Public Shared Function ImportSingleDSA_File(ModelID As Integer) As AbovoTransaction
+        Public Shared Function ImportSingleDSA_File(
+            ModelID As Integer,
+            Optional Owner As Form = Nothing) As AbovoTransaction
             Const Action As String = "ImportSingleDSA_File"
+            Dim Activity As FormSplashScreen = Nothing
             Try
                 Using Dialog As New DevExpress.XtraEditors.XtraOpenFileDialog()
                     Dialog.Filter = "Abovo DSA models (*.xls;*.xlsx;*.xlsm;*.xlsb;*.adsa)|*.xls;*.xlsx;*.xlsm;*.xlsb;*.adsa"
                     Dialog.Title = "Select scheme"
                     If Dialog.ShowDialog() <> DialogResult.OK Then Return Cancelled(Action, "Scheme import cancelled.")
+                    If Owner IsNot Nothing AndAlso Owner.IsHandleCreated Then
+                        Activity = New FormSplashScreen(
+                            Owner, "Importing DSA scheme", "Loading and validating the scheme...")
+                    End If
                     Dim Name As String = ImportScheme(ModelID, Dialog.FileName, "Single")
+                    If Activity IsNot Nothing Then Activity.Complete("Scheme imported.")
                     Return Succeeded(Action, "Scheme '" & Name & "' imported successfully.")
                 End Using
             Catch ex As Exception
                 Return Failed(Action, "The scheme could not be imported.", ex)
+            Finally
+                If Activity IsNot Nothing Then Activity.Dispose()
             End Try
         End Function
 
-        Public Shared Function ImportConsolDSA_File(ModelID As Integer) As AbovoTransaction
+        Public Shared Function ImportConsolDSA_File(
+            ModelID As Integer,
+            Optional Owner As Form = Nothing) As AbovoTransaction
             Const Action As String = "ImportConsolDSA_File"
             Try
                 Using Dialog As New DevExpress.XtraEditors.XtraOpenFileDialog()
@@ -35,7 +47,7 @@ Namespace Abovo
                     If MessageBox.Show("Schemes must either be all committed or all uncommitted." & Environment.NewLine & "Does this model contain only one type?", "Committed or uncommitted", MessageBoxButtons.YesNo, MessageBoxIcon.Question) <> DialogResult.Yes Then
                         Return Cancelled(Action, "Consolidated-scheme import abandoned.")
                     End If
-                    Dim Name As String = ImportScheme(ModelID, Dialog.FileName, "Consol")
+                    Dim Name As String = ImportScheme(ModelID, Dialog.FileName, "Consol", Owner)
                     Return Succeeded(Action, "Consolidated scheme '" & Name & "' imported successfully.")
                 End Using
             Catch ex As Exception
@@ -43,7 +55,9 @@ Namespace Abovo
             End Try
         End Function
 
-        Public Shared Function DSA_Folder(ModelID As Integer) As AbovoTransaction
+        Public Shared Function DSA_Folder(
+            ModelID As Integer,
+            Optional Owner As Form = Nothing) As AbovoTransaction
             Const Action As String = "ImportMultiDSA_Files"
             Try
                 Using Dialog As New FolderBrowserDialog()
@@ -66,7 +80,7 @@ Namespace Abovo
                     Dim Rejected As Integer = 0
                     For Each FilePath As String In Files
                         Try
-                            ImportScheme(ModelID, FilePath, "Folder")
+                            ImportScheme(ModelID, FilePath, "Folder", Owner)
                             Imported += 1
                         Catch ex As Exception
                             Rejected += 1
@@ -88,10 +102,14 @@ Namespace Abovo
             End Try
         End Function
 
-        Public Shared Function ImportDSA_Template(ModelID As Integer) As AbovoTransaction
+        Public Shared Function ImportDSA_Template(
+            ModelID As Integer,
+            Optional Owner As Form = Nothing) As AbovoTransaction
             Const Action As String = "ImportDSA_Template"
             Dim SourceID As Integer = -1
             Dim MutationStarted As Boolean = False
+            Dim ImportSucceeded As Boolean = False
+            Dim Activity As FormSplashScreen = Nothing
             Try
                 Dim SourcePath As String
                 Using Dialog As New DevExpress.XtraEditors.XtraOpenFileDialog()
@@ -118,6 +136,11 @@ Namespace Abovo
                 Dim ExistingCount As Integer = Math.Max(0, SchemeRange.ColumnCount - 1)
                 Dim RequiredCount As Integer = If(ClearExisting, Math.Max(Count, 10) + 1, SchemeRange.ColumnCount + Count)
                 Dim Offset As Integer = If(ClearExisting, 0, ExistingCount)
+                If Owner IsNot Nothing AndAlso Owner.IsHandleCreated Then
+                    Activity = New FormSplashScreen(
+                        Owner, "Importing development template",
+                        "Adding development schemes...")
+                End If
                 MutationStarted = True
                 ResizeDevelopmentColumns(ModelID, RequiredCount)
                 If ClearExisting Then
@@ -137,7 +160,9 @@ Namespace Abovo
                 RequiredRange(BP, "DvptTemplFile", "business plan")(0, 0).Value = CellValue.FromObject(SourcePath)
                 RequiredRange(BP, "DateStampDvptTempl", "business plan")(0, 0).Value = CellValue.FromObject(DateTime.Now)
                 ExcelModels(ModelID).SetDirtyFlag()
+                If Activity IsNot Nothing Then Activity.Update("Calculating the business plan...")
                 ExcelModels(ModelID).WBCalcEngine.CalcFile()
+                ImportSucceeded = True
                 Return Succeeded(Action, Count.ToString() & " development scheme(s) imported from the template.")
             Catch ex As Exception
                 Dim Result As AbovoTransaction =
@@ -151,12 +176,24 @@ Namespace Abovo
                 End If
                 Return Result
             Finally
-                CloseModel(SourceID)
+                Try
+                    CloseModel(SourceID)
+                    If ImportSucceeded AndAlso Activity IsNot Nothing Then
+                        Activity.Complete("Development schemes imported.")
+                    End If
+                Finally
+                    If Activity IsNot Nothing Then Activity.Dispose()
+                End Try
             End Try
         End Function
 
-        Private Shared Function ImportScheme(ModelID As Integer, FilePath As String, ImportType As String) As String
+        Private Shared Function ImportScheme(
+            ModelID As Integer,
+            FilePath As String,
+            ImportType As String,
+            Optional Owner As Form = Nothing) As String
             Dim SourceID As Integer = -1
+            Dim Activity As FormSplashScreen = Nothing
             Dim SchemeMade As Boolean = False
             Dim TotalsMade As Boolean = False
             Dim MutationStarted As Boolean = False
@@ -207,6 +244,11 @@ Namespace Abovo
                 Else
                     Commitment = RequiredRange(Source, "Rep_Global_01", "selected DSA model")(0, 0).DisplayText
                 End If
+                If Owner IsNot Nothing AndAlso Owner.IsHandleCreated Then
+                    Activity = New FormSplashScreen(
+                        Owner, "Importing DSA scheme",
+                        "Adding " & Name & " to the business plan...")
+                End If
                 MutationStarted = True
                 ImportsStart.Visible = True
                 TotalsTemplate.Visible = True
@@ -220,10 +262,12 @@ Namespace Abovo
                 ListMutationStarted = True
                 UpdateList(BP, Name, FilePath, Commitment)
                 ExcelModels(ModelID).SetDirtyFlag()
+                If Activity IsNot Nothing Then Activity.Update("Calculating the business plan...")
                 ExcelModels(ModelID).WBCalcEngine.CalcFile()
                 OperationSucceeded = True
                 Return Name
             Catch ex As Exception
+                If Activity IsNot Nothing Then Activity.Update("Checking import recovery...")
                 Dim CleanupFailures As New List(Of String)
                 Try
                     If TotalsMade AndAlso BP.Worksheets.Contains(Name & " Total") Then
@@ -268,6 +312,12 @@ Namespace Abovo
                 Catch closeError As Exception
                     RestorationFailures.Add("Source DSA close failed: " & closeError.Message)
                 End Try
+                If Activity IsNot Nothing Then
+                    If OperationSucceeded AndAlso RestorationFailures.Count = 0 Then
+                        Activity.Complete("Scheme imported.")
+                    End If
+                    Activity.Dispose()
+                End If
                 If RestorationFailures.Count > 0 Then
                     Dim FailureMessage As String = String.Join(Environment.NewLine, RestorationFailures)
                     If MutationStarted Then
