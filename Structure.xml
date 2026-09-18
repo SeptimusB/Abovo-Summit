@@ -4980,7 +4980,6 @@
           <DSSource>NR</DSSource>
           <SourceDataFormat>Cols</SourceDataFormat>
           <ColsExpandBy>NR</ColsExpandBy>
-          <RO>TRUE</RO>
           <RowsExpandBy>None</RowsExpandBy>
           <DSType>MergeAcross</DSType>
           <MergeSources>Across</MergeSources>

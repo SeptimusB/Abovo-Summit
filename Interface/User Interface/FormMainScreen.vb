@@ -54,7 +54,6 @@ Public Class FormMainScreen
         DevExpress.XtraEditors.WindowsFormsSettings.SmartMouseWheelProcessing = False
 
         InitializeComponent()
-        InitialisePresentationOptionsAction()
         InitialiseDSAWorkspace()
 
         If String.IsNullOrWhiteSpace(ApplicationConfiguration.CurrentApplicationPath) Then
@@ -395,28 +394,6 @@ Public Class FormMainScreen
             Me.Cursor = Cursors.Default
         End Try
 
-    End Sub
-
-    Private Sub InitialisePresentationOptionsAction()
-        For Each Item As Object In WindowsUIButtonPanelExitHelp.Buttons
-            Dim ExistingButton As WindowsUIButton = TryCast(Item, WindowsUIButton)
-            If ExistingButton IsNot Nothing AndAlso
-               String.Equals(Convert.ToString(ExistingButton.Tag), "Options", StringComparison.OrdinalIgnoreCase) Then
-                Return
-            End If
-        Next
-
-        WindowsUIButtonPanelExitHelp.Buttons.Add(
-            New DevExpress.XtraBars.Docking2010.WindowsUISeparator(Nothing, True, -1, True))
-        Dim SettingsImageOptions As New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions With {
-            .SvgImage = DevExpress.Images.ImageResourceCache.Default.GetSvgImage("images/setup/properties_32x32.svg"),
-            .SvgImageSize = New Size(32, 32)
-        }
-        WindowsUIButtonPanelExitHelp.Buttons.Add(
-            New WindowsUIButton("Settings", True, SettingsImageOptions,
-                DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton,
-                "Application interface scale and presentation options",
-                -1, True, Nothing, True, False, True, "Options", -1, True))
     End Sub
 
     Private Sub InitialiseDSAWorkspace()

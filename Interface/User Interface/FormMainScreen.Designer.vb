@@ -20,13 +20,13 @@ Partial Class FormMainScreen
     <System.Diagnostics.DebuggerStepThrough()>
     Private Sub InitializeComponent()
         Me.components = New System.ComponentModel.Container()
-        Dim WindowsUIButtonImageOptions3 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
         Dim WindowsUIButtonImageOptions4 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
         Dim WindowsUIButtonImageOptions5 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
+        Dim WindowsUIButtonImageOptions6 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
         Dim WindowsUIButtonImageOptions1 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
         Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(FormMainScreen))
         Dim WindowsUIButtonImageOptions2 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
-        Dim WindowsUIButtonImageOptions6 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
+        Dim WindowsUIButtonImageOptions3 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
         Dim WindowsUIButtonImageOptions7 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
         Dim WindowsUIButtonImageOptions8 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
         Dim WindowsUIButtonImageOptions9 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
@@ -36,6 +36,7 @@ Partial Class FormMainScreen
         Dim WindowsUIButtonImageOptions13 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
         Dim WindowsUIButtonImageOptions14 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
         Dim WindowsUIButtonImageOptions15 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
+        Dim WindowsUIButtonImageOptions16 As DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions = New DevExpress.XtraBars.Docking2010.WindowsUIButtonImageOptions()
         Me.SplashScreenManagerMainForm = New DevExpress.XtraSplashScreen.SplashScreenManager(Me, GetType(Global.WaitFormA), True, True)
         Me.PictureBoxAbovoLogo = New System.Windows.Forms.PictureBox()
         Me.GroupBoxProgramDetails = New System.Windows.Forms.GroupBox()
@@ -101,8 +102,8 @@ Partial Class FormMainScreen
         'PictureBoxAbovoLogo
         '
         Me.PictureBoxAbovoLogo.Image = Global.My.Resources.Resources.Abovo_Summit_Crop_V_Small
-        Me.PictureBoxAbovoLogo.Location = New System.Drawing.Point(29, 41)
-        Me.PictureBoxAbovoLogo.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.PictureBoxAbovoLogo.Location = New System.Drawing.Point(28, 41)
+        Me.PictureBoxAbovoLogo.Margin = New System.Windows.Forms.Padding(5)
         Me.PictureBoxAbovoLogo.Name = "PictureBoxAbovoLogo"
         Me.PictureBoxAbovoLogo.Size = New System.Drawing.Size(482, 273)
         Me.PictureBoxAbovoLogo.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage
@@ -114,11 +115,11 @@ Partial Class FormMainScreen
         Me.GroupBoxProgramDetails.Controls.Add(Me.WebBrowserProgramDetails)
         Me.GroupBoxProgramDetails.Font = New System.Drawing.Font("Segoe UI", 9.857143!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
         Me.GroupBoxProgramDetails.ForeColor = System.Drawing.Color.FromArgb(CType(CType(0, Byte), Integer), CType(CType(91, Byte), Integer), CType(CType(170, Byte), Integer))
-        Me.GroupBoxProgramDetails.Location = New System.Drawing.Point(29, 337)
-        Me.GroupBoxProgramDetails.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.GroupBoxProgramDetails.Location = New System.Drawing.Point(28, 338)
+        Me.GroupBoxProgramDetails.Margin = New System.Windows.Forms.Padding(5)
         Me.GroupBoxProgramDetails.Name = "GroupBoxProgramDetails"
-        Me.GroupBoxProgramDetails.Padding = New System.Windows.Forms.Padding(4, 5, 4, 5)
-        Me.GroupBoxProgramDetails.Size = New System.Drawing.Size(495, 543)
+        Me.GroupBoxProgramDetails.Padding = New System.Windows.Forms.Padding(5)
+        Me.GroupBoxProgramDetails.Size = New System.Drawing.Size(495, 544)
         Me.GroupBoxProgramDetails.TabIndex = 2
         Me.GroupBoxProgramDetails.TabStop = False
         Me.GroupBoxProgramDetails.Text = "Program Information"
@@ -128,13 +129,13 @@ Partial Class FormMainScreen
         Me.WebBrowserProgramDetails.AllowWebBrowserDrop = False
         Me.WebBrowserProgramDetails.Dock = System.Windows.Forms.DockStyle.Fill
         Me.WebBrowserProgramDetails.IsWebBrowserContextMenuEnabled = False
-        Me.WebBrowserProgramDetails.Location = New System.Drawing.Point(4, 32)
-        Me.WebBrowserProgramDetails.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.WebBrowserProgramDetails.Location = New System.Drawing.Point(5, 32)
+        Me.WebBrowserProgramDetails.Margin = New System.Windows.Forms.Padding(5)
         Me.WebBrowserProgramDetails.MinimumSize = New System.Drawing.Size(20, 21)
         Me.WebBrowserProgramDetails.Name = "WebBrowserProgramDetails"
         Me.WebBrowserProgramDetails.ScriptErrorsSuppressed = True
         Me.WebBrowserProgramDetails.ScrollBarsEnabled = False
-        Me.WebBrowserProgramDetails.Size = New System.Drawing.Size(487, 506)
+        Me.WebBrowserProgramDetails.Size = New System.Drawing.Size(485, 507)
         Me.WebBrowserProgramDetails.TabIndex = 0
         Me.WebBrowserProgramDetails.WebBrowserShortcutsEnabled = False
         '
@@ -153,9 +154,9 @@ Partial Class FormMainScreen
         Me.hideContainerRight.Font = New System.Drawing.Font("Segoe UI", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
         Me.hideContainerRight.ForeColor = System.Drawing.Color.FromArgb(CType(CType(0, Byte), Integer), CType(CType(91, Byte), Integer), CType(CType(170, Byte), Integer))
         Me.hideContainerRight.Location = New System.Drawing.Point(2032, 0)
-        Me.hideContainerRight.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.hideContainerRight.Margin = New System.Windows.Forms.Padding(5)
         Me.hideContainerRight.Name = "hideContainerRight"
-        Me.hideContainerRight.Size = New System.Drawing.Size(42, 1152)
+        Me.hideContainerRight.Size = New System.Drawing.Size(42, 1151)
         '
         'DockPanelSettings
         '
@@ -164,8 +165,8 @@ Partial Class FormMainScreen
         Me.DockPanelSettings.Controls.Add(Me.DockPanelSettings_Container)
         Me.DockPanelSettings.Dock = DevExpress.XtraBars.Docking.DockingStyle.Right
         Me.DockPanelSettings.ID = New System.Guid("e9ead796-3d0a-43ca-b7bd-3ae3912e44d0")
-        Me.DockPanelSettings.Location = New System.Drawing.Point(0, 0)
-        Me.DockPanelSettings.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.DockPanelSettings.Location = New System.Drawing.Point(2785, 0)
+        Me.DockPanelSettings.Margin = New System.Windows.Forms.Padding(5)
         Me.DockPanelSettings.Name = "DockPanelSettings"
         Me.DockPanelSettings.Options.AllowDockAsTabbedDocument = False
         Me.DockPanelSettings.Options.AllowDockBottom = False
@@ -180,20 +181,20 @@ Partial Class FormMainScreen
         Me.DockPanelSettings.Options.ShowMaximizeButton = False
         Me.DockPanelSettings.Options.ShowMinimizeButton = False
         Me.DockPanelSettings.OriginalSize = New System.Drawing.Size(180, 200)
-        Me.DockPanelSettings.Padding = New System.Windows.Forms.Padding(9, 11, 9, 11)
+        Me.DockPanelSettings.Padding = New System.Windows.Forms.Padding(9, 12, 9, 12)
         Me.DockPanelSettings.SavedDock = DevExpress.XtraBars.Docking.DockingStyle.Right
         Me.DockPanelSettings.SavedIndex = 0
-        Me.DockPanelSettings.Size = New System.Drawing.Size(180, 1152)
+        Me.DockPanelSettings.Size = New System.Drawing.Size(283, 1754)
         Me.DockPanelSettings.TabText = "Options/History"
         Me.DockPanelSettings.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide
         '
         'DockPanelSettings_Container
         '
         Me.DockPanelSettings_Container.Controls.Add(Me.AccordionControl1)
-        Me.DockPanelSettings_Container.Location = New System.Drawing.Point(4, 39)
-        Me.DockPanelSettings_Container.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.DockPanelSettings_Container.Location = New System.Drawing.Point(5, 43)
+        Me.DockPanelSettings_Container.Margin = New System.Windows.Forms.Padding(5)
         Me.DockPanelSettings_Container.Name = "DockPanelSettings_Container"
-        Me.DockPanelSettings_Container.Size = New System.Drawing.Size(172, 1109)
+        Me.DockPanelSettings_Container.Size = New System.Drawing.Size(273, 1706)
         Me.DockPanelSettings_Container.TabIndex = 0
         '
         'AccordionControl1
@@ -202,7 +203,7 @@ Partial Class FormMainScreen
         Me.AccordionControl1.Elements.AddRange(New DevExpress.XtraBars.Navigation.AccordionControlElement() {Me.AccordionControlElementSettings, Me.AccordionControlElementHistory})
         Me.AccordionControl1.Location = New System.Drawing.Point(0, 0)
         Me.AccordionControl1.Name = "AccordionControl1"
-        Me.AccordionControl1.Size = New System.Drawing.Size(172, 1109)
+        Me.AccordionControl1.Size = New System.Drawing.Size(273, 1706)
         Me.AccordionControl1.TabIndex = 0
         '
         'AccordionControlElementSettings
@@ -290,12 +291,12 @@ Partial Class FormMainScreen
         Me.XtraTabControlMainNavigator.AppearancePage.PageClient.BorderColor = System.Drawing.Color.White
         Me.XtraTabControlMainNavigator.AppearancePage.PageClient.Options.UseBackColor = True
         Me.XtraTabControlMainNavigator.AppearancePage.PageClient.Options.UseBorderColor = True
-        Me.XtraTabControlMainNavigator.Location = New System.Drawing.Point(554, 41)
+        Me.XtraTabControlMainNavigator.Location = New System.Drawing.Point(555, 41)
         Me.XtraTabControlMainNavigator.Margin = New System.Windows.Forms.Padding(6, 7, 6, 7)
         Me.XtraTabControlMainNavigator.Name = "XtraTabControlMainNavigator"
-        Me.XtraTabControlMainNavigator.Padding = New System.Windows.Forms.Padding(9, 11, 9, 11)
+        Me.XtraTabControlMainNavigator.Padding = New System.Windows.Forms.Padding(9, 12, 9, 12)
         Me.XtraTabControlMainNavigator.SelectedTabPage = Me.XtraTabPageMainHABP
-        Me.XtraTabControlMainNavigator.Size = New System.Drawing.Size(1468, 1096)
+        Me.XtraTabControlMainNavigator.Size = New System.Drawing.Size(1468, 1095)
         Me.XtraTabControlMainNavigator.TabIndex = 13
         Me.XtraTabControlMainNavigator.TabPages.AddRange(New DevExpress.XtraTab.XtraTabPage() {Me.XtraTabPageMainHABP, Me.XtraTabPageEvolveDSA, Me.XtraTabPageFortressLABP, Me.XtraTabPageRentModels, Me.XtraTabPageSONIA, Me.XtraTabPageForum, Me.XtraTabPageYourAccount})
         '
@@ -313,16 +314,16 @@ Partial Class FormMainScreen
         Me.XtraTabPageMainHABP.Controls.Add(Me.WindowsUIButtonPanelOpenCompare)
         Me.XtraTabPageMainHABP.Margin = New System.Windows.Forms.Padding(6, 7, 6, 7)
         Me.XtraTabPageMainHABP.Name = "XtraTabPageMainHABP"
-        Me.XtraTabPageMainHABP.Size = New System.Drawing.Size(1466, 1050)
+        Me.XtraTabPageMainHABP.Size = New System.Drawing.Size(1466, 1049)
         Me.XtraTabPageMainHABP.Text = " HA Business Plan "
         '
         'XtraTabControlModels
         '
-        Me.XtraTabControlModels.Location = New System.Drawing.Point(39, 299)
+        Me.XtraTabControlModels.Location = New System.Drawing.Point(60, 133)
         Me.XtraTabControlModels.Margin = New System.Windows.Forms.Padding(2, 3, 2, 3)
         Me.XtraTabControlModels.Name = "XtraTabControlModels"
         Me.XtraTabControlModels.SelectedTabPage = Me.XtraTabPageBlank
-        Me.XtraTabControlModels.Size = New System.Drawing.Size(1425, 737)
+        Me.XtraTabControlModels.Size = New System.Drawing.Size(1377, 902)
         Me.XtraTabControlModels.TabIndex = 12
         Me.XtraTabControlModels.TabPages.AddRange(New DevExpress.XtraTab.XtraTabPage() {Me.XtraTabPageBlank})
         '
@@ -330,7 +331,7 @@ Partial Class FormMainScreen
         '
         Me.XtraTabPageBlank.Margin = New System.Windows.Forms.Padding(2, 3, 2, 3)
         Me.XtraTabPageBlank.Name = "XtraTabPageBlank"
-        Me.XtraTabPageBlank.Size = New System.Drawing.Size(1423, 693)
+        Me.XtraTabPageBlank.Size = New System.Drawing.Size(1375, 858)
         Me.XtraTabPageBlank.Tag = "-1"
         Me.XtraTabPageBlank.Text = "No open models"
         '
@@ -339,21 +340,21 @@ Partial Class FormMainScreen
         Me.WindowsUIButtonPanelOpenCompare.AppearanceButton.Hovered.Font = New System.Drawing.Font("Segoe UI", 8.142858!, System.Drawing.FontStyle.Underline)
         Me.WindowsUIButtonPanelOpenCompare.AppearanceButton.Hovered.Options.UseFont = True
         Me.WindowsUIButtonPanelOpenCompare.AutoSizeInLayoutControl = False
-        WindowsUIButtonImageOptions3.Image = Global.My.Resources.Resources.open_32x32
-        WindowsUIButtonImageOptions3.SvgImageSize = New System.Drawing.Size(16, 16)
-        WindowsUIButtonImageOptions4.Image = CType(resources.GetObject("WindowsUIButtonImageOptions4.Image"), System.Drawing.Image)
-        WindowsUIButtonImageOptions4.SvgImage = CType(resources.GetObject("WindowsUIButtonImageOptions4.SvgImage"), DevExpress.Utils.Svg.SvgImage)
+        WindowsUIButtonImageOptions4.Image = Global.My.Resources.Resources.open_32x32
         WindowsUIButtonImageOptions4.SvgImageSize = New System.Drawing.Size(16, 16)
         WindowsUIButtonImageOptions5.Image = CType(resources.GetObject("WindowsUIButtonImageOptions5.Image"), System.Drawing.Image)
         WindowsUIButtonImageOptions5.SvgImage = CType(resources.GetObject("WindowsUIButtonImageOptions5.SvgImage"), DevExpress.Utils.Svg.SvgImage)
         WindowsUIButtonImageOptions5.SvgImageSize = New System.Drawing.Size(16, 16)
-        Me.WindowsUIButtonPanelOpenCompare.Buttons.AddRange(New DevExpress.XtraEditors.ButtonPanel.IBaseButton() {New DevExpress.XtraBars.Docking2010.WindowsUIButton("Open Business Plan", True, WindowsUIButtonImageOptions3, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Open a Business Plan", -1, True, Nothing, True, False, True, "OpenBP", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("New Business Plan", True, WindowsUIButtonImageOptions4, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Create a New Business Plan", -1, True, Nothing, True, False, True, "CreateNewBP", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Compare Business Plans", True, WindowsUIButtonImageOptions5, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Compare two Business Plans", -1, True, Nothing, True, False, True, "CompareBPs", -1, False)})
+        WindowsUIButtonImageOptions6.Image = CType(resources.GetObject("WindowsUIButtonImageOptions6.Image"), System.Drawing.Image)
+        WindowsUIButtonImageOptions6.SvgImage = CType(resources.GetObject("WindowsUIButtonImageOptions6.SvgImage"), DevExpress.Utils.Svg.SvgImage)
+        WindowsUIButtonImageOptions6.SvgImageSize = New System.Drawing.Size(16, 16)
+        Me.WindowsUIButtonPanelOpenCompare.Buttons.AddRange(New DevExpress.XtraEditors.ButtonPanel.IBaseButton() {New DevExpress.XtraBars.Docking2010.WindowsUIButton("Open Business Plan", True, WindowsUIButtonImageOptions4, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Open a Business Plan", -1, True, Nothing, True, False, True, "OpenBP", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("New Business Plan", True, WindowsUIButtonImageOptions5, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Create a New Business Plan", -1, True, Nothing, True, False, True, "CreateNewBP", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Compare Business Plans", True, WindowsUIButtonImageOptions6, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Compare two Business Plans", -1, True, Nothing, True, False, True, "CompareBPs", -1, False)})
         Me.WindowsUIButtonPanelOpenCompare.ContentAlignment = System.Drawing.ContentAlignment.MiddleLeft
         Me.WindowsUIButtonPanelOpenCompare.ForeColor = System.Drawing.Color.FromArgb(CType(CType(0, Byte), Integer), CType(CType(91, Byte), Integer), CType(CType(170, Byte), Integer))
-        Me.WindowsUIButtonPanelOpenCompare.Location = New System.Drawing.Point(39, 8)
-        Me.WindowsUIButtonPanelOpenCompare.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.WindowsUIButtonPanelOpenCompare.Location = New System.Drawing.Point(60, 13)
+        Me.WindowsUIButtonPanelOpenCompare.Margin = New System.Windows.Forms.Padding(5)
         Me.WindowsUIButtonPanelOpenCompare.Name = "WindowsUIButtonPanelOpenCompare"
-        Me.WindowsUIButtonPanelOpenCompare.Size = New System.Drawing.Size(1482, 260)
+        Me.WindowsUIButtonPanelOpenCompare.Size = New System.Drawing.Size(636, 112)
         Me.WindowsUIButtonPanelOpenCompare.TabIndex = 10
         Me.WindowsUIButtonPanelOpenCompare.Text = "WindowsUIButtonPanelOpenCompare"
         '
@@ -366,45 +367,45 @@ Partial Class FormMainScreen
         Me.XtraTabPageEvolveDSA.Controls.Add(Me.SimpleButtonTest)
         Me.XtraTabPageEvolveDSA.Margin = New System.Windows.Forms.Padding(6, 7, 6, 7)
         Me.XtraTabPageEvolveDSA.Name = "XtraTabPageEvolveDSA"
-        Me.XtraTabPageEvolveDSA.Size = New System.Drawing.Size(1198, 1050)
+        Me.XtraTabPageEvolveDSA.Size = New System.Drawing.Size(1466, 1049)
         Me.XtraTabPageEvolveDSA.Text = " Evolve DSA "
         '
         'SimpleButtonTest
         '
-        Me.SimpleButtonTest.Location = New System.Drawing.Point(853, 789)
-        Me.SimpleButtonTest.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.SimpleButtonTest.Location = New System.Drawing.Point(1281, 1184)
+        Me.SimpleButtonTest.Margin = New System.Windows.Forms.Padding(5)
         Me.SimpleButtonTest.Name = "SimpleButtonTest"
-        Me.SimpleButtonTest.Size = New System.Drawing.Size(208, 72)
+        Me.SimpleButtonTest.Size = New System.Drawing.Size(311, 109)
         Me.SimpleButtonTest.TabIndex = 18
         Me.SimpleButtonTest.Text = "Open DSA"
         '
         'XtraTabPageFortressLABP
         '
-        Me.XtraTabPageFortressLABP.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.XtraTabPageFortressLABP.Margin = New System.Windows.Forms.Padding(5)
         Me.XtraTabPageFortressLABP.Name = "XtraTabPageFortressLABP"
-        Me.XtraTabPageFortressLABP.Size = New System.Drawing.Size(1198, 1050)
+        Me.XtraTabPageFortressLABP.Size = New System.Drawing.Size(1466, 1049)
         Me.XtraTabPageFortressLABP.Text = " LA BP "
         '
         'XtraTabPageRentModels
         '
-        Me.XtraTabPageRentModels.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.XtraTabPageRentModels.Margin = New System.Windows.Forms.Padding(5)
         Me.XtraTabPageRentModels.Name = "XtraTabPageRentModels"
-        Me.XtraTabPageRentModels.Size = New System.Drawing.Size(1198, 1050)
+        Me.XtraTabPageRentModels.Size = New System.Drawing.Size(1466, 1049)
         Me.XtraTabPageRentModels.Text = " Rent Models "
         '
         'XtraTabPageSONIA
         '
-        Me.XtraTabPageSONIA.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.XtraTabPageSONIA.Margin = New System.Windows.Forms.Padding(5)
         Me.XtraTabPageSONIA.Name = "XtraTabPageSONIA"
-        Me.XtraTabPageSONIA.Size = New System.Drawing.Size(1198, 1050)
+        Me.XtraTabPageSONIA.Size = New System.Drawing.Size(1466, 1049)
         Me.XtraTabPageSONIA.Text = " SONIA "
         '
         'XtraTabPageForum
         '
         Me.XtraTabPageForum.Controls.Add(Me.WebView21)
-        Me.XtraTabPageForum.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.XtraTabPageForum.Margin = New System.Windows.Forms.Padding(5)
         Me.XtraTabPageForum.Name = "XtraTabPageForum"
-        Me.XtraTabPageForum.Size = New System.Drawing.Size(1198, 1050)
+        Me.XtraTabPageForum.Size = New System.Drawing.Size(1466, 1049)
         Me.XtraTabPageForum.Text = "Online"
         '
         'WebView21
@@ -414,18 +415,18 @@ Partial Class FormMainScreen
         Me.WebView21.DefaultBackgroundColor = System.Drawing.Color.White
         Me.WebView21.Dock = System.Windows.Forms.DockStyle.Fill
         Me.WebView21.Location = New System.Drawing.Point(0, 0)
-        Me.WebView21.Margin = New System.Windows.Forms.Padding(2, 4, 2, 4)
+        Me.WebView21.Margin = New System.Windows.Forms.Padding(2, 3, 2, 3)
         Me.WebView21.Name = "WebView21"
-        Me.WebView21.Size = New System.Drawing.Size(1198, 1050)
+        Me.WebView21.Size = New System.Drawing.Size(1466, 1049)
         Me.WebView21.Source = New System.Uri("https://www.abovo-consult.co.uk", System.UriKind.Absolute)
         Me.WebView21.TabIndex = 0
         Me.WebView21.ZoomFactor = 1.0R
         '
         'XtraTabPageYourAccount
         '
-        Me.XtraTabPageYourAccount.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.XtraTabPageYourAccount.Margin = New System.Windows.Forms.Padding(5)
         Me.XtraTabPageYourAccount.Name = "XtraTabPageYourAccount"
-        Me.XtraTabPageYourAccount.Size = New System.Drawing.Size(1198, 1050)
+        Me.XtraTabPageYourAccount.Size = New System.Drawing.Size(1466, 1049)
         Me.XtraTabPageYourAccount.Text = " Your Account "
         '
         'ImageCollection1
@@ -459,12 +460,14 @@ Partial Class FormMainScreen
         '
         WindowsUIButtonImageOptions1.Image = CType(resources.GetObject("WindowsUIButtonImageOptions1.Image"), System.Drawing.Image)
         WindowsUIButtonImageOptions2.Image = CType(resources.GetObject("WindowsUIButtonImageOptions2.Image"), System.Drawing.Image)
-        Me.WindowsUIButtonPanelExitHelp.Buttons.AddRange(New DevExpress.XtraEditors.ButtonPanel.IBaseButton() {New DevExpress.XtraBars.Docking2010.WindowsUIButton("Help", True, WindowsUIButtonImageOptions1, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Open Summit Help", -1, True, Nothing, True, False, True, "GetHelp", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Exit", True, WindowsUIButtonImageOptions2, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Exit the Application", -1, True, Nothing, True, False, True, "CloseApp", -1, False)})
+        WindowsUIButtonImageOptions3.SvgImage = CType(resources.GetObject("WindowsUIButtonImageOptions3.SvgImage"), DevExpress.Utils.Svg.SvgImage)
+        WindowsUIButtonImageOptions3.SvgImageSize = New System.Drawing.Size(32, 32)
+        Me.WindowsUIButtonPanelExitHelp.Buttons.AddRange(New DevExpress.XtraEditors.ButtonPanel.IBaseButton() {New DevExpress.XtraBars.Docking2010.WindowsUIButton("Exit", True, WindowsUIButtonImageOptions1, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Exit the Application", -1, True, Nothing, True, False, True, "CloseApp", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Help", True, WindowsUIButtonImageOptions2, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Open Summit Help", -1, True, Nothing, True, False, True, "GetHelp", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Settings", True, WindowsUIButtonImageOptions3, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Application interface scale and presentation options", -1, True, Nothing, True, False, True, "Options", -1, False)})
         Me.WindowsUIButtonPanelExitHelp.ForeColor = System.Drawing.Color.FromArgb(CType(CType(0, Byte), Integer), CType(CType(91, Byte), Integer), CType(CType(170, Byte), Integer))
-        Me.WindowsUIButtonPanelExitHelp.Location = New System.Drawing.Point(138, 933)
-        Me.WindowsUIButtonPanelExitHelp.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.WindowsUIButtonPanelExitHelp.Location = New System.Drawing.Point(81, 932)
+        Me.WindowsUIButtonPanelExitHelp.Margin = New System.Windows.Forms.Padding(5)
         Me.WindowsUIButtonPanelExitHelp.Name = "WindowsUIButtonPanelExitHelp"
-        Me.WindowsUIButtonPanelExitHelp.Size = New System.Drawing.Size(249, 189)
+        Me.WindowsUIButtonPanelExitHelp.Size = New System.Drawing.Size(365, 189)
         Me.WindowsUIButtonPanelExitHelp.TabIndex = 15
         Me.WindowsUIButtonPanelExitHelp.Text = "WindowsUIButtonPanelExitHelp"
         '
@@ -478,12 +481,12 @@ Partial Class FormMainScreen
         '
         'WindowsUIButtonPanelSaveClose
         '
-        WindowsUIButtonImageOptions6.Image = CType(resources.GetObject("WindowsUIButtonImageOptions6.Image"), System.Drawing.Image)
         WindowsUIButtonImageOptions7.Image = CType(resources.GetObject("WindowsUIButtonImageOptions7.Image"), System.Drawing.Image)
         WindowsUIButtonImageOptions8.Image = CType(resources.GetObject("WindowsUIButtonImageOptions8.Image"), System.Drawing.Image)
         WindowsUIButtonImageOptions9.Image = CType(resources.GetObject("WindowsUIButtonImageOptions9.Image"), System.Drawing.Image)
         WindowsUIButtonImageOptions10.Image = CType(resources.GetObject("WindowsUIButtonImageOptions10.Image"), System.Drawing.Image)
-        Me.WindowsUIButtonPanelSaveClose.Buttons.AddRange(New DevExpress.XtraEditors.ButtonPanel.IBaseButton() {New DevExpress.XtraBars.Docking2010.WindowsUIButton("Save", True, WindowsUIButtonImageOptions6, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Save the current Business Plan", -1, True, Nothing, True, False, True, "SaveBP", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Save As", True, WindowsUIButtonImageOptions7, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Save the Business Plan with a new file name", -1, True, Nothing, True, False, True, "SaveBPAs", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Export", True, WindowsUIButtonImageOptions8, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Export the Business Plan to Excel", -1, True, Nothing, True, False, True, Nothing, -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Revert", True, WindowsUIButtonImageOptions9, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Revert to the saved file", -1, True, Nothing, True, False, True, Nothing, -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Close", True, WindowsUIButtonImageOptions10, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Close the Business Plan", -1, True, Nothing, True, False, True, "CloseBP", -1, False)})
+        WindowsUIButtonImageOptions11.Image = CType(resources.GetObject("WindowsUIButtonImageOptions11.Image"), System.Drawing.Image)
+        Me.WindowsUIButtonPanelSaveClose.Buttons.AddRange(New DevExpress.XtraEditors.ButtonPanel.IBaseButton() {New DevExpress.XtraBars.Docking2010.WindowsUIButton("Save", True, WindowsUIButtonImageOptions7, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Save the current Business Plan", -1, True, Nothing, True, False, True, "SaveBP", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Save As", True, WindowsUIButtonImageOptions8, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Save the Business Plan with a new file name", -1, True, Nothing, True, False, True, "SaveBPAs", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Export", True, WindowsUIButtonImageOptions9, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Export the Business Plan to Excel", -1, True, Nothing, True, False, True, Nothing, -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Revert", True, WindowsUIButtonImageOptions10, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Revert to the saved file", -1, True, Nothing, True, False, True, Nothing, -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("Close", True, WindowsUIButtonImageOptions11, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "Close the Business Plan", -1, True, Nothing, True, False, True, "CloseBP", -1, False)})
         Me.WindowsUIButtonPanelSaveClose.ContentAlignment = System.Drawing.ContentAlignment.TopCenter
         Me.WindowsUIButtonPanelSaveClose.Location = New System.Drawing.Point(1151, 24)
         Me.WindowsUIButtonPanelSaveClose.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
@@ -498,12 +501,12 @@ Partial Class FormMainScreen
         'WindowsUIButtonPanelBPActions
         '
         Me.WindowsUIButtonPanelBPActions.ButtonInterval = 26
-        WindowsUIButtonImageOptions11.Image = CType(resources.GetObject("WindowsUIButtonImageOptions11.Image"), System.Drawing.Image)
         WindowsUIButtonImageOptions12.Image = CType(resources.GetObject("WindowsUIButtonImageOptions12.Image"), System.Drawing.Image)
         WindowsUIButtonImageOptions13.Image = CType(resources.GetObject("WindowsUIButtonImageOptions13.Image"), System.Drawing.Image)
         WindowsUIButtonImageOptions14.Image = CType(resources.GetObject("WindowsUIButtonImageOptions14.Image"), System.Drawing.Image)
         WindowsUIButtonImageOptions15.Image = CType(resources.GetObject("WindowsUIButtonImageOptions15.Image"), System.Drawing.Image)
-        Me.WindowsUIButtonPanelBPActions.Buttons.AddRange(New DevExpress.XtraEditors.ButtonPanel.IBaseButton() {New DevExpress.XtraBars.Docking2010.WindowsUIButton("Assumptions", True, WindowsUIButtonImageOptions11, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "View and Edit Assumptions", -1, True, Nothing, True, False, True, "GoAssumpt", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton(" Workings ", True, WindowsUIButtonImageOptions12, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "View Business Plan workings", -1, True, Nothing, True, False, True, "GoWorkings", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("  Outputs  ", True, WindowsUIButtonImageOptions13, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "View Business Plan Outputs", -1, True, Nothing, True, False, True, "GoOutputs", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("   FFR   ", True, WindowsUIButtonImageOptions14, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "View and complete the Financial Forecast Return", -1, True, Nothing, True, False, True, "GoFFR", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("  Other  ", True, WindowsUIButtonImageOptions15, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "View other anlsyses and functions", -1, True, Nothing, True, False, True, "GoData", -1, False)})
+        WindowsUIButtonImageOptions16.Image = CType(resources.GetObject("WindowsUIButtonImageOptions16.Image"), System.Drawing.Image)
+        Me.WindowsUIButtonPanelBPActions.Buttons.AddRange(New DevExpress.XtraEditors.ButtonPanel.IBaseButton() {New DevExpress.XtraBars.Docking2010.WindowsUIButton("Assumptions", True, WindowsUIButtonImageOptions12, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "View and Edit Assumptions", -1, True, Nothing, True, False, True, "GoAssumpt", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton(" Workings ", True, WindowsUIButtonImageOptions13, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "View Business Plan workings", -1, True, Nothing, True, False, True, "GoWorkings", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("  Outputs  ", True, WindowsUIButtonImageOptions14, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "View Business Plan Outputs", -1, True, Nothing, True, False, True, "GoOutputs", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("   FFR   ", True, WindowsUIButtonImageOptions15, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "View and complete the Financial Forecast Return", -1, True, Nothing, True, False, True, "GoFFR", -1, False), New DevExpress.XtraBars.Docking2010.WindowsUISeparator(), New DevExpress.XtraBars.Docking2010.WindowsUIButton("  Other  ", True, WindowsUIButtonImageOptions16, DevExpress.XtraBars.Docking2010.ButtonStyle.PushButton, "View other anlsyses and functions", -1, True, Nothing, True, False, True, "GoData", -1, False)})
         Me.WindowsUIButtonPanelBPActions.ContentAlignment = System.Drawing.ContentAlignment.MiddleLeft
         Me.WindowsUIButtonPanelBPActions.Location = New System.Drawing.Point(29, 729)
         Me.WindowsUIButtonPanelBPActions.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
@@ -524,7 +527,7 @@ Partial Class FormMainScreen
         Me.Appearance.Options.UseBackColor = True
         Me.AutoScaleDimensions = New System.Drawing.SizeF(11.0!, 28.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
-        Me.ClientSize = New System.Drawing.Size(2074, 1152)
+        Me.ClientSize = New System.Drawing.Size(2074, 1151)
         Me.Controls.Add(Me.WindowsUIButtonPanelExitHelp)
         Me.Controls.Add(Me.XtraTabControlMainNavigator)
         Me.Controls.Add(Me.GroupBoxProgramDetails)
@@ -533,8 +536,8 @@ Partial Class FormMainScreen
         Me.IconOptions.Icon = CType(resources.GetObject("FormMainScreen.IconOptions.Icon"), System.Drawing.Icon)
         Me.IsMdiContainer = True
         Me.LookAndFeel.UseDefaultLookAndFeel = False
-        Me.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
-        Me.MinimumSize = New System.Drawing.Size(1083, 925)
+        Me.Margin = New System.Windows.Forms.Padding(5)
+        Me.MinimumSize = New System.Drawing.Size(1083, 926)
         Me.Name = "FormMainScreen"
         Me.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen
         Me.Text = "abovo-summit"

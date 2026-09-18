@@ -7493,14 +7493,12 @@ NextCell:
     Private Sub InitialiseExportActions()
         Dim hasPdf As Boolean
         Dim hasExcel As Boolean
-        Dim hasOptions As Boolean
         For Each item As Object In WindowsUIButtonPanelActions.Buttons
             Dim existingButton As WindowsUIButton = TryCast(item, WindowsUIButton)
             If existingButton Is Nothing Then Continue For
             Dim existingTag As String = Convert.ToString(existingButton.Tag)
             If String.Equals(existingTag, "ExportPdf", StringComparison.OrdinalIgnoreCase) Then hasPdf = True
             If String.Equals(existingTag, "ExportExcel", StringComparison.OrdinalIgnoreCase) Then hasExcel = True
-            If String.Equals(existingTag, "Options", StringComparison.OrdinalIgnoreCase) Then hasOptions = True
         Next
 
         If Not hasPdf Then
@@ -7514,13 +7512,6 @@ NextCell:
                 New WindowsUIButton("Excel", False, Nothing, ButtonStyle.PushButton,
                     "Add interface data to the Excel export workspace", -1, True,
                     Nothing, True, False, True, "ExportExcel", -1, True))
-        End If
-        If Not hasOptions Then
-            WindowsUIButtonPanelActions.Buttons.Add(New WindowsUISeparator(Nothing, True, -1, True))
-            WindowsUIButtonPanelActions.Buttons.Add(
-                New WindowsUIButton("Scale", False, Nothing, ButtonStyle.PushButton,
-                    "Application interface scale and presentation options", -1, True,
-                    Nothing, True, False, True, "Options", -1, True))
         End If
     End Sub
 
