@@ -161,7 +161,9 @@ Namespace Abovo
                         target.ShowInterface(entry.ModelID,
                                              entry.CSID,
                                              entry.ShowSpecial,
-                                             entry.SpecialData)
+                                             entry.SpecialData,
+                                             Nothing,
+                                             entry.GSID)
 
                     Case InterfaceHistoryDestinationKind.FinancialForecastReturn
                         FileManager.ExcelModels(entry.ModelID).InstanceInterface.ShowFFRInterface()
@@ -247,6 +249,7 @@ Namespace Abovo
     Public Class AbovoInterfaceTag
 
         Public TargetID As Integer
+        Public TargetGroupID As Integer = -1
         Public SpecialItem As Boolean
         Public SpecialItemData As String
 

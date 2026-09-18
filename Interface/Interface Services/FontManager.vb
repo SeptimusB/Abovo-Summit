@@ -304,9 +304,14 @@ Namespace Abovo
                 Dim Accordion As DevExpress.XtraBars.Navigation.AccordionControl =
                     TryCast(Target, DevExpress.XtraBars.Navigation.AccordionControl)
                 If Accordion IsNot Nothing Then
-                    For Each Element As DevExpress.XtraBars.Navigation.AccordionControlElement In Accordion.Elements
-                        ScaleAccordionElement(Element, UserScale)
-                    Next
+                    Accordion.BeginUpdate()
+                    Try
+                        For Each Element As DevExpress.XtraBars.Navigation.AccordionControlElement In Accordion.Elements
+                            ScaleAccordionElement(Element, UserScale)
+                        Next
+                    Finally
+                        Accordion.EndUpdate()
+                    End Try
                 End If
 
                 Dim Browser As WebBrowser = TryCast(Target, WebBrowser)

@@ -31,6 +31,13 @@ Public Class GroupInterfaceTemplate
     Inherits DevExpress.XtraEditors.XtraForm
 
     Public GSID As Integer
+    Private Const CombinedGroupID As Integer = -1
+
+    Public ReadOnly Property IsCombined As Boolean
+        Get
+            Return GSID = CombinedGroupID
+        End Get
+    End Property
 
     Private LrgFontSize As Integer
     Private MediumFontSize As Integer
@@ -97,7 +104,8 @@ Public Class GroupInterfaceTemplate
         Me.Text = ExcelModels(SetModelID).WBStructure.CompanyName
         AccordionControlNavigator.LookAndFeel.UseDefaultLookAndFeel = False
 
-        MyName = ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).GSName
+        MyName = If(IsCombined, "Combined",
+                    ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).GSName)
         Me.Text = ExcelModels(SetModelID).WBStructure.CompanyName & " / " & MyName & " Interface"
         DockPanelNewNavigator.Text = " " & MyName & " Navigator"
         DockPanelNavigator.Text = " " & MyName & " Navigator"
@@ -105,7 +113,11 @@ Public Class GroupInterfaceTemplate
 
         SetInitialSizes()
 
-        ApplyStructure(SetModelID, GSID)
+        If IsCombined Then
+            ApplyCombinedStructure(SetModelID)
+        Else
+            ApplyStructure(SetModelID, GSID)
+        End If
 
         LoadDefaultInterface()
         InitialiseRightSidebar()
@@ -185,6 +197,102 @@ Public Class GroupInterfaceTemplate
 
         FinaliseNavigator()
 
+    End Sub
+
+    Private Sub ApplyCombinedStructure(ByVal modelID As Integer)
+        'Keep the original three GroupStructure definitions and their local CSIDs.
+        'Only the navigator is combined; every target retains its (GSID, CSID).
+        Dim root As New AccordionControlElement With {
+            .Name = "CombinedRoot", .Text = "Root", .HeaderVisible = False,
+            .Expanded = True
+        }
+
+        For groupIndex As Integer = 0 To ExcelModels(modelID).WBStructure.GroupStructures.Count - 1
+            Dim group As GroupStructure = ExcelModels(modelID).WBStructure.GroupStructures(groupIndex)
+            If group Is Nothing OrElse group.ChildStructures Is Nothing Then Continue For
+
+            Dim groupNode As New AccordionControlElement With {
+                .Name = "CombinedGroup" & groupIndex.ToString(),
+                .Text = group.GSName,
+                .Style = DevExpress.XtraBars.Navigation.ElementStyle.Group
+            }
+            'Apply before the node is attached so the first paint is already black.
+            SetCombinedGroupAppearance(groupNode.Appearance.Default)
+            SetCombinedGroupAppearance(groupNode.Appearance.Normal)
+            SetCombinedGroupAppearance(groupNode.Appearance.Hovered)
+            SetCombinedGroupAppearance(groupNode.Appearance.Pressed)
+            Dim currentSubgroup As AccordionControlElement = Nothing
+            Dim currentSubgroupName As String = Nothing
+
+            For Each child As ChildStructure In group.ChildStructures
+                If child Is Nothing Then Continue For
+                Dim childID As Integer
+                If Not Integer.TryParse(child.CSID, childID) Then Continue For
+
+                Dim target As New AbovoInterfaceTag With {
+                    .TargetGroupID = groupIndex,
+                    .TargetID = childID,
+                    .SpecialItem = Not String.IsNullOrWhiteSpace(child.SpecialElement),
+                    .SpecialItemData = child.SpecialElement
+                }
+
+                If String.Equals(child.IsMaster, "True", StringComparison.OrdinalIgnoreCase) Then
+                    groupNode.Elements.Add(New AccordionControlElement With {
+                        .Name = "CombinedItem" & groupIndex.ToString() & "_" & childID.ToString(),
+                        .Text = child.CSName & " >", .Tag = target,
+                        .Style = DevExpress.XtraBars.Navigation.ElementStyle.Group
+                    })
+                    currentSubgroup = Nothing
+                    currentSubgroupName = Nothing
+                    Continue For
+                End If
+
+                Dim subgroupName As String = If(child.GroupName, String.Empty).Trim()
+                If subgroupName.Length = 0 OrElse subgroupName = "None" Then
+                    currentSubgroup = Nothing
+                    currentSubgroupName = Nothing
+                ElseIf Not String.Equals(currentSubgroupName, subgroupName, StringComparison.Ordinal) Then
+                    currentSubgroup = New AccordionControlElement With {
+                        .Name = "CombinedSection" & groupIndex.ToString() & "_" & childID.ToString(),
+                        .Text = subgroupName,
+                        .Style = DevExpress.XtraBars.Navigation.ElementStyle.Group
+                    }
+                    groupNode.Elements.Add(currentSubgroup)
+                    currentSubgroupName = subgroupName
+                End If
+
+                Dim childNode As New AccordionControlElement With {
+                    .Name = "CombinedItem" & groupIndex.ToString() & "_" & childID.ToString(),
+                    .Text = child.CSName, .Tag = target,
+                    .Style = DevExpress.XtraBars.Navigation.ElementStyle.Item
+                }
+                If currentSubgroup Is Nothing Then
+                    groupNode.Elements.Add(childNode)
+                Else
+                    currentSubgroup.Elements.Add(childNode)
+                End If
+            Next
+
+            root.Elements.Add(groupNode)
+        Next
+
+        AccordionControlNavigator.BeginUpdate()
+        Try
+            AccordionControlNavigator.Elements.Clear()
+            AccordionControlNavigator.Elements.Add(root)
+        Finally
+            AccordionControlNavigator.EndUpdate()
+        End Try
+        AddHandler AccordionControlNavigator.ElementClick, AddressOf AccordionControlNavigator_ElementClick
+    End Sub
+
+    Private Shared Sub SetCombinedGroupAppearance(
+        ByVal appearance As DevExpress.Utils.AppearanceObject)
+        appearance.BackColor = Color.Black
+        appearance.BackColor2 = Color.Black
+        appearance.ForeColor = Color.White
+        appearance.Options.UseBackColor = True
+        appearance.Options.UseForeColor = True
     End Sub
 
     Public Sub RefreshSummaryData(Optional ByVal refreshReason As String = "Direct")
@@ -623,11 +731,11 @@ Public Class GroupInterfaceTemplate
 
     End Sub
 
-    Public Sub LoadDocument(TargetID As Integer, Optional ByVal ShowSpecial As Boolean = False, Optional ByVal SpecialData As String = "None")
+    Public Sub LoadDocument(TargetID As Integer, Optional ByVal ShowSpecial As Boolean = False, Optional ByVal SpecialData As String = "None", Optional ByVal TargetGSID As Integer = -1)
         If ShowSpecial Then
-            ShowInterface(MyModelID, TargetID, True, SpecialData)
+            ShowInterface(MyModelID, TargetID, True, SpecialData, Nothing, TargetGSID)
         Else
-            ShowInterface(MyModelID, TargetID)
+            ShowInterface(MyModelID, TargetID, False, "None", Nothing, TargetGSID)
         End If
     End Sub
 
@@ -640,6 +748,13 @@ Public Class GroupInterfaceTemplate
         End If
 
         Dim ItemTag As AbovoInterfaceTag = DirectCast(e.Element.Tag, AbovoInterfaceTag)
+
+        If IsCombined Then
+            If ItemTag.TargetID < 0 OrElse ItemTag.TargetGroupID < 0 Then Return
+            ShowInterface(MyModelID, ItemTag.TargetID, ItemTag.SpecialItem,
+                          ItemTag.SpecialItemData, Nothing, ItemTag.TargetGroupID)
+            Return
+        End If
 
         If ItemTag.SpecialItem = False Then
 
@@ -706,15 +821,21 @@ Public Class GroupInterfaceTemplate
         Me.AccordionControlNavigator.Appearance.Item.Default.Font = GetDisplayFont("Small", Me)
         Me.AccordionControlNavigator.Appearance.Item.Hovered.Font = GetDisplayFont("Small", Me)
 
-        For Each Element As DevExpress.XtraBars.Navigation.AccordionControlElement In
-            Me.AccordionControlNavigator.Elements
-            ApplyNavigatorElementFont(Element)
-        Next
+        Me.AccordionControlNavigator.BeginUpdate()
+        Try
+            For Each Element As DevExpress.XtraBars.Navigation.AccordionControlElement In
+                Me.AccordionControlNavigator.Elements
+                ApplyNavigatorElementFont(Element)
+            Next
+        Finally
+            Me.AccordionControlNavigator.EndUpdate()
+        End Try
 
     End Sub
 
     Private Sub ApplyNavigatorElementFont(
-        ByVal Element As DevExpress.XtraBars.Navigation.AccordionControlElement)
+        ByVal Element As DevExpress.XtraBars.Navigation.AccordionControlElement,
+        Optional ByVal depth As Integer = 0)
 
         Dim FontClass As String =
             If(Element.Style = DevExpress.XtraBars.Navigation.ElementStyle.Group, "Medium", "Small")
@@ -732,8 +853,16 @@ Public Class GroupInterfaceTemplate
         Element.Appearance.Pressed.Options.UseFont = True
         Element.Appearance.Disabled.Options.UseFont = True
 
+        If IsCombined AndAlso depth = 1 AndAlso
+           Element.Style = DevExpress.XtraBars.Navigation.ElementStyle.Group Then
+            SetCombinedGroupAppearance(Element.Appearance.Default)
+            SetCombinedGroupAppearance(Element.Appearance.Normal)
+            SetCombinedGroupAppearance(Element.Appearance.Hovered)
+            SetCombinedGroupAppearance(Element.Appearance.Pressed)
+        End If
+
         For Each Child As DevExpress.XtraBars.Navigation.AccordionControlElement In Element.Elements
-            ApplyNavigatorElementFont(Child)
+            ApplyNavigatorElementFont(Child, depth + 1)
         Next
     End Sub
     Private Sub TabbedViewDefault_QueryControl(sender As Object, e As DevExpress.XtraBars.Docking2010.Views.QueryControlEventArgs) Handles TabbedViewDefault.QueryControl
@@ -888,10 +1017,27 @@ Public Class GroupInterfaceTemplate
 
     End Sub
 
-    Public Sub ShowInterface(SetModelID As Integer, SetCSID As Integer, Optional ByVal ShowSpecial As Boolean = False, Optional ByVal SpecialData As String = "None", Optional ByVal Interfacelink As ElementInterfaceLinkTag = Nothing)
+    Private Function InterfaceDocumentKey(ByVal targetGroupID As Integer,
+                                          ByVal targetChildID As Integer) As String
+        If IsCombined Then Return targetGroupID.ToString() & ":" & targetChildID.ToString()
+        Return targetChildID.ToString()
+    End Function
 
+    Public Sub ShowInterface(SetModelID As Integer, SetCSID As Integer, Optional ByVal ShowSpecial As Boolean = False, Optional ByVal SpecialData As String = "None", Optional ByVal Interfacelink As ElementInterfaceLinkTag = Nothing, Optional ByVal TargetGSID As Integer = -1)
 
-        Dim doc As BaseDocument = DocumentManagerAssumptions.View.Documents.FirstOrDefault(Function(x) x.Control.Tag.ToString() = SetCSID)
+        Dim resolvedGSID As Integer = If(IsCombined, TargetGSID, GSID)
+        If resolvedGSID < 0 OrElse
+           resolvedGSID >= ExcelModels(SetModelID).WBStructure.GroupStructures.Count Then
+            Throw New ArgumentOutOfRangeException(NameOf(TargetGSID),
+                "The selected interface group is not available.")
+        End If
+        Dim documentKey As String = InterfaceDocumentKey(resolvedGSID, SetCSID)
+        Dim documentTag As Object = If(IsCombined, CObj(documentKey), CObj(SetCSID))
+        Dim groupName As String = ExcelModels(SetModelID).WBStructure.GroupStructures(resolvedGSID).GSName
+        Dim doc As BaseDocument = DocumentManagerAssumptions.View.Documents.FirstOrDefault(
+            Function(x) x.Control IsNot Nothing AndAlso
+                        String.Equals(Convert.ToString(x.Control.Tag), documentKey,
+                                      StringComparison.Ordinal))
 
         Dim DocCount As Integer = DocumentManagerAssumptions.View.Documents.Count
 
@@ -907,7 +1053,9 @@ Public Class GroupInterfaceTemplate
                 DataITemp.ClearLinks()
 
             Else
-                If Interfacelink IsNot Nothing Then DataITemp.AddLink(Interfacelink)
+                If Interfacelink IsNot Nothing AndAlso DataITemp IsNot Nothing Then
+                    DataITemp.AddLink(Interfacelink)
+                End If
 
             End If
 
@@ -923,7 +1071,7 @@ Public Class GroupInterfaceTemplate
 
                         For Each D As BaseDocument In DocumentManagerAssumptions.View.Documents
 
-                            If Not D.Control.Tag.ToString = SetCSID Then
+                            If Not String.Equals(Convert.ToString(D.Control.Tag), documentKey, StringComparison.Ordinal) Then
 
                                 Dim OtherDITemp As DataInterfaceTemplate = TryCast(D.Control, DataInterfaceTemplate)
 
@@ -952,7 +1100,8 @@ Public Class GroupInterfaceTemplate
                 resumedAnalyser.RefreshDeferredIfNeeded()
             End If
 
-            Me.BarStaticItemDescription.Caption = " " & ExcelModels(SetModelID).WBStructure.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ResolveChildStructure(SetCSID).CSName
+            Me.BarStaticItemDescription.Caption = " " & ExcelModels(SetModelID).WBStructure.CompanyName & " • " & If(IsCombined, MyName & " • " & groupName, MyName) & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(resolvedGSID).ResolveChildStructure(SetCSID).CSName
+            Me.Text = Me.BarStaticItemDescription.Caption
 
         Else
 
@@ -960,7 +1109,7 @@ Public Class GroupInterfaceTemplate
 
                 For Each D As BaseDocument In DocumentManagerAssumptions.View.Documents
 
-                    If Not D.Control.Tag.ToString = SetCSID Then
+                    If Not String.Equals(Convert.ToString(D.Control.Tag), documentKey, StringComparison.Ordinal) Then
 
                         Dim OtherDITemp As DataInterfaceTemplate = TryCast(D.Control, DataInterfaceTemplate)
 
@@ -975,9 +1124,6 @@ Public Class GroupInterfaceTemplate
             End If
 
             Me.Cursor = Cursors.WaitCursor
-            DataInterfaceCount += 1
-            ReDim Preserve DataInterfaces(DataInterfaceCount)
-
             If ShowSpecial Then
 
                 Select Case SpecialData
@@ -990,20 +1136,20 @@ Public Class GroupInterfaceTemplate
 
 
                     Case "StockAssumptionsInterface"
-                        Dim NewSAI As New StockAssumptionsInterface(SetModelID, GSID, SetCSID)
-                        NewSAI.Tag = SetCSID
+                        Dim NewSAI As New StockAssumptionsInterface(SetModelID, resolvedGSID, SetCSID)
+                        NewSAI.Tag = documentTag
                         DocumentManagerAssumptions.View.AddDocument(NewSAI)
                         DocumentManagerAssumptions.View.ActivateDocument(NewSAI)
 
                     Case "BP_Dashboard"
                         Dim NewSAI As New BPDashboard(MyModelID)
-                        NewSAI.Tag = SetCSID
+                        NewSAI.Tag = documentTag
                         DocumentManagerAssumptions.View.AddDocument(NewSAI)
                         DocumentManagerAssumptions.View.ActivateDocument(NewSAI)
 
                     Case "FundingDashboard"
                         Dim NewSAI As New FundingDashboard(MyModelID)
-                        NewSAI.Tag = SetCSID
+                        NewSAI.Tag = documentTag
                         DocumentManagerAssumptions.View.AddDocument(NewSAI)
                         DocumentManagerAssumptions.View.ActivateDocument(NewSAI)
 
@@ -1012,7 +1158,7 @@ Public Class GroupInterfaceTemplate
                             ModelResourceKeys.TransactionalRecordsRangeDataSource)
 
                         Dim NewSAI As New BPIncomeExpenditureAnalyser(MyModelID, Me)
-                        NewSAI.Tag = SetCSID
+                        NewSAI.Tag = documentTag
                         ExcelModels(MyModelID).ExpendAnalyser = NewSAI
                         RegisterAnalysisV1(NewSAI)
 
@@ -1030,7 +1176,7 @@ Public Class GroupInterfaceTemplate
                             ModelResourceKeys.TransactionalRecordsRangeDataSource)
 
                         Dim NewSAI As New BPIncomeExpenditureAnalyserV2(MyModelID, Me)
-                        NewSAI.Tag = SetCSID
+                        NewSAI.Tag = documentTag
                         ExcelModels(MyModelID).ExpendAnalyserV2 = NewSAI
                         RegisterAnalysisV2(NewSAI)
 
@@ -1044,8 +1190,8 @@ Public Class GroupInterfaceTemplate
                         End Try
 
                     Case "WebInterface"
-                        Dim NewSAI As New WebInterfaceTemplate(MyModelID, GSID, SetCSID)
-                        NewSAI.Tag = SetCSID
+                        Dim NewSAI As New WebInterfaceTemplate(MyModelID, resolvedGSID, SetCSID)
+                        NewSAI.Tag = documentTag
                         DocumentManagerAssumptions.View.AddDocument(NewSAI)
                         DocumentManagerAssumptions.View.ActivateDocument(NewSAI)
 
@@ -1054,18 +1200,20 @@ Public Class GroupInterfaceTemplate
             Else
 
                 'Open standard interface
+                DataInterfaceCount += 1
+                ReDim Preserve DataInterfaces(DataInterfaceCount)
 
-                DataInterfaces(DataInterfaceCount) = New DataInterfaceTemplate(SetModelID, GSID, SetCSID, Me, InterfaceMode, Interfacelink)
+                DataInterfaces(DataInterfaceCount) = New DataInterfaceTemplate(SetModelID, resolvedGSID, SetCSID, Me, InterfaceMode, Interfacelink)
 
-                DataInterfaces(DataInterfaceCount).Tag = SetCSID
+                DataInterfaces(DataInterfaceCount).Tag = documentTag
+                DocumentManagerAssumptions.View.AddDocument(DataInterfaces(DataInterfaceCount))
+                DocumentManagerAssumptions.View.ActivateDocument(DataInterfaces(DataInterfaceCount))
+                ActiveInterface = DataInterfaces(DataInterfaceCount)
 
             End If
 
-            DocumentManagerAssumptions.View.AddDocument(DataInterfaces(DataInterfaceCount))
-            DocumentManagerAssumptions.View.ActivateDocument(DataInterfaces(DataInterfaceCount))
-            ActiveInterface = DataInterfaces(DataInterfaceCount)
-            Me.BarStaticItemDescription.Caption = " " & ExcelModels(SetModelID).WBStructure.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ResolveChildStructure(SetCSID).CSName
-            Me.Text = " " & ExcelModels(SetModelID).WBStructure.CompanyName & " • " & MyName & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).ResolveChildStructure(SetCSID).CSName
+            Me.BarStaticItemDescription.Caption = " " & ExcelModels(SetModelID).WBStructure.CompanyName & " • " & If(IsCombined, MyName & " • " & groupName, MyName) & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(resolvedGSID).ResolveChildStructure(SetCSID).CSName
+            Me.Text = Me.BarStaticItemDescription.Caption
 
 
 
@@ -1073,10 +1221,11 @@ Public Class GroupInterfaceTemplate
 
         End If
 
-        RecordInterfaceVisit(SetModelID, SetCSID, ShowSpecial, SpecialData)
+        RecordInterfaceVisit(SetModelID, resolvedGSID, SetCSID, ShowSpecial, SpecialData)
     End Sub
 
     Private Sub RecordInterfaceVisit(ByVal setModelID As Integer,
+                                     ByVal targetGSID As Integer,
                                      ByVal setCSID As Integer,
                                      ByVal showSpecial As Boolean,
                                      ByVal specialData As String)
@@ -1084,16 +1233,18 @@ Public Class GroupInterfaceTemplate
             If ExcelModels(setModelID).InterfaceHistory Is Nothing Then Return
 
             Dim child As ChildStructure =
-                ExcelModels(setModelID).WBStructure.GroupStructures(GSID).
+                ExcelModels(setModelID).WBStructure.GroupStructures(targetGSID).
                     ResolveChildStructure(setCSID)
             If child Is Nothing Then Return
 
             ExcelModels(setModelID).InterfaceHistory.RecordGroupInterface(
                 Me,
-                GSID,
+                targetGSID,
                 setCSID,
                 child.CSName,
-                MyName,
+                If(IsCombined,
+                   MyName & " / " & ExcelModels(setModelID).WBStructure.GroupStructures(targetGSID).GSName,
+                   MyName),
                 showSpecial,
                 specialData)
         Catch ex As Exception
@@ -1170,19 +1321,24 @@ Public Class GroupInterfaceTemplate
 
     End Sub
 
-    Public Sub ReloadInterface(SetCSID As Integer, Optional ByVal ShowSpecial As Boolean = False, Optional ByVal SpecialData As String = "None")
+    Public Sub ReloadInterface(SetCSID As Integer, Optional ByVal ShowSpecial As Boolean = False, Optional ByVal SpecialData As String = "None", Optional ByVal TargetGSID As Integer = -1)
 
-        Dim DocToReload As BaseDocument = DocumentManagerAssumptions.View.Documents.FirstOrDefault(Function(x) x.Control.Tag.ToString() = SetCSID)
+        Dim resolvedGSID As Integer = If(IsCombined, TargetGSID, GSID)
+        Dim documentKey As String = InterfaceDocumentKey(resolvedGSID, SetCSID)
+        Dim DocToReload As BaseDocument = DocumentManagerAssumptions.View.Documents.FirstOrDefault(
+            Function(x) x.Control IsNot Nothing AndAlso
+                        String.Equals(Convert.ToString(x.Control.Tag), documentKey,
+                                      StringComparison.Ordinal))
 
-        DocToReload.Dispose()
+        If DocToReload IsNot Nothing Then DocToReload.Dispose()
 
         If ShowSpecial Then
 
-            ShowInterface(MyModelID, SetCSID, True, SpecialData)
+            ShowInterface(MyModelID, SetCSID, True, SpecialData, Nothing, TargetGSID)
 
         Else
 
-            ShowInterface(MyModelID, SetCSID)
+            ShowInterface(MyModelID, SetCSID, False, "None", Nothing, TargetGSID)
 
         End If
 

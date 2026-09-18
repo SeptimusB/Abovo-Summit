@@ -51,8 +51,20 @@ Namespace Abovo
                 End If
 
                 Dim FileInstance As FileInstanceInterface = ExcelModels(ModelID).InstanceInterface
-
-                FileManager.ExcelModels(ModelID).WBInterface.ShowGroupInterface(ModelID, SetGSID, "Maximised", LinkTag.LinkData, FileInstance, LinkTag)
+                Dim combinedHost As GroupInterfaceTemplate = TryCast(ActioningForm, GroupInterfaceTemplate)
+                If combinedHost IsNot Nothing AndAlso combinedHost.IsCombined Then
+                    Dim targetCSID As Integer = GetCSID(ModelID, SetGSID, LinkTag.LinkData)
+                    If targetCSID < 0 Then
+                        EventTransaction.BError = True
+                        EventTransaction.EventCancelled = True
+                        EventTransaction.StrResponseMessage = "The linked interface was not found."
+                        Return EventTransaction
+                    End If
+                    combinedHost.ShowInterface(ModelID, targetCSID, False, "None", LinkTag, SetGSID)
+                Else
+                    FileManager.ExcelModels(ModelID).WBInterface.ShowGroupInterface(
+                        ModelID, SetGSID, "Maximised", LinkTag.LinkData, FileInstance, LinkTag)
+                End If
 
             ElseIf EventType = "Code" Then
 

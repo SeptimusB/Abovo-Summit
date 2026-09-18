@@ -194,8 +194,9 @@ Public Class FileInstanceInterface
 
                 ShowInterface("Outputs")
 
-            Case "GoOther"
-
+            Case "GoData"
+                ExcelModels(BPModelID).WBInterface.ShowGroupInterface(
+                    BPModelID, -1, "Maximised", "Combined", Me)
 
 
             Case "GoFFR"
