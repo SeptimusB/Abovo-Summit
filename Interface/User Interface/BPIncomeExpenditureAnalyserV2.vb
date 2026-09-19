@@ -868,7 +868,10 @@ Public Class BPIncomeExpenditureAnalyserV2
                 Try
                     Activity.Update("Restoring the analyser view...")
                     Dim reconnectStartMs As Long = benchmark.ElapsedMilliseconds
-                    ReconnectRDS()
+                    'Creating a snapshot only changes the two dedicated snapshot
+                    'worksheets. The live datasource was current before it was
+                    'disconnected, so rebinding must not calculate it again.
+                    ReconnectRDS(False)
                     reconnectMs = benchmark.ElapsedMilliseconds - reconnectStartMs
                 Catch reconnectException As Exception
                     If snapshotError Is Nothing Then
@@ -948,7 +951,11 @@ Public Class BPIncomeExpenditureAnalyserV2
             disconnectMs = benchmark.ElapsedMilliseconds - phaseStartMs
             CurrentDataSourceMode = requestedMode
             phaseStartMs = benchmark.ElapsedMilliseconds
-            ReconnectRDS()
+            'All three sources are already current here: Live is maintained by
+            'normal workbook calculation, Snapshot is values-only, and the
+            'comparison sheet is calculated when created and registered as an
+            'active worksheet for later edits. Switching views only rebinds.
+            ReconnectRDS(False)
             reconnectMs = benchmark.ElapsedMilliseconds - phaseStartMs
         Catch ex As Exception
             outcome = "failed"

@@ -30,6 +30,7 @@ Namespace Abovo
             Dim formulaMs As Long = 0
             Dim endUpdateMs As Long = 0
             Dim calculateMs As Long = 0
+            Dim verifyMs As Long = 0
             Dim outcome As String = "failed"
 
             Try
@@ -100,21 +101,22 @@ Namespace Abovo
                     comparisonRange.CopyFrom(snapshotRange, PasteSpecial.Values)
                     copyMs = benchmark.ElapsedMilliseconds - phaseStartMs
 
-                    Dim absoluteReferenceElements As ReferenceElement =
-                        ReferenceElement.ColumnAbsolute Or ReferenceElement.RowAbsolute
-
                     ''Row zero is the RangeDataSource header. Identity, grouping,
                     ''ordering and UseIn... columns must remain unchanged so the
                     ''comparison can drive the same analyser grids and filters.
                     phaseStartMs = benchmark.ElapsedMilliseconds
+                    Dim absoluteReferenceElements As ReferenceElement =
+                        ReferenceElement.ColumnAbsolute Or ReferenceElement.RowAbsolute
                     For rowIndex As Integer = 1 To sourceRange.RowCount - 1
                         For columnIndex As Integer = 0 To sourceRange.ColumnCount - 1
                             If Not comparisonColumns(columnIndex) Then Continue For
 
-                            Dim value As CellValue = sourceRange(rowIndex, columnIndex).Value
-                            If Not value.IsNumeric AndAlso Not value.IsDateTime Then Continue For
+                            Dim value As CellValue =
+                                sourceRange(rowIndex, columnIndex).Value
+                            If Not IsComparisonValue(value) Then Continue For
 
-                            Dim sourceCell As Cell = sourceRange(rowIndex, columnIndex)
+                            Dim sourceCell As Cell =
+                                sourceRange(rowIndex, columnIndex)
                             Dim address As String =
                                 sourceCell.GetReferenceA1(absoluteReferenceElements)
 
@@ -134,6 +136,13 @@ Namespace Abovo
                 Dim calculateStartMs As Long = benchmark.ElapsedMilliseconds
                 comparisonRange.Calculate()
                 calculateMs = benchmark.ElapsedMilliseconds - calculateStartMs
+                Dim verifyStartMs As Long = benchmark.ElapsedMilliseconds
+                VerifyComparisonValues(
+                    sourceRange,
+                    snapshotRange,
+                    comparisonRange,
+                    comparisonColumns)
+                verifyMs = benchmark.ElapsedMilliseconds - verifyStartMs
                 FileManager.ExcelModels(modelID).IsDirty = True
                 outcome = "ok"
             Catch
@@ -145,7 +154,7 @@ Namespace Abovo
             Finally
                 Dim measuredMs As Long =
                     setupMs + clearMs + nameMs + copyMs + formulaMs +
-                    endUpdateMs + calculateMs
+                    endUpdateMs + calculateMs + verifyMs
                 System.Diagnostics.Trace.WriteLine(
                     "[Snapshot Benchmark] model=" & modelID.ToString() &
                     ", rows=" & rangeRows.ToString() &
@@ -158,11 +167,57 @@ Namespace Abovo
                     ", formulas=" & formulaMs.ToString() & " ms" &
                     ", endUpdate=" & endUpdateMs.ToString() & " ms" &
                     ", calculate=" & calculateMs.ToString() & " ms" &
+                    ", verify=" & verifyMs.ToString() & " ms" &
                     ", other=" &
                     Math.Max(0, benchmark.ElapsedMilliseconds - measuredMs).ToString() & " ms" &
                     ", total=" & benchmark.ElapsedMilliseconds.ToString() & " ms" &
                     ", outcome=" & outcome)
             End Try
+        End Sub
+
+        Private Shared Function IsComparisonValue(ByVal value As CellValue) As Boolean
+            Return value.IsNumeric OrElse value.IsDateTime
+        End Function
+
+        Private Shared Sub VerifyComparisonValues(
+            ByVal sourceRange As CellRange,
+            ByVal snapshotRange As CellRange,
+            ByVal comparisonRange As CellRange,
+            ByVal comparisonColumns As Boolean())
+
+            Const tolerance As Double = 0.0000001R
+            For columnIndex As Integer = 0 To sourceRange.ColumnCount - 1
+                If Not comparisonColumns(columnIndex) Then Continue For
+
+                For rowIndex As Integer = 1 To sourceRange.RowCount - 1
+                    Dim sourceValue As CellValue =
+                        sourceRange(rowIndex, columnIndex).Value
+                    If Not IsComparisonValue(sourceValue) Then Continue For
+
+                    Dim comparisonCell As Cell =
+                        comparisonRange(rowIndex, columnIndex)
+                    If Not comparisonCell.HasFormula Then
+                        Throw New InvalidOperationException(
+                            "The comparison formula was not created at " &
+                            comparisonCell.GetReferenceA1() & ".")
+                    End If
+
+                    If Not sourceValue.IsNumeric Then Continue For
+                    Dim snapshotValue As CellValue =
+                        snapshotRange(rowIndex, columnIndex).Value
+                    Dim comparisonValue As CellValue = comparisonCell.Value
+                    If Not snapshotValue.IsNumeric OrElse
+                       Not comparisonValue.IsNumeric OrElse
+                       Math.Abs(
+                           comparisonValue.NumericValue -
+                           (sourceValue.NumericValue - snapshotValue.NumericValue)) >
+                       tolerance Then
+                        Throw New InvalidOperationException(
+                            "The comparison value is invalid at " &
+                            comparisonCell.GetReferenceA1() & ".")
+                    End If
+                Next
+            Next
         End Sub
 
         Public Shared Function HasValidSnapshot(ByVal modelID As Integer) As Boolean
