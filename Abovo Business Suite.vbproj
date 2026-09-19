@@ -420,6 +420,9 @@
     <Compile Include="Interface\User Interface\FormMainScreen.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Interface\User Interface\BusinessPlanComparisonForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Interface\User Interface\ApplicationOptionsForm.vb">
       <SubType>Form</SubType>
     </Compile>
@@ -608,6 +611,7 @@
     <Compile Include="Services\ExcelDataExport.vb" />
     <Compile Include="Services\Calculation Engine and Custom Functions\ExcelFunctions.vb" />
     <Compile Include="Services\FileManager.vb" />
+    <Compile Include="Services\BusinessPlanComparisonService.vb" />
     <Compile Include="Services\Development and Debug\LogDebugDev.vb" />
     <Compile Include="Services\InterfaceDependencyManager.vb" />
     <Compile Include="Services\ModelCollection.vb" />

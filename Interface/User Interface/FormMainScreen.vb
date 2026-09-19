@@ -21,7 +21,7 @@ Imports DevExpress.XtraSpreadsheet.Forms
 Public Class FormMainScreen
 
 #If DEBUG Then
-    Private Const DebugAutoOpenModelPath As String = "C:\Sandbox\Deprecated\Test BP v26_0001 - FormGenRemoved - PopInSummit - MenuFixed.xlsb"
+    Private Const DebugAutoOpenModelPath As String = "C:\Sandbox\BP v26_0001 - New Blank.xlsb"
 #End If
 
     Dim rs As New Resizer
@@ -38,6 +38,7 @@ Public Class FormMainScreen
     Private MyFileInfos As System.IO.FileInfo
     Public AssumptionForm As FormAssumptionsTwo
     Public ActiveModel As Integer
+    Private BusinessPlanComparer As BusinessPlanComparisonForm
     Private FileInstances() As FileInstanceInterface
     Private FileInstanceIndex As Integer = -1
     Private DsaModelsTabControl As DevExpress.XtraTab.XtraTabControl
@@ -769,9 +770,14 @@ Public Class FormMainScreen
                 NewBP()
 
             Case "CompareBPs"
-
-                MsgBox("Awaiting DevExpress Fix")
-                Return
+                If BusinessPlanComparer Is Nothing OrElse BusinessPlanComparer.IsDisposed Then
+                    BusinessPlanComparer = New BusinessPlanComparisonForm(Me)
+                Else
+                    BusinessPlanComparer.RefreshModels()
+                End If
+                BusinessPlanComparer.Show(Me)
+                BusinessPlanComparer.Activate()
+                BusinessPlanComparer.BringToFront()
 
         End Select
     End Sub

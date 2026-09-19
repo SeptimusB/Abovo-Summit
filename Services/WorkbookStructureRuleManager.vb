@@ -267,7 +267,18 @@ Namespace Abovo
             Return Nothing
 
         End Function
+        Public Function GetRecordCount(ByVal RuleID As String) As Integer
 
+            Return GetRecordCount(RuleID, GetWorkbook())
+
+        End Function
+
+        Public Function GetRecordCount(ByVal RuleID As String,
+                                       ByVal Workbook As IWorkbook) As Integer
+
+            Return GetCurrentRecordCount(GetRule(RuleID), Workbook)
+
+        End Function
         Private Function GetRule(ByVal RuleID As String) As WorkbookStructureRule
 
             If String.IsNullOrWhiteSpace(RuleID) Then Return Nothing
@@ -1822,10 +1833,15 @@ Namespace Abovo
 
         Private Function GetCurrentRecordCount(ByVal Rule As WorkbookStructureRule) As Integer
 
+            Return GetCurrentRecordCount(Rule, GetWorkbook())
+
+        End Function
+
+        Private Function GetCurrentRecordCount(ByVal Rule As WorkbookStructureRule,
+                                               ByVal WB As IWorkbook) As Integer
+
             If Rule Is Nothing Then Return -1
             If String.IsNullOrWhiteSpace(Rule.RecordCountNamedRange) Then Return -1
-
-            Dim WB As IWorkbook = GetWorkbook()
             If WB Is Nothing Then Return -1
 
             Try

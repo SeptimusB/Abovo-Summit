@@ -564,6 +564,48 @@ Namespace Abovo
                 End Try
 
             End Function
+            Public Function SaveFileAsTo(ByVal SelectedPath As String,
+                                         Optional ByVal RequireDifferentPath As Boolean = True) As Boolean
+                Dim OriginalPath As String = FileName
+                Try
+                    If String.IsNullOrWhiteSpace(SelectedPath) Then Return False
+                    Dim FullPath As String = System.IO.Path.GetFullPath(SelectedPath)
+                    If Not String.Equals(System.IO.Path.GetExtension(FullPath), ".xlsb", StringComparison.OrdinalIgnoreCase) Then
+                        FullPath = System.IO.Path.ChangeExtension(FullPath, ".xlsb")
+                    End If
+                    If RequireDifferentPath AndAlso
+                       String.Equals(FullPath, System.IO.Path.GetFullPath(OriginalPath), StringComparison.OrdinalIgnoreCase) Then
+                        Throw New InvalidOperationException("The populated model must be saved to a different file.")
+                    End If
+                    ModelSpreadsheetControl.SaveDocument(FullPath, DocumentFormat.Xlsb)
+                    FileName = FullPath
+                    FileInfo = New System.IO.FileInfo(FileName)
+                    IsDirty = False
+                    RecoverySaveAsRequired = False
+                    SystemMessageManager.Publish(
+                        ModelID,
+                        "Populated model saved as '" & System.IO.Path.GetFileName(FileName) & "'.",
+                        SystemMessageSeverity.Success,
+                        "Business Plan Population",
+                        FileName)
+                    Return True
+                Catch ex As Exception
+                    SystemMessageManager.Publish(
+                        ModelID,
+                        "The populated model could not be saved: " & ex.Message,
+                        SystemMessageSeverity.Error,
+                        "Business Plan Population",
+                        OriginalPath)
+                    MessageBox.Show(
+                        "The populated model could not be saved to the selected location." &
+                        Environment.NewLine & Environment.NewLine & ex.Message,
+                        "Save populated Business Plan",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error)
+                    Return False
+                End Try
+            End Function
+
             Public Function SaveFile() As Boolean
 
                 If RecoverySaveAsRequired Then
