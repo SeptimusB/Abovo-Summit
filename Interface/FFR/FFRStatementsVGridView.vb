@@ -47,6 +47,7 @@ Public Class FFRStatementsVGridView
         Workbook = GetWorkBook(ModelID)
         Dock = DockStyle.Fill
         BuildSurface()
+        AddCopyWithHeadersMenu(Grid)
         RefreshFromWorkbook()
     End Sub
 

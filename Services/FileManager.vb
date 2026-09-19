@@ -190,6 +190,7 @@ Namespace Abovo
             Public SSViewInitialised As Boolean = False
             Public FileName As String
             Public FileInfo As System.IO.FileInfo
+            Public PreviousFileAccessTime As DateTime
             Public InstanceInterface As FileInstanceInterface
             Public RDSM As RDSManager
             Public InterfaceDependencies As InterfaceDependencyManager
@@ -1523,6 +1524,10 @@ Namespace Abovo
                 NewModel.FileInfo =
                     If(FileInfo, New System.IO.FileInfo(FullPath))
                 NewModel.FileName = FullPath
+                'FileInfo timestamps are lazy and loading the workbook can update
+                'LastAccessTime. Capture the filesystem value before LoadDocument.
+                NewModel.FileInfo.Refresh()
+                NewModel.PreviousFileAccessTime = NewModel.FileInfo.LastAccessTime
                 NewModel.ModelSpreadsheetControl.LoadDocument(FullPath)
 
                 Dim LoadedModelType As String = "ImportSource"

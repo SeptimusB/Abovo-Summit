@@ -822,15 +822,31 @@ Public Class BPIncomeExpenditureAnalyserV2
     Private Sub CreateTransactionalDBSnapshot(ByVal snapshotButton As WindowsUIButton)
         If snapshotButton IsNot Nothing Then snapshotButton.Enabled = False
         Me.Cursor = Cursors.WaitCursor
+        Dim Activity As New FormSplashScreen(
+            Me.FindForm(), "Creating snapshot", "Preparing the analyser...")
+        Dim benchmark As System.Diagnostics.Stopwatch =
+            System.Diagnostics.Stopwatch.StartNew()
+        Dim disconnectMs As Long = 0
+        Dim createMs As Long = 0
+        Dim validationMs As Long = 0
+        Dim reconnectMs As Long = 0
 
         Dim dataSourceWasConnected As Boolean = (DSAnalDataRange IsNot Nothing)
         Dim snapshotCreated As Boolean = False
         Dim snapshotError As Exception = Nothing
 
         Try
-            If dataSourceWasConnected Then DisconnectRDS()
+            If dataSourceWasConnected Then
+                Dim phaseStartMs As Long = benchmark.ElapsedMilliseconds
+                DisconnectRDS()
+                disconnectMs = benchmark.ElapsedMilliseconds - phaseStartMs
+            End If
 
+            Activity.Update("Copying values and building the comparison...")
+            Dim createStartMs As Long = benchmark.ElapsedMilliseconds
             TransactionalDBSnapshotManager.CreateSnapshotAndComparison(ModelID)
+            createMs = benchmark.ElapsedMilliseconds - createStartMs
+            Dim validationStartMs As Long = benchmark.ElapsedMilliseconds
             HasSnapshots = TransactionalDBSnapshotManager.HasValidSnapshot(ModelID)
             If Not HasSnapshots Then
                 Throw New InvalidOperationException(
@@ -838,6 +854,7 @@ Public Class BPIncomeExpenditureAnalyserV2
             End If
 
             EnsureComparisonWorksheetRegistered()
+            validationMs = benchmark.ElapsedMilliseconds - validationStartMs
             snapshotCreated = True
         Catch ex As Exception
             snapshotError = ex
@@ -849,7 +866,10 @@ Public Class BPIncomeExpenditureAnalyserV2
         Finally
             If dataSourceWasConnected AndAlso DSAnalDataRange Is Nothing Then
                 Try
+                    Activity.Update("Restoring the analyser view...")
+                    Dim reconnectStartMs As Long = benchmark.ElapsedMilliseconds
                     ReconnectRDS()
+                    reconnectMs = benchmark.ElapsedMilliseconds - reconnectStartMs
                 Catch reconnectException As Exception
                     If snapshotError Is Nothing Then
                         snapshotError = reconnectException
@@ -862,6 +882,21 @@ Public Class BPIncomeExpenditureAnalyserV2
             UpdateDataSourceButtons()
             Me.Cursor = Cursors.Default
             If snapshotButton IsNot Nothing Then snapshotButton.Enabled = True
+            If snapshotError Is Nothing Then Activity.Complete("Snapshot ready.")
+            Activity.Dispose()
+            Dim measuredMs As Long =
+                disconnectMs + createMs + validationMs + reconnectMs
+            System.Diagnostics.Trace.WriteLine(
+                "[Analyser V2 Snapshot Benchmark] model=" & ModelID.ToString() &
+                ", mode=" & CurrentDataSourceMode.ToString() &
+                ", disconnect=" & disconnectMs.ToString() & " ms" &
+                ", create=" & createMs.ToString() & " ms" &
+                ", validate=" & validationMs.ToString() & " ms" &
+                ", reconnect=" & reconnectMs.ToString() & " ms" &
+                ", other=" &
+                Math.Max(0, benchmark.ElapsedMilliseconds - measuredMs).ToString() & " ms" &
+                ", total=" & benchmark.ElapsedMilliseconds.ToString() & " ms" &
+                ", outcome=" & If(snapshotError Is Nothing, "ok", "failed"))
         End Try
 
         If snapshotError IsNot Nothing Then
@@ -899,17 +934,30 @@ Public Class BPIncomeExpenditureAnalyserV2
         End If
 
         Dim previousMode As AnalyserDataSourceMode = CurrentDataSourceMode
+        Dim benchmark As System.Diagnostics.Stopwatch =
+            System.Diagnostics.Stopwatch.StartNew()
+        Dim disconnectMs As Long = 0
+        Dim reconnectMs As Long = 0
+        Dim fallbackMs As Long = 0
+        Dim outcome As String = "ok"
         Me.Cursor = Cursors.WaitCursor
 
         Try
+            Dim phaseStartMs As Long = benchmark.ElapsedMilliseconds
             DisconnectRDS()
+            disconnectMs = benchmark.ElapsedMilliseconds - phaseStartMs
             CurrentDataSourceMode = requestedMode
+            phaseStartMs = benchmark.ElapsedMilliseconds
             ReconnectRDS()
+            reconnectMs = benchmark.ElapsedMilliseconds - phaseStartMs
         Catch ex As Exception
+            outcome = "failed"
             CurrentDataSourceMode = AnalyserDataSourceMode.Live
             Try
+                Dim fallbackStartMs As Long = benchmark.ElapsedMilliseconds
                 If DSAnalDataRange IsNot Nothing Then DisconnectRDS()
                 ReconnectRDS()
+                fallbackMs = benchmark.ElapsedMilliseconds - fallbackStartMs
             Catch
                 CurrentDataSourceMode = previousMode
             End Try
@@ -923,6 +971,19 @@ Public Class BPIncomeExpenditureAnalyserV2
         Finally
             Me.Cursor = Cursors.Default
             UpdateDataSourceButtons()
+            Dim measuredMs As Long =
+                disconnectMs + reconnectMs + fallbackMs
+            System.Diagnostics.Trace.WriteLine(
+                "[Analyser V2 Mode Benchmark] model=" & ModelID.ToString() &
+                ", from=" & previousMode.ToString() &
+                ", to=" & requestedMode.ToString() &
+                ", disconnect=" & disconnectMs.ToString() & " ms" &
+                ", reconnect=" & reconnectMs.ToString() & " ms" &
+                ", fallback=" & fallbackMs.ToString() & " ms" &
+                ", other=" &
+                Math.Max(0, benchmark.ElapsedMilliseconds - measuredMs).ToString() & " ms" &
+                ", total=" & benchmark.ElapsedMilliseconds.ToString() & " ms" &
+                ", outcome=" & outcome)
         End Try
     End Sub
 

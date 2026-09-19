@@ -100,7 +100,6 @@ Namespace Abovo
             MessageGridView.OptionsBehavior.ReadOnly = True
             MessageGridView.OptionsSelection.MultiSelect = True
             MessageGridView.OptionsSelection.MultiSelectMode = GridMultiSelectMode.RowSelect
-            MessageGridView.OptionsView.ShowAutoFilterRow = True
             MessageGridView.OptionsView.ShowGroupPanel = False
             MessageGridView.OptionsView.ShowIndicator = False
             MessageGridView.OptionsView.RowAutoHeight = True
@@ -109,6 +108,7 @@ Namespace Abovo
             MessageGridView.Appearance.EvenRow.BackColor = Color.FromArgb(248, 250, 252)
             MessageGridView.Appearance.Row.Font = New Font("Segoe UI", 9.0F)
             MessageGridView.Appearance.HeaderPanel.Font = New Font("Segoe UI", 9.0F, FontStyle.Bold)
+            ObjectFormatter.FormatInformationalGrid(MessageGrid, MessageGridView)
             MessageGridView.PopulateColumns()
             ConfigureColumns()
             AddHandler MessageGridView.RowStyle, AddressOf MessageGridView_RowStyle

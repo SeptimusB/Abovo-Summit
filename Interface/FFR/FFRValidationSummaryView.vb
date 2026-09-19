@@ -47,6 +47,8 @@ Public Class FFRValidationSummaryView
         BuildNativeSurface()
         HardGrid = CreateSummaryGrid()
         SoftGrid = CreateSummaryGrid()
+        AddCopyWithHeadersMenu(HardGrid)
+        AddCopyWithHeadersMenu(SoftGrid)
         HardGroup.Controls.Add(HardGrid)
         SoftGroup.Controls.Add(SoftGrid)
         RefreshFromWorkbook()

@@ -391,6 +391,7 @@ Namespace Abovo
             Dim fontSize As Single = Math.Max(8.0F, 9.0F * PresentationScaleManager.UserScale)
             HistoryGridView.Appearance.Row.Font = New Font("Segoe UI", fontSize)
             HistoryGridView.Appearance.HeaderPanel.Font = New Font("Segoe UI", fontSize, FontStyle.Bold)
+            ObjectFormatter.FormatInformationalGrid(HistoryGrid, HistoryGridView)
 
             HistoryGridView.Columns.AddVisible("VisitedAt", "Time")
             HistoryGridView.Columns.AddVisible("InterfaceName", "Interface")

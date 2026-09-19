@@ -70,6 +70,8 @@ Public Class FFRFrontSheetView
 
         Dock = DockStyle.Fill
         BuildNativeSurface()
+        AddCopyWithHeadersMenu(RegisteredGrid)
+        AddCopyWithHeadersMenu(OtherGrid)
         RefreshFromWorkbook()
     End Sub
 

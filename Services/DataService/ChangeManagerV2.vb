@@ -89,6 +89,156 @@ Namespace Abovo
             End Try
         End Function
 
+        'A paste retains a snapshot per distinct target, writes typed values,
+        'calculates once, and commits one undoable change-history group.
+        Public Function ProcessChanges(ByVal changes As IEnumerable(Of DataChangeEvent),
+                                       ByVal description As String) As AbovoAppCls.AbovoTransaction
+            If IsApplyingHistory OrElse ActiveGroup IsNot Nothing Then
+                Return NoAction("Paste is unavailable during another change.")
+            End If
+
+            Dim ordered As List(Of DataChangeEvent) =
+                If(changes, Enumerable.Empty(Of DataChangeEvent)()).ToList()
+            If ordered.Count = 0 Then Return NoAction("There are no editable cells to paste.")
+
+            Dim targets As New List(Of BatchChangeTargetV2)()
+            Dim targetIndex As New Dictionary(Of String, BatchChangeTargetV2)(
+                StringComparer.OrdinalIgnoreCase)
+            Dim entries As New List(Of ChangeHistoryEntryV2)()
+            Dim timer As System.Diagnostics.Stopwatch =
+                System.Diagnostics.Stopwatch.StartNew()
+            Dim writeMs As Long = 0
+            Dim calculationMs As Long = 0
+            Dim outcome As String = "failed"
+            Dim activeChange As DataChangeEvent = ordered(0)
+
+            Try
+                For Each change As DataChangeEvent In ordered
+                    activeChange = change
+                    Dim worksheetName As String = NormalizeIdentifier(change.WSName)
+                    Dim address As String = NormalizeIdentifier(change.CellAddress)
+                    Dim cell As Cell = WB.Worksheets(worksheetName).Cells(address)
+                    Dim key As String =
+                        cell.Worksheet.Name & "!" & cell.GetReferenceA1()
+                    Dim target As BatchChangeTargetV2 = Nothing
+                    If Not targetIndex.TryGetValue(key, target) Then
+                        target = New BatchChangeTargetV2 With {
+                            .Cell = cell,
+                            .BeforeSnapshot = CellSnapshotV2.Capture(cell)}
+                        targetIndex.Add(key, target)
+                        targets.Add(target)
+                    End If
+                    target.LastChange = change
+                    WriteTypedValue(cell, change.ChangedValue, change.DataFormat)
+                Next
+                writeMs = timer.ElapsedMilliseconds
+
+                If targets.Any(Function(target) Not target.BeforeSnapshot.Matches(target.Cell)) Then
+                    FileManager.ExcelModels(ModelID).WBCalcEngine.CalculateWSs(
+                        True, "Paste model=" & ModelID.ToString() &
+                        ", cells=" & targets.Count.ToString())
+                    calculationMs = timer.ElapsedMilliseconds - writeMs
+                End If
+
+                For Each target As BatchChangeTargetV2 In targets
+                    If target.BeforeSnapshot.Matches(target.Cell) Then Continue For
+                    Dim after As CellSnapshotV2 = CellSnapshotV2.Capture(target.Cell)
+                    Dim change As DataChangeEvent = target.LastChange
+                    entries.Add(New ChangeHistoryEntryV2 With {
+                        .TimeStamp = If(change.TimeStamp = DateTime.MinValue,
+                                        Now(), change.TimeStamp),
+                        .Description = If(String.IsNullOrWhiteSpace(change.Description),
+                                          description, change.Description),
+                        .WorksheetName = target.Cell.Worksheet.Name,
+                        .CellAddress = target.Cell.GetReferenceA1(),
+                        .BeforeSnapshot = target.BeforeSnapshot,
+                        .AfterSnapshot = after,
+                        .OriginalDisplay = target.BeforeSnapshot.DisplayText,
+                        .ChangedDisplay = after.DisplayText,
+                        .UserName = change.UserName,
+                        .DataFormat = change.DataFormat})
+                Next
+                outcome = "ok"
+            Catch ex As Exception
+                Dim rollbackFailures As New List(Of String)()
+                For Each target As BatchChangeTargetV2 In targets.AsEnumerable().Reverse()
+                    Try
+                        target.BeforeSnapshot.Apply(target.Cell)
+                    Catch rollbackError As Exception
+                        rollbackFailures.Add(
+                            target.Cell.Worksheet.Name & "!" &
+                            target.Cell.GetReferenceA1() & ": " &
+                            rollbackError.Message)
+                    End Try
+                Next
+                If targets.Count > 0 Then
+                    Try
+                        FileManager.ExcelModels(ModelID).WBCalcEngine.CalculateWSs(
+                            True, "Paste rollback model=" & ModelID.ToString())
+                    Catch rollbackError As Exception
+                        rollbackFailures.Add(
+                            "Recalculate restored workbook: " &
+                            rollbackError.Message)
+                    End Try
+                    For Each target As BatchChangeTargetV2 In targets
+                        If Not target.BeforeSnapshot.Matches(target.Cell) Then
+                            rollbackFailures.Add(
+                                "Could not verify " & target.Cell.Worksheet.Name &
+                                "!" & target.Cell.GetReferenceA1())
+                        End If
+                    Next
+                End If
+                If rollbackFailures.Count > 0 Then
+                    ModelSafetyManager.MarkRecoveryRequired(
+                        ModelID, description,
+                        String.Join(Environment.NewLine, rollbackFailures),
+                        "Change Manager")
+                End If
+                outcome = If(rollbackFailures.Count = 0,
+                             "rolled back", "recovery required")
+                Return FailedChange(
+                    activeChange, activeChange.WSName,
+                    activeChange.CellAddress, ex)
+            Finally
+                System.Diagnostics.Trace.WriteLine(
+                    "[Paste Benchmark] model=" & ModelID.ToString() &
+                    ", requested=" & ordered.Count.ToString() &
+                    ", targets=" & targets.Count.ToString() &
+                    ", write=" & writeMs.ToString() & " ms" &
+                    ", calculation=" & calculationMs.ToString() & " ms" &
+                    ", total=" & timer.ElapsedMilliseconds.ToString() & " ms" &
+                    ", outcome=" & outcome)
+            End Try
+
+            Dim result As New AbovoAppCls.AbovoTransaction(
+                "ModelChangeManagerV2.ProcessChanges") With {
+                    .BSuccess = True,
+                    .IntegerReturn = entries.Count,
+                    .StrResponseMessage = entries.Count.ToString() & " cell(s) pasted."}
+            If entries.Count = 0 Then Return result
+
+            Dim group As ChangeHistoryGroupV2 = CreateGroup(description)
+            For Each entry As ChangeHistoryEntryV2 In entries
+                entry.GroupID = group.GroupID
+                group.Entries.Add(entry)
+            Next
+            FileManager.ExcelModels(ModelID).IsDirty = True
+            CommitNewGroup(group)
+            For Each entry As ChangeHistoryEntryV2 In group.Entries
+                Try
+                    MasterChangeLog.AddChangeLogEvent(
+                        ToLogEvent(entry, 1, "Apply"))
+                Catch logError As Exception
+                    System.Diagnostics.Trace.WriteLine(
+                        "[Paste] Change-log entry failed: " &
+                        logError.Message)
+                End Try
+            Next
+            RaiseHistoryChanged(
+                False, group.Entries.Select(Function(entry) entry.WorksheetName))
+            Return result
+        End Function
+
         Public Function ProcessChangeByNRAddressing(ByVal sentEvent As DataChangeEvent) As AbovoAppCls.AbovoTransaction
             If IsApplyingHistory Then Return SuccessfulNoAction("A refresh-time post was ignored while history was being applied.")
             Try
@@ -529,6 +679,12 @@ Namespace Abovo
         Public TimeStamp As DateTime
         Public State As ChangeHistoryStateV2
         Public ReadOnly Entries As New List(Of ChangeHistoryEntryV2)()
+    End Class
+
+    Friend NotInheritable Class BatchChangeTargetV2
+        Public Cell As Cell
+        Public BeforeSnapshot As CellSnapshotV2
+        Public LastChange As DataChangeEvent
     End Class
 
     Friend NotInheritable Class ChangeHistoryEntryV2

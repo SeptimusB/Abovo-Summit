@@ -21,7 +21,7 @@ Imports DevExpress.XtraSpreadsheet.Forms
 Public Class FormMainScreen
 
 #If DEBUG Then
-    Private Const DebugAutoOpenModelPath As String = "C:\Sandbox\BP v26_0001 - New Blank.xlsb"
+    Private Const DebugAutoOpenModelPath As String = "C:\Sandbox\Deprecated\Test BP v26_0001 - FormGenRemoved - PopInSummit - MenuFixed.xlsb"
 #End If
 
     Dim rs As New Resizer
@@ -193,6 +193,14 @@ Public Class FormMainScreen
 
     End Sub
     Private Sub FormMainScreen_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+        Dim benchmarkArgs As String() = Environment.GetCommandLineArgs()
+        If benchmarkArgs.Length >= 4 AndAlso benchmarkArgs.Length <= 5 AndAlso
+           String.Equals(benchmarkArgs(1), "--benchmark-bitness", StringComparison.OrdinalIgnoreCase) Then
+            BeginInvoke(New MethodInvoker(
+                Sub() RunBitnessBenchmark(benchmarkArgs(2), benchmarkArgs(3),
+                    If(benchmarkArgs.Length = 5, benchmarkArgs(4), "TransRents"))))
+            Return
+        End If
 #If DEBUG Then
         Dim DebugAutoOpenModelPath As String = ResolveDebugAutoOpenModelPath()
         If Not DesignMode AndAlso Not String.IsNullOrWhiteSpace(DebugAutoOpenModelPath) Then
@@ -200,6 +208,135 @@ Public Class FormMainScreen
                 Sub() OpenModelProceedureBP(DebugAutoOpenModelPath)))
         End If
 #End If
+    End Sub
+
+    Private Sub RunBitnessBenchmark(workbookPath As String, resultPath As String,
+                                    editRangeName As String)
+        Dim modelID As Integer = -1
+        Try
+            Using output As New System.IO.StreamWriter(resultPath, False, System.Text.Encoding.UTF8)
+                output.WriteLine("bitness" & vbTab & "phase" & vbTab & "elapsed_ms" & vbTab &
+                                 "private_bytes" & vbTab & "peak_working_set_bytes" & vbTab & "outcome")
+                Dim timer As New System.Diagnostics.Stopwatch()
+                timer.Start()
+                Dim result As AbovoTransaction =
+                    FileManager.OpenModel(workbookPath, New System.IO.FileInfo(workbookPath))
+                timer.Stop()
+                If result.BError Then Throw New InvalidOperationException(result.StringReturn)
+                modelID = result.IntegerReturn
+                WriteBitnessBenchmarkLine(output, "open", timer.ElapsedMilliseconds, "ok")
+
+                WriteBitnessBenchmarkPhase(output, "staged_first",
+                    Sub() ExcelModels(modelID).WBCalcEngine.CalcFile(1))
+                WriteBitnessBenchmarkPhase(output, "staged_repeat",
+                    Sub() ExcelModels(modelID).WBCalcEngine.CalcFile(1))
+                WriteBitnessBenchmarkPhase(output, "recursive_dependencies",
+                    Sub() ExcelModels(modelID).WBCalcEngine.CalculateDependencySensitiveFile(
+                        "Bitness benchmark", True))
+                WriteBitnessBenchmarkPhase(output, "full_rebuild",
+                    Sub() ExcelModels(modelID).WBCalcEngine.CalcFile(3))
+                RunBitnessEditBenchmark(output, modelID, editRangeName)
+            End Using
+        Catch ex As Exception
+            Try
+                System.IO.File.AppendAllText(resultPath,
+                    IntPtr.Size * 8 & vbTab & "error" & vbTab & "0" & vbTab & "0" & vbTab &
+                    "0" & vbTab & ex.ToString().Replace(vbCr, " ").Replace(vbLf, " ") &
+                    Environment.NewLine)
+            Catch
+            End Try
+        Finally
+            If modelID >= 0 Then FileManager.CloseModel(modelID)
+            ModelsClosedForShutdown = True
+            Close()
+        End Try
+    End Sub
+
+    Private Shared Sub RunBitnessEditBenchmark(output As System.IO.TextWriter,
+                                                modelID As Integer, rangeName As String)
+        Dim model = ExcelModels(modelID)
+        Dim name As DefinedName = model.WB.DefinedNames.GetDefinedName(rangeName)
+        If name Is Nothing Then
+            name = model.WB.Worksheets("Rent Assumptions").DefinedNames.GetDefinedName(rangeName)
+        End If
+        If name Is Nothing OrElse name.Range Is Nothing Then
+            WriteBitnessBenchmarkLine(output, "edit", 0, "skipped: name not found")
+            Return
+        End If
+
+        Dim input As Cell = Nothing
+        Dim cells As CellRange = name.Range
+        For row As Integer = 0 To cells.RowCount - 1
+            For col As Integer = 0 To cells.ColumnCount - 1
+                Dim candidate As Cell = cells(row, col)
+                If Not candidate.Protection.Locked AndAlso
+                   Not candidate.HasFormula AndAlso candidate.Value.IsNumeric Then
+                    input = candidate
+                    Exit For
+                End If
+            Next
+            If input IsNot Nothing Then Exit For
+        Next
+        If input Is Nothing Then
+            WriteBitnessBenchmarkLine(output, "edit", 0, "skipped: no numeric unlocked input")
+            Return
+        End If
+
+        Dim original As Double = input.Value.NumericValue
+        Dim change As New DataChangeEvent With {
+            .ModelID = modelID,
+            .Description = "Architecture benchmark edit",
+            .WSName = input.Worksheet.Name,
+            .CellAddress = input.GetReferenceA1(),
+            .OriginalValue = original,
+            .ChangedValue = original + 1.0R,
+            .DataFormat = "SM",
+            .TimeStamp = DateTime.Now,
+            .UserName = Environment.UserName
+        }
+        Dim timer As System.Diagnostics.Stopwatch = System.Diagnostics.Stopwatch.StartNew()
+        Dim result As AbovoTransaction = model.ChangeManager.ProcessChange(change)
+        timer.Stop()
+        If result.BError Then Throw New InvalidOperationException(result.StringReturn)
+        If Math.Abs(input.Value.NumericValue - original) < 0.0000001R Then
+            Throw New InvalidOperationException("The benchmark edit did not change the selected cell.")
+        End If
+        WriteBitnessBenchmarkLine(output, "edit", timer.ElapsedMilliseconds,
+                                  "ok:" & input.Worksheet.Name & "!" & input.GetReferenceA1())
+
+        timer.Restart()
+        result = model.ChangeManager.Undo()
+        timer.Stop()
+        If result.BError Then Throw New InvalidOperationException(result.StringReturn)
+        If Math.Abs(input.Value.NumericValue - original) > 0.0000001R Then
+            Throw New InvalidOperationException("Undo did not restore the benchmark input.")
+        End If
+        WriteBitnessBenchmarkLine(output, "undo", timer.ElapsedMilliseconds, "ok")
+    End Sub
+
+    Private Shared Sub WriteBitnessBenchmarkPhase(
+        output As System.IO.TextWriter, phase As String, operation As Action)
+        Dim timer As System.Diagnostics.Stopwatch = System.Diagnostics.Stopwatch.StartNew()
+        operation()
+        timer.Stop()
+        WriteBitnessBenchmarkLine(output, phase, timer.ElapsedMilliseconds, "ok")
+    End Sub
+
+    Private Shared Sub WriteBitnessBenchmarkLine(
+        output As System.IO.TextWriter, phase As String, elapsedMs As Long, outcome As String)
+        Using currentProcess As System.Diagnostics.Process =
+            System.Diagnostics.Process.GetCurrentProcess()
+            currentProcess.Refresh()
+            output.WriteLine(String.Join(vbTab, {
+                (IntPtr.Size * 8).ToString(),
+                phase,
+                elapsedMs.ToString(),
+                currentProcess.PrivateMemorySize64.ToString(),
+                currentProcess.PeakWorkingSet64.ToString(),
+                outcome
+            }))
+            output.Flush()
+        End Using
     End Sub
 #If DEBUG Then
     Private Shared Function ResolveDebugAutoOpenModelPath() As String

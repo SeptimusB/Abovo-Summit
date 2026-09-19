@@ -2160,6 +2160,7 @@ Public Class StressTest
             View.OptionsClipboard.AllowCopy = DevExpress.Utils.DefaultBoolean.True
             View.OptionsClipboard.CopyColumnHeaders =
                 DevExpress.Utils.DefaultBoolean.False
+            AddCopyWithHeadersMenu(Grid)
             RemoveHandler View.KeyDown, AddressOf StressTestGridKeyDown
             AddHandler View.KeyDown, AddressOf StressTestGridKeyDown
             View.ClearColumnsFilter()

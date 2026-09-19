@@ -385,7 +385,10 @@ Public Class GroupInterfaceTemplate
             "<dt>File</dt><dd>" & Html(ExcelModels(MyModelID).FileName) & "</dd>"
         If FileInformation IsNot Nothing Then
             StrFileDescription &= "<dt>Created</dt><dd>" & Html(FileInformation.CreationTime.ToString("g")) & "</dd>" &
-                "<dt>Last accessed</dt><dd>" & Html(FileInformation.LastAccessTime.ToString("g")) & "</dd>" &
+                "<dt>Previous file access</dt><dd>" &
+                Html(If(ExcelModels(MyModelID).PreviousFileAccessTime = DateTime.MinValue,
+                        "Not recorded",
+                        ExcelModels(MyModelID).PreviousFileAccessTime.ToString("G"))) & "</dd>" &
                 "<dt>Size</dt><dd>" & Format((FileInformation.Length / 1000000), "###.##") & " MB</dd>"
         End If
         StrFileDescription &= "</dl>"

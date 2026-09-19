@@ -117,6 +117,7 @@ Public Class DataInterfaceTemplate
     Private SuppressSingleCellPosting As Boolean = False
     Private SuppressGridPosting As Boolean = False
     Private WorkbookPostingDepth As Integer = 0
+    Private PasteRefreshDepth As Integer = 0
     Private WorkbookRefreshQueued As Boolean = False
     Private InterfaceResourcesReleased As Boolean = False
     Private FooterOn As Boolean
@@ -454,6 +455,7 @@ Public Class DataInterfaceTemplate
     Private ClipboardContextMenu As ContextMenuStrip
     Private ClipboardCutMenuItem As ToolStripMenuItem
     Private ClipboardCopyMenuItem As ToolStripMenuItem
+    Private ClipboardCopyWithHeadersMenuItem As ToolStripMenuItem
     Private ClipboardPasteMenuItem As ToolStripMenuItem
     Private ClipboardClearContentsMenuItem As ToolStripMenuItem
     Private LastClipboardTarget As Control
@@ -483,6 +485,7 @@ Public Class DataInterfaceTemplate
         InitializeComponent()
         InitialiseExportActions()
         InitialiseClipboardActions()
+        InitialiseRefreshAction()
 
         If Not IsNothing(MyParent) Then
 
@@ -692,7 +695,11 @@ Public Class DataInterfaceTemplate
 
     End Sub
 
-    Public Sub RefreshData()
+    Public Sub RefreshData(Optional ByVal useLightweightGridRefresh As Boolean = False)
+
+        'A batch paste performs its own final refresh after all workbook writes,
+        'calculation, and rule updates. Do not reset the unbound grid mid-paste.
+        If PasteRefreshDepth > 0 Then Return
 
         'DevExpress completes its editor commit after Leave/ValuePushed handlers
         'return. Refreshing a datasource from inside that event lets its stale
@@ -708,34 +715,36 @@ Public Class DataInterfaceTemplate
             For Each gridControl In GridControls
 
                 If Not IsNothing(gridControl) AndAlso Not gridControl.IsDisposed Then
-                    Dim previousGridSuppression As Boolean = SuppressGridPosting
-                    SuppressGridPosting = True
+                    gridControl.BeginUpdate()
                     Try
-                        Dim unboundSource As AbovoUnboundSource =
-                            TryCast(gridControl.DataSource, AbovoUnboundSource)
-                        If unboundSource IsNot Nothing Then
-                            'RefreshDataSource does not invalidate values already supplied
-                            'by DevExpress UnboundSource. Reset at the existing row count so
-                            'ValueNeeded rereads the authoritative workbook cells.
-                            unboundSource.Reset(unboundSource.Count)
+                        Dim previousGridSuppression As Boolean = SuppressGridPosting
+                        SuppressGridPosting = True
+                        Try
+                            Dim unboundSource As AbovoUnboundSource =
+                                TryCast(gridControl.DataSource, AbovoUnboundSource)
+                            If unboundSource IsNot Nothing AndAlso useLightweightGridRefresh Then
+                                For rowIndex As Integer = 0 To unboundSource.Count - 1
+                                    unboundSource.Change(rowIndex)
+                                Next
+                            Else
+                                If unboundSource IsNot Nothing Then
+                                    unboundSource.Reset(unboundSource.Count)
+                                End If
+                                gridControl.RefreshDataSource()
+                            End If
+                        Finally
+                            SuppressGridPosting = previousGridSuppression
+                        End Try
+
+                        'Live headings also come from workbook formula results.
+                        RefreshLiveGridHeaders(gridControl)
+                        'Grow for new data without shrinking user-expanded widths.
+                        If Not useLightweightGridRefresh Then
+                            AutoFitGridAfterDataRefresh(gridControl)
                         End If
-                        gridControl.RefreshDataSource()
                     Finally
-                        SuppressGridPosting = previousGridSuppression
+                        gridControl.EndUpdate()
                     End Try
-
-                    'LiveGrid headings are workbook formula results too. Refresh
-                    'their captions in place after calculation so a renamed stock
-                    'type is reflected without rebuilding the whole interface.
-                    RefreshLiveGridHeaders(gridControl)
-
-                    'Data may have changed substantially since the grid was first
-                    'built (paste, structural insert, workbook recalculation, etc).
-                    'Grow columns/control width when the refreshed content now
-                    'requires more space. Existing user-expanded widths are not
-                    'shrunk by this refresh-time pass.
-                    AutoFitGridAfterDataRefresh(gridControl)
-
                 End If
 
             Next
@@ -747,19 +756,30 @@ Public Class DataInterfaceTemplate
             For Each vertGridControl As VGridControl In VertGridControls
 
                 If vertGridControl IsNot Nothing AndAlso Not vertGridControl.IsDisposed Then
-                    Dim previousGridSuppression As Boolean = SuppressGridPosting
-                    SuppressGridPosting = True
+                    vertGridControl.BeginUpdate()
                     Try
-                        Dim unboundSource As AbovoUnboundSource =
-                            TryCast(vertGridControl.DataSource, AbovoUnboundSource)
-                        If unboundSource IsNot Nothing Then
-                            unboundSource.Reset(unboundSource.Count)
-                        End If
-                        vertGridControl.RefreshDataSource()
+                        Dim previousGridSuppression As Boolean = SuppressGridPosting
+                        SuppressGridPosting = True
+                        Try
+                            Dim unboundSource As AbovoUnboundSource =
+                                TryCast(vertGridControl.DataSource, AbovoUnboundSource)
+                            If unboundSource IsNot Nothing AndAlso useLightweightGridRefresh Then
+                                For rowIndex As Integer = 0 To unboundSource.Count - 1
+                                    unboundSource.Change(rowIndex)
+                                Next
+                            Else
+                                If unboundSource IsNot Nothing Then
+                                    unboundSource.Reset(unboundSource.Count)
+                                End If
+                                vertGridControl.RefreshDataSource()
+                            End If
+                        Finally
+                            SuppressGridPosting = previousGridSuppression
+                        End Try
+                        RefreshLiveVGridHeaders(vertGridControl)
                     Finally
-                        SuppressGridPosting = previousGridSuppression
+                        vertGridControl.EndUpdate()
                     End Try
-                    RefreshLiveVGridHeaders(vertGridControl)
                 End If
 
             Next
@@ -7490,6 +7510,17 @@ NextCell:
 #End Region
 
 #Region "Menu Button Actions"
+    Private Sub InitialiseRefreshAction()
+        For Each item As Object In WindowsUIButtonPanelActions.Buttons
+            Dim button As WindowsUIButton = TryCast(item, WindowsUIButton)
+            If button IsNot Nothing AndAlso
+               String.Equals(Convert.ToString(button.Tag), "Refresh", StringComparison.OrdinalIgnoreCase) Then
+                button.ToolTip = "Rebuild and refresh this interface from the workbook"
+                Exit For
+            End If
+        Next
+    End Sub
+
     Private Sub InitialiseExportActions()
         Dim hasPdf As Boolean
         Dim hasExcel As Boolean
@@ -7674,8 +7705,22 @@ SectionSelect:
 
             Case "Refresh"
 
-                ' Close the model and dispose of the interface
-                RefreshData()
+                'Recreate this DIT's selected section from its workbook-backed
+                'presentation. Other sections are invalidated and built on visit;
+                'other open interface instances are left untouched.
+                If DataPres Is Nothing OrElse IsDisposed Then Return
+
+                Dim previousCursor As Cursor = Me.Cursor
+                Dim previousUseWaitCursor As Boolean = Me.UseWaitCursor
+                Me.UseWaitCursor = True
+                Me.Cursor = Cursors.WaitCursor
+                Try
+                    RebuildAllSections()
+                    RefreshData()
+                Finally
+                    Me.Cursor = previousCursor
+                    Me.UseWaitCursor = previousUseWaitCursor
+                End Try
 
             Case "Return"
 
@@ -7994,15 +8039,36 @@ SectionSelect:
 
     Private Sub GridControl_ProcessGridKey(ByVal sender As Object, ByVal e As KeyEventArgs)
 
-        If e.KeyCode <> Keys.V OrElse Not e.Control OrElse e.Alt Then Return
-
         Dim GC As GridControl = TryCast(sender, GridControl)
         If GC Is Nothing Then Return
+        Dim view As GridView = TryCast(GC.FocusedView, GridView)
+        If view IsNot Nothing AndAlso view.ActiveEditor Is Nothing AndAlso
+           Not e.Control AndAlso Not e.Shift AndAlso
+           (e.KeyCode = Keys.F4 OrElse (e.Alt AndAlso e.KeyCode = Keys.Down)) AndAlso
+           view.FocusedColumn IsNot Nothing AndAlso
+           TypeOf view.FocusedColumn.ColumnEdit Is RepositoryItemComboBox Then
+            view.ShowEditor()
+            Dim combo As ComboBoxEdit = TryCast(view.ActiveEditor, ComboBoxEdit)
+            If combo IsNot Nothing Then
+                e.Handled = True
+                e.SuppressKeyPress = True
+                combo.ShowPopup()
+            End If
+            Return
+        End If
 
-        e.Handled = True
-        e.SuppressKeyPress = True
+        If Not e.Control OrElse e.Alt Then Return
 
-        CustomPasteIntoDataGrid(GC)
+        If e.KeyCode = Keys.C Then
+            SetClipboardTarget(GC)
+            PerformClipboardCopy()
+            e.Handled = True
+            e.SuppressKeyPress = True
+        ElseIf e.KeyCode = Keys.V Then
+            e.Handled = True
+            e.SuppressKeyPress = True
+            CustomPasteIntoDataGrid(GC)
+        End If
 
     End Sub
 
@@ -8011,8 +8077,23 @@ SectionSelect:
         Dim VG As VGridControl = TryCast(sender, VGridControl)
         If VG Is Nothing Then Return
 
+        If VG.ActiveEditor Is Nothing AndAlso Not e.Control AndAlso Not e.Shift AndAlso
+           (e.KeyCode = Keys.F4 OrElse (e.Alt AndAlso e.KeyCode = Keys.Down)) AndAlso
+           VG.FocusedRow IsNot Nothing AndAlso
+           TypeOf VG.FocusedRow.Properties.RowEdit Is RepositoryItemComboBox Then
+            VG.ShowEditor()
+            Dim combo As ComboBoxEdit = TryCast(VG.ActiveEditor, ComboBoxEdit)
+            If combo IsNot Nothing Then
+                e.Handled = True
+                e.SuppressKeyPress = True
+                combo.ShowPopup()
+            End If
+            Return
+        End If
+
         If e.Control AndAlso Not e.Alt AndAlso e.KeyCode = Keys.C Then
-            VG.CopyToClipboard()
+            SetClipboardTarget(VG)
+            PerformClipboardCopy()
             e.Handled = True
             e.SuppressKeyPress = True
             Return
@@ -8027,31 +8108,17 @@ SectionSelect:
 
     End Sub
 
+    Private Sub ClipboardEditor_KeyDown(ByVal sender As Object, ByVal e As KeyEventArgs)
+        If Not e.Control OrElse e.Alt OrElse e.KeyCode <> Keys.C Then Return
+        If LastClipboardTarget Is Nothing OrElse LastClipboardTarget.IsDisposed Then Return
+
+        PerformClipboardCopy()
+        e.Handled = True
+        e.SuppressKeyPress = True
+    End Sub
+
     Private Function GetClipboardPasteMatrix() As List(Of String())
-
-        Dim Result As New List(Of String())
-
-        If Not Clipboard.ContainsText() Then Return Result
-
-        Dim ClipboardText As String = Clipboard.GetText(TextDataFormat.UnicodeText)
-        If String.IsNullOrEmpty(ClipboardText) Then Return Result
-
-        Dim NormalisedText As String = ClipboardText.Replace(vbCrLf, vbLf).Replace(vbCr, vbLf)
-
-        'Excel/DevExpress commonly leave one trailing newline on multi-cell copy.
-        While NormalisedText.EndsWith(vbLf, StringComparison.Ordinal)
-            NormalisedText = NormalisedText.Substring(0, NormalisedText.Length - 1)
-        End While
-
-        If NormalisedText.Length = 0 Then Return Result
-
-        Dim ClipboardRows() As String = NormalisedText.Split(New String() {vbLf}, StringSplitOptions.None)
-
-        For Each ClipboardRow As String In ClipboardRows
-            Result.Add(ClipboardRow.Split(New Char() {ControlChars.Tab}, StringSplitOptions.None))
-        Next
-
-        Return Result
+        Return ReadClipboardMatrix()
 
     End Function
 
@@ -8221,7 +8288,11 @@ SectionSelect:
 
         If StartDataRow < 0 OrElse StartDataColumn < 0 Then Return
 
-        ApplyPasteMatrix(DSIndex, TargetDataSet, PasteMatrix, StartDataRow, StartDataColumn, False)
+        Dim selectedTargets As List(Of ClipboardDataCellTarget) =
+            GetSelectedClipboardDataCells(Grid)
+        If View.ActiveEditor IsNot Nothing Then View.HideEditor()
+        ApplyPasteMatrix(DSIndex, TargetDataSet, PasteMatrix, StartDataRow, StartDataColumn, False,
+                         selectedTargets)
 
     End Sub
 
@@ -8249,7 +8320,11 @@ SectionSelect:
         'VGrid is visually transposed relative to XtraGrid:
         '  clipboard rows    -> successive VGrid editor rows (dataset columns)
         '  clipboard columns -> successive VGrid records (dataset rows)
-        ApplyPasteMatrix(DSIndex, TargetDataSet, PasteMatrix, StartDataRow, StartDataColumn, True)
+        Dim selectedTargets As List(Of ClipboardDataCellTarget) =
+            GetSelectedClipboardDataCells(VertGrid)
+        If VertGrid.ActiveEditor IsNot Nothing Then VertGrid.HideEditor()
+        ApplyPasteMatrix(DSIndex, TargetDataSet, PasteMatrix, StartDataRow, StartDataColumn, True,
+                         selectedTargets)
 
     End Sub
 
@@ -8258,34 +8333,49 @@ SectionSelect:
                                  ByVal PasteMatrix As List(Of String()),
                                  ByVal StartDataRow As Integer,
                                  ByVal StartDataColumn As Integer,
-                                 ByVal TransposeForVGrid As Boolean)
+                                 ByVal TransposeForVGrid As Boolean,
+                                 ByVal SelectedTargets As List(Of ClipboardDataCellTarget))
 
         If TargetDataSet Is Nothing OrElse PasteMatrix Is Nothing OrElse PasteMatrix.Count = 0 Then Return
 
-        Dim AnyChanged As Boolean = False
-
+        Dim timer As System.Diagnostics.Stopwatch =
+            System.Diagnostics.Stopwatch.StartNew()
+        Dim changes As New List(Of DataChangeEvent)()
+        Dim invalid As New List(Of String)()
+        Dim invalidCount As Integer = 0
+        Dim comboValues As New Dictionary(Of String, Dictionary(Of String, String))(
+            StringComparer.OrdinalIgnoreCase)
         Me.Cursor = Cursors.WaitCursor
 
         Try
-
-            Using PasteGroup As IDisposable = ChangeMan.BeginChangeGroup("Paste into " & DITName)
-
             For ClipboardRowIndex As Integer = 0 To PasteMatrix.Count - 1
 
                 Dim ClipboardRow() As String = PasteMatrix(ClipboardRowIndex)
 
                 For ClipboardColumnIndex As Integer = 0 To ClipboardRow.Length - 1
 
+                    Dim destinationCells As New List(Of ClipboardDataCellTarget)()
+                    If PasteMatrix.Count = 1 AndAlso ClipboardRow.Length = 1 AndAlso
+                       SelectedTargets IsNot Nothing AndAlso SelectedTargets.Count > 1 Then
+                        destinationCells.AddRange(SelectedTargets)
+                    Else
+                        destinationCells.Add(New ClipboardDataCellTarget(
+                            DSIndex,
+                            If(TransposeForVGrid,
+                               StartDataRow + ClipboardColumnIndex,
+                               StartDataRow + ClipboardRowIndex),
+                            If(TransposeForVGrid,
+                               StartDataColumn + ClipboardRowIndex,
+                               StartDataColumn + ClipboardColumnIndex)))
+                    End If
+
+                    For Each destination As ClipboardDataCellTarget In destinationCells
+
                     Dim TargetRowIndex As Integer
                     Dim TargetColumnIndex As Integer
 
-                    If TransposeForVGrid Then
-                        TargetRowIndex = StartDataRow + ClipboardColumnIndex
-                        TargetColumnIndex = StartDataColumn + ClipboardRowIndex
-                    Else
-                        TargetRowIndex = StartDataRow + ClipboardRowIndex
-                        TargetColumnIndex = StartDataColumn + ClipboardColumnIndex
-                    End If
+                    TargetRowIndex = destination.DataRowIndex
+                    TargetColumnIndex = destination.DataColumnIndex
 
                     If TargetRowIndex >= TargetDataSet.DataRows.Count OrElse
                        TargetColumnIndex >= TargetDataSet.DataColumns.Count Then Continue For
@@ -8296,13 +8386,62 @@ SectionSelect:
                     Dim ConvertedValue As Object = Nothing
 
                     If Not ConvertPastedTextValue(ClipboardRow(ClipboardColumnIndex), ColTag, ConvertedValue) Then
-                        'For now invalid clipboard values are skipped. This is a deliberate
-                        'placeholder for a future aggregated paste-validation report.
+                        invalidCount += 1
+                        If invalid.Count < 6 Then
+                            invalid.Add(
+                                TargetDataSet.DataRows(TargetRowIndex).
+                                    DataCells(TargetColumnIndex).SourceAddress &
+                                ": '" & ClipboardRow(ClipboardColumnIndex) &
+                                "' is not valid for " & ColTag.ColumnHeading)
+                        End If
                         Continue For
                     End If
 
                     Dim SourceDataPoint As CellDataPoint =
                         TargetDataSet.DataRows(TargetRowIndex).DataCells(TargetColumnIndex)
+
+                    If Not String.IsNullOrWhiteSpace(ColTag.RepositaryID) Then
+                        Dim allowed As Dictionary(Of String, String) = Nothing
+                        If Not comboValues.TryGetValue(ColTag.RepositaryID, allowed) Then
+                            allowed = New Dictionary(Of String, String)(
+                                StringComparer.OrdinalIgnoreCase)
+                            Dim editor As RepositaryItems.AbovoRespositaryItem =
+                                RepositaryItems.GetEditor(ColTag.RepositaryID, ModelID)
+                            Try
+                                If editor.ListItems IsNot Nothing Then
+                                    For Each item As String In editor.ListItems
+                                        If item IsNot Nothing AndAlso
+                                           Not allowed.ContainsKey(item.Trim()) Then
+                                            allowed.Add(item.Trim(), item)
+                                        End If
+                                    Next
+                                End If
+                            Finally
+                                If editor.RetCombo IsNot Nothing Then
+                                    editor.RetCombo.Dispose()
+                                End If
+                            End Try
+                            comboValues.Add(ColTag.RepositaryID, allowed)
+                        End If
+
+                        Dim raw As String = ClipboardRow(ClipboardColumnIndex)
+                        If String.IsNullOrWhiteSpace(raw) Then
+                            ConvertedValue = Nothing
+                        Else
+                            Dim canonical As String = Nothing
+                            If Not allowed.TryGetValue(raw.Trim(), canonical) Then
+                                invalidCount += 1
+                                If invalid.Count < 6 Then
+                                    invalid.Add(
+                                        SourceDataPoint.SourceAddress & ": '" &
+                                        raw & "' is not a dropdown choice for " &
+                                        ColTag.ColumnHeading)
+                                End If
+                                Continue For
+                            End If
+                            ConvertedValue = canonical
+                        End If
+                    End If
 
                     'Expose the resolved spreadsheet target to a dedicated paste hook.
                     'This is where paste-specific mapping/validation can be added later.
@@ -8314,24 +8453,84 @@ SectionSelect:
                                         ClipboardRow(ClipboardColumnIndex),
                                         ConvertedValue)
 
-                    'This uses the same DataChangeEvent / ChangeManager path as normal
-                    'single-cell edits, but suppresses a full UI refresh for every cell.
-                    PushDSData(DSIndex, TargetRowIndex, TargetColumnIndex, ConvertedValue, False)
-                    AnyChanged = True
+                    changes.Add(New DataChangeEvent With {
+                        .ModelID = ModelID,
+                        .Description =
+                            DataCellHistoryDescription(DSIndex, TargetRowIndex, TargetColumnIndex) &
+                            " updated (paste)",
+                        .WSName = SourceDataPoint.SourceSheet,
+                        .CellAddress = SourceDataPoint.SourceAddress,
+                        .ChangedValue = ConvertedValue,
+                        .DataFormat = ColTag.DataType,
+                        .TimeStamp = Now(),
+                        .UserName = Environment.UserName})
 
+                    Next
                 Next
 
             Next
 
-            End Using
-
-            If AnyChanged Then
-                CustomPastePostProcess(DSIndex, StartDataRow, StartDataColumn)
-                UpdateRules(DSIndex)
-                UpdateCalcs(DSIndex)
-                RefreshData()
+            If invalidCount > 0 Then
+                DevExpress.XtraEditors.XtraMessageBox.Show(
+                    Me,
+                    "Nothing was pasted because " & invalidCount.ToString() &
+                    " value(s) are invalid:" & Environment.NewLine &
+                    String.Join(Environment.NewLine, invalid) &
+                    If(invalidCount > invalid.Count,
+                       Environment.NewLine & "…and " &
+                       (invalidCount - invalid.Count).ToString() & " more.",
+                       String.Empty),
+                    "Paste rejected",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning)
+                Return
             End If
 
+            If changes.Count = 0 Then Return
+            Dim validationMs As Long = timer.ElapsedMilliseconds
+            Dim result As AbovoTransaction = Nothing
+            PasteRefreshDepth += 1
+            Try
+                result = ChangeMan.ProcessChanges(
+                    changes, "Paste into " & DITName)
+                If result.BSuccess AndAlso result.IntegerReturn > 0 Then
+                    TargetDataSet.IsDirty = True
+                    CustomPastePostProcess(
+                        DSIndex, StartDataRow, StartDataColumn)
+                    UpdateRules(DSIndex)
+                    UpdateCalcs(DSIndex)
+                End If
+            Finally
+                PasteRefreshDepth = Math.Max(0, PasteRefreshDepth - 1)
+                'Also refresh after rollback so the grid reflects the workbook.
+                If Not IsDisposed Then RefreshData(True)
+            End Try
+
+            If result.BError OrElse Not result.BSuccess Then
+                DevExpress.XtraEditors.XtraMessageBox.Show(
+                    Me,
+                    result.StrResponseMessage,
+                    "Paste failed",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error)
+                Return
+            End If
+
+            System.Diagnostics.Trace.WriteLine(
+                "[Paste Benchmark] DIT model=" & ModelID.ToString() &
+                ", interface=" & DITName &
+                ", cells=" & changes.Count.ToString() &
+                ", changed=" & result.IntegerReturn.ToString() &
+                ", validation=" & validationMs.ToString() & " ms" &
+                ", total=" & timer.ElapsedMilliseconds.ToString() & " ms")
+
+        Catch ex As Exception
+            DevExpress.XtraEditors.XtraMessageBox.Show(
+                Me,
+                "Nothing was pasted: " & ex.Message,
+                "Paste failed",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error)
         Finally
             Me.Cursor = Cursors.Default
         End Try
@@ -9740,6 +9939,8 @@ SectionSelect:
         ClipboardCopyMenuItem = New ToolStripMenuItem("Copy", Nothing, AddressOf ClipboardCopyMenuItem_Click) With {
             .ShortcutKeyDisplayString = "Ctrl+C"
         }
+        ClipboardCopyWithHeadersMenuItem = New ToolStripMenuItem(
+            "Copy with headings", Nothing, AddressOf ClipboardCopyWithHeadersMenuItem_Click)
         ClipboardPasteMenuItem = New ToolStripMenuItem("Paste", Nothing, AddressOf ClipboardPasteMenuItem_Click) With {
             .ShortcutKeyDisplayString = "Ctrl+V"
         }
@@ -9748,6 +9949,7 @@ SectionSelect:
             New ToolStripItem() {
                 ClipboardCutMenuItem,
                 ClipboardCopyMenuItem,
+                ClipboardCopyWithHeadersMenuItem,
                 ClipboardPasteMenuItem,
                 New ToolStripSeparator(),
                 ClipboardClearContentsMenuItem
@@ -9823,6 +10025,9 @@ SectionSelect:
 
         If ClipboardCutMenuItem IsNot Nothing Then ClipboardCutMenuItem.Enabled = canCopy AndAlso canClear
         If ClipboardCopyMenuItem IsNot Nothing Then ClipboardCopyMenuItem.Enabled = canCopy
+        If ClipboardCopyWithHeadersMenuItem IsNot Nothing Then
+            ClipboardCopyWithHeadersMenuItem.Enabled = canCopy
+        End If
         If ClipboardPasteMenuItem IsNot Nothing Then ClipboardPasteMenuItem.Enabled = canPaste
         If ClipboardClearContentsMenuItem IsNot Nothing Then ClipboardClearContentsMenuItem.Enabled = canClear
         For Each button As Object In WindowsUIButtonPanelActions.Buttons
@@ -9956,7 +10161,7 @@ SectionSelect:
         Return False
     End Function
 
-    Private Function PerformClipboardCopy() As Boolean
+    Private Function PerformClipboardCopy(Optional ByVal includeHeadings As Boolean = False) As Boolean
         If LastClipboardTarget Is Nothing OrElse LastClipboardTarget.IsDisposed Then Return False
 
         Try
@@ -9964,13 +10169,41 @@ SectionSelect:
             If grid IsNot Nothing Then
                 Dim view As GridView = TryCast(grid.FocusedView, GridView)
                 If view Is Nothing Then Return False
-                view.CopyToClipboard()
+                If includeHeadings Then
+                    CopyGridWithHeaders(grid)
+                Else
+                    Dim selected As List(Of ClipboardDataCellTarget) =
+                        GetSelectedClipboardDataCells(grid)
+                    If selected.Count = 1 Then
+                        Dim rowHandle As Integer = view.GetRowHandle(selected(0).DataRowIndex)
+                        Dim column As GridColumn = view.Columns.Cast(Of GridColumn)().
+                            FirstOrDefault(Function(item) GetGridColumnIndex(item) =
+                                           selected(0).DataColumnIndex)
+                        If rowHandle >= 0 AndAlso column IsNot Nothing Then
+                            Dim displayText As String =
+                                view.GetRowCellDisplayText(rowHandle, column)
+                            If String.IsNullOrEmpty(displayText) Then
+                                Clipboard.Clear()
+                            Else
+                                Clipboard.SetText(displayText, TextDataFormat.UnicodeText)
+                            End If
+                        Else
+                            CopyGridSelection(grid)
+                        End If
+                    Else
+                        CopyGridSelection(grid)
+                    End If
+                End If
                 Return True
             End If
 
             Dim verticalGrid As VGridControl = TryCast(LastClipboardTarget, VGridControl)
             If verticalGrid Is Nothing Then Return False
-            verticalGrid.CopyToClipboard()
+            If includeHeadings Then
+                CopyVGridWithHeaders(verticalGrid)
+            Else
+                verticalGrid.CopyToClipboard()
+            End If
             Return True
         Catch ex As Exception
             MsgBox("The selected cells could not be copied to the clipboard." & vbCrLf & ex.Message,
@@ -10053,6 +10286,11 @@ SectionSelect:
         PerformClipboardCopy()
     End Sub
 
+    Private Sub ClipboardCopyWithHeadersMenuItem_Click(ByVal sender As Object,
+                                                        ByVal e As EventArgs)
+        PerformClipboardCopy(True)
+    End Sub
+
     Private Sub ClipboardCutMenuItem_Click(ByVal sender As Object, ByVal e As EventArgs)
         PerformClipboardClear(True)
     End Sub
@@ -10117,6 +10355,10 @@ SectionSelect:
         If VG.ActiveEditor Is Nothing Then Return
         SetClipboardTarget(VG)
         VG.ActiveEditor.ContextMenuStrip = ClipboardContextMenu
+        If TypeOf VG.ActiveEditor Is ComboBoxEdit Then
+            RemoveHandler VG.ActiveEditor.KeyDown, AddressOf ClipboardEditor_KeyDown
+            AddHandler VG.ActiveEditor.KeyDown, AddressOf ClipboardEditor_KeyDown
+        End If
 
 
         If TypeOf VG.ActiveEditor Is DevExpress.XtraEditors.CalcEdit Then
@@ -11445,6 +11687,18 @@ SectionSelect:
         End Try
 
     End Sub
+    Private Function DataCellHistoryDescription(ByVal dataSetIndex As Integer,
+                                                ByVal rowIndex As Integer,
+                                                ByVal columnIndex As Integer) As String
+        Dim heading As String =
+            DataPres.DataSets(dataSetIndex).DataColumns(columnIndex).ColumnTag.ColumnHeading
+        heading = If(heading, String.Empty).Split(
+            New String() {vbCrLf, vbCr, vbLf},
+            StringSplitOptions.None)(0).Trim()
+        If heading.Length = 0 Then heading = "column " & (columnIndex + 1).ToString()
+        Return "Row " & (rowIndex + 1).ToString() & " of '" & heading & "'"
+    End Function
+
     Private Sub PushDSData(ByVal SetDSIndex As Integer, ByVal rowIndex As Integer, ByVal ColSent As Integer, Value As Object, Optional ByVal RefreshAfter As Boolean = True)
 
 
@@ -11454,7 +11708,7 @@ SectionSelect:
 
         Dim DCE As New DataChangeEvent With {
                     .ModelID = ModelID,
-                    .Description = "Cell Updated",
+                    .Description = DataCellHistoryDescription(SetDSIndex, rowIndex, ColSent) & " updated",
                     .WSName = GetWorkBook(ModelID).Worksheets(SourceDataPoint.SourceSheet).Name,
                     .CellAddress = SourceDataPoint.SourceAddress,
                     .ChangedValue = Value,
@@ -11888,7 +12142,13 @@ SectionSelect:
 
         Dim gv As GridView = sender
         If gv.GridControl IsNot Nothing Then SetClipboardTarget(gv.GridControl)
-        If gv.ActiveEditor IsNot Nothing Then gv.ActiveEditor.ContextMenuStrip = ClipboardContextMenu
+        If gv.ActiveEditor IsNot Nothing Then
+            gv.ActiveEditor.ContextMenuStrip = ClipboardContextMenu
+            If TypeOf gv.ActiveEditor Is ComboBoxEdit Then
+                RemoveHandler gv.ActiveEditor.KeyDown, AddressOf ClipboardEditor_KeyDown
+                AddHandler gv.ActiveEditor.KeyDown, AddressOf ClipboardEditor_KeyDown
+            End If
+        End If
 
         If TypeOf gv.ActiveEditor Is DevExpress.XtraEditors.CalcEdit Then
 

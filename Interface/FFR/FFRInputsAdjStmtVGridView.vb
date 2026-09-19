@@ -62,6 +62,8 @@ Public Class FFRInputsAdjStmtVGridView
         AddSection("", "Statement of Cash Flow - Movements in Loans", LoansGrid, 20, 662, 1080, 360)
         ConfigureGrid(ActualGrid)
         ConfigureGrid(LoansGrid)
+        AddCopyWithHeadersMenu(ActualGrid)
+        AddCopyWithHeadersMenu(LoansGrid)
     End Sub
 
     Private Sub AddSection(ByVal documentTitle As String, ByVal caption As String, ByVal grid As VGridControl, ByVal left As Integer, ByVal top As Integer, ByVal width As Integer, ByVal height As Integer)

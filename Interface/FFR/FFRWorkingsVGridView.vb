@@ -45,6 +45,7 @@ Public Class FFRWorkingsVGridView
         ChangeManager = ExcelModels(ModelID).ChangeManager
         Dock = DockStyle.Fill
         BuildSurface()
+        AddCopyWithHeadersMenu(Grid)
         RefreshFromWorkbook()
     End Sub
 

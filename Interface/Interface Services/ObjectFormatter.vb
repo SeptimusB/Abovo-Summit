@@ -33,6 +33,57 @@ Namespace Abovo
 
         End Sub
 
+        ''' <summary>
+        ''' Apply the DIT grid's visual language to non-workbook grids without
+        ''' changing their fonts, columns, selection, sorting, or editing rules.
+        ''' </summary>
+        Public Shared Sub FormatInformationalGrid(ByVal grid As GridControl,
+                                                   ByVal view As GridView)
+            If grid Is Nothing OrElse view Is Nothing Then Return
+
+            Dim rowFont As Font = view.Appearance.Row.Font
+            Dim headerFont As Font = view.Appearance.HeaderPanel.Font
+            grid.LookAndFeel.Style = DevExpress.LookAndFeel.LookAndFeelStyle.Flat
+            grid.LookAndFeel.UseDefaultLookAndFeel = False
+            grid.BackColor = Color.White
+
+            With view
+                .BorderStyle = DevExpress.XtraEditors.Controls.BorderStyles.NoBorder
+                .FixedLineWidth = 1
+                .OptionsView.ShowAutoFilterRow = False
+                .OptionsView.ShowFilterPanelMode = DevExpress.XtraGrid.Views.Base.ShowFilterPanelMode.Never
+                .OptionsCustomization.AllowFilter = False
+                .OptionsMenu.EnableColumnMenu = False
+                .OptionsView.EnableAppearanceEvenRow = False
+                .Appearance.Row.BackColor = Color.White
+                .Appearance.Row.Options.UseBackColor = True
+                .Appearance.Row.Font = rowFont
+                .Appearance.Row.Options.UseFont = True
+                .Appearance.HeaderPanel.BackColor = Color.White
+                .Appearance.HeaderPanel.ForeColor = AbovoBlue
+                .Appearance.HeaderPanel.BorderColor = Color.White
+                .Appearance.HeaderPanel.Font = headerFont
+                .Appearance.HeaderPanel.FontStyleDelta = FontStyle.Bold
+                .Appearance.HeaderPanel.Options.UseBackColor = True
+                .Appearance.HeaderPanel.Options.UseForeColor = True
+                .Appearance.HeaderPanel.Options.UseBorderColor = True
+                .Appearance.HeaderPanel.Options.UseFont = True
+                .Appearance.HeaderPanel.TextOptions.WordWrap = WordWrap.Wrap
+                .Appearance.HeaderPanel.TextOptions.VAlignment = VertAlignment.Bottom
+                .Appearance.HeaderPanel.Options.UseTextOptions = True
+                .Appearance.HorzLine.BackColor = Color.WhiteSmoke
+                .Appearance.HorzLine.Options.UseBackColor = True
+                .Appearance.VertLine.BackColor = Color.White
+                .Appearance.VertLine.Options.UseBackColor = True
+                .Appearance.FixedLine.BackColor = Color.White
+                .Appearance.FixedLine.Options.UseBackColor = True
+                .Appearance.Empty.BackColor = Color.White
+                .Appearance.Empty.Options.UseBackColor = True
+                .Appearance.FocusedCell.BackColor = Color.WhiteSmoke
+                .Appearance.FocusedCell.Options.UseBackColor = True
+            End With
+        End Sub
+
         Sub FormatTablePanel(ObjTablePanel As DevExpress.Utils.Layout.TablePanel)
 
             With ObjTablePanel

@@ -287,8 +287,11 @@ Public Class FileInstanceInterface
         StrFileDescription.Append(WebUtility.HtmlEncode(Now().ToString()))
         StrFileDescription.Append("</div><div class='detail'>Created: ")
         StrFileDescription.Append(WebUtility.HtmlEncode(ExcelModels(BPModelID).FileInfo.CreationTime.ToString()))
-        StrFileDescription.Append("</div><div class='detail'>Last Previous Access: ")
-        StrFileDescription.Append(WebUtility.HtmlEncode(ExcelModels(BPModelID).FileInfo.LastAccessTime.ToString()))
+        StrFileDescription.Append("</div><div class='detail'>Previous File Access: ")
+        StrFileDescription.Append(WebUtility.HtmlEncode(
+            If(ExcelModels(BPModelID).PreviousFileAccessTime = DateTime.MinValue,
+               "Not recorded",
+               ExcelModels(BPModelID).PreviousFileAccessTime.ToString())))
         StrFileDescription.Append("</div><div class='detail'>Size: ")
         StrFileDescription.Append(WebUtility.HtmlEncode(
             Format((ExcelModels(BPModelID).FileInfo.Length / 1000000), "###.##") & "Mb"))

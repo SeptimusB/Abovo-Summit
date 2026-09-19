@@ -18,6 +18,19 @@ Namespace Abovo
         Public Shared Sub CreateSnapshotAndComparison(ByVal modelID As Integer)
             Dim snapshotSheet As Worksheet = Nothing
             Dim comparisonSheet As Worksheet = Nothing
+            Dim benchmark As System.Diagnostics.Stopwatch =
+                System.Diagnostics.Stopwatch.StartNew()
+            Dim rangeRows As Integer = 0
+            Dim rangeColumns As Integer = 0
+            Dim comparisonFormulaCount As Integer = 0
+            Dim setupMs As Long = 0
+            Dim clearMs As Long = 0
+            Dim nameMs As Long = 0
+            Dim copyMs As Long = 0
+            Dim formulaMs As Long = 0
+            Dim endUpdateMs As Long = 0
+            Dim calculateMs As Long = 0
+            Dim outcome As String = "failed"
 
             Try
                 If FileManager.ExcelModels Is Nothing OrElse
@@ -41,6 +54,8 @@ Namespace Abovo
                 End If
 
                 Dim sourceRange As CellRange = sourceName.Range
+                rangeRows = sourceRange.RowCount
+                rangeColumns = sourceRange.ColumnCount
                 If Not String.Equals(
                     sourceRange.Worksheet.Name,
                     SourceWorksheetName,
@@ -58,12 +73,16 @@ Namespace Abovo
 
                 Dim comparisonColumns As Boolean() =
                     GetComparisonValueColumns(sourceRange)
+                setupMs = benchmark.ElapsedMilliseconds
 
                 workbook.BeginUpdate()
                 Try
+                    Dim phaseStartMs As Long = benchmark.ElapsedMilliseconds
                     snapshotSheet.GetUsedRange().ClearContents()
                     comparisonSheet.GetUsedRange().ClearContents()
+                    clearMs = benchmark.ElapsedMilliseconds - phaseStartMs
 
+                    phaseStartMs = benchmark.ElapsedMilliseconds
                     CreateOrResizeLocalNamedRange(
                         snapshotSheet,
                         SnapshotRangeName,
@@ -72,11 +91,14 @@ Namespace Abovo
                         comparisonSheet,
                         ComparisonRangeName,
                         comparisonRange)
+                    nameMs = benchmark.ElapsedMilliseconds - phaseStartMs
 
                     ''The snapshot is deliberately values-only. The comparison begins
                     ''as the same values so blanks and text remain literal values.
+                    phaseStartMs = benchmark.ElapsedMilliseconds
                     snapshotRange.CopyFrom(sourceRange, PasteSpecial.Values)
                     comparisonRange.CopyFrom(snapshotRange, PasteSpecial.Values)
+                    copyMs = benchmark.ElapsedMilliseconds - phaseStartMs
 
                     Dim absoluteReferenceElements As ReferenceElement =
                         ReferenceElement.ColumnAbsolute Or ReferenceElement.RowAbsolute
@@ -84,6 +106,7 @@ Namespace Abovo
                     ''Row zero is the RangeDataSource header. Identity, grouping,
                     ''ordering and UseIn... columns must remain unchanged so the
                     ''comparison can drive the same analyser grids and filters.
+                    phaseStartMs = benchmark.ElapsedMilliseconds
                     For rowIndex As Integer = 1 To sourceRange.RowCount - 1
                         For columnIndex As Integer = 0 To sourceRange.ColumnCount - 1
                             If Not comparisonColumns(columnIndex) Then Continue For
@@ -98,20 +121,47 @@ Namespace Abovo
                             comparisonRange(rowIndex, columnIndex).FormulaInvariant =
                                 "=" & QualifiedCellReference(SourceWorksheetName, address) &
                                 "-" & QualifiedCellReference(SnapshotWorksheetName, address)
+                            comparisonFormulaCount += 1
                         Next
                     Next
+                    formulaMs = benchmark.ElapsedMilliseconds - phaseStartMs
                 Finally
+                    Dim phaseStartMs As Long = benchmark.ElapsedMilliseconds
                     workbook.EndUpdate()
+                    endUpdateMs = benchmark.ElapsedMilliseconds - phaseStartMs
                 End Try
 
+                Dim calculateStartMs As Long = benchmark.ElapsedMilliseconds
                 comparisonRange.Calculate()
+                calculateMs = benchmark.ElapsedMilliseconds - calculateStartMs
                 FileManager.ExcelModels(modelID).IsDirty = True
+                outcome = "ok"
             Catch
                 ''A failed run must not leave a partially-populated comparison which
                 ''could be mistaken for a valid snapshot. These sheets are dedicated
                 ''scratch outputs, so a clean blank state is the safe recovery state.
                 ClearPartialOutput(snapshotSheet, comparisonSheet)
                 Throw
+            Finally
+                Dim measuredMs As Long =
+                    setupMs + clearMs + nameMs + copyMs + formulaMs +
+                    endUpdateMs + calculateMs
+                System.Diagnostics.Trace.WriteLine(
+                    "[Snapshot Benchmark] model=" & modelID.ToString() &
+                    ", rows=" & rangeRows.ToString() &
+                    ", columns=" & rangeColumns.ToString() &
+                    ", comparisonFormulas=" & comparisonFormulaCount.ToString() &
+                    ", setup=" & setupMs.ToString() & " ms" &
+                    ", clear=" & clearMs.ToString() & " ms" &
+                    ", names=" & nameMs.ToString() & " ms" &
+                    ", copy=" & copyMs.ToString() & " ms" &
+                    ", formulas=" & formulaMs.ToString() & " ms" &
+                    ", endUpdate=" & endUpdateMs.ToString() & " ms" &
+                    ", calculate=" & calculateMs.ToString() & " ms" &
+                    ", other=" &
+                    Math.Max(0, benchmark.ElapsedMilliseconds - measuredMs).ToString() & " ms" &
+                    ", total=" & benchmark.ElapsedMilliseconds.ToString() & " ms" &
+                    ", outcome=" & outcome)
             End Try
         End Sub
 

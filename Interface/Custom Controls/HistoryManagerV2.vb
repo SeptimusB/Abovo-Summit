@@ -1,4 +1,5 @@
 Imports System.ComponentModel
+Imports System.Globalization
 Imports Abovo
 Imports DevExpress.Images
 Imports DevExpress.Utils
@@ -29,6 +30,9 @@ Public NotInheritable Class HistoryManagerV2
     Private ReadOnly UndoSelectedButton As New SimpleButton()
     Private ReadOnly RedoSelectedButton As New SimpleButton()
     Private ReadOnly RefreshButton As New SimpleButton()
+    Private ReadOnly CopyButton As New SimpleButton()
+    Private ReadOnly CopyWithHeadingsButton As New SimpleButton()
+    Private ReadOnly ExportButton As New SimpleButton()
     Private ReadOnly CloseButton As New SimpleButton()
     Private ReadOnly UndoRowEditor As New RepositoryItemButtonEdit()
     Private ReadOnly RedoRowEditor As New RepositoryItemButtonEdit()
@@ -66,8 +70,13 @@ Public NotInheritable Class HistoryManagerV2
         ConfigureButton(UndoSelectedButton, "Undo to selected", AddressOf UndoSelectedButton_Click)
         ConfigureButton(RedoSelectedButton, "Redo to selected", AddressOf RedoSelectedButton_Click)
         ConfigureButton(RefreshButton, "Refresh", AddressOf RefreshButton_Click)
+        ConfigureButton(CopyButton, "Copy", AddressOf CopyButton_Click)
+        ConfigureButton(CopyWithHeadingsButton, "Copy with headings", AddressOf CopyWithHeadingsButton_Click)
+        ConfigureButton(ExportButton, "Export to Excel", AddressOf ExportButton_Click)
         ConfigureButton(CloseButton, "Close", AddressOf CloseButton_Click)
-        Toolbar.Controls.AddRange(New Control() {UndoButton, RedoButton, UndoSelectedButton, RedoSelectedButton, RefreshButton, CloseButton})
+        Toolbar.Controls.AddRange(New Control() {UndoButton, RedoButton, UndoSelectedButton, RedoSelectedButton,
+                                               RefreshButton, CopyButton, CopyWithHeadingsButton, ExportButton,
+                                               CloseButton})
         Root.Controls.Add(Toolbar, 0, 0)
 
         HistoryGrid.Dock = DockStyle.Fill
@@ -77,13 +86,17 @@ Public NotInheritable Class HistoryManagerV2
         ConfigureRowActionEditor(RedoRowEditor, "Redo through this action", "images/actions/redo_16x16.png", AddressOf RedoRowButton_Click)
         HistoryGrid.RepositoryItems.AddRange(New RepositoryItem() {UndoRowEditor, RedoRowEditor})
         HistoryView.OptionsBehavior.Editable = True
+        'Cell multi-select otherwise uses Click mode: the first click only
+        'focuses an Undo/Redo cell and the second opens its button editor.
+        HistoryView.OptionsBehavior.EditorShowMode = EditorShowMode.MouseDown
+        HistoryView.OptionsView.ShowButtonMode =
+            DevExpress.XtraGrid.Views.Base.ShowButtonModeEnum.ShowAlways
         HistoryView.OptionsSelection.MultiSelect = True
         HistoryView.OptionsSelection.MultiSelectMode = GridMultiSelectMode.CellSelect
         HistoryView.OptionsClipboard.CopyColumnHeaders = DefaultBoolean.False
         HistoryView.OptionsView.ShowGroupPanel = False
-        HistoryView.OptionsView.ShowAutoFilterRow = True
         HistoryView.OptionsView.ColumnAutoWidth = False
-        HistoryView.OptionsMenu.EnableColumnMenu = True
+        ObjectFormatter.FormatInformationalGrid(HistoryGrid, HistoryView)
         AddHandler HistoryView.FocusedRowChanged, AddressOf HistorySelectionChanged
         AddHandler HistoryView.CustomRowCellEdit, AddressOf HistoryCustomRowCellEdit
         AddHandler HistoryView.ShowingEditor, AddressOf HistoryShowingEditor
@@ -181,13 +194,13 @@ Public NotInheritable Class HistoryManagerV2
             column.OptionsColumn.ReadOnly = True
             column.OptionsColumn.AllowEdit = False
         Next
-        HistoryView.Columns("GroupID").Caption = "Action #"
-        HistoryView.Columns("GroupID").Width = 70
+        HistoryView.Columns("GroupID").Caption = "#"
+        HistoryView.Columns("GroupID").Width = 45
         HistoryView.Columns("TimeStamp").Caption = "Time"
         HistoryView.Columns("TimeStamp").DisplayFormat.FormatType = FormatType.DateTime
-        HistoryView.Columns("TimeStamp").DisplayFormat.FormatString = "dd/MM/yyyy HH:mm:ss"
-        HistoryView.Columns("TimeStamp").Width = 135
-        HistoryView.Columns("Description").Width = 260
+        HistoryView.Columns("TimeStamp").DisplayFormat.FormatString = "HH:mm"
+        HistoryView.Columns("TimeStamp").Width = 65
+        HistoryView.Columns("Description").Width = 320
         HistoryView.Columns("Worksheet").Width = 180
         HistoryView.Columns("Cell").Width = 75
         HistoryView.Columns("OriginalValue").Caption = "Original value"
@@ -195,6 +208,7 @@ Public NotInheritable Class HistoryManagerV2
         HistoryView.Columns("NewValue").Caption = "New value"
         HistoryView.Columns("NewValue").Width = 135
         HistoryView.Columns("User").Width = 110
+        HistoryView.Columns("User").Visible = False
         HistoryView.Columns("State").Width = 85
         HistoryView.Columns("DataType").Visible = False
         HistoryView.Columns("GroupSize").Caption = "Cells"
@@ -268,7 +282,14 @@ Public NotInheritable Class HistoryManagerV2
         Dim state As String = Convert.ToString(HistoryView.GetFocusedRowCellValue("State"))
         UndoSelectedButton.Enabled = state = ChangeHistoryStateV2.Applied.ToString()
         RedoSelectedButton.Enabled = state = ChangeHistoryStateV2.Undone.ToString()
-        StatusLabel.Text = "Undo " & If(Manager.CanUndo, "available", "unavailable") & "   |   Redo " & If(Manager.CanRedo, "available", "unavailable") & "   |   Structural workbook changes are recorded separately and are not automatically reversible."
+        Dim dateValue As Object = HistoryView.GetFocusedRowCellValue("TimeStamp")
+        Dim selectedDate As String = If(TypeOf dateValue Is DateTime,
+            DirectCast(dateValue, DateTime).ToString("dd/MM/yyyy HH:mm", CultureInfo.CurrentCulture),
+            "—")
+        StatusLabel.Text = "Selected: " & selectedDate &
+            "   |   Undo " & If(Manager.CanUndo, "available", "unavailable") &
+            "   |   Redo " & If(Manager.CanRedo, "available", "unavailable") &
+            "   |   Structural changes are not automatically reversible."
     End Sub
 
     Private Function FocusedGroupID() As Integer
@@ -327,6 +348,70 @@ Public NotInheritable Class HistoryManagerV2
 
     Private Sub RefreshButton_Click(ByVal sender As Object, ByVal e As EventArgs)
         RefreshHistory()
+    End Sub
+
+    Private Sub CopyButton_Click(ByVal sender As Object, ByVal e As EventArgs)
+        CopySelection(False)
+    End Sub
+
+    Private Sub CopyWithHeadingsButton_Click(ByVal sender As Object, ByVal e As EventArgs)
+        CopySelection(True)
+    End Sub
+
+    Private Sub CopySelection(ByVal includeHeadings As Boolean)
+        Dim previousSetting As DefaultBoolean = HistoryView.OptionsClipboard.CopyColumnHeaders
+        Try
+            HistoryView.OptionsClipboard.CopyColumnHeaders =
+                If(includeHeadings, DefaultBoolean.True, DefaultBoolean.False)
+            HistoryView.CopyToClipboard()
+        Catch ex As Exception
+            XtraMessageBox.Show(Me, ex.Message, "Copy history",
+                                MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        Finally
+            HistoryView.OptionsClipboard.CopyColumnHeaders = previousSetting
+        End Try
+    End Sub
+
+    Private Sub ExportButton_Click(ByVal sender As Object, ByVal e As EventArgs)
+        Using dialog As New SaveFileDialog With {
+            .AddExtension = True,
+            .DefaultExt = "xlsx",
+            .Filter = "Excel workbooks (*.xlsx)|*.xlsx",
+            .FileName = "Summit Change History " & Now().ToString("yyyyMMdd-HHmm") & ".xlsx",
+            .OverwritePrompt = True,
+            .Title = "Export change history"}
+            If dialog.ShowDialog(Me) <> DialogResult.OK Then Return
+
+            Dim userColumn As GridColumn = HistoryView.Columns("User")
+            Dim actionColumn As GridColumn = HistoryView.Columns("Action")
+            Dim timeColumn As GridColumn = HistoryView.Columns("TimeStamp")
+            Dim previousUserVisible As Boolean = userColumn.Visible
+            Dim previousUserIndex As Integer = userColumn.VisibleIndex
+            Dim previousActionVisible As Boolean = actionColumn.Visible
+            Dim previousActionIndex As Integer = actionColumn.VisibleIndex
+            Dim previousTimeFormat As String = timeColumn.DisplayFormat.FormatString
+
+            HistoryView.BeginUpdate()
+            Try
+                'The UI stays compact, but the diagnostic export retains the user
+                'and full date. The interactive Undo/Redo column is not data.
+                userColumn.Visible = True
+                userColumn.VisibleIndex = HistoryView.VisibleColumns.Count - 1
+                actionColumn.Visible = False
+                timeColumn.DisplayFormat.FormatString = "dd/MM/yyyy HH:mm:ss"
+                HistoryGrid.ExportToXlsx(dialog.FileName)
+            Catch ex As Exception
+                XtraMessageBox.Show(Me, ex.Message, "Export change history",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Error)
+            Finally
+                timeColumn.DisplayFormat.FormatString = previousTimeFormat
+                actionColumn.Visible = previousActionVisible
+                If previousActionVisible Then actionColumn.VisibleIndex = previousActionIndex
+                userColumn.Visible = previousUserVisible
+                If previousUserVisible Then userColumn.VisibleIndex = previousUserIndex
+                HistoryView.EndUpdate()
+            End Try
+        End Using
     End Sub
 
     Private Sub CloseButton_Click(ByVal sender As Object, ByVal e As EventArgs)

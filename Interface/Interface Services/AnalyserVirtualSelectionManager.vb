@@ -692,7 +692,13 @@ Namespace Abovo
             For Each selection As VisualRowSelection In selectedRows
                 clipboardRows.Add(BuildClipboardRow(selection, columns))
             Next
-            Clipboard.SetText(String.Join(ControlChars.CrLf, clipboardRows), TextDataFormat.UnicodeText)
+            Dim copiedText As String = String.Join(ControlChars.CrLf, clipboardRows)
+            If includeYearAndPeriod Then
+                SetClipboardTextWithHeaders(copiedText,
+                                            clipboardRows.Count - selectedRows.Count, 0)
+            Else
+                Clipboard.SetText(copiedText, TextDataFormat.UnicodeText)
+            End If
         End Sub
 
         Private Shared Function BuildColumnHeadingRows(

@@ -75,6 +75,7 @@ Public Class FFRWorkbookSheetView
 
         Dock = DockStyle.Fill
         BuildNativeSurface()
+        AddCopyWithHeadersMenu(SheetGrid)
         RefreshFromWorkbook()
     End Sub
 
