@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "preparedDate": "2026-09-19",
+  "repository": "C:\\Repos\\Abovo Summit",
+  "branch": "main",
+  "implementationBaselineCommit": "b8b231c",
+  "implementationBaselineTitle": "Add business plan comparison and upgrade workflow",
+  "handoverDocumentationCommit": "the commit containing this file",
+  "status": {
+    "currentTwoFileWorkflowImplemented": true,
+    "bespokeThreeWayMergeImplemented": false,
+    "directSharePointIntegrationConfigured": false,
+    "debugBuild": "passed with 0 warnings and 0 errors on 2026-09-19",
+    "releaseBuild": "passed with 0 warnings and 0 errors on 2026-09-19",
+    "automatedWorkbookIntegrationSuite": false
+  },
+  "handoverFiles": [
+    "Library/Upgrade_Migration_Handover_2026-09-19.md",
+    "Library/Upgrade_Migration_Astra_Prompt_2026-09-19.md",
+    "Library/Upgrade_Migration_Test_Matrix_2026-09-19.md",
+    "Library/Upgrade_Migration_Handover_Index_2026-09-19.json"
+  ],
+  "requiredReads": [
+    "AGENTS.md",
+    "Library/Abovo_Summit_Project_Scope_Audit.md",
+    "Library/Abovo_Summit_Project_Index.json",
+    "Library/Contract_XLSB_Audit_2026-08-24.md",
+    "Library/Contract_XLSB_Audit_Evidence_2026-08-24.json",
+    "Structure.xml"
+  ],
+  "primaryImplementationFiles": [
+    "Interface/User Interface/BusinessPlanComparisonForm.vb",
+    "Services/BusinessPlanComparisonService.vb",
+    "Services/WorkbookStructureRuleManager.vb",
+    "Services/FileManager.vb",
+    "Interface/User Interface/FormMainScreen.vb",
+    "Services/WorkbookModelProfiles.vb",
+    "Services/StructureCreation/StructureManager.vb",
+    "Services/DataService/ChangeManagerV2.vb",
+    "Services/TransactionalDB/TransactionalDBSynchroniser.vb"
+  ],
+  "currentCapabilities": [
+    "select open Summit models and detached XLSB files",
+    "compare assumptions, detailed SOCI aggregates and Check Sheet",
+    "discover writable Assumptions ranges from target XML",
+    "deduplicate repeated named-range references",
+    "expand supported target structures through WorkbookStructureRuleManager",
+    "copy compatible typed values through ChangeManager.ProcessChanges",
+    "isolate individual failed writes by recursive batch subdivision",
+    "calculate source and target",
+    "save upgraded XLSB under a new path",
+    "export XLSX comparison and upgrade reports"
+  ],
+  "priorityGaps": [
+    "durable model family, release, parent and client-variant identity",
+    "clone-before-mutate result creation",
+    "three-way bespoke merge",
+    "master/dependent expansion-group metadata",
+    "versioned migration recipe registry",
+    "semantic mapping for renamed, split and merged fields",
+    "separate information, notice, warning, error and conflict severities",
+    "FFR version-specific migration and validation",
+    "global transaction, rollback, recovery and idempotency design",
+    "Excel/VBA round-trip validation harness",
+    "human spreadsheet report plus machine-readable migration manifest",
+    "SharePoint read-only inventory"
+  ],
+  "nextAction": "Run the standalone Astra prompt and complete a read-only architecture review before extending production migration code."
+}
