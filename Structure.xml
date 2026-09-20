@@ -5,7 +5,7 @@
   <FileID>2077</FileID>
   <RejData>23_t4qhe</RejData>
   <StartDate>01/04/2024</StartDate>
-  <XMLVer>1748</XMLVer>
+  <XMLVer>1750</XMLVer>
   <CompanyName>Demonstration Housing</CompanyName>
   <GroupStructure Name="Assumptions">
     <GSName>Assumptions</GSName>
@@ -173,6 +173,26 @@
 
       </CSInterfaceSection>
 
+      <CSInterfaceSection Name="Check Sheet">
+        <ISName>Check Sheet</ISName>
+        <IElement>
+          <Type>MappedTable</Type>
+          <MappedTable>
+            <Worksheet>Check Sheet</Worksheet>
+            <ReadOnlyRange>A7:G63</ReadOnlyRange>
+            <HeaderRow>6</HeaderRow>
+            <LinkColumn>G</LinkColumn>
+            <LinkTargetColumn>H</LinkTargetColumn>
+            <ShowLinkDestinations>true</ShowLinkDestinations>
+            <AllowYesNoEdits>true</AllowYesNoEdits>
+            <WorksheetInterfaceLink>
+              <Worksheet>Transactional DB</Worksheet>
+              <Group>Outputs</Group>
+              <Interface>Analysis</Interface>
+            </WorksheetInterfaceLink>
+          </MappedTable>
+        </IElement>
+      </CSInterfaceSection>
       <CSInterfaceSection Name="Abovo Contacts">
         <ISName>Abovo Contacts</ISName>
         <IElement>
@@ -11905,9 +11925,9 @@
 
       </CSInterfaceSection>
     </ChildStructure>
-    <ChildStructure Name="Funding Assumptions V2">
+    <ChildStructure Name="Funding Assumptions">
       <DefaultWorksheet>Funding Assumptions</DefaultWorksheet>
-      <CSName>Funding Assumptions V2</CSName>
+      <CSName>Funding Assumptions</CSName>
       <CSID>33</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -29871,15 +29891,15 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         </IElement>
       </CSInterfaceSection>
     </ChildStructure>
-    <ChildStructure Name="Analysis V2">
-      <CSName>Analysis V2</CSName>
+    <ChildStructure Name="Analysis">
+      <CSName>Analysis</CSName>
       <CSID>32</CSID>
       <ParentID>2</ParentID>
       <IsMaster>False</IsMaster>
       <SpecialElement>BPIncomeExpenditureAnalyserV2</SpecialElement>
       <GroupName>Analysis</GroupName>
-      <CSInterfaceSection Name="Analysis V2">
-        <ISName>Analysis V2</ISName>
+      <CSInterfaceSection Name="Analysis">
+        <ISName>Analysis</ISName>
         <IElement>
           <Type>Interface</Type>
           <DataSource>BPIncomeExpenditureAnalyserV2</DataSource>

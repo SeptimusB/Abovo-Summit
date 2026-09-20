@@ -460,6 +460,9 @@
     <Compile Include="Interface\Interface Services\GeneralFunctions.vb" />
     <Compile Include="Interface\Interface Services\AnalyserVirtualSelectionManager.vb" />
     <Compile Include="Interface\Interface Services\WorkbookGridClipboardSupport.vb" />
+    <Compile Include="Interface\Custom Controls\ReadOnlyMappedTableGrid.vb">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Interface\Interface Services\ModelPostingChangeSupport.vb" />
     <Compile Include="Interface\Interface Services\HelpManager.vb" />
     <Compile Include="Interface\Interface Services\InColumnEditorTag.vb" />
@@ -612,6 +615,11 @@
     <Compile Include="Services\Calculation Engine and Custom Functions\ExcelFunctions.vb" />
     <Compile Include="Services\FileManager.vb" />
     <Compile Include="Services\BusinessPlanComparisonService.vb" />
+    <Compile Include="Services\ModelManagerDefinition.vb" />
+    <Compile Include="Services\ModelManagerAccess.vb" />
+    <Compile Include="Interface\User Interface\ModelManagerForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Services\Development and Debug\LogDebugDev.vb" />
     <Compile Include="Services\InterfaceDependencyManager.vb" />
     <Compile Include="Services\ModelCollection.vb" />
@@ -806,6 +814,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Resources\businessplan.svg" />
     <None Include="Resources\exporttoxls.svg" />
     <None Include="Resources\exporttopdf.svg" />
     <Content Include="Images\Abovo-SummitCloseCrop.jpg" />

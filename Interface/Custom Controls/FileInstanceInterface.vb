@@ -68,40 +68,65 @@ Public Class FileInstanceInterface
     Private Sub LayoutFileActionControls()
         If GroupBoxFileActions Is Nothing OrElse WebBrowserBPInfo Is Nothing OrElse
            WindowsUIButtonPanelBPActions Is Nothing OrElse
-           WindowsUIButtonPanelSaveClose Is Nothing Then Return
+           WindowsUIButtonPanelSaveClose Is Nothing OrElse
+           WindowsUIButtonPanelBPBadge Is Nothing Then Return
 
         Dim inset As Integer = Math.Max(8, PresentationScaleManager.Scale(12))
         Dim gap As Integer = Math.Max(6, PresentationScaleManager.Scale(8))
         Dim contentTop As Integer = Math.Max(inset * 2, GroupBoxFileActions.Font.Height + inset)
-        Dim rightPanelWidth As Integer =
-            Math.Max(PresentationScaleManager.Scale(135),
-                     Math.Min(PresentationScaleManager.Scale(190),
-                              CInt(GroupBoxFileActions.ClientSize.Width * 0.16R)))
-        Dim actionPanelHeight As Integer =
-            Math.Max(PresentationScaleManager.Scale(100),
-                     Math.Min(PresentationScaleManager.Scale(140),
-                              CInt(GroupBoxFileActions.ClientSize.Height * 0.24R)))
+        Dim leftPanelWidth As Integer = Math.Max(PresentationScaleManager.Scale(100),
+            TextRenderer.MeasureText("Save As", WindowsUIButtonPanelSaveClose.AppearanceButton.Normal.Font).Width + inset * 2)
         Dim contentWidth As Integer =
-            Math.Max(20, GroupBoxFileActions.ClientSize.Width - rightPanelWidth - (inset * 2) - gap)
+            Math.Max(20, GroupBoxFileActions.ClientSize.Width - leftPanelWidth - (inset * 2) - gap)
         Dim contentBottom As Integer = GroupBoxFileActions.ClientSize.Height - inset
-        Dim actionTop As Integer = Math.Max(contentTop + 20, contentBottom - actionPanelHeight)
+        Dim contentLeft As Integer = inset + leftPanelWidth + gap
+        Dim actionPanelHeight As Integer = GetNavigationPanelHeight(contentWidth)
+        Dim detailsTop As Integer = contentTop + actionPanelHeight + gap
 
+        'Keep the designer's top-and-left layout on initial load, resize and font changes.
+        'The badge uses a native WindowsUI button, so its circle matches the other buttons.
+        WindowsUIButtonPanelBPBadge.SetBounds(inset, contentTop, leftPanelWidth, actionPanelHeight)
         WindowsUIButtonPanelSaveClose.SetBounds(
-            inset + contentWidth + gap,
-            contentTop,
-            rightPanelWidth,
-            Math.Max(20, contentBottom - contentTop))
+            inset,
+            detailsTop,
+            leftPanelWidth,
+            Math.Max(20, contentBottom - detailsTop))
         WindowsUIButtonPanelBPActions.SetBounds(
-            inset,
-            actionTop,
-            contentWidth,
-            Math.Max(20, contentBottom - actionTop))
-        WebBrowserBPInfo.SetBounds(
-            inset,
+            contentLeft,
             contentTop,
             contentWidth,
-            Math.Max(20, actionTop - contentTop - gap))
+            actionPanelHeight)
+        WebBrowserBPInfo.SetBounds(
+            contentLeft,
+            detailsTop,
+            contentWidth,
+            Math.Max(20, contentBottom - detailsTop))
     End Sub
+
+    Private Function GetNavigationPanelHeight(availableWidth As Integer) As Integer
+        'Reserve enough rows for native button wrapping on narrower windows or larger fonts.
+        'Measure the captions instead of shrinking the user's font or hiding trailing actions.
+        Dim dpiScale As Single = CSng(DeviceDpi) / 96.0F
+        Dim iconWidth As Integer = CInt(Math.Ceiling(42 * dpiScale))
+        Dim rows As Integer = 1
+        Dim rowWidth As Integer = 0
+        Dim captionFont As Font = WindowsUIButtonPanelBPActions.AppearanceButton.Normal.Font
+        For Each item As DevExpress.XtraEditors.ButtonPanel.IBaseButton In WindowsUIButtonPanelBPActions.Buttons
+            Dim button As WindowsUIButton = TryCast(item, WindowsUIButton)
+            If button Is Nothing OrElse Not button.Visible Then Continue For
+            Dim captionWidth As Integer = TextRenderer.MeasureText(
+                button.Caption, captionFont, Size.Empty, TextFormatFlags.NoPadding).Width
+            Dim slotWidth As Integer = Math.Max(iconWidth, captionWidth) +
+                CInt(Math.Ceiling(8 * dpiScale)) + 2 * WindowsUIButtonPanelBPActions.ButtonInterval
+            If rowWidth > 0 AndAlso rowWidth + slotWidth > availableWidth Then
+                rows += 1
+                rowWidth = 0
+            End If
+            rowWidth += slotWidth
+        Next
+        Dim rowHeight As Integer = CInt(Math.Ceiling(50 * dpiScale)) + captionFont.Height
+        Return rows * rowHeight + CInt(Math.Ceiling(8 * dpiScale))
+    End Function
     Private Sub ConfigureModelActions()
 
         If ExcelModels Is Nothing OrElse
@@ -115,6 +140,24 @@ Public Class FileInstanceInterface
                 ExcelModels(BPModelID).Profile.ModelType,
                 "AbovoBP",
                 StringComparison.OrdinalIgnoreCase)
+
+        Dim profile As WorkbookModelProfile = ExcelModels(BPModelID).Profile
+        Dim badge As WindowsUIButton = TryCast(WindowsUIButtonPanelBPBadge.Buttons(0), WindowsUIButton)
+        If badge IsNot Nothing AndAlso profile IsNot Nothing Then
+            badge.Caption = profile.ButtonCaption
+            badge.ToolTip = profile.DisplayName
+            WindowsUIButtonPanelBPBadge.AccessibleName = profile.DisplayName
+            If Not IsBusinessPlan Then
+                'Other models use the neutral workbook glyph rather than the BP initials.
+                For Each item As DevExpress.XtraEditors.ButtonPanel.IBaseButton In WindowsUIButtonPanelBPActions.Buttons
+                    Dim action As WindowsUIButton = TryCast(item, WindowsUIButton)
+                    If action IsNot Nothing AndAlso Convert.ToString(action.Tag) = "Spreadsheet" Then
+                        badge.ImageOptions.Assign(action.ImageOptions)
+                        Exit For
+                    End If
+                Next
+            End If
+        End If
 
         For Each Item As DevExpress.XtraEditors.ButtonPanel.IBaseButton In
             WindowsUIButtonPanelBPActions.Buttons
@@ -202,9 +245,8 @@ Public Class FileInstanceInterface
             Case "GoFFR"
                 ShowFFRInterface()
 
-
-
-
+            Case "Spreadsheet"
+                ExcelModels(BPModelID).ShowSpreadsheet()
             Case "StressTest"
                 ShowStressTestInterface()
 
@@ -241,14 +283,33 @@ Public Class FileInstanceInterface
             STInit = True
         End If
 
-        StressTester.SetActive()
         If ExcelModels(BPModelID).InterfaceHistory IsNot Nothing Then
             ExcelModels(BPModelID).InterfaceHistory.RecordStandalone(
                 InterfaceHistoryDestinationKind.StressTest,
                 "Stress Test",
                 "Model")
         End If
-        StressTester.ShowDialog()
+        StressTester.Show()
+        If StressTester.WindowState = FormWindowState.Minimized Then StressTester.WindowState = FormWindowState.Normal
+        StressTester.Activate()
+        StressTester.BringToFront()
+    End Sub
+
+    Public Sub CloseStandaloneInterfaces()
+        'User close hides these windows; model close must dispose them while
+        'their workbook is still available, including history subscriptions.
+        Try
+            If FFRer IsNot Nothing AndAlso Not FFRer.IsDisposed Then FFRer.ManualDispose()
+        Finally
+            If StressTester IsNot Nothing AndAlso Not StressTester.IsDisposed Then
+                StressTester.Clearup()
+                StressTester.Dispose()
+            End If
+        End Try
+        FFRer = Nothing
+        StressTester = Nothing
+        FFRInit = False
+        STInit = False
     End Sub
 
     Public Sub PopulateFileInfo()
@@ -337,12 +398,6 @@ Public Class FileInstanceInterface
 
                 End If
 
-            Case "Spreadsheet"
-
-                ' Close the model and dispose of the interface
-                ExcelModels(BPModelID).ShowSpreadsheet()
-
-
         End Select
 
     End Sub
@@ -362,6 +417,9 @@ Public Class FileInstanceInterface
         WindowsUIButtonPanelSaveClose.AppearanceButton.Normal.Font = GetDisplayFont("Small", Me)
         WindowsUIButtonPanelSaveClose.AppearanceButton.Hovered.Font = GetDisplayFont("Small", Me)
         WindowsUIButtonPanelSaveClose.AppearanceButton.Pressed.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelBPBadge.AppearanceButton.Normal.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelBPBadge.AppearanceButton.Hovered.Font = GetDisplayFont("Small", Me)
+        WindowsUIButtonPanelBPBadge.AppearanceButton.Pressed.Font = GetDisplayFont("Small", Me)
         Me.GroupBoxFileActions.Font = GetDisplayFont("Small", Me)
         LayoutFileActionControls()
     End Sub

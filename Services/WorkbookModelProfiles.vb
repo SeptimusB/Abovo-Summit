@@ -9,6 +9,11 @@ Namespace Abovo
 
         Public MustOverride ReadOnly Property ModelType As String
         Public MustOverride ReadOnly Property DisplayName As String
+        Public Overridable ReadOnly Property ButtonCaption As String
+            Get
+                Return DisplayName
+            End Get
+        End Property
         Public MustOverride ReadOnly Property FallbackStructureFileName As String
         Public MustOverride ReadOnly Property UsesTransactionalDatabase As Boolean
 
@@ -61,6 +66,12 @@ Namespace Abovo
 
     Public NotInheritable Class AbovoBPWorkbookProfile
         Inherits WorkbookModelProfile
+
+        Public Overrides ReadOnly Property ButtonCaption As String
+            Get
+                Return "HA BP"
+            End Get
+        End Property
 
         Public Overrides ReadOnly Property ModelType As String
             Get
@@ -137,6 +148,12 @@ Namespace Abovo
 
     Public NotInheritable Class AbovoDSAWorkbookProfile
         Inherits WorkbookModelProfile
+
+        Public Overrides ReadOnly Property ButtonCaption As String
+            Get
+                Return "DSA"
+            End Get
+        End Property
 
         Private Shared ReadOnly RequiredSheets As String() = {
             "Global Assumptions",
@@ -328,8 +345,17 @@ Namespace Abovo
                                 StringComparison.OrdinalIgnoreCase) Then Continue For
 
                             Using EntryStream As Stream = Entry.Open()
-                                Dim Definition As XDocument =
-                                    XDocument.Load(EntryStream, LoadOptions.PreserveWhitespace)
+                                'Custom XML parts have independent owners. Do not fully parse
+                                'Model Manager/SharePoint payloads as interface definitions.
+                                Dim Definition As XDocument
+                                Dim Settings As New System.Xml.XmlReaderSettings With {
+                                    .DtdProcessing = System.Xml.DtdProcessing.Prohibit,
+                                    .XmlResolver = Nothing}
+                                Using Reader = System.Xml.XmlReader.Create(EntryStream, Settings)
+                                    Reader.MoveToContent()
+                                    If Not String.Equals(Reader.LocalName, "Abovo_Model_Def", StringComparison.OrdinalIgnoreCase) Then Continue For
+                                    Definition = XDocument.Load(Reader, LoadOptions.PreserveWhitespace)
+                                End Using
 
                                 If Definition.Root Is Nothing OrElse
                                    Not String.Equals(
@@ -361,6 +387,7 @@ Namespace Abovo
                 'packaged structure fallback from being used.
             Catch ex As IOException
             Catch ex As UnauthorizedAccessException
+            Catch ex As System.Xml.XmlException
             End Try
 
             Return Nothing

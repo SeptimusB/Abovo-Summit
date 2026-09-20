@@ -23,6 +23,7 @@ Public Class FFRForm
     Private ReadOnly ModelID As Integer
     Private ReadOnly SheetViews As New Dictionary(Of XtraTabPage, Control)()
     Private ClosingForDisposal As Boolean
+    Private ReadOnly HistoryBinding As ModelFormHistoryBinding
 
     Public Sub New(SetModelID As Integer)
         InitializeComponent()
@@ -32,6 +33,7 @@ Public Class FFRForm
         SheetCaption.Text = Text
         BuildSheetTabs()
         EnsureSelectedSheetBuilt()
+        HistoryBinding = New ModelFormHistoryBinding(Me, ModelID, AddressOf EnsureSelectedSheetBuilt)
     End Sub
 
     'Retained for callers compiled against the former form API.
@@ -180,6 +182,10 @@ Public Class FFRForm
 
     Private Sub RefreshButtonClick(sender As Object, e As EventArgs) Handles RefreshButton.Click
         EnsureSelectedSheetBuilt()
+    End Sub
+
+    Private Sub HistoryButtonClick(sender As Object, e As EventArgs) Handles HistoryButton.Click
+        ExcelModels(ModelID).HistoryManager.ShowForUser(Me)
     End Sub
 
     Private Sub CloseButtonClick(sender As Object, e As EventArgs) Handles CloseButton.Click

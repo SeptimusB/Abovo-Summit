@@ -532,6 +532,7 @@ Public Class DataInterfaceTemplate
 
         End If
 
+        Dim registrationTimer As System.Diagnostics.Stopwatch = System.Diagnostics.Stopwatch.StartNew()
         CalcEngID = ExcelModels(ModelID).WBCalcEngine.AddActiveObject(Me)
 
         If DataPres.DefaultWorksheet IsNot Nothing Then
@@ -540,6 +541,14 @@ Public Class DataInterfaceTemplate
 
             ExcelModels(ModelID).WBCalcEngine.AddActiveWorksheet(CalcEngID, ActiveSpreadsheet)
 
+        End If
+
+        If DataPres.Sections.Any(Function(section) section IsNot Nothing AndAlso
+                section.SectionElements IsNot Nothing AndAlso section.SectionElements.Any(
+                Function(element) element.Type = "MappedTable")) Then
+            System.Diagnostics.Trace.WriteLine("[Mapped Table Benchmark] registration/calculation: model=" &
+                ModelID.ToString() & ", CSID=" & CSID.ToString() & ", total=" &
+                registrationTimer.ElapsedMilliseconds.ToString() & " ms")
         End If
 
         'XtraTabControlDI = New XtraTabControl With {
@@ -645,6 +654,10 @@ Public Class DataInterfaceTemplate
             If ActiveSpreadsheet IsNot Nothing Then
                 engine.AddActiveWorksheet(CalcEngID, ActiveSpreadsheet, False)
             End If
+            For Each mappedGrid In FindChildControls(Of ReadOnlyMappedTableGrid)(Me)
+                engine.AddActiveWorksheet(CalcEngID,
+                    ExcelModels(ModelID).WB.Worksheets(mappedGrid.WorksheetName), False)
+            Next
             registrationMs = timer.ElapsedMilliseconds
 
             stage = "calculation"
@@ -805,6 +818,10 @@ SkipGridRefresh:
         Next
 
 SkipRefresh:
+
+        For Each mappedGrid In FindChildControls(Of ReadOnlyMappedTableGrid)(Me)
+            mappedGrid.RefreshData()
+        Next
 
         UpdateAllRules()
 
@@ -1252,6 +1269,13 @@ SkipRefresh:
 
         For Each SectionElement In Section.SectionElements
 
+            If SectionElement.Type = "MappedTable" Then
+                Dim mapping As MappedTable = SectionElement.MappedTableSection
+                State.SourceWorksheets.Add(If(String.IsNullOrWhiteSpace(mapping.Worksheet),
+                    DataPres.DefaultWorksheet, mapping.Worksheet.Trim()))
+                Continue For
+            End If
+
             If SectionElement.ControlSourceIndex < 0 OrElse
                SectionElement.ControlSourceIndex >= DataPres.DataSets.Count Then Continue For
 
@@ -1350,7 +1374,17 @@ SkipRefresh:
 
         If State.IsBuilt AndAlso
            Not State.IsDirty AndAlso
-           Not State.NeedsPresentationRedefinition Then Return
+           Not State.NeedsPresentationRedefinition Then
+            'A retained read-only sheet tab must also become current after edits
+            'on another tab of the same DIT (which use the fast sheet-only pass).
+            If TPs IsNot Nothing AndAlso SectionIndex < TPs.Length AndAlso
+                TPs(SectionIndex) IsNot Nothing AndAlso
+                FindChildControls(Of ReadOnlyMappedTableGrid)(TPs(SectionIndex)).Count > 0 AndAlso
+                Not ExcelModels(ModelID).WBCalcEngine.NavigationCalculationCurrent Then
+                ExcelModels(ModelID).WBCalcEngine.CalcFile(1, "DIT read-only mapped table activation")
+            End If
+            Return
+        End If
 
         BuildSection(
             SectionIndex,
@@ -1671,11 +1705,30 @@ SkipRefresh:
 
         Dim NewFont As Font = GetDisplayFont("Medium", Me)
 
-        ApplyFontToControlTree(RootControl, NewFont)
+        Dim fontTimer As System.Diagnostics.Stopwatch = System.Diagnostics.Stopwatch.StartNew()
+        Dim mappedPanel As TablePanel = TryCast(RootControl, TablePanel)
+        Dim batchMappedLayout As Boolean = mappedPanel IsNot Nothing AndAlso
+            Object.Equals(mappedPanel.Tag, "MappedTable")
+        'Accounts has 151 individual controls. FontChanged otherwise lays out
+        'the entire AutoSize table after each assignment. Batch just that pass;
+        'resume BEFORE asking any grid for its geometry/best-fit measurements.
+        If batchMappedLayout Then mappedPanel.SuspendLayout()
+        Try
+            ApplyFontToControlTree(RootControl, NewFont)
+        Finally
+            If batchMappedLayout Then mappedPanel.ResumeLayout(True)
+        End Try
+        If Object.Equals(RootControl.Tag, "MappedTable") Then
+            System.Diagnostics.Trace.WriteLine("[Mapped Table Benchmark] fonts: model=" &
+                ModelID.ToString() & ", CSID=" & CSID.ToString() & ", controls=" &
+                RootControl.Controls.Count.ToString() & ", total=" &
+                fontTimer.ElapsedMilliseconds.ToString() & " ms")
+        End If
 
         For Each GC As GridControl In FindChildControls(Of GridControl)(RootControl)
 
             If GC Is Nothing OrElse GC.IsDisposed Then Continue For
+            If TypeOf GC Is ReadOnlyMappedTableGrid Then Continue For
 
             Dim GV As GridView = TryCast(GC.MainView, GridView)
             If GV Is Nothing Then Continue For
@@ -6530,6 +6583,29 @@ SkipRefresh:
             ElseIf SectionElement.Type = "MappedTable" Then
 
                 Dim MTab As MappedTable = SectionElement.MappedTableSection
+                TP.Tag = "MappedTable"
+                Dim mappedTimer As System.Diagnostics.Stopwatch = System.Diagnostics.Stopwatch.StartNew()
+                If Not String.IsNullOrWhiteSpace(MTab.ReadOnlyRange) Then
+                    Dim mappedSheet As DevExpress.Spreadsheet.Worksheet = ExcelModels(ModelID).WB.Worksheets(MTab.Worksheet.Trim())
+                    Dim engine As CalcEngine = ExcelModels(ModelID).WBCalcEngine
+                    'Use the normal staged calculation so Check Sheet follows its
+                    'precedents; never calculate it independently while deferred.
+                    If Not engine.NavigationCalculationCurrent Then
+                        engine.CalcFile(1, "DIT mapped table " & mappedSheet.Name)
+                    End If
+                    engine.AddActiveWorksheet(CalcEngID, mappedSheet, False)
+                    Dim mappedGrid As New ReadOnlyMappedTableGrid(ModelID, mappedSheet, MTab, ParentGroupForm,
+                        GSID, CSID, DataPres.PresName) With {
+                        .Dock = DockStyle.Fill, .MinimumSize = New Size(400, 360)}
+                    TP.Controls.Add(mappedGrid)
+                    TP.SetCell(mappedGrid, TPRowCount, 0)
+                    TP.SetColumnSpan(mappedGrid, TP.Columns.Count)
+                    mappedGrid.FitWorkbookColumns()
+                    System.Diagnostics.Trace.WriteLine("[Mapped Table Benchmark] read-only range: model=" &
+                        ModelID.ToString() & ", sheet=" & mappedSheet.Name & ", total=" &
+                        mappedTimer.ElapsedMilliseconds.ToString() & " ms")
+                    Continue For
+                End If
                 Dim DockPosition As DockStyle = DockStyle.Right
                 Dim x As Integer = 0
                 Dim RowCount As Integer = CInt(MTab.NumRows)
@@ -6982,6 +7058,10 @@ NextCell:
 
                 Next
 
+                System.Diagnostics.Trace.WriteLine("[Mapped Table Benchmark] controls: model=" &
+                    ModelID.ToString() & ", CSID=" & CSID.ToString() & ", rows=" &
+                    MTab.MappedTableRows.Count.ToString() & ", controls=" & TP.Controls.Count.ToString() &
+                    ", total=" & mappedTimer.ElapsedMilliseconds.ToString() & " ms")
 #End Region
 
 #Region "Control Group"

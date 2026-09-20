@@ -163,6 +163,8 @@ Namespace Abovo
             Public WB As IWorkbook
             Public WBStructure As Abovo_Model_Def
             Public Profile As WorkbookModelProfile
+            Public ManagedDefinition As ModelManagerDefinition
+            Public ManagedDefinitionWarning As String
             Public WBStructureManager As StructureManager
             Public WBData As DataManager
             Public WBInterface As InterfaceManager
@@ -1077,6 +1079,12 @@ Namespace Abovo
                 'workbook are still available. DevExpress controls can request one
                 'final unbound value while their bindings are being torn down.
                 Try
+                    If InstanceInterface IsNot Nothing Then InstanceInterface.CloseStandaloneInterfaces()
+                Catch ex As Exception
+                    WriteLog("Error closing standalone interfaces: " & ex.Message, FileName)
+                End Try
+
+                Try
                     If WBInterface IsNot Nothing Then WBInterface.CloseInterfaces()
                 Catch ex As Exception
                     WriteLog("Error closing model interfaces: " & ex.Message, FileName)
@@ -1571,6 +1579,14 @@ Namespace Abovo
                 NewModel.FileInfo.Refresh()
                 NewModel.PreviousFileAccessTime = NewModel.FileInfo.LastAccessTime
                 NewModel.ModelSpreadsheetControl.LoadDocument(FullPath)
+
+                'Read metadata only; never apply rules or mutate workbook schema on open.
+                Try
+                    NewModel.ManagedDefinition = ModelManagerStore.ReadEmbedded(FullPath)
+                Catch ex As Exception When TypeOf ex Is System.IO.IOException OrElse TypeOf ex Is System.IO.InvalidDataException OrElse TypeOf ex Is System.Xml.XmlException OrElse TypeOf ex Is InvalidOperationException OrElse TypeOf ex Is UnauthorizedAccessException
+                    NewModel.ManagedDefinitionWarning = "Model Manager definition was not loaded: " & ex.Message
+                    SystemMessageManager.Publish(NewModelID, NewModel.ManagedDefinitionWarning, SystemMessageSeverity.Warning, "Model Manager")
+                End Try
 
                 Dim LoadedModelType As String = "ImportSource"
 

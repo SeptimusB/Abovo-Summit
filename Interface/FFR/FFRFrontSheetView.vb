@@ -354,6 +354,7 @@ Public Class FFRFrontSheetView
         RegisteredGrid.BeginUpdate()
         OtherGrid.BeginUpdate()
         Try
+            ModelPostingChangeSupport.HideGridEditors(Me)
             Dim Worksheet As Worksheet = Workbook.Worksheets(SheetName)
             WorkbookTitle.Text = Worksheet.Cells("A1").DisplayText
             SheetTitle.Text = Worksheet.Cells("A2").DisplayText

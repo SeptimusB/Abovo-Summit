@@ -478,11 +478,28 @@ Namespace Abovo
     <Serializable()>
     Public Class MappedTable
 
+        'Optional compact worksheet projection, read-only unless explicitly opted in.
+        'Yes/No editing still requires an unlocked workbook-validated input. Legacy
+        'MappedTableRow definitions (including Accounts) remain unchanged.
+        <XmlElement("Worksheet")> Public Worksheet As String
+        <XmlElement("ReadOnlyRange")> Public ReadOnlyRange As String
+        <XmlElement("HeaderRow")> Public HeaderRow As Integer
+        <XmlElement("LinkColumn")> Public LinkColumn As String
+        <XmlElement("LinkTargetColumn")> Public LinkTargetColumn As String
+        <XmlElement("ShowLinkDestinations")> Public ShowLinkDestinations As Boolean
+        <XmlElement("AllowYesNoEdits")> Public AllowYesNoEdits As Boolean
+        <XmlElement("WorksheetInterfaceLink")> Public InterfaceLinks As New List(Of MappedWorksheetInterfaceLink)
         <XmlElement("NumRows")> Public NumRows As String
         <XmlElement("NumCols")> Public NumCols As String
 
         <XmlElement("MappedTableRow")> Property MappedTableRows As New List(Of MappedTableRow)
 
+    End Class
+    <Serializable()>
+    Public Class MappedWorksheetInterfaceLink
+        <XmlElement("Worksheet")> Public Worksheet As String
+        <XmlElement("Group")> Public Group As String
+        <XmlElement("Interface")> Public InterfaceName As String
     End Class
     <Serializable()>
     Public Class MappedTableRow

@@ -7,6 +7,21 @@ Namespace Abovo
 
     Friend Module ModelPostingChangeSupport
 
+        'Call only inside the view's posting-suppressed workbook refresh scope.
+        Friend Sub HideGridEditors(root As Control)
+            Dim grid = TryCast(root, DevExpress.XtraGrid.GridControl)
+            If grid IsNot Nothing Then
+                For Each view In grid.ViewCollection.OfType(Of DevExpress.XtraGrid.Views.Base.ColumnView)()
+                    view.HideEditor()
+                Next
+            End If
+            Dim vertical = TryCast(root, DevExpress.XtraVerticalGrid.VGridControl)
+            If vertical IsNot Nothing Then vertical.HideEditor()
+            For Each child As Control In root.Controls.Cast(Of Control)().ToArray()
+                HideGridEditors(child)
+            Next
+        End Sub
+
         Friend Function PostModelCellValue(ByVal modelID As Integer,
                                            ByVal worksheetName As String,
                                            ByVal cellAddress As String,
@@ -90,6 +105,74 @@ Namespace Abovo
         End Function
 
     End Module
+
+    'Standalone model windows need the same workbook history shortcuts and
+    'post-undo refresh as DIT, including when a native editor owns the key message.
+    Friend NotInheritable Class ModelFormHistoryBinding
+        Implements IMessageFilter, IDisposable
+
+        Private ReadOnly Owner As Form
+        Private ReadOnly ModelID As Integer
+        Private ReadOnly Manager As ModelChangeManagerV2
+        Private ReadOnly RefreshAction As Action
+        Private NeedsRefresh As Boolean = True
+        Private Refreshing As Boolean
+        Private DisposedBinding As Boolean
+
+        Friend Sub New(form As Form, id As Integer, refreshFromWorkbook As Action)
+            Owner = form
+            ModelID = id
+            Manager = ExcelModels(id).ChangeManager
+            RefreshAction = refreshFromWorkbook
+            AddHandler Manager.HistoryChanged, AddressOf HistoryChanged
+            AddHandler Owner.VisibleChanged, AddressOf RefreshWhenShown
+            AddHandler Owner.Activated, AddressOf RefreshWhenShown
+            AddHandler Owner.Disposed, AddressOf OwnerDisposed
+            Application.AddMessageFilter(Me)
+        End Sub
+
+        Private Sub HistoryChanged(sender As Object, e As ChangeHistoryChangedEventArgsV2)
+            NeedsRefresh = True
+            'Ordinary posts already refresh their own editor. Do not rebuild a
+            'grid inside CellValueChanged; refresh other windows on activation.
+            If e.IsUndoRedo Then RefreshWhenShown(Me, EventArgs.Empty)
+        End Sub
+
+        Private Sub RefreshWhenShown(sender As Object, e As EventArgs)
+            If DisposedBinding OrElse Refreshing OrElse Not NeedsRefresh OrElse
+                Owner.IsDisposed OrElse Not Owner.Visible Then Return
+            Refreshing = True
+            Try
+                RefreshAction()
+                NeedsRefresh = False
+            Finally
+                Refreshing = False
+            End Try
+        End Sub
+
+        Public Function PreFilterMessage(ByRef message As Message) As Boolean Implements IMessageFilter.PreFilterMessage
+            If DisposedBinding OrElse Not Owner.Visible OrElse
+                (message.Msg <> &H100 AndAlso message.Msg <> &H104) Then Return False
+            Dim target As Control = Control.FromChildHandle(message.HWnd)
+            If target Is Nothing OrElse (target IsNot Owner AndAlso Not Owner.Contains(target)) Then Return False
+            Dim keys As Keys = CType(message.WParam.ToInt32(), Keys) Or Control.ModifierKeys
+            Return ModelPostingChangeSupport.TryProcessModelHistoryShortcut(Owner, ModelID, keys)
+        End Function
+
+        Private Sub OwnerDisposed(sender As Object, e As EventArgs)
+            Dispose()
+        End Sub
+
+        Public Sub Dispose() Implements IDisposable.Dispose
+            If DisposedBinding Then Return
+            DisposedBinding = True
+            Application.RemoveMessageFilter(Me)
+            RemoveHandler Manager.HistoryChanged, AddressOf HistoryChanged
+            RemoveHandler Owner.VisibleChanged, AddressOf RefreshWhenShown
+            RemoveHandler Owner.Activated, AddressOf RefreshWhenShown
+            RemoveHandler Owner.Disposed, AddressOf OwnerDisposed
+        End Sub
+    End Class
 
     Friend NotInheritable Class ModelPostingHistoryBinding
         Private ReadOnly Owner As Control

@@ -164,6 +164,8 @@ Public Class StressTest
     Private MyColourSwatch As Color
     Private Formatter As ObjectFormatter
     Private ChangeMan As ModelChangeManagerV2
+    Private ReadOnly HistoryBinding As ModelFormHistoryBinding
+    Private RefreshingHistory As Boolean
     Private WrapCG_Mits As CustomGridWrapper
     Private View_WrapCG_Mits As CustomGridView
     Private ReadOnly FirstTabGridSources As New Dictionary(Of GridView, DevExpress.Spreadsheet.CellRange)
@@ -283,6 +285,11 @@ Public Class StressTest
 
         ConfigureResponsiveFirstTab()
         AddHandlers()
+        Dim historyButton As New WindowsUIButton With {
+            .Caption = "Change History", .UseCaption = True, .Tag = "History", .IsLeft = False}
+        historyButton.ImageOptions.Image = DevExpress.Images.ImageResourceCache.Default.GetImage("images/actions/undo_32x32.png")
+        WindowsUIButtonPanelStressNavigator.Buttons.Add(historyButton)
+        HistoryBinding = New ModelFormHistoryBinding(Me, ModelID, AddressOf RefreshAfterHistory)
 
     End Sub
 
@@ -346,6 +353,9 @@ Public Class StressTest
 
         Select Case tag
 
+            Case "History"
+                ExcelModels(ModelID).HistoryManager.ShowForUser(Me)
+
             Case "Home"
 
                 SetDeactivated()
@@ -375,6 +385,7 @@ Public Class StressTest
 
                 XtraTabControlStressTest.SelectedTabPage = XtraTabPageMVP
                 RefreshNativePlanner()
+                RefreshNativeTargets()
 
             Case "MVDash"
 
@@ -2063,6 +2074,48 @@ Public Class StressTest
 
         ApplyResponsiveFirstTabScale()
 
+    End Sub
+
+    Private Sub RefreshAfterHistory()
+        If RefreshingHistory OrElse IsDisposed Then Return
+        RefreshingHistory = True
+        Dim wasLoading As Boolean = LoadingNativeViews
+        Dim wasPosting As Boolean = FirstTabChangeInProgress
+        LoadingNativeViews = True
+        FirstTabChangeInProgress = True
+        Try
+            CloseNativePlannerBandEditor(False)
+            ModelPostingChangeSupport.HideGridEditors(Me)
+            STMode = ActiveWorkbook.DefinedNames.GetDefinedName("StressTestMode").Range(0, 0).DisplayText
+            ToggleModeSwitch.IsOn = STMode = "Y"
+            RefreshLiveMultivariableNameEditor()
+            ComboBoxBreachMode.EditValue = ActiveWorkbook.DefinedNames.GetDefinedName("StressTestNumber").Range(0, 0).DisplayText
+            For Each gridView In FirstTabGridSources.Keys
+                RefreshFirstTabGridData(gridView)
+            Next
+            RefreshAllNativeScenarioSelectors()
+            'Reload only the displayed page; the other pages refresh on selection.
+            'Undo has already calculated, so never add another full calculation.
+            If XtraTabControlStressTest.SelectedTabPage Is XtraTabPageMVP Then
+                RefreshNativePlanner()
+                RefreshNativeTargets()
+            ElseIf XtraTabControlStressTest.SelectedTabPage Is XtraTabPageDashboard Then
+                RefreshNativeDashboard(False)
+            ElseIf XtraTabControlStressTest.SelectedTabPage Is XtraTabPageCompA OrElse
+                XtraTabControlStressTest.SelectedTabPage Is XtraTabPageCompB Then
+                RefreshNativeComparativeViews(False)
+            ElseIf XtraTabControlStressTest.SelectedTabPage Is XtraTabPageSSL Then
+                RefreshNativeSensitivityList()
+            Else
+                RefreshCovenantSummary()
+                ProcessBreachesGrid(STMode = "Y")
+                BuildCovCharts()
+            End If
+        Finally
+            LoadingNativeViews = wasLoading
+            FirstTabChangeInProgress = wasPosting
+            RefreshingHistory = False
+        End Try
     End Sub
 
     Private Sub ApplyPresentationScale()
@@ -4784,7 +4837,7 @@ Public Class StressTest
         Description As String,
         Optional RequireGridPattern As Boolean = False) As Boolean
 
-        If Target Is Nothing OrElse Target.Protection.Locked OrElse ChangeMan Is Nothing OrElse
+        If RefreshingHistory OrElse Target Is Nothing OrElse Target.Protection.Locked OrElse ChangeMan Is Nothing OrElse
            (RequireGridPattern AndAlso Not IsWorkbookLinkedGridCellEditable(Target)) Then
             Return False
         End If
@@ -5439,7 +5492,7 @@ Public Class StressTest
 
     End Sub
 
-    Private Sub RefreshNativeDashboard()
+    Private Sub RefreshNativeDashboard(Optional calculate As Boolean = True)
 
         If NativeDashboardScenario Is Nothing OrElse
            NativeDashboardView Is Nothing OrElse
@@ -5448,7 +5501,7 @@ Public Class StressTest
 
         LoadingNativeViews = True
         Try
-            CalculateStressWorkbook()
+            If calculate Then CalculateStressWorkbook()
             PopulateNativeDashboard()
         Finally
             LoadingNativeViews = False
@@ -5975,7 +6028,7 @@ Public Class StressTest
 
     End Sub
 
-    Private Sub RefreshNativeComparativeViews()
+    Private Sub RefreshNativeComparativeViews(Optional calculate As Boolean = True)
 
         If NativeComparativeCharts.Count < 5 OrElse
            NativeComparativeSummaryA Is Nothing OrElse
@@ -6028,7 +6081,7 @@ Public Class StressTest
                 Pair.Value.Value = Convert.ToInt32(GetNumericValue(SourceCell))
             Next
 
-            CalculateStressWorkbook()
+            If calculate Then CalculateStressWorkbook()
             PopulateComparisonChart(
                 NativeComparativeCharts(10), Working, 62, 63, 68)
             PopulateComparisonChart(
@@ -6896,6 +6949,8 @@ Public Class StressTest
     End Sub
 
     Private Sub ToggleModeSwitch_Toggled(sender As Object, e As EventArgs) Handles ToggleModeSwitch.Toggled
+
+        If RefreshingHistory Then Return
 
         If STMode = "N" Then
 

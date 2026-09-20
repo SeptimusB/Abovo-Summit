@@ -14,7 +14,7 @@ History entries are session-only and are not written to the XLSB or user setting
 | Two live GITs route an entry to the wrong window | High | GIT entries retain the exact host instance as well as model/group/child identifiers | Open two different GITs side by side and return alternately to entries from both |
 | Entries from different groups collide because CSIDs repeat | High | GIT identity is model + GSID + CSID, not CSID alone | Visit child interfaces with the same CSID in different groups and confirm both remain |
 | Duplicate entries accumulate | Medium | A stable destination key is removed and reinserted at the top on every visit | Visit A, B, A and confirm the order is A, B with two rows only |
-| Stress Test modal behaviour causes re-entrancy or a second form | High | History calls the existing Stress Test launcher and preserved instance | Open, alter state, hide, reopen from history, then repeat several times |
+| Stress Test launch causes re-entrancy or a second form | High | Since 2.37, History calls the non-modal Stress Test launcher and preserved instance | Open, alter state, hide, reopen from history, then repeat several times |
 | FFR is reconstructed or loses its selected page | High | History calls the existing preserved FFR instance | Select a non-default FFR page, hide and restore it through history |
 | This model displays or activates another model's history | High | Each workbook model owns a separate history service; the coordinator filters by model | Open two models and confirm This model lists only its own entries |
 | All models activates the wrong model or a reused numeric model ID | High | Entries carry a unique open-model instance token checked before activation | Navigate between two model types, close one, reopen it, and verify stale entries cannot navigate |
@@ -61,3 +61,5 @@ History entries are session-only and are not written to the XLSB or user setting
 - Release configuration builds successfully.
 
 The workbook/UI acceptance sequence remains manual because the repository has no automated integration harness for these interface lifecycles.
+
+20 September addendum: release 2.37 adds an isolated standalone lifecycle/history fixture. FFR and Stress Test now both open non-modally, retain user-close state and dispose on model close. See `Standalone_History_2026-09-20.md` for verified cases, undo boundaries and remaining manual multi-model/keyboard/round-trip checks. The broader GIT test sequence above remains manual.

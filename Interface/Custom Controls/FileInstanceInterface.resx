@@ -160,16 +160,6 @@
   <data name="WindowsUIButtonImageOptions4.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
         iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAABl0RVh0U29m
-        dHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAA8dEVYdFRpdGxlAEluIExpbmU7TGluZTtBbGlnbjtU
-        ZXh0O0ltYWdlO0xheW91dDtTaGFwZTtDZW50ZXI7V3JhcM/cRNkAAAB5SURBVFhH7dUxDsAgDENR7pTT
-        9rSpOnRx1SGxaQnK8CUESLxMDHcff/bYMDOfGb63NOBaK6sLOMhogKo0ACeKRgNUpQE4UTQaoGofwH3+
-        Ft5vQAMasB8gW10Afi7RaICqNAAnikYDVKUBOFE0GqCqHmBK+N56gK87AU54e3NKpnZ0AAAAAElFTkSu
-        QmCC
-</value>
-  </data>
-  <data name="WindowsUIButtonImageOptions5.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
-    <value>
-        iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAABl0RVh0U29m
         dHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAAndEVYdFRpdGxlAFByZXZpZXc7UHJpbnRQcmV2aWV3
         O1ByaW50O0NoYXJ0OwcqKowAAAFKSURBVFhH7ZQxTsNQEERTESmXQHR0XGD6XIJDwAWQuABVeoochRqJ
         jpYLcAAqoxHfknn7nXWQ/d1g6cny7GRnZDvedF23WZMgtCYIrQlChqTuFPRnBCGDgYT+jCBkMJDQnxGE
@@ -178,6 +168,16 @@
         c/suasupkayAXzgbd5yVuR+H5/YtUmD1O/BajKu9A58Dc9t/gaQHmiss8x2ohPtO+HEs/yWUdIDpcWgi
         Y+H9cmqkVuDjjPCwkMupkVqBu1LiwEDCZWSq51eBc+AyMtXzX+DPBeYmCK0JQmuC0Jpv95W07XcIobcA
         AAAASUVORK5CYII=
+</value>
+  </data>
+  <data name="WindowsUIButtonImageOptions5.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAABl0RVh0U29m
+        dHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAA8dEVYdFRpdGxlAEluIExpbmU7TGluZTtBbGlnbjtU
+        ZXh0O0ltYWdlO0xheW91dDtTaGFwZTtDZW50ZXI7V3JhcM/cRNkAAAB5SURBVFhH7dUxDsAgDENR7pTT
+        9rSpOnRx1SGxaQnK8CUESLxMDHcff/bYMDOfGb63NOBaK6sLOMhogKo0ACeKRgNUpQE4UTQaoGofwH3+
+        Ft5vQAMasB8gW10Afi7RaICqNAAnikYDVKUBOFE0GqCqHmBK+N56gK87AU54e3NKpnZ0AAAAAElFTkSu
+        QmCC
 </value>
   </data>
   <data name="WindowsUIButtonImageOptions6.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
@@ -234,5 +234,8 @@
         9oA9IAxQkw0YbwbFrTkARw/LIZfKDIdcKjMcsi9LyQaMN4Pi1hzw/1dMh1wqMxxyqcxwyL4sJRsw3gyK
         W3PA/18xHXKpzHDIpTLDIfuylM+AmYSDmnBQ8wDwzxC5/beEWwAAAABJRU5ErkJggg==
 </value>
+  </data>
+  <data name="BusinessPlanBadge.SvgImage" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\..\Resources\businessplan.svg;DevExpress.Utils.Svg.SvgImage, DevExpress.Data.v25.2, Version=25.2.4.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a</value>
   </data>
 </root>

@@ -17,6 +17,7 @@ Partial Class FFRForm
         Me.SheetCaption = New DevExpress.XtraEditors.LabelControl()
         Me.CreateReturnButton = New DevExpress.XtraEditors.SimpleButton()
         Me.RefreshButton = New DevExpress.XtraEditors.SimpleButton()
+        Me.HistoryButton = New DevExpress.XtraEditors.SimpleButton()
         Me.CloseButton = New DevExpress.XtraEditors.SimpleButton()
         Me.FFRTabs = New DevExpress.XtraTab.XtraTabControl()
         CType(Me.TopPanel, System.ComponentModel.ISupportInitialize).BeginInit()
@@ -27,6 +28,7 @@ Partial Class FFRForm
         Me.TopPanel.Controls.Add(Me.SheetCaption)
         Me.TopPanel.Controls.Add(Me.CreateReturnButton)
         Me.TopPanel.Controls.Add(Me.RefreshButton)
+        Me.TopPanel.Controls.Add(Me.HistoryButton)
         Me.TopPanel.Controls.Add(Me.CloseButton)
         Me.TopPanel.Dock = System.Windows.Forms.DockStyle.Top
         Me.TopPanel.Name = "TopPanel"
@@ -49,6 +51,10 @@ Partial Class FFRForm
         Me.RefreshButton.Size = New System.Drawing.Size(100, 36)
         Me.RefreshButton.Text = "Refresh"
         Me.CloseButton.Dock = System.Windows.Forms.DockStyle.Right
+        Me.HistoryButton.Dock = System.Windows.Forms.DockStyle.Right
+        Me.HistoryButton.Name = "HistoryButton"
+        Me.HistoryButton.Size = New System.Drawing.Size(130, 36)
+        Me.HistoryButton.Text = "Change History"
         Me.CloseButton.Name = "CloseButton"
         Me.CloseButton.Size = New System.Drawing.Size(112, 36)
         Me.CloseButton.Text = "Close"
@@ -72,6 +78,7 @@ Partial Class FFRForm
     Friend WithEvents SheetCaption As DevExpress.XtraEditors.LabelControl
     Friend WithEvents CreateReturnButton As DevExpress.XtraEditors.SimpleButton
     Friend WithEvents RefreshButton As DevExpress.XtraEditors.SimpleButton
+    Friend WithEvents HistoryButton As DevExpress.XtraEditors.SimpleButton
     Friend WithEvents CloseButton As DevExpress.XtraEditors.SimpleButton
     Friend WithEvents FFRTabs As DevExpress.XtraTab.XtraTabControl
 End Class

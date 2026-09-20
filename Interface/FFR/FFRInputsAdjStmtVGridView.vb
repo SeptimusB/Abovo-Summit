@@ -104,6 +104,7 @@ Public Class FFRInputsAdjStmtVGridView
         If Workbook Is Nothing OrElse Not Workbook.Worksheets.Contains(SheetName) Then Return
         Loading = True
         Try
+            ModelPostingChangeSupport.HideGridEditors(Me)
             BuildPivot(ActualSource, ActualGrid, 4, 49, 2, 9, "Actual stock")
             BuildPivot(LoansSource, LoansGrid, 52, 69, 2, 31, "Loan movements")
             ResizeFirstGridToContents()

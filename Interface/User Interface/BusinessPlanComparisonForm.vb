@@ -133,7 +133,20 @@ Public Class BusinessPlanComparisonForm
         Dim tabs As New XtraTabControl With {.Dock = DockStyle.Fill}
         Dim comparePage As New XtraTabPage With {.Text = "Compare"}
         Dim upgradePage As New XtraTabPage With {.Text = "Upgrade"}
-        tabs.TabPages.AddRange(New XtraTabPage() {comparePage, upgradePage})
+        Dim managerPage As New XtraTabPage With {.Text = "Model Manager"}
+        Dim managerButton As New SimpleButton With {.Text = "Open Model Manager...", .Dock = DockStyle.Top, .Height = 42}
+        Dim explanation As New LabelControl With {.Dock = DockStyle.Top, .Height = 80, .AutoSizeMode = LabelAutoSizeMode.None,
+            .Text = "Manage generic/client-specific definitions, three-file evidence and reviewed range rules." & Environment.NewLine &
+                    "Trial: draft definitions only. Embedding a definition never executes bespoke changes or populates a workbook."}
+        managerPage.Controls.Add(explanation)
+        managerPage.Controls.Add(managerButton)
+        AddHandler managerButton.Click, Sub(sender, e)
+                                            If Not ModelManagerForm.Authorize(Me) Then Return
+                                            Using manager As New ModelManagerForm()
+                                                manager.ShowDialog(Me)
+                                            End Using
+                                        End Sub
+        tabs.TabPages.AddRange(New XtraTabPage() {comparePage, upgradePage, managerPage})
         comparePage.Controls.Add(BuildComparePage())
         upgradePage.Controls.Add(BuildUpgradePage())
         Controls.Add(tabs)

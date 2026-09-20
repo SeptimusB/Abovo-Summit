@@ -7,6 +7,39 @@
     "containsVbaSource": false,
     "containsPasswords": false
   },
+  "mappedTableCheckSheet": {
+    "testRelease": "2.36",
+    "structureRevision": 1750,
+    "documentation": "Library/Mapped_Table_Check_Sheet_2026-09-20.md",
+    "location": "Global Assumptions / Check Sheet",
+    "readOnlyRange": "Check Sheet!A7:G63",
+    "headerRow": 6,
+    "linkMarkerColumn": "G",
+    "linkTargetColumn": "H",
+    "showExplicitDestinations": true,
+    "allowWorkbookYesNoInputs": true,
+    "verifiedYesNoInputs": ["C22", "C23", "C29", "C33", "C39"],
+    "originalMastersModified": false
+  },
+  "standaloneHistory": {
+    "testRelease": "2.37",
+    "documentation": "Library/Standalone_History_2026-09-20.md",
+    "ffrModal": false,
+    "stressTestModal": false,
+    "ordinaryEditsAndPastesUndoable": true,
+    "bulkScenarioCommandsUndoable": false,
+    "userClosePreservesInstances": true,
+    "modelCloseDisposesInstances": true
+  },
+  "modelManagerTrial": {
+    "testRelease": "2.33",
+    "documentation": "Library/Model_Manager_Trial_2026-09-19.md",
+    "definitionNamespace": "urn:abovo:summit:model-manager:1",
+    "status": "Draft definition management only; no bespoke migration execution",
+    "passwordRequiredForTrial": false,
+    "multipleXmlPartsRoundtripVerified": "DevExpress 25.2 -> Excel -> DevExpress, Stori and Blank copies",
+    "originalMastersModified": false
+  },
   "authority": {
     "unpopulatedMaster": {
       "source": "C:/Sandbox/Blank BP v26_0001.xlsb",

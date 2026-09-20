@@ -170,6 +170,7 @@ Public Class FFRWorkbookSheetView
         LoadingSnapshot = True
         SheetGrid.BeginUpdate()
         Try
+            ModelPostingChangeSupport.HideGridEditors(Me)
             ClearValidationEditors()
             SourceColumns.Clear()
 

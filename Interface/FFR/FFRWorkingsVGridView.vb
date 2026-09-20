@@ -100,6 +100,7 @@ Public Class FFRWorkingsVGridView
         Loading = True
         Grid.BeginUpdate()
         Try
+            ModelPostingChangeSupport.HideGridEditors(Me)
             BuildPivot()
         Finally
             Grid.EndUpdate()
