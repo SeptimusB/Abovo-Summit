@@ -81,6 +81,10 @@ Public Class GroupInterfaceTemplate
     Private LastPanelLayoutWidth As Integer = -1
     Private LastPanelLayoutScale As Single = -1
     Private LastSidebarUserScale As Single = -1
+    Private ReadOnly SidebarHtml As New Dictionary(Of WebBrowser, String)
+    Private ReadOnly SidebarRenderedHtml As New Dictionary(Of WebBrowser, String)
+    Private ReadOnly SidebarDocumentLoading As New HashSet(Of WebBrowser)
+    Private ReadOnly SidebarDocumentUpdating As New HashSet(Of WebBrowser)
 
     Public Sub AttachPanelsButton(panel As WindowsUIButtonPanel)
         If panel.Buttons.OfType(Of WindowsUIButton)().Any(Function(b) Object.Equals(b.Tag, "TogglePanels")) Then Return
@@ -402,12 +406,12 @@ Public Class GroupInterfaceTemplate
             Dim DLList As New List(Of DevExpress.Spreadsheet.CellRange)
             DLList.Add(DataRange)
 
-            WebBrowserBPSum.DocumentText = CompactSummaryHtml(
-                ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(DLList))
+            SetSidebarDocument(WebBrowserBPSum, CompactSummaryHtml(
+                ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(DLList)))
         Else
-            WebBrowserBPSum.DocumentText =
+            SetSidebarDocument(WebBrowserBPSum,
                 "<html><body><p>" & ModelDescription &
-                " does not define a Business Plan dashboard summary.</p></body></html>"
+                " does not define a Business Plan dashboard summary.</p></body></html>")
         End If
 
         If HasFundingSummary Then
@@ -420,21 +424,21 @@ Public Class GroupInterfaceTemplate
                 Workbook.Worksheets("Funding Assumptions").Range("J3:N5")
             FDSList.Add(DataRange)
 
-            WebBrowserFundSum.DocumentText = CompactSummaryHtml(
-                ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(FDSList))
+            SetSidebarDocument(WebBrowserFundSum, CompactSummaryHtml(
+                ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(FDSList)))
         Else
-            WebBrowserFundSum.DocumentText =
+            SetSidebarDocument(WebBrowserFundSum,
                 "<html><body><p>No funding summary is defined for this " &
-                ModelDescription & ".</p></body></html>"
+                ModelDescription & ".</p></body></html>")
         End If
 
-        WebBrowserAboutHelp.DocumentText = CreateSidebarHtml(
+        SetSidebarDocument(WebBrowserAboutHelp, CreateSidebarHtml(
             "<h2>abovo-summit version " & WebUtility.HtmlEncode(DecVersionNumber.ToString()) & "</h2>" &
             "<p>© 2015-" & Year(Now()).ToString() & " Abovo Business Services Limited.</p>" &
             "<p><a href='summit-help'>Open Summit Help</a></p>" &
             "<p><a href='https://www.abovo-consult.co.uk'>www.abovo-consult.co.uk</a><br>" &
             "<a href='mailto:support@abovo-consult.co.uk'>support@abovo-consult.co.uk</a></p>" &
-            "<p>Built using Microsoft&reg; Excel&reg; and DevExpress.</p>")
+            "<p>Built using Microsoft&reg; Excel&reg; and DevExpress.</p>"))
 
 
         Dim StrFileDescription As String
@@ -455,7 +459,7 @@ Public Class GroupInterfaceTemplate
         End If
         StrFileDescription &= "</dl>"
 
-        WebBrowserFile.DocumentText = CreateSidebarHtml(StrFileDescription)
+        SetSidebarDocument(WebBrowserFile, CreateSidebarHtml(StrFileDescription))
         If SidebarMessageView IsNot Nothing Then SidebarMessageView.RefreshMessages()
         DockPanelDetail.Text = "Summary — updated " & Now().ToString("HH:mm:ss")
         Debug.WriteLine("GroupInterfaceTemplate sidebar refresh completed. ModelID=" &
@@ -535,6 +539,8 @@ Public Class GroupInterfaceTemplate
         'Keep the auto-hide tab available, but do not make the user wait for
         'the dock panel to slide closed or open.
         DockManagerAssumptions.AutoHideSpeed = 10000
+        AccordionControlSum.AnimationType = DevExpress.XtraBars.Navigation.AnimationType.None
+        AccordionControlSum.AllowSmoothScrolling = False
         SidebarMessageView = New SystemMessageView(MyModelID) With {.Dock = DockStyle.Fill}
         AccordionContentContainerSystemMessages.Controls.Add(SidebarMessageView)
 
@@ -554,6 +560,7 @@ Public Class GroupInterfaceTemplate
             .Text = "Interface History",
             .Expanded = False}
         AccordionControlSum.Elements.Add(SidebarHistoryElement)
+        ApplySidebarAccordionAppearance()
 
         For Each browser As WebBrowser In {WebBrowserBPSum, WebBrowserDevSum,
                                            WebBrowserFundSum, WebBrowserAboutHelp,
@@ -564,6 +571,16 @@ Public Class GroupInterfaceTemplate
             browser.ScriptErrorsSuppressed = True
             browser.WebBrowserShortcutsEnabled = True
             AddHandler browser.Navigating, AddressOf SidebarBrowser_Navigating
+            AddHandler browser.DocumentCompleted, Sub(s, e) ApplySidebarDocument(DirectCast(s, WebBrowser))
+            AddHandler browser.HandleCreated, Sub(s, e)
+                                                  Dim readyBrowser = DirectCast(s, WebBrowser)
+                                                  readyBrowser.BeginInvoke(New MethodInvoker(Sub() ApplySidebarDocument(readyBrowser)))
+                                              End Sub
+            AddHandler browser.HandleDestroyed, Sub(s, e)
+                                                    Dim oldBrowser = DirectCast(s, WebBrowser)
+                                                    SidebarRenderedHtml.Remove(oldBrowser)
+                                                    SidebarDocumentLoading.Remove(oldBrowser)
+                                                End Sub
         Next
 
         SidebarRefreshTimer = New Timer With {.Interval = 400}
@@ -681,6 +698,43 @@ Public Class GroupInterfaceTemplate
     Private Shared Function Html(ByVal value As Object) As String
         Return WebUtility.HtmlEncode(If(value, String.Empty).ToString())
     End Function
+
+    Private Sub SetSidebarDocument(browser As WebBrowser, htmlText As String)
+        'DocumentText navigates asynchronously. Repeated pre-show assignments can
+        'lose the pending stream and leave about:blank. Keep the latest content
+        'until the ActiveX document is ready, then update it without navigating.
+        SidebarHtml(browser) = htmlText
+        ApplySidebarDocument(browser)
+    End Sub
+
+    Private Sub ApplySidebarDocument(browser As WebBrowser)
+        If IsDisposed OrElse Disposing OrElse browser.IsDisposed OrElse
+           Not browser.IsHandleCreated OrElse SidebarDocumentUpdating.Contains(browser) Then Return
+        Dim htmlText As String = Nothing
+        If Not SidebarHtml.TryGetValue(browser, htmlText) Then Return
+        If browser.Document Is Nothing OrElse browser.ReadyState <> WebBrowserReadyState.Complete Then
+            If SidebarDocumentLoading.Add(browser) Then browser.Navigate("about:blank")
+            Return
+        End If
+        SidebarDocumentLoading.Remove(browser)
+        Dim previous As String = Nothing
+        If SidebarRenderedHtml.TryGetValue(browser, previous) AndAlso previous = htmlText AndAlso
+           browser.Document.Body IsNot Nothing AndAlso Not String.IsNullOrEmpty(browser.Document.Body.InnerText) Then Return
+        SidebarDocumentUpdating.Add(browser)
+        Try
+            Dim scroll As Point = If(browser.Document.Body Is Nothing, Point.Empty,
+                                      New Point(browser.Document.Body.ScrollLeft, browser.Document.Body.ScrollTop))
+            Dim document As HtmlDocument = browser.Document.OpenNew(True)
+            document.Write(htmlText)
+            SidebarRenderedHtml(browser) = htmlText
+            'Complete the synchronous MSHTML stream, otherwise ReadyState stays
+            'Interactive and a later refresh would restart about:blank.
+            CallByName(document.DomDocument, "close", CallType.Method)
+            If document.Window IsNot Nothing Then document.Window.ScrollTo(scroll)
+        Finally
+            SidebarDocumentUpdating.Remove(browser)
+        End Try
+    End Sub
 
     Private Function CreateSidebarHtml(ByVal body As String) As String
         Dim points As String = (9.5F * PresentationScaleManager.UserScale).ToString("0.##", Globalization.CultureInfo.InvariantCulture)
@@ -903,12 +957,7 @@ Public Class GroupInterfaceTemplate
         Me.AccordionControlNavigator.Appearance.Item.Normal.Font = GetDisplayFont("Small", Me)
         Me.AccordionControlNavigator.Appearance.Item.Default.Font = GetDisplayFont("Small", Me)
         Me.AccordionControlNavigator.Appearance.Item.Hovered.Font = GetDisplayFont("Small", Me)
-        Dim sidebarFont As New Font("Segoe UI", 9.5F * PresentationScaleManager.UserScale)
-        For Each appearance As AppearanceObject In {AccordionControlSum.Appearance.Group.Normal, AccordionControlSum.Appearance.Group.Hovered,
-                                AccordionControlSum.Appearance.Item.Normal, AccordionControlSum.Appearance.Item.Hovered}
-            appearance.Font = sidebarFont
-            appearance.Options.UseFont = True
-        Next
+        ApplySidebarAccordionAppearance()
 
         Me.AccordionControlNavigator.BeginUpdate()
         Try
@@ -922,6 +971,33 @@ Public Class GroupInterfaceTemplate
 
         FitNavigatorWidth()
 
+    End Sub
+
+    Private Sub ApplySidebarAccordionAppearance()
+        'These are content-hosting Item elements, not navigational Groups. Keep
+        'their style/containers and expansion state; change header appearance only.
+        'Match headers only; do not change the renderer of hosted content.
+        AccordionControlSum.BeginUpdate()
+        Try
+            Dim sidebarFont As New Font("Segoe UI", 9.5F * PresentationScaleManager.UserScale, FontStyle.Regular)
+            For Each element As AccordionControlElement In AccordionControlSum.Elements
+                For Each appearance As AppearanceObject In {element.Appearance.Default, element.Appearance.Normal,
+                                        element.Appearance.Hovered, element.Appearance.Pressed, element.Appearance.Disabled}
+                    appearance.Assign(AccordionControlNavigator.Appearance.Group.Default)
+                    appearance.Font = sidebarFont
+                    appearance.BackColor = AccordionControlNavigator.Appearance.Group.Default.BackColor
+                    appearance.ForeColor = Color.White
+                    appearance.Options.UseFont = True
+                    appearance.Options.UseBackColor = True
+                    appearance.Options.UseForeColor = True
+                    appearance.TextOptions.WordWrap = WordWrap.NoWrap
+                    appearance.TextOptions.Trimming = Trimming.EllipsisCharacter
+                    appearance.Options.UseTextOptions = True
+                Next
+            Next
+        Finally
+            AccordionControlSum.EndUpdate()
+        End Try
     End Sub
 
     Private Sub FitNavigatorWidth()

@@ -394,6 +394,8 @@ Public Class BPIncomeExpenditureAnalyserV2
         HasSnapshots = TransactionalDBSnapshotManager.HasValidSnapshot(ModelID)
         UpdateDataSourceButtons()
 
+        InitialiseChartViews()
+
         Exit Sub
 
     End Sub
@@ -486,6 +488,7 @@ Public Class BPIncomeExpenditureAnalyserV2
     Public Sub DisconnectRDS()
 
         VirtualSelection.Clear()
+        InvalidateChartViews(True)
 
         If DSAnalDataRange IsNot Nothing Then
 
@@ -691,6 +694,8 @@ Public Class BPIncomeExpenditureAnalyserV2
             UpdateDataSourceButtons()
             Dim buttonsMs As Long = benchmark.ElapsedMilliseconds - buttonsStartMs
 
+            InvalidateChartViews(False)
+
             Dim totalMs As Long = benchmark.ElapsedMilliseconds
             Dim measuredMs As Long =
                 snapshotCheckMs + setupMs + bindSOCIMs + bindCFMs + bindBSMs +
@@ -768,6 +773,9 @@ Public Class BPIncomeExpenditureAnalyserV2
         End If
         Dim tag As String = ButSender.Tag.ToString()
         Select Case tag
+
+            Case "ToggleChart"
+                ToggleCurrentStatementChart()
 
             Case "ExportXL"
 

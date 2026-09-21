@@ -1,4 +1,4 @@
-param([string]$Configuration = 'Release', [string]$Workbook = 'C:\Repos\Abovo Summit\Library\Demo BP v26_0001.xlsb', [switch]$StressOnly, [switch]$GroupOnly)
+param([string]$Configuration = 'Release', [string]$Workbook = 'C:\Repos\Abovo Summit\Library\Demo BP v26_0001.xlsb', [switch]$StressOnly, [switch]$GroupOnly, [switch]$SidebarOnly)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $bin = Join-Path $repo ('bin\' + $Configuration)
@@ -13,7 +13,7 @@ Copy-Item -LiteralPath (Join-Path $repo 'Structure.xml') -Destination $output
 Copy-Item -LiteralPath (Join-Path $bin 'Abovo-summit.exe.config') -Destination ($runner + '.config')
 $hash = (Get-FileHash -LiteralPath $Workbook -Algorithm SHA256).Hash
 Write-Output "Layout renders: $output"
-& $runner $bin $Workbook $output $(if ($StressOnly) { '--stress-only' } elseif ($GroupOnly) { '--group-only' } else { '--all' })
+& $runner $bin $Workbook $output $(if ($StressOnly) { '--stress-only' } elseif ($SidebarOnly) { '--sidebar-only' } elseif ($GroupOnly) { '--group-only' } else { '--all' })
 $runnerExit = $LASTEXITCODE
 if ((Get-FileHash -LiteralPath $Workbook -Algorithm SHA256).Hash -ne $hash) { throw 'Source workbook changed.' }
 if ($runnerExit -ne 0) { throw 'Presentation layout fixture failed; source hash remains unchanged.' }

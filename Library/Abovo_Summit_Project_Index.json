@@ -7,6 +7,31 @@
     "containsVbaSource": false,
     "containsPasswords": false
   },
+  "analyserChartTrial": {
+    "testRelease": "2.50",
+    "documentation": "Library/Analyser_Chart_Trial_2026-09-21.md",
+    "implementation": "Interface/User Interface/BPIncomeExpenditureAnalyserV2.Chart.vb",
+    "regression": "Tools/Test-AnalyserChart.ps1",
+    "sources": ["Live", "Snapshot", "Comparison"],
+    "usesExistingGridSummaries": true,
+    "chartNavigationCalculatesWorkbook": false,
+    "nativeMouseWheelZoom": true,
+    "lineThickness": 5,
+    "pointMarkerSize": 8,
+    "sidebarContentLifecycleRegressionCovered": true,
+    "originalMastersModified": false,
+    "physicalDpiAcceptancePending": true
+  },
+  "analyserBalanceSheetRepair": {
+    "status": "Planned, not implemented",
+    "documentation": "Library/Analyser_Balance_Sheet_Repair_Plan_2026-09-21.md",
+    "newWorksheetsRequired": false,
+    "snapshotRegionExtensionRequiresApproval": true,
+    "verifiedPrimitiveLines": 37,
+    "verifiedAnnualPointsPerFile": 1480,
+    "synchroniserScope": "Invalidate/re-resolve adapter and snapshot bundle; retain existing mirror sizing rules",
+    "originalMastersModified": false
+  },
   "presentationLayout": {
     "testRelease": "2.44",
     "structureRevision": 1751,

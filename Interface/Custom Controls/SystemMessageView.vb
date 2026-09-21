@@ -35,28 +35,33 @@ Namespace Abovo
                 Return
             End If
 
+            Dim messages As List(Of SystemMessageRecord) = MessageManager.SnapshotItems()
+            messages.Sort(
+                Function(left As SystemMessageRecord, right As SystemMessageRecord) As Integer
+                    Dim timeComparison As Integer = right.TimeStamp.CompareTo(left.TimeStamp)
+                    If timeComparison <> 0 Then Return timeComparison
+                    Return right.EventID.CompareTo(left.EventID)
+                End Function)
+            If StatusLabel.Text.Length > 0 AndAlso ViewItems.SequenceEqual(messages) Then Return
+            SuspendLayout()
+            MessageGrid.BeginUpdate()
             MessageGridView.BeginDataUpdate()
             Try
                 ViewItems.RaiseListChangedEvents = False
                 ViewItems.Clear()
-                Dim messages As List(Of SystemMessageRecord) = MessageManager.SnapshotItems()
-                messages.Sort(
-                    Function(left As SystemMessageRecord, right As SystemMessageRecord) As Integer
-                        Dim timeComparison As Integer = right.TimeStamp.CompareTo(left.TimeStamp)
-                        If timeComparison <> 0 Then Return timeComparison
-                        Return right.EventID.CompareTo(left.EventID)
-                    End Function)
                 For Each item As SystemMessageRecord In messages
                     ViewItems.Add(item)
                 Next
+                StatusLabel.Text = ViewItems.Count.ToString() & " message" & If(ViewItems.Count = 1, String.Empty, "s")
             Finally
                 ViewItems.RaiseListChangedEvents = True
                 ViewItems.ResetBindings()
                 MessageGridView.EndDataUpdate()
+                MessageGrid.EndUpdate()
+                ResumeLayout(True)
             End Try
-            ConfigureColumns()
-            StatusLabel.Text = ViewItems.Count.ToString() & " message" & If(ViewItems.Count = 1, String.Empty, "s")
-            MessageGridView.BestFitColumns()
+            'Configured once at construction; do not resize every column for
+            'each arriving message (or reset the user's widths on summary refresh).
             If MessageGridView.RowCount > 0 Then MessageGridView.MoveFirst()
         End Sub
 

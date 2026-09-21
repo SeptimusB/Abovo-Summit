@@ -47,6 +47,14 @@ public static class PresentationLayoutFixture {
             var nav=(AccordionControl)Field(group,"AccordionControlNavigator");
             Check(Elements(nav.Elements).Any(x=>x.Text=="Funding"),"Navigator caption");
             Check(Elements(nav.Elements).Where(x=>x.HeaderVisible).All(x=>x.Appearance.Normal.TextOptions.WordWrap==DevExpress.Utils.WordWrap.NoWrap),"No wrapping");
+            var sidebar=(AccordionControl)Field(group,"AccordionControlSum");
+            Check(sidebar.Elements.Count>=6,"Dynamic history header included");
+            var expanded=sidebar.Elements.Select(x=>x.Expanded).ToArray();
+            foreach(var item in sidebar.Elements) {
+                Check(item.Style==ElementStyle.Item && item.ContentContainer!=null,"Sidebar keeps its content container: "+item.Text);
+                Check(item.Appearance.Normal.BackColor==nav.Appearance.Group.Default.BackColor && item.Appearance.Normal.ForeColor==Color.White,"Navigator-matched sidebar header: "+item.Text);
+                Check(item.Appearance.Normal.Options.UseBackColor && item.Appearance.Normal.Options.UseForeColor,"Explicit sidebar header appearance");
+            }
             var left=(DockPanel)Field(group,"DockPanelNewNavigator");
             var right=(DockPanel)Field(group,"DockPanelDetail");
             left.Visibility=DockVisibility.Visible; left.Width=430;
@@ -82,6 +90,67 @@ public static class PresentationLayoutFixture {
                 Check(firstButton.ImageOptions.SvgImageSize==new Size(42,42),"Icon switch preserves display size");
             }
             Console.WriteLine("PASS: XML routing, no-wrap navigator, independent hide/restore, exact visibility/width and new-interface toggle state.");
+            if(args.Length>3 && args[3]=="--sidebar-only") {
+                right.Visibility=DockVisibility.Visible;
+                var wait=System.Diagnostics.Stopwatch.StartNew();
+                while(wait.ElapsedMilliseconds<1500){Application.DoEvents();System.Threading.Thread.Sleep(10);}
+                foreach(string browserName in new[]{"WebBrowserBPSum","WebBrowserFundSum","WebBrowserFile"}) {
+                    var browser=(WebBrowser)Field(group,browserName);
+                    Console.WriteLine("BROWSER "+browserName+" visible="+browser.Visible+" bounds="+browser.Bounds+" state="+browser.ReadyState+" text="+(browser.Document==null || browser.Document.Body==null?"<no body>":browser.Document.Body.InnerText));
+                    File.WriteAllText(Path.Combine(args[2],browserName+".html"),browser.DocumentText);
+                    Check(browser.Document!=null && browser.Document.Body!=null && !String.IsNullOrWhiteSpace(browser.Document.Body.InnerText),"Sidebar document populated on initial open: "+browserName);
+                    if(browser.Document!=null && browser.Document.Body!=null) {
+                        dynamic dom=browser.Document.Body.DomElement;
+                        Console.WriteLine("BROWSERSTYLE "+browserName+" color="+dom.currentStyle.color+" visibility="+dom.currentStyle.visibility+" display="+dom.currentStyle.display+" dimensions="+dom.offsetWidth+"x"+dom.offsetHeight);
+                    }
+                }
+                foreach(int width in new[]{1900,2800,5000,1900,1280}) {
+                    group.ClientSize=new Size(width,1200);Invoke(group,"ApplyPresentationScale");Application.DoEvents();
+                    Check(sidebar.Elements.Select(x=>x.Expanded).SequenceEqual(expanded),"Sidebar expansion retained on resize");
+                    Check(sidebar.Elements.All(x=>x.Appearance.Normal.BackColor==nav.Appearance.Group.Default.BackColor && x.Appearance.Normal.ForeColor==Color.White),"Sidebar colours retained on resize");
+                    Save(sidebar,args[2],"sidebar-"+width+".png");
+                }
+                Invoke(group,"RefreshSummaryData","Automatic");
+                Invoke(group,"RefreshSummaryData","Automatic");
+                wait.Restart();while(wait.ElapsedMilliseconds<500){Application.DoEvents();System.Threading.Thread.Sleep(10);}
+                foreach(string name in new[]{"WebBrowserBPSum","WebBrowserFundSum","WebBrowserFile"}) {
+                    var browser=(WebBrowser)Field(group,name);
+                    Check(browser.ReadyState==WebBrowserReadyState.Complete && !String.IsNullOrWhiteSpace(browser.Document.Body.InnerText),"Document retained after repeated refresh/resize: "+name);
+                }
+                var fileBrowser=(WebBrowser)Field(group,"WebBrowserFile");
+                Invoke(group,"SetSidebarDocument",fileBrowser,"<html><body>older test</body></html>");
+                Invoke(group,"SetSidebarDocument",fileBrowser,"<html><body>latest test</body></html>");
+                Application.DoEvents();
+                Check(fileBrowser.Document.Body.InnerText=="latest test","Latest queued content wins without blank navigation");
+                Invoke(group,"RefreshSummaryData","Automatic");Application.DoEvents();
+                Check(fileBrowser.Document.Body.InnerText.Contains("Model details"),"Normal file details restored");
+                var messages=Field(group,"SidebarMessageView");
+                var messageView=(DevExpress.XtraGrid.Views.Grid.GridView)Field(messages,"MessageGridView");
+                var history=Field(group,"SidebarHistoryView");
+                var historyView=(DevExpress.XtraGrid.Views.Grid.GridView)Field(history,"HistoryGridView");
+                var messageWidths=messageView.VisibleColumns.Select(c=>c.Width).ToArray();
+                var historyWidths=historyView.VisibleColumns.Select(c=>c.Width).ToArray();
+                var heights=sidebar.Elements.Select(x=>x.ContentContainer.Height).ToArray();
+                var record=Activator.CreateInstance(app.GetType("Abovo.SystemMessageRecord"));
+                record.GetType().GetProperty("EventID").SetValue(record,Int32.MaxValue,null);
+                record.GetType().GetProperty("TimeStamp").SetValue(record,DateTime.Now,null);
+                record.GetType().GetProperty("Message").SetValue(record,"Isolated fixture: "+new string('x',300),null);
+                ((IList)Field(Field(messages,"MessageManager"),"Items")).Add(record);
+                Invoke((object)model.InterfaceHistory,"RecordStandalone",Enum.ToObject(app.GetType("Abovo.InterfaceHistoryDestinationKind"),1),"Isolated fixture history entry with a long caption","FFR");
+                for(int pass=0;pass<3;pass++){Invoke(messages,"RefreshMessages");Invoke(history,"RefreshHistory");Application.DoEvents();}
+                Check(messageView.VisibleColumns.Select(c=>c.Width).SequenceEqual(messageWidths) && historyView.VisibleColumns.Select(c=>c.Width).SequenceEqual(historyWidths),"Grid refresh retains column widths");
+                Check(sidebar.Elements.Select(x=>x.ContentContainer.Height).SequenceEqual(heights),"Grid refresh retains accordion container heights");
+                Check(sidebar.AnimationType==AnimationType.None,"Accordion layout animation disabled");
+                Invoke(group,"ToggleInterfacePanels");Invoke(group,"ToggleInterfacePanels");Application.DoEvents();
+                Check(fileBrowser.Document.Body.InnerText.Contains("Model details"),"Sidebar retains content across hide/restore");
+                // A retained second group gets its HTML when its browser handles
+                // are first created, rather than borrowing another group's content.
+                other.Show();Application.DoEvents();
+                wait.Restart();while(wait.ElapsedMilliseconds<500){Application.DoEvents();System.Threading.Thread.Sleep(10);}
+                var otherBrowser=(WebBrowser)Field(other,"WebBrowserFile");
+                Check(otherBrowser.Document!=null && otherBrowser.Document.Body.InnerText.Contains("Model details"),"Delayed second-window opening retains file details");
+                Console.WriteLine("PASS: sidebar headers, content containers, expansion, independent panels and resize.");return;
+            }
             int repairs=-1;
             foreach(dynamic child in model.WBStructure.GroupStructures[0].ChildStructures)
                 if(((string)child.CSName).StartsWith("Repairs & Maint")) { repairs=int.Parse(child.CSID); break; }
@@ -95,6 +164,7 @@ public static class PresentationLayoutFixture {
                 group.ClientSize=new Size(width,1200);
                 Invoke(group,"ApplyPresentationScale");
                 Application.DoEvents(); Application.DoEvents();
+                Check(sidebar.Elements.Select(x=>x.Expanded).SequenceEqual(expanded),"Sidebar expansion retained on resize");
                 Save(group,args[2],"group-repairs-"+width+".png");
                 Save(repairsDit,args[2],"dit-repairs-"+width+".png");
                 Console.WriteLine("DIT scale check: host="+group.ClientSize+", actual="+app.GetType("Abovo.AbovoAppCls").GetMethod("GetDisplayScale").Invoke(null,new object[]{repairsDit})+", toolbarFont="+toolbar.Font.SizeInPoints+", toolbar="+toolbar.Bounds);

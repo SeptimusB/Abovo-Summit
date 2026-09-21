@@ -328,35 +328,43 @@ Namespace Abovo
             End If
 
             Dim multipleModels As Boolean = InterfaceHistoryCoordinator.OpenModelCount > 1
-            ScopeSelector.Visible = multipleModels
-            Dim includeAllModels As Boolean =
-                multipleModels AndAlso InterfaceHistoryCoordinator.ShowAllModels
-            ChangingScopeSelector = True
+            SuspendLayout()
+            HistoryGrid.BeginUpdate()
             Try
-                ScopeSelector.SelectedIndex = If(includeAllModels, 1, 0)
-            Finally
-                ChangingScopeSelector = False
-            End Try
+                ScopeSelector.Visible = multipleModels
+                Dim includeAllModels As Boolean =
+                    multipleModels AndAlso InterfaceHistoryCoordinator.ShowAllModels
+                ChangingScopeSelector = True
+                Try
+                    ScopeSelector.SelectedIndex = If(includeAllModels, 1, 0)
+                Finally
+                    ChangingScopeSelector = False
+                End Try
 
-            HistoryGridView.BeginDataUpdate()
-            Try
-                ViewItems.RaiseListChangedEvents = False
-                ViewItems.Clear()
-                For Each item As InterfaceHistoryEntry In
-                    InterfaceHistoryCoordinator.SnapshotItems(ModelID, includeAllModels)
-                    ViewItems.Add(item)
-                Next
-            Finally
-                ViewItems.RaiseListChangedEvents = True
-                ViewItems.ResetBindings()
-                HistoryGridView.EndDataUpdate()
-            End Try
+                HistoryGridView.BeginDataUpdate()
+                Try
+                    ViewItems.RaiseListChangedEvents = False
+                    ViewItems.Clear()
+                    For Each item As InterfaceHistoryEntry In
+                        InterfaceHistoryCoordinator.SnapshotItems(ModelID, includeAllModels)
+                        ViewItems.Add(item)
+                    Next
+                Finally
+                    ViewItems.RaiseListChangedEvents = True
+                    ViewItems.ResetBindings()
+                    HistoryGridView.EndDataUpdate()
+                End Try
 
-            Dim modelColumn = HistoryGridView.Columns.ColumnByFieldName("ModelName")
-            modelColumn.Visible = includeAllModels
-            modelColumn.VisibleIndex = If(includeAllModels, 3, -1)
-            HistoryGridView.BestFitColumns()
-            If HistoryGridView.RowCount > 0 Then HistoryGridView.MoveFirst()
+                Dim modelColumn = HistoryGridView.Columns.ColumnByFieldName("ModelName")
+                modelColumn.Visible = includeAllModels
+                modelColumn.VisibleIndex = If(includeAllModels, 3, -1)
+                If HistoryGridView.RowCount > 0 Then HistoryGridView.MoveFirst()
+                'Keep the established column proportions while records are replaced.
+                'Only a genuine model-scope change should change column visibility.
+            Finally
+                HistoryGrid.EndUpdate()
+                ResumeLayout(True)
+            End Try
         End Sub
 
         Protected Overrides Sub Dispose(ByVal disposing As Boolean)
