@@ -456,6 +456,7 @@
     <Compile Include="Interface\Interface Services\DefaultHelpers.vb" />
     <Compile Include="Interface\Interface Services\DrawEditorHelper.vb" />
     <Compile Include="Interface\Interface Services\FontManager.vb" />
+    <Compile Include="Interface\Interface Services\PresentationLayout.vb" />
     <Compile Include="Interface\Interface Services\FormSplashScreen.vb" />
     <Compile Include="Interface\Interface Services\GeneralFunctions.vb" />
     <Compile Include="Interface\Interface Services\AnalyserVirtualSelectionManager.vb" />
@@ -616,6 +617,12 @@
     <Compile Include="Services\FileManager.vb" />
     <Compile Include="Services\BusinessPlanComparisonService.vb" />
     <Compile Include="Services\ModelManagerDefinition.vb" />
+    <Compile Include="Services\StructureAuthoringDraft.vb" />
+    <Compile Include="Interface\User Interface\StructureManagerForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Interface\User Interface\DataInterfaceTemplate.Authoring.vb" />
+    <Compile Include="My Project\ApplicationEvents.vb" />
     <Compile Include="Services\ModelManagerAccess.vb" />
     <Compile Include="Interface\User Interface\ModelManagerForm.vb">
       <SubType>Form</SubType>

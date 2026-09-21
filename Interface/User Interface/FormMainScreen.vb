@@ -131,6 +131,15 @@ Public Class FormMainScreen
         WindowsUIButtonPanelSaveClose.AppearanceButton.Normal.Font = GetDisplayFont("Small", Me)
         WindowsUIButtonPanelSaveClose.AppearanceButton.Hovered.Font = GetDisplayFont("Small", Me)
         WindowsUIButtonPanelSaveClose.AppearanceButton.Pressed.Font = GetDisplayFont("Small", Me)
+        For Each panel In {WindowsUIButtonPanelExitHelp, WindowsUIButtonPanelOpenCompare,
+                           WindowsUIButtonPanelBPActions, WindowsUIButtonPanelSaveClose}
+            PresentationLayout.ApplyButtonPanel(panel, Me)
+        Next
+        For Each tabs In {XtraTabControlModels, DsaModelsTabControl}
+            If tabs Is Nothing Then Continue For
+            tabs.AppearancePage.Header.Font = GetDisplayFont("Small", Me)
+            tabs.AppearancePage.HeaderActive.Font = GetDisplayFont("Small", Me)
+        Next
         'Me.GroupBoxFileActions.Font = GetFont("Small", Me.ScaleFactor)
 
     End Sub
@@ -186,6 +195,13 @@ Public Class FormMainScreen
         'WindowsUIButtonPanelSaveClose.Top = WebBrowserBPInfo.Top
         'WindowsUIButtonPanelSaveClose.Height = GroupBoxFileActions.Height
         WindowsUIButtonPanelOpenCompare.Width = XtraTabControlMainNavigator.PageClientBounds.Width - (2 * ScaleUnits)
+        WindowsUIButtonPanelOpenCompare.Height = PresentationLayout.ButtonPanelHeight(
+            WindowsUIButtonPanelOpenCompare, WindowsUIButtonPanelOpenCompare.Width)
+        WindowsUIButtonPanelExitHelp.Height = PresentationLayout.ButtonPanelHeight(
+            WindowsUIButtonPanelExitHelp, WindowsUIButtonPanelExitHelp.Width)
+        WindowsUIButtonPanelExitHelp.Top = XtraTabControlMainNavigator.Bottom - WindowsUIButtonPanelExitHelp.Height
+        XtraTabControlModels.Top = WindowsUIButtonPanelOpenCompare.Bottom + ScaleUnits
+        XtraTabControlModels.Height = Math.Max(100, XtraTabPageMainHABP.ClientSize.Height - XtraTabControlModels.Top - ScaleUnits)
         'WindowsUIButtonPanelBPActions.Top = WebBrowserBPInfo.Bottom + ScaleUnits
         'WindowsUIButtonPanelBPActions.Width = WebBrowserBPInfo.Width
         GroupBoxProgramDetails.Top = PictureBoxAbovoLogo.Bottom + ScaleUnits
@@ -347,24 +363,34 @@ Public Class FormMainScreen
 
     End Function
 #End If
+    Private Sub ApplyPresentationScale()
+        ResizeFonts()
+        ResizeControls()
+        SetBrowserText()
+        If FileInstances IsNot Nothing Then
+            For Each instance In FileInstances
+                If instance Is Nothing OrElse instance.IsDisposed Then Continue For
+                instance.SetScale()
+                instance.PopulateFileInfo()
+            Next
+        End If
+    End Sub
+
     Private Sub SetBrowserText()
-
-        WebBrowserProgramDetails.DocumentText = "<html><body><B>" +
-                                                "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits * 1.2) & "px'>abovo-summit version " & DecVersionNumber & " <br/></b>" +
-                                                "</p>" +
-                                                "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'>© 2015-" +
-                                                Year(Now()).ToString +
-                                                " Abovo Business Services Limited.</p>" +
-                                                "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'><Support <a href='https://www.abovo-consult.co.uk'>www.abovo-consult.co.uk</a>" +
-                                                "</p><p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'><a href='mailto:support@abovo-consult.co.uk'>support@abovo-consult.co.uk</a><br>" +
-                                                "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'>Built using Microsoft&reg; Excel&reg; © " +
-                                                "<a href='https://www.microsoft.com'>Microsoft</a> Inc. </p>" +
-                                                "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'>Portions © Developer Express Inc." +
-                                                "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'>Visit the <a href='goforum'>Abovo Forum</a>." +
-                                                "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'>View <a href='goforum'>System Log</a>." +
-                                                "<p style ='font-family:verdana' style='font-size:" & CInt(ScaleUnits) & "px'>Portions © Developer Express Inc." +
-                                                "</body></html>"
-
+        WebBrowserProgramDetails.Tag = PresentationLayout.BrowserOwnsScale
+        Dim points As String = GetDisplayFont("Small", Me).SizeInPoints.ToString(
+            "0.##", Globalization.CultureInfo.InvariantCulture)
+        WebBrowserProgramDetails.DocumentText =
+            "<html><head><style>body{font-family:Segoe UI,Verdana,sans-serif;font-size:" & points &
+            "pt;margin:8px;line-height:1.35;}p{margin:0 0 1em;}</style></head><body>" &
+            "<p><b>abovo-summit version " & DecVersionNumber.ToString("0.00") & "</b></p>" &
+            "<p>&copy; 2015-" & Year(Now()).ToString() & " Abovo Business Services Limited.</p>" &
+            "<p><a href='https://www.abovo-consult.co.uk'>www.abovo-consult.co.uk</a></p>" &
+            "<p><a href='mailto:support@abovo-consult.co.uk'>support@abovo-consult.co.uk</a></p>" &
+            "<p>Built using Microsoft&reg; Excel&reg; &copy; <a href='https://www.microsoft.com'>Microsoft</a> Inc.</p>" &
+            "<p>Portions &copy; Developer Express Inc.</p>" &
+            "<p>Visit the <a href='goforum'>Abovo Forum</a>.</p>" &
+            "<p>View <a href='goforum'>System Log</a>.</p></body></html>"
     End Sub
 
     Private Sub ButtonExit_Click(sender As Object, e As EventArgs)
@@ -828,6 +854,7 @@ Public Class FormMainScreen
 
     Private Sub FormMainScreen_ResizeEnd(sender As Object, e As EventArgs) Handles MyBase.ResizeEnd
 
+        ApplyPresentationScale()
         ResizeControls()
         PictureBoxAbovoLogo.Height = CInt(PictureBoxAbovoLogo.Width * 0.483)
         GroupBoxProgramDetails.Top = PictureBoxAbovoLogo.Bottom + ScaleUnits

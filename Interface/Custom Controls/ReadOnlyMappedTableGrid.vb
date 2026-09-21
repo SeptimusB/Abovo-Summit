@@ -22,6 +22,11 @@ Imports DevExpress.XtraGrid.Views.Grid
 Public NotInheritable Class ReadOnlyMappedTableGrid
     Inherits GridControl
 
+    Friend Property IsAuthoringPreview As Boolean
+    Friend Function AuthoringSelectedCell() As Cell
+        Return SourceCell(view.FocusedRowHandle, view.FocusedColumn)
+    End Function
+
     Private ReadOnly sourceSheet As Worksheet
     Private ReadOnly sourceRange As CellRange
     Private ReadOnly view As GridView
@@ -428,6 +433,7 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
     End Sub
 
     Private Sub ClickCell(sender As Object, e As RowCellClickEventArgs)
+        If IsAuthoringPreview Then Return
         'Finishing a copy rectangle on G is selection, not navigation.
         If e.Button = MouseButtons.Left AndAlso e.Clicks = 1 AndAlso
             ModifierKeys = Keys.None AndAlso view.GetSelectedCells().Length <= 1 Then
@@ -440,7 +446,7 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
             WorkbookGridClipboardSupport.CopyGridSelection(Me)
             e.Handled = True
             e.SuppressKeyPress = True
-        ElseIf e.KeyCode = Keys.Enter Then
+        ElseIf e.KeyCode = Keys.Enter AndAlso Not IsAuthoringPreview Then
             Dim cell As Cell = SourceCell(view.FocusedRowHandle, view.FocusedColumn)
             If cell IsNot Nothing AndAlso cell.ColumnIndex = linkColumnIndex Then
                 ShowLinkChoices(cell, view.FocusedColumn.FieldName = InterfaceField)

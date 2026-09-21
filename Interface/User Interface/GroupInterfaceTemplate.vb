@@ -72,6 +72,64 @@ Public Class GroupInterfaceTemplate
     Private SidebarEventsAttached As Boolean
     Private SidebarHiddenReady As Boolean
     Private SidebarHideTransition As Boolean
+    Private PanelsHidden As Boolean
+    Private ReadOnly SavedPanelStates As New Dictionary(Of DevExpress.XtraBars.Docking.DockPanel, Tuple(Of DevExpress.XtraBars.Docking.DockVisibility, Size))
+    Private ReadOnly PanelButtons As New List(Of WindowsUIButton)
+    Private PresentationReady As Boolean
+    Private PresentationResizeQueued As Boolean
+    Private LastPresentationScale As Single = -1
+    Private LastPanelLayoutWidth As Integer = -1
+    Private LastPanelLayoutScale As Single = -1
+    Private LastSidebarUserScale As Single = -1
+
+    Public Sub AttachPanelsButton(panel As WindowsUIButtonPanel)
+        If panel.Buttons.OfType(Of WindowsUIButton)().Any(Function(b) Object.Equals(b.Tag, "TogglePanels")) Then Return
+        Dim button As WindowsUIButton = PresentationLayout.CreatePanelsButton()
+        PanelButtons.Add(button)
+        panel.Buttons.Add(button)
+        AddHandler panel.ButtonClick,
+            Sub(sender, e)
+                If Object.ReferenceEquals(e.Button, button) Then ToggleInterfacePanels()
+            End Sub
+        AddHandler panel.Disposed, Sub(sender, e) PanelButtons.Remove(button)
+        UpdatePanelsButtons()
+    End Sub
+
+    Public Sub ToggleInterfacePanels()
+        DockManagerAssumptions.BeginUpdate()
+        SidebarHideTransition = True
+        Try
+            If Not PanelsHidden Then
+                SavedPanelStates.Clear()
+                For Each panel In {DockPanelNewNavigator, DockPanelNavigator, DockPanelDetail}
+                    SavedPanelStates.Add(panel, Tuple.Create(panel.Visibility, panel.Size))
+                Next
+                PanelsHidden = True
+                For Each panel In SavedPanelStates.Keys
+                    panel.Visibility = DevExpress.XtraBars.Docking.DockVisibility.Hidden
+                Next
+            Else
+                For Each entry In SavedPanelStates
+                    entry.Key.OriginalSize = entry.Value.Item2
+                    entry.Key.Visibility = entry.Value.Item1
+                    entry.Key.Size = entry.Value.Item2
+                Next
+                PanelsHidden = False
+            End If
+            UpdatePanelsButtons()
+        Finally
+            SidebarHideTransition = False
+            DockManagerAssumptions.EndUpdate()
+        End Try
+        If Not PanelsHidden Then ResizeControls()
+        ResizeGIT()
+    End Sub
+
+    Private Sub UpdatePanelsButtons()
+        For Each button In PanelButtons
+            PresentationLayout.UpdatePanelsButton(button, PanelsHidden)
+        Next
+    End Sub
     Public Sub New()
 
         ' This call is required by the designer.
@@ -122,6 +180,9 @@ Public Class GroupInterfaceTemplate
         LoadDefaultInterface()
         InitialiseRightSidebar()
         RefreshSummaryData()
+        PresentationReady = True
+        LastPanelLayoutWidth = -1
+        ApplyPresentationScale()
 
     End Sub
     Sub HideNewNavContainer(ByVal sender As Object, ByVal e As DevExpress.XtraBars.Docking2010.ButtonEventArgs) Handles DockPanelNewNavigator.CustomButtonClick
@@ -185,11 +246,11 @@ Public Class GroupInterfaceTemplate
 
             If CS.IsMaster = "True" Then
 
-                AddNavigatorItem(CS.CSName, SetTag, CS.IsMaster)
+                AddNavigatorItem(CS.NavigationText, SetTag, CS.IsMaster)
 
             Else
 
-                AddNavigatorItem(CS.CSName, SetTag, CS.IsMaster, CS.GroupName)
+                AddNavigatorItem(CS.NavigationText, SetTag, CS.IsMaster, CS.NavigationGroupText)
 
             End If
 
@@ -239,7 +300,7 @@ Public Class GroupInterfaceTemplate
                 If String.Equals(child.IsMaster, "True", StringComparison.OrdinalIgnoreCase) Then
                     groupNode.Elements.Add(New AccordionControlElement With {
                         .Name = "CombinedItem" & groupIndex.ToString() & "_" & childID.ToString(),
-                        .Text = child.CSName & " >", .Tag = target,
+                        .Text = child.NavigationText & " >", .Tag = target,
                         .Style = DevExpress.XtraBars.Navigation.ElementStyle.Group
                     })
                     currentSubgroup = Nothing
@@ -254,7 +315,7 @@ Public Class GroupInterfaceTemplate
                 ElseIf Not String.Equals(currentSubgroupName, subgroupName, StringComparison.Ordinal) Then
                     currentSubgroup = New AccordionControlElement With {
                         .Name = "CombinedSection" & groupIndex.ToString() & "_" & childID.ToString(),
-                        .Text = subgroupName,
+                        .Text = child.NavigationGroupText,
                         .Style = DevExpress.XtraBars.Navigation.ElementStyle.Group
                     }
                     groupNode.Elements.Add(currentSubgroup)
@@ -263,7 +324,7 @@ Public Class GroupInterfaceTemplate
 
                 Dim childNode As New AccordionControlElement With {
                     .Name = "CombinedItem" & groupIndex.ToString() & "_" & childID.ToString(),
-                    .Text = child.CSName, .Tag = target,
+                    .Text = child.NavigationText, .Tag = target,
                     .Style = DevExpress.XtraBars.Navigation.ElementStyle.Item
                 }
                 If currentSubgroup Is Nothing Then
@@ -284,6 +345,7 @@ Public Class GroupInterfaceTemplate
             AccordionControlNavigator.EndUpdate()
         End Try
         AddHandler AccordionControlNavigator.ElementClick, AddressOf AccordionControlNavigator_ElementClick
+        ResizeFonts()
     End Sub
 
     Private Shared Sub SetCombinedGroupAppearance(
@@ -445,18 +507,25 @@ Public Class GroupInterfaceTemplate
     Private Shared Function CompactSummaryHtml(ByVal sourceHtml As String) As String
         If String.IsNullOrWhiteSpace(sourceHtml) Then Return sourceHtml
         Dim UserScale As Single = Abovo.PresentationScaleManager.UserScale
-        Dim FontSize As String = (8.0F * UserScale).ToString("0.##", Globalization.CultureInfo.InvariantCulture)
+        Dim FontSize As String = (9.5F * UserScale).ToString("0.##", Globalization.CultureInfo.InvariantCulture)
         Dim RowHeight As String = Math.Max(14, CInt(Math.Round(18 * UserScale))).ToString()
         Dim HorizontalPadding As String = Math.Max(2, CInt(Math.Round(3 * UserScale))).ToString()
         Dim compactStyle As String =
             "<style type='text/css'>" &
             "html,body{margin:0!important;padding:2px!important;font-size:" & FontSize & "pt!important;}" &
-            "table{width:auto!important;margin:0!important;border-collapse:collapse!important;}" &
+            "table{width:100%!important;margin:0!important;border-collapse:collapse!important;}col{width:auto!important;}" &
             "tr{height:" & RowHeight & "px!important;min-height:" & RowHeight & "px!important;}" &
             "td,th{height:" & RowHeight & "px!important;min-height:0!important;padding:1px " &
             HorizontalPadding & "px!important;font-size:" & FontSize &
-            "pt!important;line-height:1.05!important;white-space:nowrap!important;}" &
+            "pt!important;line-height:1.15!important;white-space:normal!important;}" &
             "</style>"
+        'Excel exports spacer rows as cells containing only non-breaking spaces.
+        'Remove only those empty rows, never a zero or a labelled check.
+        sourceHtml = System.Text.RegularExpressions.Regex.Replace(sourceHtml, "<tr\b[^>]*>.*?</tr>",
+            Function(m)
+                Dim contents = System.Text.RegularExpressions.Regex.Replace(m.Value, "<[^>]+>", "")
+                Return If(String.IsNullOrWhiteSpace(WebUtility.HtmlDecode(contents)), "", m.Value)
+            End Function, System.Text.RegularExpressions.RegexOptions.IgnoreCase Or System.Text.RegularExpressions.RegexOptions.Singleline)
         Dim headEnd As Integer = sourceHtml.IndexOf("</head>", StringComparison.OrdinalIgnoreCase)
         If headEnd >= 0 Then Return sourceHtml.Insert(headEnd, compactStyle)
         Return compactStyle & sourceHtml
@@ -489,6 +558,7 @@ Public Class GroupInterfaceTemplate
         For Each browser As WebBrowser In {WebBrowserBPSum, WebBrowserDevSum,
                                            WebBrowserFundSum, WebBrowserAboutHelp,
                                            WebBrowserFile}
+            browser.Tag = PresentationLayout.BrowserOwnsScale
             browser.AllowWebBrowserDrop = False
             browser.IsWebBrowserContextMenuEnabled = False
             browser.ScriptErrorsSuppressed = True
@@ -548,13 +618,13 @@ Public Class GroupInterfaceTemplate
     End Sub
 
     Private Sub DockPanelDetail_Expanded(ByVal sender As Object,
-                                         ByVal e As DevExpress.XtraBars.Docking.DockPanelEventArgs)
-        If Not SidebarHiddenReady OrElse SidebarHideTransition OrElse
+                                          ByVal e As DevExpress.XtraBars.Docking.DockPanelEventArgs)
+        If PanelsHidden OrElse Not SidebarHiddenReady OrElse SidebarHideTransition OrElse
            IsDisposed OrElse Disposing Then Return
         SidebarHiddenReady = False
         BeginInvoke(New MethodInvoker(
             Sub()
-                If IsDisposed OrElse Disposing Then Return
+                If IsDisposed OrElse Disposing OrElse PanelsHidden Then Return
                 If DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide Then
                     DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.Visible
                 End If
@@ -613,11 +683,12 @@ Public Class GroupInterfaceTemplate
     End Function
 
     Private Function CreateSidebarHtml(ByVal body As String) As String
-        Return "<!doctype html><html><head><meta charset='utf-8'><style>" &
-            "body{font-family:Segoe UI,Arial,sans-serif;font-size:8.5pt;color:#333;margin:6px;background:#fff;line-height:1.15}" &
+        Dim points As String = (9.5F * PresentationScaleManager.UserScale).ToString("0.##", Globalization.CultureInfo.InvariantCulture)
+        Return "<!doctype html><html><head><meta charset='utf-8'><meta http-equiv='X-UA-Compatible' content='IE=edge'><style>" &
+            "body{font-family:Segoe UI,Arial,sans-serif;font-size:" & points & "pt;color:#333;margin:6px;background:#fff;line-height:1.2}" &
             "h2{color:#075da8;font-size:1.15em;margin:0 0 6px}" &
-            "a{color:#075da8}p{margin:3px 0}dl{display:grid;grid-template-columns:minmax(85px,35%) 1fr;gap:3px 6px;margin:4px 0}" &
-            "dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}</style></head><body>" & body & "</body></html>"
+            "a{color:#075da8}p{margin:3px 0}dl{margin:4px 0}dt{font-weight:600;float:left;clear:left;width:32%;padding:2px 0}" &
+            "dd{margin:0 0 0 35%;padding:2px 0;word-wrap:break-word}</style></head><body>" & body & "</body></html>"
     End Function
 
     Private Sub GroupInterfaceTemplate_Disposed(ByVal sender As Object,
@@ -728,6 +799,7 @@ Public Class GroupInterfaceTemplate
         AccordionControlNavigator.Elements.AddRange(AccRoot)
 
         AddHandler AccordionControlNavigator.ElementClick, AddressOf AccordionControlNavigator_ElementClick
+        ResizeFonts()
 
     End Sub
     Sub LoadDefaultInterface()
@@ -808,11 +880,13 @@ Public Class GroupInterfaceTemplate
         ScaleUnits = Me.Width * 0.007
 
         DockPanelNavigator.Width = SetWidth
+        FitNavigatorWidth()
         'DockManagerAssumptions.
     End Sub
     Sub ResizeFonts()
 
         ScaleFactor = GetDisplayScale(Me)
+        LastPresentationScale = ScaleFactor
 
         Me.hideContainerRightDetail.Font = GetDisplayFont("Small", Me)
         Me.BarAndDockingControllerAssumptions.AppearancesDocking.ActiveTab.Font = GetDisplayFont("Medium", Me)
@@ -822,12 +896,19 @@ Public Class GroupInterfaceTemplate
         Me.BarAndDockingControllerAssumptions.AppearancesDocking.PanelCaptionActive.Font = GetDisplayFont("Medium", Me)
         Me.BarTopBar.BarAppearance.Normal.Font = GetDisplayFont("Medium", Me)
         Me.BarStaticItemDescription.ItemAppearance.Normal.Font = GetDisplayFont("Medium", Me)
+        BarTopBar.OptionsBar.MinHeight = CInt(36 * ScaleFactor)
         Me.AccordionControlNavigator.Appearance.Group.Hovered.Font = GetDisplayFont("Medium", Me)
         Me.AccordionControlNavigator.Appearance.Group.Default.Font = GetDisplayFont("Medium", Me)
         Me.AccordionControlNavigator.Appearance.Group.Normal.Font = GetDisplayFont("Medium", Me)
         Me.AccordionControlNavigator.Appearance.Item.Normal.Font = GetDisplayFont("Small", Me)
         Me.AccordionControlNavigator.Appearance.Item.Default.Font = GetDisplayFont("Small", Me)
         Me.AccordionControlNavigator.Appearance.Item.Hovered.Font = GetDisplayFont("Small", Me)
+        Dim sidebarFont As New Font("Segoe UI", 9.5F * PresentationScaleManager.UserScale)
+        For Each appearance As AppearanceObject In {AccordionControlSum.Appearance.Group.Normal, AccordionControlSum.Appearance.Group.Hovered,
+                                AccordionControlSum.Appearance.Item.Normal, AccordionControlSum.Appearance.Item.Hovered}
+            appearance.Font = sidebarFont
+            appearance.Options.UseFont = True
+        Next
 
         Me.AccordionControlNavigator.BeginUpdate()
         Try
@@ -839,7 +920,41 @@ Public Class GroupInterfaceTemplate
             Me.AccordionControlNavigator.EndUpdate()
         End Try
 
+        FitNavigatorWidth()
+
     End Sub
+
+    Private Sub FitNavigatorWidth()
+        If PanelsHidden OrElse AccordionControlNavigator Is Nothing OrElse ClientSize.Width < 1 Then Return
+        Dim scale As Single = GetDisplayScale(Me)
+        If LastPanelLayoutWidth = ClientSize.Width AndAlso Math.Abs(LastPanelLayoutScale - scale) < 0.001F Then Return
+        LastPanelLayoutWidth = ClientSize.Width
+        LastPanelLayoutScale = scale
+        Dim wanted As Integer = CInt(200 * CSng(DeviceDpi) / 96.0F)
+        For Each element As AccordionControlElement In AccordionControlNavigator.Elements
+            wanted = Math.Max(wanted, MeasureNavigatorElement(element, 0))
+        Next
+        'Keep a useful document area on small/side-by-side windows. Exceptionally
+        'long captions ellipsize instead of wrapping or shrinking the user's font.
+        DockPanelNewNavigator.Width = Math.Min(wanted, Math.Max(180, CInt(ClientSize.Width * 0.25)))
+        DockPanelDetail.Width = Math.Min(CInt(340 * scale * DeviceDpi / 96.0F), Math.Max(220, CInt(ClientSize.Width * 0.22)))
+        Dim compactScale As Single = PresentationScaleManager.UserScale * DeviceDpi / 96.0F
+        AccordionContentContainer1.Height = CInt(240 * compactScale)
+        AccordionContentContainer5.Height = CInt(230 * compactScale)
+    End Sub
+
+    Private Function MeasureNavigatorElement(element As AccordionControlElement, depth As Integer) As Integer
+        Dim dpi As Single = CSng(DeviceDpi) / 96.0F
+        Dim width As Integer = 0
+        If element.HeaderVisible Then
+            width = TextRenderer.MeasureText(element.Text, element.Appearance.Normal.Font,
+                Size.Empty, TextFormatFlags.SingleLine Or TextFormatFlags.NoPadding).Width + CInt((64 + depth * 26) * dpi)
+        End If
+        For Each child As AccordionControlElement In element.Elements
+            width = Math.Max(width, MeasureNavigatorElement(child, depth + If(element.HeaderVisible, 1, 0)))
+        Next
+        Return width
+    End Function
 
     Private Sub ApplyNavigatorElementFont(
         ByVal Element As DevExpress.XtraBars.Navigation.AccordionControlElement,
@@ -860,6 +975,12 @@ Public Class GroupInterfaceTemplate
         Element.Appearance.Hovered.Options.UseFont = True
         Element.Appearance.Pressed.Options.UseFont = True
         Element.Appearance.Disabled.Options.UseFont = True
+        For Each appearance As AppearanceObject In {Element.Appearance.Default, Element.Appearance.Normal,
+                                Element.Appearance.Hovered, Element.Appearance.Pressed, Element.Appearance.Disabled}
+            appearance.TextOptions.WordWrap = WordWrap.NoWrap
+            appearance.TextOptions.Trimming = Trimming.EllipsisCharacter
+            appearance.Options.UseTextOptions = True
+        Next
 
         If IsCombined AndAlso depth = 1 AndAlso
            Element.Style = DevExpress.XtraBars.Navigation.ElementStyle.Group Then
@@ -895,6 +1016,16 @@ Public Class GroupInterfaceTemplate
         End Try
 
     End Sub
+    Private Sub ApplyPresentationScale()
+        If IsDisposed OrElse Disposing Then Return
+        ResizeFonts()
+        ResizeControls()
+        ResizeGIT()
+        If PresentationReady AndAlso Math.Abs(LastSidebarUserScale - PresentationScaleManager.UserScale) > 0.001F Then
+            LastSidebarUserScale = PresentationScaleManager.UserScale
+            RefreshSummaryData("Presentation")
+        End If
+    End Sub
     Private Sub GIT_ResizeEnd(sender As Object, e As EventArgs) Handles MyBase.ResizeEnd
 
         ResizeControls()
@@ -902,9 +1033,17 @@ Public Class GroupInterfaceTemplate
 
     End Sub
     Private Sub GIT_Resize(sender As Object, e As EventArgs) Handles MyBase.Resize
-
-
-
+        If PresentationReady AndAlso IsHandleCreated AndAlso Not PresentationResizeQueued AndAlso Not Disposing AndAlso Not IsDisposed Then
+            PresentationResizeQueued = True
+            BeginInvoke(New MethodInvoker(
+                Sub()
+                    PresentationResizeQueued = False
+                    If IsDisposed OrElse Disposing Then Return
+                    If Math.Abs(LastPresentationScale - GetDisplayScale(Me)) > 0.001F Then ResizeFonts()
+                    ResizeControls()
+                    ResizeGIT()
+                End Sub))
+        End If
         If Me.WindowState = FormWindowState.Maximized Then
 
             AmMaximised = True

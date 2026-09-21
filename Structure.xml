@@ -5,7 +5,7 @@
   <FileID>2077</FileID>
   <RejData>23_t4qhe</RejData>
   <StartDate>01/04/2024</StartDate>
-  <XMLVer>1750</XMLVer>
+  <XMLVer>1752</XMLVer>
   <CompanyName>Demonstration Housing</CompanyName>
   <GroupStructure Name="Assumptions">
     <GSName>Assumptions</GSName>
@@ -14,6 +14,7 @@
     <ChildStructure Name="Global Assumptions">
       <IsMaster>True</IsMaster>
       <CSName>Global Assumptions</CSName>
+      <NavigatorCaption>Global</NavigatorCaption>
       <CSID>0</CSID>
       <ParentID>1</ParentID>
       <DefaultWorksheet>Global Assumptions</DefaultWorksheet>
@@ -223,6 +224,7 @@
     </ChildStructure>
     <ChildStructure Name="Stock Assumptions">
       <CSName>Stock Assumptions</CSName>
+      <NavigatorCaption>Stock</NavigatorCaption>
       <CSID>1</CSID>
       <ParentID>1</ParentID>
       <IsMaster>True</IsMaster>
@@ -520,6 +522,7 @@
     </ChildStructure>
     <ChildStructure Name="Rent Assumptions">
       <CSName>Rent Assumptions</CSName>
+      <NavigatorCaption>Rent</NavigatorCaption>
       <CSID>2</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -967,6 +970,7 @@
     </ChildStructure>
     <ChildStructure Name="Service Charge Assumptions">
       <CSName>Service Charge Assumptions</CSName>
+      <NavigatorCaption>Service Charge</NavigatorCaption>
       <CSID>3</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -1185,6 +1189,7 @@
     </ChildStructure>
     <ChildStructure Name="RTB Assumptions">
       <CSName>RTB Assumptions</CSName>
+      <NavigatorCaption>RTB</NavigatorCaption>
       <CSID>4</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -1391,6 +1396,7 @@
     </ChildStructure>
     <ChildStructure Name="Income Foregone Assumptions">
       <CSName>Income Foregone Assumptions</CSName>
+      <NavigatorCaption>Income Foregone</NavigatorCaption>
       <CSID>5</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -1533,6 +1539,7 @@
     </ChildStructure>
     <ChildStructure Name="Stock Disposal Assumptions">
       <CSName>Stock Disposal Assumptions</CSName>
+      <NavigatorCaption>Stock Disposal</NavigatorCaption>
       <CSID>6</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -1638,6 +1645,7 @@
     </ChildStructure>
     <ChildStructure Name="Stock Conversion Assumptions">
       <CSName>Stock Conversion Assumptions</CSName>
+      <NavigatorCaption>Stock Conversion</NavigatorCaption>
       <CSID>7</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -1760,6 +1768,7 @@
     </ChildStructure>
     <ChildStructure Name="Owner Occupier Assumptions">
       <CSName>Owner Occupier Assumptions</CSName>
+      <NavigatorCaption>Owner Occupier</NavigatorCaption>
       <CSID>8</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -1905,6 +1914,7 @@
     </ChildStructure>
     <ChildStructure Name="Leaseholder Income Assumptions">
       <CSName>Leaseholder Income Assumptions</CSName>
+      <NavigatorCaption>Leaseholder Income</NavigatorCaption>
       <CSID>9</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -2045,6 +2055,7 @@
     </ChildStructure>
     <ChildStructure Name="Specific Income Assumptions">
       <CSName>Specific Income Assumptions</CSName>
+      <NavigatorCaption>Specific Income</NavigatorCaption>
       <CSID>10</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -2240,6 +2251,7 @@
     </ChildStructure>
     <ChildStructure Name="Other Income Assumptions">
       <CSName>Other Income Assumptions</CSName>
+      <NavigatorCaption>Other Income</NavigatorCaption>
       <CSID>11</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -2444,6 +2456,7 @@
     </ChildStructure>
     <ChildStructure Name="Capital Grant Assumptions">
       <CSName>Capital Grant Assumptions</CSName>
+      <NavigatorCaption>Capital Grant</NavigatorCaption>
       <CSID>12</CSID>
       <ParentID>1</ParentID>
       <DefaultWorksheet>Capital Grant Assumptions</DefaultWorksheet>
@@ -2603,6 +2616,7 @@
     </ChildStructure>
     <ChildStructure Name="Intercompany Income Assumptions">
       <CSName>Intercompany Income Assumptions</CSName>
+      <NavigatorCaption>Intercompany Income</NavigatorCaption>
       <CSID>13</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -2726,11 +2740,13 @@
     </ChildStructure>
     <ChildStructure Name="Management Costs Assumptions">
       <CSName>Management Costs Assumptions</CSName>
+      <NavigatorCaption>Management Costs</NavigatorCaption>
       <CSID>14</CSID>
       <ParentID>1</ParentID>
       <DefaultWorksheet>Management Costs Assumptions</DefaultWorksheet>
       <IsMaster>True</IsMaster>
       <GroupName>Management Costs Assumptions</GroupName>
+      <NavigatorGroupCaption>Management Costs</NavigatorGroupCaption>
 
       <CSInterfaceSection Name="Summary Categories">
         <ISName>Summary Categories</ISName>
@@ -3015,6 +3031,7 @@
     </ChildStructure>
     <ChildStructure Name="Repairs &amp; Maint Assumptions">
       <CSName>Repairs &amp; Maint Assumptions</CSName>
+      <NavigatorCaption>Repairs &amp; Maint</NavigatorCaption>
       <CSID>15</CSID>
       <ParentID>1</ParentID>
       <DefaultWorksheet>Repairs &amp; Maint. Assumptions</DefaultWorksheet>
@@ -4057,6 +4074,7 @@
     </ChildStructure>
     <ChildStructure Name="Additional Pension Assumptions">
       <CSName>Additional Pension Assumptions</CSName>
+      <NavigatorCaption>Additional Pension</NavigatorCaption>
       <CSID>19</CSID>
       <DefaultWorksheet>Additional Pension Assumptions</DefaultWorksheet>
       <ParentID>1</ParentID>
@@ -4282,6 +4300,7 @@
     </ChildStructure>
     <ChildStructure Name="Capital Expenditure Assumptions">
       <CSName>Capital Expenditure Assumptions</CSName>
+      <NavigatorCaption>Capital Expenditure</NavigatorCaption>
       <CSID>20</CSID>
       <DefaultWorksheet>Capital Expenditure Assumptions</DefaultWorksheet>
       <ParentID>1</ParentID>
@@ -4422,6 +4441,7 @@
     </ChildStructure>
     <ChildStructure Name="Joint Venture Assumptions">
       <CSName>Joint Venture Assumptions</CSName>
+      <NavigatorCaption>Joint Venture</NavigatorCaption>
       <CSID>21</CSID>
       <DefaultWorksheet>Joint Venture Assumptions</DefaultWorksheet>
       <ParentID>1</ParentID>
@@ -4494,6 +4514,7 @@
     </ChildStructure>
     <ChildStructure Name="Intercompany Expenditure Assumptions">
       <CSName>Intercompany Expenditure Assumptions</CSName>
+      <NavigatorCaption>Intercompany Expenditure</NavigatorCaption>
       <CSID>22</CSID>
       <DefaultWorksheet>Intercompany Expend Assumptions</DefaultWorksheet>
       <ParentID>1</ParentID>
@@ -4648,6 +4669,7 @@
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Development Assumptions</GroupName>
+      <NavigatorGroupCaption>Development</NavigatorGroupCaption>
 
       <CSInterfaceSection Name="Development Options and Admin">
         <ISName>Development Options and Admin</ISName>
@@ -4905,6 +4927,7 @@
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Development Assumptions</GroupName>
+      <NavigatorGroupCaption>Development</NavigatorGroupCaption>
       <CSInterfaceSection Name="Imported Schemes">
         <ISName>Imported Schemes</ISName>
         <ISDatasource>
@@ -4992,6 +5015,7 @@
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Development Assumptions</GroupName>
+      <NavigatorGroupCaption>Development</NavigatorGroupCaption>
       <CSInterfaceSection Name="BP Input Schemes">
         <ISName>BP Input Schemes</ISName>
         <ISDatasource>
@@ -5080,6 +5104,7 @@
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Development Assumptions</GroupName>
+      <NavigatorGroupCaption>Development</NavigatorGroupCaption>
 
 
 
@@ -6847,6 +6872,7 @@
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Development Assumptions</GroupName>
+      <NavigatorGroupCaption>Development</NavigatorGroupCaption>
 
 
 
@@ -8237,6 +8263,7 @@
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Development Assumptions</GroupName>
+      <NavigatorGroupCaption>Development</NavigatorGroupCaption>
       <CSInterfaceSection Name="Unit Profiling">
         <ISName>Unit Profiling</ISName>
         <ISDatasource>
@@ -8261,11 +8288,11 @@
 
             <DataFieldDefinition>
               <RO>TRUE</RO>
-              <FieldName>From</FieldName>
+              <FieldName>House Type</FieldName>
               <DataFormat>S</DataFormat>
               <Fixed>TRUE</Fixed>
 
-              <TipText>Period Purchase (from) Select from drop down menu acquisition date of land</TipText>
+              <TipText>House type description from Development Details</TipText>
             </DataFieldDefinition>
 
 
@@ -8383,6 +8410,11 @@
               <DataFormat>I</DataFormat>
             </DataFieldDefinition>
             <DataFieldDefinition>
+              <FieldName>Per 22 vblf Yr 2</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
               <FieldName>Per 23 vblf Yr 2</FieldName>
               <DataFormat>I</DataFormat>
               <HasRule>TRUE</HasRule>
@@ -8697,6 +8729,56 @@
               <DataFormat>I</DataFormat>
               <HasRule>TRUE</HasRule>
             </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 31</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 32</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 33</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 34</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 35</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 36</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 37</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 38</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 39</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 40</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
           </CellRangeDataSource>
           <!-- header end -->
         </ISDatasource>
@@ -8731,11 +8813,11 @@
 
             <DataFieldDefinition>
               <RO>TRUE</RO>
-              <FieldName>From</FieldName>
+              <FieldName>House Type</FieldName>
               <DataFormat>S</DataFormat>
               <Fixed>TRUE</Fixed>
 
-              <TipText>Period Purchase (from) Select from drop down menu acquisition date of land</TipText>
+              <TipText>House type description from Development Details</TipText>
             </DataFieldDefinition>
 
 
@@ -8853,6 +8935,11 @@
               <DataFormat>I</DataFormat>
             </DataFieldDefinition>
             <DataFieldDefinition>
+              <FieldName>Per 22 vblf Yr 2</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
               <FieldName>Per 23 vblf Yr 2</FieldName>
               <DataFormat>I</DataFormat>
               <HasRule>TRUE</HasRule>
@@ -9167,6 +9254,56 @@
               <DataFormat>I</DataFormat>
               <HasRule>TRUE</HasRule>
             </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 31</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 32</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 33</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 34</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 35</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 36</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 37</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 38</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 39</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 40</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
           </CellRangeDataSource>
           <!-- header end -->
         </ISDatasource>
@@ -9201,11 +9338,11 @@
 
             <DataFieldDefinition>
               <RO>TRUE</RO>
-              <FieldName>From</FieldName>
+              <FieldName>House Type</FieldName>
               <DataFormat>S</DataFormat>
               <Fixed>TRUE</Fixed>
 
-              <TipText>Period Purchase (from) Select from drop down menu acquisition date of land</TipText>
+              <TipText>House type description from Development Details</TipText>
             </DataFieldDefinition>
 
 
@@ -9323,6 +9460,11 @@
               <DataFormat>I</DataFormat>
             </DataFieldDefinition>
             <DataFieldDefinition>
+              <FieldName>Per 22 vblf Yr 2</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
               <FieldName>Per 23 vblf Yr 2</FieldName>
               <DataFormat>I</DataFormat>
               <HasRule>TRUE</HasRule>
@@ -9637,6 +9779,56 @@
               <DataFormat>I</DataFormat>
               <HasRule>TRUE</HasRule>
             </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 31</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 32</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 33</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 34</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 35</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 36</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 37</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 38</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 39</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
+            <DataFieldDefinition>
+              <FieldName>Yr 40</FieldName>
+              <DataFormat>I</DataFormat>
+              <HasRule>TRUE</HasRule>
+            </DataFieldDefinition>
           </CellRangeDataSource>
           <!-- header end -->
         </ISDatasource>
@@ -9650,11 +9842,13 @@
     </ChildStructure>
     <ChildStructure Name="Development Build On Cost Profiling Assumptions">
       <CSName>Development Build On Cost Profiling Assumptions</CSName>
+      <NavigatorCaption>Development Build On Cost Profiling</NavigatorCaption>
       <CSID>29</CSID>
       <DefaultWorksheet>Development BP Assumptions</DefaultWorksheet>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Development Assumptions</GroupName>
+      <NavigatorGroupCaption>Development</NavigatorGroupCaption>
       <CSInterfaceSection Name="Build &amp; On Cost Profiling">
         <ISName>Build &amp; On Cost Profiling</ISName>
         <ISDatasource>
@@ -9813,10 +10007,12 @@
     <ChildStructure Name="Dvpt Expenditure Assumptions">
       <DefaultWorksheet>Dvpt BP Rev and Exp Assumptions</DefaultWorksheet>
       <CSName>Dvpt Expenditure Assumptions</CSName>
+      <NavigatorCaption>Dvpt Expenditure</NavigatorCaption>
       <CSID>30</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Development Assumptions</GroupName>
+      <NavigatorGroupCaption>Development</NavigatorGroupCaption>
       <CSInterfaceSection Name="Dvpt Expenditure Assumptions">
         <ISName>Dvpt Expenditure Assumptions</ISName>
         <CustomCodeID>ID3</CustomCodeID>
@@ -9979,10 +10175,12 @@
     <ChildStructure Name="Non Tenure Capital Assumptions">
       <DefaultWorksheet>Non Tenure Capital Assumptions</DefaultWorksheet>
       <CSName>Non Tenure Capital Assumptions</CSName>
+      <NavigatorCaption>Non Tenure Capital</NavigatorCaption>
       <CSID>31</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Development Assumptions</GroupName>
+      <NavigatorGroupCaption>Development</NavigatorGroupCaption>
       <CSInterfaceSection Name="Annual Non Tenure Specific Expenditure">
         <ISName>Annual Non Tenure Specific Expenditure</ISName>
         <ISDatasource>
@@ -10072,10 +10270,12 @@
     <ChildStructure Name="Economic Assumptions">
       <DefaultWorksheet>Economic Assumptions</DefaultWorksheet>
       <CSName>Economic Assumptions</CSName>
+      <NavigatorCaption>Economic</NavigatorCaption>
       <CSID>32</CSID>
       <ParentID>1</ParentID>
       <IsMaster>True</IsMaster>
       <GroupName>Economic Assumptions</GroupName>
+      <NavigatorGroupCaption>Economic</NavigatorGroupCaption>
       <CSInterfaceSection Name="CPI and RPI">
         <ISName>CPI and RPI</ISName>
         <ISDatasource>
@@ -11928,10 +12128,12 @@
     <ChildStructure Name="Funding Assumptions">
       <DefaultWorksheet>Funding Assumptions</DefaultWorksheet>
       <CSName>Funding Assumptions</CSName>
+      <NavigatorCaption>Funding</NavigatorCaption>
       <CSID>33</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Funding Assumptions</GroupName>
+      <NavigatorGroupCaption>Funding</NavigatorGroupCaption>
       <CSInterfaceSection Name="Funder">
         <ISName>Funder</ISName>
         <ISDatasource>
@@ -12791,11 +12993,13 @@
     </ChildStructure>
     <ChildStructure Name="Interco Funding Assumptions">
       <CSName>Interco Funding Assumptions</CSName>
+      <NavigatorCaption>Interco Funding</NavigatorCaption>
       <DefaultWorksheet>Interco Funding Assumptions</DefaultWorksheet>
       <CSID>34</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Funding Assumptions</GroupName>
+      <NavigatorGroupCaption>Funding</NavigatorGroupCaption>
       <CSInterfaceSection Name="Interco Loans Received">
         <ISName>Interco Loans Received</ISName>
         <ISDatasource>
@@ -13025,10 +13229,12 @@
     <ChildStructure Name="Covenant Assumptions">
       <DefaultWorksheet>Covenant Assumptions</DefaultWorksheet>
       <CSName>Covenant Assumptions</CSName>
+      <NavigatorCaption>Covenant</NavigatorCaption>
       <CSID>35</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Funding Assumptions</GroupName>
+      <NavigatorGroupCaption>Funding</NavigatorGroupCaption>
       <CSInterfaceSection Name="Covenant Assumptions">
         <ISName>Covenant Assumptions</ISName>
         <ISDatasource>
@@ -13115,6 +13321,7 @@
     <ChildStructure Name="Taxation Assumptions">
       <DefaultWorksheet>Taxation Assumptions</DefaultWorksheet>
       <CSName>Taxation Assumptions</CSName>
+      <NavigatorCaption>Taxation</NavigatorCaption>
       <CSID>36</CSID>
       <ParentID>1</ParentID>
       <IsMaster>True</IsMaster>
@@ -13502,6 +13709,7 @@
     <ChildStructure Name="Accounts Assumptions">
       <DefaultWorksheet>Accounts Assumptions</DefaultWorksheet>
       <CSName>Accounts Assumptions</CSName>
+      <NavigatorCaption>Accounts</NavigatorCaption>
       <CSID>37</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -15056,6 +15264,7 @@
     <ChildStructure Name="Capitalisation Assumptions">
       <DefaultWorksheet>Capitalisation Assumptions</DefaultWorksheet>
       <CSName>Capitalisation Assumptions</CSName>
+      <NavigatorCaption>Capitalisation</NavigatorCaption>
       <CSID>38</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -15292,6 +15501,7 @@
     <ChildStructure Name="Housing Asset Assumptions">
       <DefaultWorksheet>Housing Asset Assumptions</DefaultWorksheet>
       <CSName>Housing Asset Assumptions</CSName>
+      <NavigatorCaption>Housing Asset</NavigatorCaption>
       <CSID>39</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -15924,6 +16134,7 @@
     </ChildStructure>
     <ChildStructure Name="Other Fixed Asset Assumptions">
       <CSName>Other Fixed Asset Assumptions</CSName>
+      <NavigatorCaption>Other Fixed Asset</NavigatorCaption>
       <CSID>40</CSID>
       <ParentID>1</ParentID>
       <DefaultWorksheet>Other Fixed Asset Assumptions</DefaultWorksheet>
@@ -16086,6 +16297,7 @@
     </ChildStructure>
     <ChildStructure Name="Other Current Asset Assumptions">
       <CSName>Other Current Asset Assumptions</CSName>
+      <NavigatorCaption>Other Current Asset</NavigatorCaption>
       <CSID>41</CSID>
       <ParentID>1</ParentID>
       <DefaultWorksheet>Other Current Asset Assumptions</DefaultWorksheet>
@@ -16246,6 +16458,7 @@
     </ChildStructure>
     <ChildStructure Name="Journal Assumptions">
       <CSName>Journal Assumptions</CSName>
+      <NavigatorCaption>Journal</NavigatorCaption>
       <CSID>42</CSID>
       <ParentID>1</ParentID>
       <DefaultWorksheet>Journal Assumptions</DefaultWorksheet>
@@ -18517,6 +18730,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         </IElement>
       </CSInterfaceSection>    </ChildStructure>    <ChildStructure Name="Specific Income Workings">
       <CSName>Specific Income Workings</CSName>
+      <NavigatorCaption>Specific Income</NavigatorCaption>
       <CSID>32</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -18637,6 +18851,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         </IElement>
       </CSInterfaceSection>    </ChildStructure>    <ChildStructure Name="Other Income Workings">
       <CSName>Other Income Workings</CSName>
+      <NavigatorCaption>Other Income</NavigatorCaption>
       <CSID>35</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -18677,6 +18892,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         </IElement>
       </CSInterfaceSection>    </ChildStructure>    <ChildStructure Name="Capital Grant Workings">
       <CSName>Capital Grant Workings</CSName>
+      <NavigatorCaption>Capital Grant</NavigatorCaption>
       <CSID>36</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -26836,6 +27052,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         </IElement>
       </CSInterfaceSection>    </ChildStructure>    <ChildStructure Name="OFA Workings">
       <CSName>OFA Workings</CSName>
+      <NavigatorCaption>OFA</NavigatorCaption>
       <CSID>115</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -26877,6 +27094,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         </IElement>
       </CSInterfaceSection>    </ChildStructure>    <ChildStructure Name="Opening HFG Workings">
       <CSName>Opening HFG Workings</CSName>
+      <NavigatorCaption>Opening HFG</NavigatorCaption>
       <CSID>116</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
@@ -27244,10 +27462,12 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
         </IElement>
       </CSInterfaceSection>    </ChildStructure>    <ChildStructure Name="OW - Covenant Workings">
       <CSName>OW - Covenant Workings</CSName>
+      <NavigatorCaption>OW - Covenant</NavigatorCaption>
       <CSID>125</CSID>
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Output Workings</GroupName>
+      <NavigatorGroupCaption>Output</NavigatorGroupCaption>
       <DefaultWorksheet>OW - Covenant Workings</DefaultWorksheet>
       <CSInterfaceSection Name="OW - Covenant Workings">
         <ISName>OW - Covenant Workings</ISName>
@@ -27288,6 +27508,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Output Workings</GroupName>
+      <NavigatorGroupCaption>Output</NavigatorGroupCaption>
       <DefaultWorksheet>OW - Charts Source Data</DefaultWorksheet>
       <CSInterfaceSection Name="AllAll">
         <ISName>AllAll</ISName>
@@ -27427,6 +27648,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Output Workings</GroupName>
+      <NavigatorGroupCaption>Output</NavigatorGroupCaption>
       <DefaultWorksheet>OW - Live Covenant Calculation</DefaultWorksheet>
       <CSInterfaceSection Name="Financial Year">
         <ISName>Financial Year</ISName>
@@ -27500,6 +27722,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Output Workings</GroupName>
+      <NavigatorGroupCaption>Output</NavigatorGroupCaption>
       <DefaultWorksheet>OW - Live Stress Reporting</DefaultWorksheet>
       <CSInterfaceSection Name="OW - Live Stress Reporting">
         <ISName>OW - Live Stress Reporting</ISName>
@@ -27540,6 +27763,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Output Workings</GroupName>
+      <NavigatorGroupCaption>Output</NavigatorGroupCaption>
       <DefaultWorksheet>OW - Multivariable Factors</DefaultWorksheet>
       <CSInterfaceSection Name="OW - Multivariable Factors">
         <ISName>OW - Multivariable Factors</ISName>
@@ -27580,6 +27804,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Output Workings</GroupName>
+      <NavigatorGroupCaption>Output</NavigatorGroupCaption>
       <DefaultWorksheet>OW - Captured Data</DefaultWorksheet>
       <CSInterfaceSection Name="Live Stress Information">
         <ISName>Live Stress Information</ISName>
@@ -27983,6 +28208,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Output Workings</GroupName>
+      <NavigatorGroupCaption>Output</NavigatorGroupCaption>
       <DefaultWorksheet>OW - Covenant Calculation</DefaultWorksheet>
       <CSInterfaceSection Name="OW - Covenant Calculation">
         <ISName>OW - Covenant Calculation</ISName>
@@ -28024,6 +28250,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Output Workings</GroupName>
+      <NavigatorGroupCaption>Output</NavigatorGroupCaption>
       <DefaultWorksheet>OW - MultiVar Desc Calculation</DefaultWorksheet>
       <CSInterfaceSection Name="OW - MultiVar Desc Calculation">
         <ISName>OW - MultiVar Desc Calculation</ISName>
@@ -28065,6 +28292,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Output Workings</GroupName>
+      <NavigatorGroupCaption>Output</NavigatorGroupCaption>
       <DefaultWorksheet>FFRW - Rental Income</DefaultWorksheet>
       <CSInterfaceSection Name="FFRW - Rental Income">
         <ISName>FFRW - Rental Income</ISName>
@@ -28106,6 +28334,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Output Workings</GroupName>
+      <NavigatorGroupCaption>Output</NavigatorGroupCaption>
       <DefaultWorksheet>FFRW - Stock Numbers</DefaultWorksheet>
       <CSInterfaceSection Name="FFRW - Stock Numbers">
         <ISName>FFRW - Stock Numbers</ISName>
@@ -28147,6 +28376,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Output Workings</GroupName>
+      <NavigatorGroupCaption>Output</NavigatorGroupCaption>
       <DefaultWorksheet>FFRW - Development</DefaultWorksheet>
       <CSInterfaceSection Name="FFRW - Development">
         <ISName>FFRW - Development</ISName>
@@ -28188,6 +28418,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Output Workings</GroupName>
+      <NavigatorGroupCaption>Output</NavigatorGroupCaption>
       <DefaultWorksheet>FFRW - Average Rents</DefaultWorksheet>
       <CSInterfaceSection Name="FFRW - Average Rents">
         <ISName>FFRW - Average Rents</ISName>
@@ -28229,6 +28460,7 @@ WORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGSWORKINGS
       <ParentID>1</ParentID>
       <IsMaster>False</IsMaster>
       <GroupName>Output Workings</GroupName>
+      <NavigatorGroupCaption>Output</NavigatorGroupCaption>
       <DefaultWorksheet>FFRW - Gift Aid</DefaultWorksheet>
       <CSInterfaceSection Name="FFRW - Gift Aid">
         <ISName>FFRW - Gift Aid</ISName>

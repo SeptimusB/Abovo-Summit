@@ -31,6 +31,8 @@ Namespace Abovo
         Private IsApplyingHistory As Boolean
 
         Public ReadOnly Property ModelID As Integer
+        'Only the isolated Structure Manager sets this; normal edit paths are unchanged.
+        Friend Property IsReadOnlyPreview As Boolean
         Public Event HistoryChanged As EventHandler(Of ChangeHistoryChangedEventArgsV2)
 
         Public Sub New(ByRef setModelID As Integer)
@@ -93,6 +95,7 @@ Namespace Abovo
         'calculates once, and commits one undoable change-history group.
         Public Function ProcessChanges(ByVal changes As IEnumerable(Of DataChangeEvent),
                                        ByVal description As String) As AbovoAppCls.AbovoTransaction
+            If IsReadOnlyPreview Then Return NoAction("Structure Manager previews are read-only.")
             If IsApplyingHistory OrElse ActiveGroup IsNot Nothing Then
                 Return NoAction("Paste is unavailable during another change.")
             End If
@@ -256,6 +259,7 @@ Namespace Abovo
 
         Private Function ProcessResolvedChange(ByVal targetCell As Cell,
                                                ByVal sentEvent As DataChangeEvent) As AbovoAppCls.AbovoTransaction
+            If IsReadOnlyPreview Then Return NoAction("Structure Manager previews are read-only.")
             Dim result As New AbovoAppCls.AbovoTransaction("ModelChangeManagerV2.ProcessChange")
             If targetCell Is Nothing Then Return FailedChange(sentEvent, sentEvent.WSName, sentEvent.CellAddress, New InvalidOperationException("The target cell was not found."))
 

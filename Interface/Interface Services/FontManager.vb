@@ -369,6 +369,7 @@ Namespace Abovo
         End Sub
 
         Private Shared Sub ApplyBrowserScale(ByVal Browser As WebBrowser)
+            If Browser IsNot Nothing AndAlso Object.Equals(Browser.Tag, PresentationLayout.BrowserOwnsScale) Then Return
             If Browser Is Nothing OrElse Browser.IsDisposed OrElse Browser.Document Is Nothing OrElse
                Browser.Document.Body Is Nothing Then Return
             Browser.Document.Body.Style =
@@ -376,6 +377,8 @@ Namespace Abovo
         End Sub
 
         Private Shared Sub ScaleKnownAppearances(ByVal Target As Control, ByVal Ratio As Single)
+            Dim commandButton As SimpleButton = TryCast(Target, SimpleButton)
+            If commandButton IsNot Nothing Then PresentationLayout.FitCommandButton(commandButton)
             Dim Label As LabelControl = TryCast(Target, LabelControl)
             If Label IsNot Nothing Then ScaleAppearanceFont(Label.Appearance, Ratio)
 

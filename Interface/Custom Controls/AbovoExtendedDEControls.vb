@@ -61,6 +61,10 @@ Namespace Abovo
             End Sub
             Public Sub RefreshData()
 
+                'Queued refreshes can outlive a section/model. Never touch a
+                'disposed editor or manufacture an empty edit during teardown.
+                If IsDisposed OrElse Disposing Then Return
+                If TargetWorksheet Is Nothing OrElse String.IsNullOrWhiteSpace(TargetCell) Then Return
                 Try
 
                     EditValue = TargetWorksheet.Cells(TargetCell).Value.NumericValue

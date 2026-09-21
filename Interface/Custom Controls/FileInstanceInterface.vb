@@ -57,6 +57,8 @@ Public Class FileInstanceInterface
         FFRInit = False
         FileManager.RegisterModelInterface(BPModelID, Me)
         ConfigureModelActions()
+        WebBrowserBPInfo.Tag = PresentationLayout.BrowserOwnsScale
+        SetScale()
         LayoutFileActionControls()
 
     End Sub
@@ -76,6 +78,10 @@ Public Class FileInstanceInterface
         Dim contentTop As Integer = Math.Max(inset * 2, GroupBoxFileActions.Font.Height + inset)
         Dim leftPanelWidth As Integer = Math.Max(PresentationScaleManager.Scale(100),
             TextRenderer.MeasureText("Save As", WindowsUIButtonPanelSaveClose.AppearanceButton.Normal.Font).Width + inset * 2)
+        Dim buttonBackgrounds = TryCast(WindowsUIButtonPanelSaveClose.ButtonBackgroundImages, ImageCollection)
+        If buttonBackgrounds IsNot Nothing Then
+            leftPanelWidth = Math.Max(leftPanelWidth, CInt(buttonBackgrounds.ImageSize.Width * DeviceDpi / 96.0F) + inset * 2)
+        End If
         Dim contentWidth As Integer =
             Math.Max(20, GroupBoxFileActions.ClientSize.Width - leftPanelWidth - (inset * 2) - gap)
         Dim contentBottom As Integer = GroupBoxFileActions.ClientSize.Height - inset
@@ -104,28 +110,7 @@ Public Class FileInstanceInterface
     End Sub
 
     Private Function GetNavigationPanelHeight(availableWidth As Integer) As Integer
-        'Reserve enough rows for native button wrapping on narrower windows or larger fonts.
-        'Measure the captions instead of shrinking the user's font or hiding trailing actions.
-        Dim dpiScale As Single = CSng(DeviceDpi) / 96.0F
-        Dim iconWidth As Integer = CInt(Math.Ceiling(42 * dpiScale))
-        Dim rows As Integer = 1
-        Dim rowWidth As Integer = 0
-        Dim captionFont As Font = WindowsUIButtonPanelBPActions.AppearanceButton.Normal.Font
-        For Each item As DevExpress.XtraEditors.ButtonPanel.IBaseButton In WindowsUIButtonPanelBPActions.Buttons
-            Dim button As WindowsUIButton = TryCast(item, WindowsUIButton)
-            If button Is Nothing OrElse Not button.Visible Then Continue For
-            Dim captionWidth As Integer = TextRenderer.MeasureText(
-                button.Caption, captionFont, Size.Empty, TextFormatFlags.NoPadding).Width
-            Dim slotWidth As Integer = Math.Max(iconWidth, captionWidth) +
-                CInt(Math.Ceiling(8 * dpiScale)) + 2 * WindowsUIButtonPanelBPActions.ButtonInterval
-            If rowWidth > 0 AndAlso rowWidth + slotWidth > availableWidth Then
-                rows += 1
-                rowWidth = 0
-            End If
-            rowWidth += slotWidth
-        Next
-        Dim rowHeight As Integer = CInt(Math.Ceiling(50 * dpiScale)) + captionFont.Height
-        Return rows * rowHeight + CInt(Math.Ceiling(8 * dpiScale))
+        Return PresentationLayout.ButtonPanelHeight(WindowsUIButtonPanelBPActions, availableWidth)
     End Function
     Private Sub ConfigureModelActions()
 
@@ -316,8 +301,9 @@ Public Class FileInstanceInterface
 
         ScaleUnits = GetDisplayScale(Me)
 
-        Dim prominentFontPixels As Integer = Math.Max(16, CInt(Math.Round(17.0F * ScaleUnits)))
-        Dim detailFontPixels As Integer = Math.Max(14, CInt(Math.Round(15.0F * ScaleUnits)))
+        'HTML points share the native controls' scale; do not also apply browser zoom.
+        Dim detailFontPoints As Single = GetDisplayFont("Small", Me).SizeInPoints
+        Dim prominentFontPoints As Single = GetDisplayFont("Medium", Me).SizeInPoints
         Dim StrFileDescription As New StringBuilder()
 
         MyFilePath = ExcelModels(BPModelID).FileName
@@ -330,11 +316,11 @@ Public Class FileInstanceInterface
 
         StrFileDescription.Append("<html><head><style>")
         StrFileDescription.Append("body{font-family:Verdana,sans-serif;font-size:")
-        StrFileDescription.Append(detailFontPixels)
-        StrFileDescription.Append("px;line-height:1.35;margin:8px;color:#202020;overflow-wrap:anywhere;}")
+        StrFileDescription.Append(detailFontPoints.ToString("0.##", Globalization.CultureInfo.InvariantCulture))
+        StrFileDescription.Append("pt;line-height:1.35;margin:8px;color:#202020;overflow-wrap:anywhere;}")
         StrFileDescription.Append(".primary{font-size:")
-        StrFileDescription.Append(prominentFontPixels)
-        StrFileDescription.Append("px;margin:0 0 5px 0;}.detail{margin:0 0 3px 0;}")
+        StrFileDescription.Append(prominentFontPoints.ToString("0.##", Globalization.CultureInfo.InvariantCulture))
+        StrFileDescription.Append("pt;margin:0 0 5px 0;}.detail{margin:0 0 3px 0;}")
         StrFileDescription.Append("</style></head><body>")
         StrFileDescription.Append("<div class='primary'>Model type: ")
         StrFileDescription.Append(WebUtility.HtmlEncode(ModelDescription))
@@ -410,6 +396,9 @@ Public Class FileInstanceInterface
         End Try
     End Function
     Sub SetScale()
+        PresentationLayout.ApplyButtonPanel(WindowsUIButtonPanelBPActions, Me)
+        PresentationLayout.ApplyButtonPanel(WindowsUIButtonPanelSaveClose, Me)
+        PresentationLayout.ApplyButtonPanel(WindowsUIButtonPanelBPBadge, Me)
         Me.WindowsUIButtonPanelBPActions.Font = GetDisplayFont("Small", Me)
         WindowsUIButtonPanelBPActions.AppearanceButton.Normal.Font = GetDisplayFont("Small", Me)
         WindowsUIButtonPanelBPActions.AppearanceButton.Hovered.Font = GetDisplayFont("Small", Me)

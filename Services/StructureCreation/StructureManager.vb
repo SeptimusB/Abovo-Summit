@@ -196,6 +196,19 @@ Namespace Abovo
     Public Class ChildStructure
 
         <XmlElement("CSName")> Public CSName As String
+        'Presentation-only aliases: navigation and history still use the original IDs/names.
+        <XmlElement("NavigatorCaption")> Public NavigatorCaption As String
+        <XmlElement("NavigatorGroupCaption")> Public NavigatorGroupCaption As String
+        <XmlIgnore> Public ReadOnly Property NavigationText As String
+            Get
+                Return If(String.IsNullOrWhiteSpace(NavigatorCaption), CSName, NavigatorCaption)
+            End Get
+        End Property
+        <XmlIgnore> Public ReadOnly Property NavigationGroupText As String
+            Get
+                Return If(String.IsNullOrWhiteSpace(NavigatorGroupCaption), GroupName, NavigatorGroupCaption)
+            End Get
+        End Property
         <XmlElement("CSID")> Public CSID As String
         <XmlElement("ParentID")> Public ParentID As String
         <XmlElement("IsMaster")> Public IsMaster As String

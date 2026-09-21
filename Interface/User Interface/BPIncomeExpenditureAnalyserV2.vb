@@ -52,6 +52,11 @@ Public Class BPIncomeExpenditureAnalyserV2
     Private Grid1ExpandedView As Boolean
     Private CalcEngID As Integer = -1
     Private ParentGIT As GroupInterfaceTemplate
+    Friend ReadOnly Property PresentationHost As GroupInterfaceTemplate
+        Get
+            Return ParentGIT
+        End Get
+    End Property
     Private ScaleUnits As Single
     Private Scalefactor As Single
     Private DataSources() As AbovoUnboundSource
@@ -177,6 +182,8 @@ Public Class BPIncomeExpenditureAnalyserV2
         GridView_InitialisationProcess_AddHandlers(View_WrapCG_SOCI)
 
         ParentGIT = MyParent
+        If ParentGIT IsNot Nothing Then ParentGIT.AttachPanelsButton(WindowsUIButtonPanelAnalyser)
+        PresentationLayout.ApplyButtonPanel(WindowsUIButtonPanelAnalyser, Me)
         Me.XtraTabPageSOCIWrapped.Controls.Add(WrapCG_SOCI)
 
 
@@ -392,9 +399,7 @@ Public Class BPIncomeExpenditureAnalyserV2
     End Sub
 
     Public Sub ResizeControlsCommand()
-
-
-
+        PresentationLayout.ApplyButtonPanel(WindowsUIButtonPanelAnalyser, Me)
     End Sub
 
 #Region "Form initialisation, non-grid events and data"
@@ -2837,6 +2842,7 @@ Public Class BPIncomeExpenditureAnalyserV2
     Sub GridView_Sizing_Fonts()
 
         Scalefactor = Me.Width / 1700
+        PresentationLayout.ApplyButtonPanel(WindowsUIButtonPanelAnalyser, Me)
 
 
     End Sub

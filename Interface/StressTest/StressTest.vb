@@ -24,6 +24,7 @@ Imports DevExpress.Spreadsheet.Functions
 Imports DevExpress.Utils
 Imports DevExpress.Utils.Drawing
 Imports DevExpress.XtraBars.Docking2010
+Imports DevExpress.XtraEditors
 Imports DevExpress.XtraCharts
 Imports DevExpress.XtraEditors.Mask
 Imports DevExpress.XtraEditors.Repository
@@ -159,6 +160,8 @@ Public Class StressTest
     Private ScaleUnits As Integer
     Private FirstTabReferenceSize As Size = Size.Empty
     Private FirstTabBaseFontSize As Single
+    Private ApplyingFirstTabLayout As Boolean
+    Private LastStressDisplayScale As Single = -1.0F
     Private UpdatingCovenantSelection As Boolean
     Private ExportMode As String
     Private MyColourSwatch As Color
@@ -273,15 +276,30 @@ Public Class StressTest
                     DevExpress.XtraBars.Docking2010.WindowsUISeparator).IsLeft = False
             End If
         Next
-        Dim CentredButtons As DevExpress.XtraEditors.ButtonPanel.IBaseButton() =
+        Dim OrderedButtons As DevExpress.XtraEditors.ButtonPanel.IBaseButton() =
             WindowsUIButtonPanelStressNavigator.Buttons.
                 Cast(Of DevExpress.XtraEditors.ButtonPanel.IBaseButton)().
                 Reverse().
                 ToArray()
         WindowsUIButtonPanelStressNavigator.Buttons.Clear()
-        WindowsUIButtonPanelStressNavigator.Buttons.AddRange(CentredButtons)
+        WindowsUIButtonPanelStressNavigator.Buttons.AddRange(OrderedButtons)
         WindowsUIButtonPanelStressNavigator.ContentAlignment =
-            ContentAlignment.MiddleCenter
+            ContentAlignment.MiddleLeft
+        TablePanelLMVPlan.UseSkinIndents = False
+        TablePanelLMVPlan.Padding = New Padding(8)
+        'Keep the measured toolbar outside the designer-scaled table. Its native
+        'preferred row height otherwise remains enlarged after restoring.
+        TablePanelLMVPlan.Controls.Remove(WindowsUIButtonPanelStressNavigator)
+        TablePanelLMVPlan.SetRow(XtraTabControlStressTest, 0)
+        TablePanelLMVPlan.Rows.RemoveAt(0)
+        TablePanelLMVPlan.Rows(0).Style = DevExpress.Utils.Layout.TablePanelEntityStyle.Relative
+        TablePanelLMVPlan.Rows(0).Height = 1
+        Me.Controls.Add(WindowsUIButtonPanelStressNavigator)
+        WindowsUIButtonPanelStressNavigator.Dock = DockStyle.Top
+        WindowsUIButtonPanelStressNavigator.Padding = New Padding(16, 0, 16, 0)
+        TablePanelLMVPlan.Dock = DockStyle.None
+        TablePanelLMVPlan.Anchor = AnchorStyles.Top Or AnchorStyles.Left
+        TablePanelLMVPlan.BringToFront()
 
         ConfigureResponsiveFirstTab()
         AddHandlers()
@@ -289,6 +307,7 @@ Public Class StressTest
             .Caption = "Change History", .UseCaption = True, .Tag = "History", .IsLeft = False}
         historyButton.ImageOptions.Image = DevExpress.Images.ImageResourceCache.Default.GetImage("images/actions/undo_32x32.png")
         WindowsUIButtonPanelStressNavigator.Buttons.Add(historyButton)
+        ConfigureStressNavigatorButtons()
         HistoryBinding = New ModelFormHistoryBinding(Me, ModelID, AddressOf RefreshAfterHistory)
 
     End Sub
@@ -876,6 +895,9 @@ Public Class StressTest
             GV.BestFitColumns()
 
             Formatter.FormatGridView(GV, GridControlBreaches)
+            'The shared formatter resets font and AutoWidth; apply this form's
+            'display metrics after every binding, not only on the first Show.
+            ApplyBreachGridPresentation()
 
 
         End If
@@ -1196,14 +1218,14 @@ Public Class StressTest
             CovChart.Titles.Add(New DevExpress.XtraCharts.ChartTitle())
             CovChart.Titles(0).Text = AddTitle
             CovChart.Titles(0).EnableAntialiasing = DevExpress.Utils.DefaultBoolean.True
-            CovChart.Titles(0).DXFont = New DXFont("Tahoma", 10, DXFontStyle.Bold)
+            CovChart.Titles(0).DXFont = New DXFont("Tahoma", GetStressDisplayFont().SizeInPoints, DXFontStyle.Bold)
             CovChart.Titles(0).Visibility = DevExpress.Utils.DefaultBoolean.True
             CovChart.Titles(0).Dock = ChartTitleDockStyle.Top
             CovChart.Titles(0).Alignment = StringAlignment.Center
             ' Add the chart to the form.
 
             CovChart.Dock = DockStyle.Fill
-
+            FitCovenantMarkers(CovChart)
 
         Next ChartX
 
@@ -1372,6 +1394,7 @@ Public Class StressTest
         BuildCovCharts()
 
         Me.Cursor = Cursors.Default
+        ApplyResponsiveFirstTabScale()
 
     End Sub
 
@@ -1743,11 +1766,14 @@ Public Class StressTest
         TablePanelStressInputs.Rows.AddRange(
             New DevExpress.Utils.Layout.TablePanelRow() {
                 New DevExpress.Utils.Layout.TablePanelRow(
-                    DevExpress.Utils.Layout.TablePanelEntityStyle.Absolute, 116.0!),
+                    DevExpress.Utils.Layout.TablePanelEntityStyle.AutoSize, 116.0!),
                 New DevExpress.Utils.Layout.TablePanelRow(
                     DevExpress.Utils.Layout.TablePanelEntityStyle.Relative, 100.0!)
             })
 
+        For Each panel As PanelControl In {PanelControl1, PanelControl2, PanelControl3, PanelControlCovSel}
+            panel.AutoSize = False
+        Next
         ConfigureModePanel()
         ConfigureCapturePanel()
         ConfigureQuickCapturePanel()
@@ -1795,9 +1821,11 @@ Public Class StressTest
         PanelControl3.Controls.Clear()
         Dim Layout As TableLayoutPanel = NewFirstTabLayout(2)
         Layout.RowCount = 1
+        Layout.RowStyles.Add(New RowStyle(SizeType.Percent, 100.0!))
         Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 34.0!))
         Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 66.0!))
         SimpleButtonCapture.Text = "Capture scenario"
+        SimpleButtonCapture.Appearance.TextOptions.WordWrap = WordWrap.Wrap
         SimpleButtonCapture.Dock = DockStyle.Fill
         SimpleButtonCapture.Margin = New Padding(4, 10, 12, 10)
 
@@ -1839,6 +1867,7 @@ Public Class StressTest
         PanelControl2.Controls.Clear()
         Dim Layout As TableLayoutPanel = NewFirstTabLayout(1)
         Layout.RowCount = 1
+        Layout.RowStyles.Add(New RowStyle(SizeType.Percent, 100.0!))
         Layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100.0!))
         SimpleButtonQC.Dock = DockStyle.Fill
         SimpleButtonQC.Margin = New Padding(12, 10, 12, 10)
@@ -1873,7 +1902,7 @@ Public Class StressTest
         TablePanelOutputs.Rows.AddRange(
             New DevExpress.Utils.Layout.TablePanelRow() {
                 New DevExpress.Utils.Layout.TablePanelRow(
-                    DevExpress.Utils.Layout.TablePanelEntityStyle.Absolute, 198.0!),
+                    DevExpress.Utils.Layout.TablePanelEntityStyle.AutoSize, 198.0!),
                 New DevExpress.Utils.Layout.TablePanelRow(
                     DevExpress.Utils.Layout.TablePanelEntityStyle.Relative, 1.0!),
                 New DevExpress.Utils.Layout.TablePanelRow(
@@ -1927,15 +1956,58 @@ Public Class StressTest
 
         CovenantSummaryPanel.SuspendLayout()
         Try
-            CovenantSummaryPanel.Controls.Clear()
+            For Each oldBlock As Control In CovenantSummaryPanel.Controls.Cast(Of Control)().ToArray()
+                oldBlock.Dispose()
+            Next
             CovenantSummaryPanel.Controls.Add(
                 CreateCovenantSummaryBlock(Sheet, 16, 18, 19), 0, 0) 'Q, S, T
             CovenantSummaryPanel.Controls.Add(
                 CreateCovenantSummaryBlock(Sheet, 21, 23, 24), 1, 0) 'V, X, Y
+            'ControlAdded applies the global preference to new children. These
+            'labels already use the complete display scale, so normalise after
+            'attachment to avoid multiplying that preference a second time.
+            Dim normal As Font = GetStressDisplayFont()
+            For Each label As LabelControl In FindControls(Of LabelControl)(CovenantSummaryPanel)
+                label.Appearance.Font = New Font(normal, label.Appearance.Font.Style)
+                label.Appearance.Options.UseFont = True
+            Next
+            ApplyCovenantSummaryLayout()
         Finally
             CovenantSummaryPanel.ResumeLayout(True)
         End Try
 
+    End Sub
+
+    Private Sub ApplyCovenantSummaryLayout()
+        If CovenantSummaryPanel Is Nothing OrElse CovenantSummaryPanel.ClientSize.Width <= 0 Then Return
+        Using normal As Font = GetStressDisplayFont(), heading As New Font(normal, FontStyle.Bold)
+            Dim blockWidth As Integer = TextRenderer.MeasureText("Min EBITDA MRI Yr", normal).Width +
+                2 * TextRenderer.MeasureText("Current", heading).Width + CInt(48 * DeviceDpi / 96.0F)
+            Dim columns As Integer = If(CovenantSummaryPanel.ClientSize.Width >= 2 * blockWidth, 2, 1)
+            Dim rows As Integer = 2 \ columns
+            CovenantSummaryPanel.SuspendLayout()
+            Try
+                CovenantSummaryPanel.ColumnCount = columns
+                CovenantSummaryPanel.RowCount = rows
+                CovenantSummaryPanel.ColumnStyles.Clear()
+                CovenantSummaryPanel.RowStyles.Clear()
+                For index As Integer = 0 To columns - 1
+                    CovenantSummaryPanel.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100.0F / columns))
+                Next
+                For index As Integer = 0 To rows - 1
+                    CovenantSummaryPanel.RowStyles.Add(New RowStyle(SizeType.Percent, 100.0F / rows))
+                Next
+                Dim blocks = CovenantSummaryPanel.Controls.Cast(Of Control)().ToArray()
+                For index As Integer = 0 To blocks.Length - 1
+                    CovenantSummaryPanel.SetCellPosition(blocks(index), New TableLayoutPanelCellPosition(index Mod columns, index \ columns))
+                Next
+                Dim height As Integer = rows * (7 * (normal.Height + CInt(3 * DeviceDpi / 96.0F)) + 8)
+                CovenantSummaryPanel.MinimumSize = New Size(0, height)
+                CovenantSummaryPanel.Height = height
+            Finally
+                CovenantSummaryPanel.ResumeLayout(True)
+            End Try
+        End Using
     End Sub
 
     Private Function CreateCovenantSummaryBlock(
@@ -1955,9 +2027,9 @@ Public Class StressTest
         Block.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 56.0!))
         Block.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 22.0!))
         Block.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 22.0!))
-        Block.RowStyles.Add(New RowStyle(SizeType.Absolute, 28.0!))
+        Block.RowStyles.Add(New RowStyle(SizeType.Percent, CSng(100.0 / 7.0)))
         For RowIndex As Integer = 1 To 6
-            Block.RowStyles.Add(New RowStyle(SizeType.Percent, CSng(100.0 / 6.0)))
+            Block.RowStyles.Add(New RowStyle(SizeType.Percent, CSng(100.0 / 7.0)))
         Next
 
         Block.Controls.Add(CreateCovenantSummaryLabel("", Nothing, HorzAlignment.Near, True), 0, 0)
@@ -1997,6 +2069,7 @@ Public Class StressTest
             .Text = Text,
             .Dock = DockStyle.Fill,
             .AutoSizeMode = DevExpress.XtraEditors.LabelAutoSizeMode.None,
+            .Font = GetStressDisplayFont(),
             .Margin = New Padding(2, 0, 2, 0),
             .Padding = New Padding(5, 0, 5, 0)
         }
@@ -2012,10 +2085,9 @@ Public Class StressTest
             Label.Appearance.Options.UseForeColor = True
         End If
 
-        If IsHeader OrElse (SourceCell IsNot Nothing AndAlso SourceCell.Font.Bold) Then
-            Label.Appearance.Font = New Font(Label.Font, FontStyle.Bold)
-            Label.Appearance.Options.UseFont = True
-        End If
+        Label.Appearance.Font = If(IsHeader OrElse (SourceCell IsNot Nothing AndAlso SourceCell.Font.Bold),
+            New Font(Label.Font, FontStyle.Bold), Label.Font)
+        Label.Appearance.Options.UseFont = True
 
         Return Label
 
@@ -2120,55 +2192,100 @@ Public Class StressTest
 
     Private Sub ApplyPresentationScale()
         FirstTabBaseFontSize = Me.Font.Size
+        'The generic scaler can trigger Resize before its own traversal ends.
+        'Its final form hook must reassert absolute fonts even at the same scale.
+        LastStressDisplayScale = -1
         ApplyResponsiveFirstTabScale()
         Me.Invalidate(True)
     End Sub
 
+    Private Function GetStressDisplayScale() As Single
+        'A restored window on a 5k display is not a 5k workspace. Retain the
+        'approved screen scale when there is room, but cap its automatic part
+        'by the client width. The explicit user preference is never reduced.
+        Dim userScale As Single = PresentationScaleManager.UserScale
+        Dim screenScale As Single = AbovoAppCls.GetDisplayScale(Me) / userScale
+        Dim dpiScale As Single = Math.Max(1.0F, DeviceDpi / 96.0F)
+        Dim windowScale As Single = Math.Max(1.0F, ClientSize.Width / dpiScale / 1920.0F)
+        Return Math.Min(screenScale, windowScale) * userScale
+    End Function
+
+    Private Function GetStressDisplayFont() As Font
+        Using baseFont As Font = AbovoAppCls.GetFont("Medium", 1.0F)
+            Return New Font(baseFont.FontFamily, baseFont.SizeInPoints * GetStressDisplayScale(), baseFont.Style)
+        End Using
+    End Function
+
     Private Sub ApplyResponsiveFirstTabScale()
 
-        If FirstTabBaseFontSize <= 0 OrElse
+        If ApplyingFirstTabLayout OrElse FirstTabBaseFontSize <= 0 OrElse
            Me.WindowState = FormWindowState.Minimized Then Return
+        ApplyingFirstTabLayout = True
+        Try
+            'This must also run after WinForms initial autoscaling and when resized;
+            'otherwise the toolbar keeps the designer's old fixed-height row.
+            PresentationLayout.ApplyButtonPanel(WindowsUIButtonPanelStressNavigator, Me, GetStressDisplayScale())
+            'A font/height change can occur within WinForms' docking pass. Set the
+            'content bounds from the final toolbar height, not that pass's old one.
+            TablePanelLMVPlan.Bounds = New Rectangle(0, WindowsUIButtonPanelStressNavigator.Height,
+                ClientSize.Width, Math.Max(0, ClientSize.Height - WindowsUIButtonPanelStressNavigator.Height))
 
-        Dim WorkspaceWidth As Integer = Math.Min(2200, XtraTabPageLMVP.ClientSize.Width)
-        Dim WorkspaceLeft As Integer =
-            Math.Max(0, (XtraTabPageLMVP.ClientSize.Width - WorkspaceWidth) \ 2)
-        TablePanelStressInputs.Bounds =
-            New Rectangle(WorkspaceLeft, 0, WorkspaceWidth, XtraTabPageLMVP.ClientSize.Height)
+            Dim WorkspaceWidth As Integer = XtraTabPageLMVP.ClientSize.Width
+            Dim WorkspaceLeft As Integer =
+                Math.Max(0, (XtraTabPageLMVP.ClientSize.Width - WorkspaceWidth) \ 2)
+            TablePanelStressInputs.Bounds =
+                New Rectangle(WorkspaceLeft, 0, WorkspaceWidth, XtraTabPageLMVP.ClientSize.Height)
 
-        Dim WidthScale As Double = WorkspaceWidth / 1920.0
-        Dim HeightScale As Double = XtraTabPageLMVP.ClientSize.Height / 980.0
-        Dim Scale As Double = Math.Max(0.88, Math.Min(1.25, Math.Min(WidthScale, HeightScale)))
-        Dim MetricScale As Double = Scale * Abovo.PresentationScaleManager.UserScale
-        Dim FontSize As Single = FirstTabBaseFontSize
-        Dim HeaderHeight As Single = CSng(Math.Max(112.0, 120.0 * Scale))
-        TablePanelStressInputs.Rows(0).Height = HeaderHeight
-
-        Dim OutputHeight As Double = Math.Min(
-            1180.0, Math.Max(620.0, XtraTabPageLMVP.ClientSize.Height - HeaderHeight - 12.0))
-        TablePanelOutputs.Rows(0).Height = CSng(Math.Max(190.0, OutputHeight * 0.22))
-        For RowIndex As Integer = 1 To 5
-            TablePanelOutputs.Rows(RowIndex).Height = 1.0!
-        Next
-
-        For Each Grid As GridControl In FindControls(Of GridControl)(XtraTabPageLMVP)
-            Dim View As GridView = TryCast(Grid.MainView, GridView)
-            If View Is Nothing Then Continue For
-            View.RowHeight = CInt(Math.Max(22, 27 * MetricScale))
-            View.ColumnPanelRowHeight = CInt(Math.Max(28, 34 * MetricScale))
-        Next
-
-        If GridView2.Columns.Count > 1 Then
-            GridView2.Columns(1).AppearanceCell.Font =
-                New Font("Wingdings", CSng(FontSize * 1.15), FontStyle.Regular)
-        End If
-        For Each Chart As ChartControl In {
-                CvntChart1, CvntChart2, CvntChart3, CvntChart4, CvntChart5}
-            If Chart.Titles.Count > 0 Then
-                Chart.Titles(0).DXFont =
-                    New DXFont("Tahoma", Math.Min(FontSize, 9.5F), DXFontStyle.Bold)
+            Dim displayScale As Single = GetStressDisplayScale()
+            Dim MetricScale As Double = displayScale * CSng(DeviceDpi) / 96.0F
+            'Do not reserve a blank breach-details pane while multivariable mode is off.
+            TablePanelStressInputs.Columns(3).Width = If(STMode = "Y", 21.0!, 0.0!)
+            If Math.Abs(displayScale - LastStressDisplayScale) > 0.001F Then
+                LastStressDisplayScale = displayScale
+                ApplyStressDisplayFonts()
             End If
-        Next
+            Dim FontSize As Single = GetStressDisplayFont().SizeInPoints
+            'Reserve real pixels for both capture editor rows; absolute table
+            'measurements also carry the designer's font scale.
+            Dim HeaderHeight As Integer = CInt(2 * GetStressDisplayFont().Height + 60 * DeviceDpi / 96.0F)
+            For Each panel As PanelControl In {PanelControl1, PanelControl2, PanelControl3, PanelControlCovSel}
+                panel.MinimumSize = New Size(0, HeaderHeight)
+                panel.Height = HeaderHeight
+            Next
+            Dim compactCapture As Boolean = PanelControl3.ClientSize.Width < 440 * MetricScale
+            LabelControl4.Text = If(compactCapture, "Name:", "Multivariable Name:")
+            LabelControl1.Text = If(compactCapture, "Test:", "Record as test:")
 
+            ApplyCovenantSummaryLayout()
+            For RowIndex As Integer = 1 To 5
+                TablePanelOutputs.Rows(RowIndex).Height = 1.0!
+            Next
+
+            For Each Grid As GridControl In FindControls(Of GridControl)(XtraTabPageLMVP)
+                Dim View As GridView = TryCast(Grid.MainView, GridView)
+                If View Is Nothing Then Continue For
+                View.RowHeight = CInt(Math.Max(22, 27 * MetricScale))
+                View.ColumnPanelRowHeight = CInt(Math.Max(28, 34 * MetricScale))
+            Next
+
+            If GridView2.Columns.Count > 1 Then
+                GridView2.Columns(1).AppearanceCell.Font =
+                    New Font("Wingdings", CSng(FontSize * 1.15), FontStyle.Regular)
+            End If
+            For Each Chart As ChartControl In {
+                    CvntChart1, CvntChart2, CvntChart3, CvntChart4, CvntChart5}
+                If Chart.Titles.Count > 0 Then
+                    Chart.Titles(0).DXFont =
+                        New DXFont("Tahoma", FontSize, DXFontStyle.Bold)
+                End If
+                FitCovenantMarkers(Chart)
+            Next
+
+            ApplyStressInputColumnWidths()
+            ApplyBreachGridPresentation()
+        Finally
+            ApplyingFirstTabLayout = False
+        End Try
     End Sub
 
     Private Iterator Function FindControls(Of T As Control)(
@@ -5383,6 +5500,145 @@ Public Class StressTest
             If Activity IsNot Nothing Then Activity.Dispose()
         End Try
 
+    End Sub
+
+    Private Sub ConfigureStressNavigatorButtons()
+        For Each button As WindowsUIButton In WindowsUIButtonPanelStressNavigator.Buttons.OfType(Of WindowsUIButton)()
+            'The native IsLeft group reverses enumeration order. Keep the ordered
+            'group and align its containing panel left instead.
+            button.IsLeft = False
+            button.UseCaption = True
+            Select Case Convert.ToString(button.Tag)
+                Case "Home" : button.Caption = "Home"
+                Case "LiMVP" : button.Caption = "Live stresses"
+                Case "SSList" : button.Caption = "Sensitivity"
+                Case "MVPlan" : button.Caption = "Planner"
+                Case "MVDash" : button.Caption = "Dashboard"
+                Case "Comp1" : button.Caption = "Comparison"
+                Case "Comp2" : button.Caption = "Comparison 2"
+                Case "History"
+                    'The former resource lookup can return Nothing (an empty circle).
+                    Const svg As String = "<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><g fill='none' stroke='#005baa' stroke-width='2'><path d='M5 9a10 10 0 1 1-1 9M5 3v6h6M14 7v7l5 3'/></g></svg>"
+                    Using stream As New MemoryStream(System.Text.Encoding.UTF8.GetBytes(svg))
+                        button.ImageOptions.Image = Nothing
+                        button.ImageOptions.SvgImage = DevExpress.Utils.Svg.SvgImage.FromStream(stream)
+                    End Using
+            End Select
+        Next
+        For Each separator As WindowsUISeparator In WindowsUIButtonPanelStressNavigator.Buttons.OfType(Of WindowsUISeparator)()
+            separator.IsLeft = False
+        Next
+    End Sub
+
+    Private Sub ApplyBreachGridPresentation()
+        Dim view = TryCast(GridControlBreaches.MainView, GridView)
+        If view Is Nothing OrElse view.Columns.Count < 6 Then Return
+        Dim normal As Font = GetStressDisplayFont()
+        Dim metricScale As Single = GetStressDisplayScale() * DeviceDpi / 96.0F
+        view.BeginUpdate()
+        Try
+            GridControlBreaches.Font = normal
+            view.Appearance.Row.Font = normal
+            view.Appearance.Row.Options.UseFont = True
+            view.Appearance.HeaderPanel.Font = New Font(normal, FontStyle.Bold)
+            view.Appearance.HeaderPanel.Options.UseFont = True
+            view.RowHeight = CInt(Math.Max(22, 27 * metricScale))
+            view.ColumnPanelRowHeight = CInt(Math.Max(28, 34 * metricScale))
+            view.OptionsView.ColumnHeaderAutoHeight = DefaultBoolean.True
+            view.Appearance.HeaderPanel.TextOptions.WordWrap = WordWrap.Wrap
+            view.OptionsView.ColumnAutoWidth = False
+            Dim weights As Integer() = {65, 65, 125, 125, 125, 145}
+            For index As Integer = 0 To 5
+                view.Columns(index).MinWidth = Math.Max(CInt(45 * metricScale),
+                    TextRenderer.MeasureText(view.Columns(index).Caption, view.Appearance.HeaderPanel.Font).Width + CInt(12 * DeviceDpi / 96.0F))
+                view.Columns(index).Width = CInt(weights(index) * metricScale)
+            Next
+            view.Columns(1).AppearanceCell.Font = New Font("Wingdings", normal.SizeInPoints * 1.15F, FontStyle.Regular)
+            view.OptionsView.ColumnAutoWidth = True
+        Finally
+            view.EndUpdate()
+        End Try
+    End Sub
+
+    Private Sub ApplyStressDisplayFonts()
+        Dim normal As Font = GetStressDisplayFont()
+        Dim bold As New Font(normal, FontStyle.Bold)
+        For Each control As Control In FindControls(Of Control)(Me)
+            If TypeOf control Is LabelControl OrElse TypeOf control Is BaseEdit OrElse TypeOf control Is SimpleButton Then
+                Dim label = TryCast(control, LabelControl)
+                Dim labelStyle As FontStyle = If(label Is Nothing, FontStyle.Regular, label.Appearance.Font.Style)
+                control.Font = normal
+                If label IsNot Nothing Then label.Appearance.Font = New Font(normal, labelStyle)
+                Dim editor = TryCast(control, BaseEdit)
+                If editor IsNot Nothing Then editor.Properties.Appearance.Font = normal
+            End If
+            Dim grid = TryCast(control, GridControl)
+            If grid IsNot Nothing Then
+                grid.Font = normal
+                For Each view As GridView In grid.ViewCollection.OfType(Of GridView)()
+                    view.Appearance.Row.Font = normal
+                    view.Appearance.Row.Options.UseFont = True
+                    view.Appearance.HeaderPanel.Font = bold
+                    view.Appearance.HeaderPanel.Options.UseFont = True
+                    For Each column As DevExpress.XtraGrid.Columns.GridColumn In view.Columns
+                        If column.ColumnEdit IsNot Nothing Then column.ColumnEdit.Appearance.Font = normal
+                    Next
+                Next
+            End If
+            Dim command = TryCast(control, SimpleButton)
+            If command IsNot Nothing Then PresentationLayout.FitCommandButton(command)
+            Dim toolbar = TryCast(control, WindowsUIButtonPanel)
+            If toolbar IsNot Nothing Then PresentationLayout.ApplyButtonPanel(toolbar, Me, GetStressDisplayScale())
+            Dim tabs = TryCast(control, DevExpress.XtraTab.XtraTabControl)
+            If tabs IsNot Nothing Then
+                tabs.AppearancePage.Header.Font = normal
+                tabs.AppearancePage.HeaderActive.Font = bold
+                For Each page As DevExpress.XtraTab.XtraTabPage In tabs.TabPages
+                    page.Appearance.Header.Font = If(page.Appearance.Header.Font.Bold, bold, normal)
+                    page.Appearance.HeaderActive.Font = bold
+                Next
+            End If
+        Next
+        ToggleModeSwitch.Properties.AutoHeight = False
+        ToggleModeSwitch.Width = CInt(130 * GetStressDisplayScale() * DeviceDpi / 96.0F)
+        If View_WrapTextGrid IsNot Nothing Then
+            View_WrapTextGrid.OptionsView.ColumnAutoWidth = True
+            View_WrapTextGrid.BestFitColumns()
+        End If
+    End Sub
+
+    Private Sub ApplyStressInputColumnWidths()
+        For Each view In FirstTabGridSources.Keys
+            view.BeginUpdate()
+            Try
+                view.OptionsView.ColumnAutoWidth = False
+                view.OptionsView.ColumnHeaderAutoHeight = DefaultBoolean.True
+                view.Appearance.HeaderPanel.TextOptions.WordWrap = WordWrap.Wrap
+                Dim scale As Single = GetStressDisplayScale() * DeviceDpi / 96.0F
+                Dim weights As Integer() = If(view.GridControl.ClientSize.Width < 700 * scale,
+                    New Integer() {130, 200, 100, 90, 90, 105, 105, 85},
+                    New Integer() {180, 250, 125, 110, 110, 120, 120, 100})
+                For Each column As DevExpress.XtraGrid.Columns.GridColumn In view.Columns
+                    column.MinWidth = CInt(60 * scale)
+                    column.Width = CInt(weights(Math.Min(column.AbsoluteIndex, weights.Length - 1)) * scale)
+                Next
+                'Keep readable description/editor widths and scroll on a restored
+                'window; stretch the same columns when the whole set fits.
+                view.OptionsView.ColumnAutoWidth = view.Columns.Cast(Of DevExpress.XtraGrid.Columns.GridColumn)().
+                    Where(Function(c) c.Visible).Sum(Function(c) c.Width) <= view.GridControl.ClientSize.Width - 24
+            Finally
+                view.EndUpdate()
+            End Try
+        Next
+    End Sub
+
+    Private Sub FitCovenantMarkers(chart As ChartControl)
+        Dim logicalWidth As Single = chart.ClientSize.Width / Math.Max(1.0F, DeviceDpi / 96.0F)
+        Dim markerSize As Integer = Math.Max(4, Math.Min(20, CInt((logicalWidth - 60) / 40 * 0.7F)))
+        For Each series As Series In chart.Series
+            Dim line = TryCast(series.View, LineSeriesView)
+            If line IsNot Nothing Then line.LineMarkerOptions.Size = markerSize
+        Next
     End Sub
 
     Private Sub SetWorkbookStressMode(Enabled As Boolean)

@@ -16,7 +16,7 @@ Namespace Abovo
         Public Shared WorkMode As String = "INTERFACE"
         Public Shared ReadOnly Property IsDev As Boolean = True
         Public Shared ReadOnly Property MaxGridHeight As Integer = CInt(Screen.PrimaryScreen.Bounds.Height * 0.7)
-        Public Shared ReadOnly Property DecVersionNumber As Decimal = 2.37D
+        Public Shared ReadOnly Property DecVersionNumber As Decimal = 2.46D
         Public Shared ReadOnly Property AppTitle As String = "abovo summit"
         Public Shared Property DefaultLrgFontSize As Integer = 12
         Public Shared Property DefaultMediumFontSize As Integer = 10
@@ -181,6 +181,23 @@ Namespace Abovo
                     MaximumWorkspaceScale,
                     Math.Max(1.0F, WorkspaceScale))
 
+            'A hosted DIT/analyser shares its group window's density, not the
+            'entire monitor's (nor the smaller document pane's) density.
+            Dim host As GroupInterfaceTemplate = TryCast(ReferenceControl, GroupInterfaceTemplate)
+            If TypeOf ReferenceControl Is DataInterfaceTemplate Then host = DirectCast(ReferenceControl, DataInterfaceTemplate).PresentationHost
+            If TypeOf ReferenceControl Is BPIncomeExpenditureAnalyserV2 Then host = DirectCast(ReferenceControl, BPIncomeExpenditureAnalyserV2).PresentationHost
+            Dim ancestor As Control = ReferenceControl
+            While host Is Nothing AndAlso ancestor IsNot Nothing
+                host = TryCast(ancestor, GroupInterfaceTemplate)
+                ancestor = ancestor.Parent
+            End While
+            If host IsNot Nothing AndAlso host.ClientSize.Width > 0 Then
+                AutomaticScale = Math.Min(AutomaticScale, Math.Max(1.0F, host.ClientSize.Width / DeviceScale / DesignWorkingWidth))
+            End If
+            Dim authoringPreview = TryCast(ReferenceControl, DataInterfaceTemplate)
+            If authoringPreview IsNot Nothing AndAlso authoringPreview.IsAuthoringPreview Then
+                AutomaticScale = Math.Min(AutomaticScale, Math.Max(1.0F, authoringPreview.ClientSize.Width / DeviceScale / DesignWorkingWidth))
+            End If
             Return AutomaticScale * PresentationScaleManager.UserScale
 
         End Function

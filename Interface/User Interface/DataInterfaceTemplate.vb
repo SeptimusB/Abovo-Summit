@@ -80,6 +80,11 @@ Public Class DataInterfaceTemplate
     Private rs As New Resizer
     'Private TTController As ToolTipController
     Private ParentGroupForm As GroupInterfaceTemplate
+    Friend ReadOnly Property PresentationHost As GroupInterfaceTemplate
+        Get
+            Return ParentGroupForm
+        End Get
+    End Property
     Private ActiveSpreadsheet As DevExpress.Spreadsheet.Worksheet
     Private ActiveWorkbook As IWorkbook
     'InterfaceTag
@@ -486,6 +491,18 @@ Public Class DataInterfaceTemplate
         InitialiseExportActions()
         InitialiseClipboardActions()
         InitialiseRefreshAction()
+        'Keep the toolbar outside the designer-scaled absolute table row.
+        'A smaller host must give the saved interface its actual document width.
+        TablePanelDIT.Controls.Remove(WindowsUIButtonPanelActions)
+        Controls.Add(WindowsUIButtonPanelActions)
+        WindowsUIButtonPanelActions.Dock = DockStyle.Top
+        WindowsUIButtonPanelActions.Padding = New System.Windows.Forms.Padding(12, 0, 12, 0)
+        TablePanelDIT.AutoSize = False
+        TablePanelDIT.Columns(0).Style = TablePanelEntityStyle.Relative
+        TablePanelDIT.Rows.Clear()
+        TablePanelDIT.Rows.Add(New TablePanelRow(TablePanelEntityStyle.Relative, 100))
+        TablePanelDIT.SetRow(XtraTabControlNewGIT, 0)
+        TablePanelDIT.BringToFront()
 
         If Not IsNothing(MyParent) Then
 
@@ -595,6 +612,8 @@ Public Class DataInterfaceTemplate
         If ActiveLinkElement IsNot Nothing Then ProcessLinkElement()
 
         ControlsInitialised = True
+
+        ConfigureAuthoringPreview()
 
 
         ResizeFonts()
@@ -709,6 +728,7 @@ Public Class DataInterfaceTemplate
     End Sub
 
     Public Sub RefreshData(Optional ByVal useLightweightGridRefresh As Boolean = False)
+        If InterfaceResourcesReleased OrElse IsDisposed OrElse Disposing Then Return
 
         'A batch paste performs its own final refresh after all workbook writes,
         'calculation, and rule updates. Do not reset the unbound grid mid-paste.
@@ -2739,6 +2759,8 @@ SkipRefresh:
         If ParentControl Is Nothing OrElse ParentControl.IsDisposed Then Return
 
         ParentControl.Font = NewFont
+        Dim command As SimpleButton = TryCast(ParentControl, SimpleButton)
+        If command IsNot Nothing Then PresentationLayout.FitCommandButton(command)
 
         For Each Child As Control In ParentControl.Controls
             ApplyFontToControlTree(Child, NewFont)
@@ -6076,6 +6098,8 @@ SkipRefresh:
                     SpinEdits(SpinEditCount) = New AbovoDESpinEdit With {
                                                 .Name = "SpinEdit_" & SpinEditCount.ToString,
                                                         .ModelID = ModelID,
+                                                        .TargetWorksheet = SCDT.TargetWorksheet,
+                                                        .TargetCell = SCDT.TargetCell,
                                                         .Tag = SCDT
                                             }
 
@@ -7591,6 +7615,7 @@ NextCell:
 
 #Region "Menu Button Actions"
     Private Sub InitialiseRefreshAction()
+        If ParentGroupForm IsNot Nothing Then ParentGroupForm.AttachPanelsButton(WindowsUIButtonPanelActions)
         For Each item As Object In WindowsUIButtonPanelActions.Buttons
             Dim button As WindowsUIButton = TryCast(item, WindowsUIButton)
             If button IsNot Nothing AndAlso
@@ -8320,6 +8345,7 @@ SectionSelect:
     Private Function CanPasteToDataPoint(ByVal DataSet As DataCellRange,
                                          ByVal DataRowIndex As Integer,
                                          ByVal DataColumnIndex As Integer) As Boolean
+        If IsAuthoringPreview Then Return False
 
         If DataSet Is Nothing Then Return False
         If DataRowIndex < 0 OrElse DataRowIndex >= DataSet.DataRows.Count Then Return False
@@ -10294,6 +10320,7 @@ SectionSelect:
     End Function
 
     Private Sub PerformClipboardClear(ByVal copyBeforeClearing As Boolean)
+        If IsAuthoringPreview Then Return
         If LastClipboardTarget Is Nothing OrElse LastClipboardTarget.IsDisposed Then Return
 
         Dim selectedTargets As List(Of ClipboardDataCellTarget) =
@@ -10350,6 +10377,7 @@ SectionSelect:
     End Sub
 
     Private Sub PerformClipboardPaste()
+        If IsAuthoringPreview Then Return
         If LastClipboardTarget Is Nothing OrElse LastClipboardTarget.IsDisposed OrElse
            Not CanPasteIntoClipboardTarget(LastClipboardTarget) Then Return
         Dim grid As GridControl = TryCast(LastClipboardTarget, GridControl)
@@ -11850,7 +11878,7 @@ SectionSelect:
     End Sub
     Sub SingleCell_Value_Push(ByVal sender As Object, ByVal e As Object)
 
-        If SuppressSingleCellPosting Then Return
+        If SuppressSingleCellPosting OrElse InterfaceResourcesReleased OrElse IsDisposed OrElse Disposing Then Return
 
         Me.Cursor = Cursors.WaitCursor
 
@@ -12343,6 +12371,7 @@ SectionSelect:
     End Sub
 
     Public Sub RunAction(ActToken As ActionToken)
+        If IsAuthoringPreview Then Return
 
         Select Case ActToken.ActionType
 
@@ -13550,6 +13579,12 @@ SectionSelect:
 
         Next
 
+        PresentationLayout.ApplyButtonPanel(WindowsUIButtonPanelActions, Me)
+        For Each command As SimpleButton In FindChildControls(Of SimpleButton)(Me)
+            command.Font = NewFont
+            PresentationLayout.FitCommandButton(command)
+        Next
+
         If GridViewCount < 0 Then GoTo BandedGridViews
 
         If Me.UsedGridVIEWS.Length > 0 Then
@@ -13808,11 +13843,7 @@ TPans:
 
             Dim AvailableWidth As Integer
 
-            If ParentGroupForm IsNot Nothing Then
-                AvailableWidth = Math.Max(1, ParentGroupForm.ClientSize.Width - 40)
-            Else
-                AvailableWidth = Math.Max(1, Me.ClientSize.Width - 40)
-            End If
+            AvailableWidth = Math.Max(1, XtraTabControlNewGIT.ClientSize.Width - 16)
 
             For Each tp In Me.TPs
 
@@ -14081,6 +14112,12 @@ TPans:
     Private Sub ReapplyCurrentDisplayLayout()
 
         If IsDisposed OrElse Disposing OrElse TPs Is Nothing Then Return
+        Scalefactor = GetDisplayScale(Me)
+        'Do not call ResizeFonts here: its legacy editor-close behaviour is not
+        'appropriate during a window resize. Reflow the active section in place.
+        TablePanelDIT.Font = GetDisplayFont("Medium", Me)
+        XtraTabControlNewGIT.Font = GetDisplayFont("Medium", Me)
+        PresentationLayout.ApplyButtonPanel(WindowsUIButtonPanelActions, Me)
 
         Dim SelectedIndex As Integer = XtraTabControlNewGIT.SelectedTabPageIndex
         If SelectedIndex < 0 OrElse SelectedIndex >= TPs.Length Then Return
@@ -14088,10 +14125,7 @@ TPans:
         Dim SelectedTP As TablePanel = TPs(SelectedIndex)
         If SelectedTP Is Nothing OrElse SelectedTP.IsDisposed Then Return
 
-        Dim AvailableWidth As Integer =
-            If(ParentGroupForm Is Nothing,
-               Math.Max(1, ClientSize.Width - 40),
-               Math.Max(1, ParentGroupForm.ClientSize.Width - 40))
+        Dim AvailableWidth As Integer = Math.Max(1, XtraTabControlNewGIT.SelectedTabPage.ClientSize.Width - 16)
 
         SelectedTP.SuspendLayout()
 
