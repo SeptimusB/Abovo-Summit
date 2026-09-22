@@ -89,12 +89,19 @@ Partial Public Class BPIncomeExpenditureAnalyserV2
         Private Dirty As Boolean = True
         Private Updating As Boolean
         Private Connected As Boolean = True
+        Private ReadOnly Property IsBalanceSheet As Boolean
+            Get
+                Return Object.ReferenceEquals(Wrapper, Owner.WrapCG_BS)
+            End Get
+        End Property
+        Private BalanceDocument As Abovo.BalanceSheetDocument
 
         Private NotInheritable Class ChartNode
             Public RowHandle As Integer
             Public Caption As String
             Public Path As String
             Public CanDrill As Boolean
+            Public BalanceNode As Abovo.BalanceSheetNode
             Public Overrides Function ToString() As String
                 Return Caption
             End Function
@@ -256,6 +263,18 @@ Partial Public Class BPIncomeExpenditureAnalyserV2
 
         Private Sub PopulateNodes()
             Nodes.Clear()
+            If IsBalanceSheet Then
+                If BalanceDocument Is Nothing Then Return
+                While Navigation.Count > 0 AndAlso Not BalanceDocument.Nodes.Any(Function(n) n.Id = Navigation.Last() AndAlso BalanceDocument.Children(n.Id).Count > 0)
+                    Navigation.RemoveAt(Navigation.Count - 1)
+                End While
+                For Each node In BalanceDocument.Children(If(Navigation.Count = 0, "", Navigation.Last()))
+                    If Navigation.Count = 0 AndAlso node.IsTotal AndAlso Not Totals.Checked Then Continue For
+                    Nodes.Add(New ChartNode With {.Caption = node.Caption, .Path = node.Id, .BalanceNode = node,
+                              .CanDrill = node.Diagnostic.Length = 0 AndAlso BalanceDocument.Children(node.Id).Count > 0})
+                Next
+                Return
+            End If
             'A structural change can remove the selected branch. Fall back to its
             'nearest surviving, expandable ancestor, never an unrelated row handle.
             While Navigation.Count > 0
@@ -286,14 +305,15 @@ Partial Public Class BPIncomeExpenditureAnalyserV2
         Private Sub Render()
             If Updating OrElse Not Dirty OrElse Not ShowingChart OrElse Not Page.Visible OrElse
                Not Connected OrElse Owner.AmInactiveState OrElse Owner.IsDisposed OrElse
-               View.GridControl.DataSource Is Nothing Then Return
+               (Not IsBalanceSheet AndAlso View.GridControl.DataSource Is Nothing) Then Return
             Updating = True
             Dim watch As System.Diagnostics.Stopwatch = System.Diagnostics.Stopwatch.StartNew()
             Try
                 Dim periods As List(Of GridColumn) = Owner.GetPeriodColumns(View)
-                If Object.ReferenceEquals(Wrapper, Owner.WrapCG_BS) Then
-                    Dim opening As GridColumn = Owner.GetOpeningBalanceColumn(View)
-                    If opening IsNot Nothing Then periods.Insert(0, opening)
+                If IsBalanceSheet Then
+                    BalanceDocument = Owner.BalanceSheetView.EnsureDocument()
+                    If BalanceDocument Is Nothing Then Throw New InvalidOperationException("See the Balance Sheet figures panel for the source diagnostic.")
+                    periods = BalanceDocument.Periods.Select(Function(caption) New GridColumn With {.Caption = caption}).ToList()
                 End If
                 Dim summaries As New Dictionary(Of String, GridSummaryItem)(StringComparer.Ordinal)
                 For Each item As GridSummaryItem In View.GroupSummary
@@ -312,10 +332,13 @@ Partial Public Class BPIncomeExpenditureAnalyserV2
                     line.LineStyle.Thickness = 5
                     line.MarkerVisibility = DefaultBoolean.True
                     line.LineMarkerOptions.Size = 8
-                    Dim values As Hashtable = If(View.IsGroupRow(node.RowHandle), View.GetGroupSummaryValues(node.RowHandle), Nothing)
+                    Dim values As Hashtable = If(Not IsBalanceSheet AndAlso View.IsGroupRow(node.RowHandle), View.GetGroupSummaryValues(node.RowHandle), Nothing)
+                    Dim periodIndex As Integer = 0
                     For Each period In periods
                         Dim raw As Object = Nothing
-                        If values IsNot Nothing Then
+                        If IsBalanceSheet Then
+                            raw = node.BalanceNode.Values(periodIndex)
+                        ElseIf values IsNot Nothing Then
                             Dim summary As GridSummaryItem = Nothing
                             If summaries.TryGetValue(period.FieldName, summary) Then raw = values(summary)
                         Else
@@ -328,6 +351,7 @@ Partial Public Class BPIncomeExpenditureAnalyserV2
                         point.IsEmpty = Not valid
                         If Not valid Then missing += 1
                         series.Points.Add(point)
+                        periodIndex += 1
                     Next
                     Chart.Series.Add(series)
                     If node.CanDrill Then Choices.Properties.Items.Add(node)
@@ -359,13 +383,14 @@ Partial Public Class BPIncomeExpenditureAnalyserV2
                 End If
                 Dim labels As New List(Of String) From {Page.Text, If(Owner.CurrentDataSourceMode = AnalyserDataSourceMode.Comparison, "Differences", Owner.CurrentDataSourceMode.ToString()), "Overview"}
                 For Each path In Navigation
-                    labels.Add(MakeNode(ResolvePath(path)).Caption)
+                    labels.Add(If(IsBalanceSheet, BalanceDocument.Nodes.First(Function(n) n.Id = path).Caption, MakeNode(ResolvePath(path)).Caption))
                 Next
                 Trail.Text = String.Join("  >  ", labels)
                 Trail.ToolTip = Trail.Text
                 Status.Text = If(Nodes.Count = 0, "No records match this statement/filter.",
                     "Wheel: zoom. Ctrl+drag: pan. Right-click: Drill down / Go Up; use the list for overlapping lines.")
                 If missing > 0 Then Status.Text &= " " & missing.ToString() & " unavailable values shown as gaps."
+                If IsBalanceSheet Then Status.Text &= " Balances include openings; transaction contributions are cumulative."
                 If Nodes.Count > 0 AndAlso Nodes.All(Function(node) node.Caption = "(Unclassified)") Then
                     Status.Text = "This level has no group labels in the workbook/grid. Drill down if detail is available; no classifications have been invented."
                 End If

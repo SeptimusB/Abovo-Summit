@@ -1,0 +1,32 @@
+Funding Assumptions
+Hidden- Intermed Interest Rates
+Interest Rates
+Hidden - Revolver Op Bal
+Hidden - Revolver Adj Op Bal
+Hidden - Revolver Bal Pre Int
+Hidden - Revolver Close Bal
+Hidden - Revolver Draw Repay
+Hidden - Open Loan Facilities
+Hidden - Close Loan Facilities
+Hidden - Loan Opening Balances
+Hidden - Loan Drawdowns
+Hidden - Loan Interest
+Hidden - Loan Repayments
+Hidden - Loan Interest Charge
+Hidden - Interest Pay Dates
+Hidden - Interest Paid Factors
+Hidden - Interest Accrual
+Hidden - Loan Fees Amortisation
+Hidden - Premium Amortisation
+Hidden - Loan Commitment Fees
+Loan Interest Payable
+Loan Closing Facilities
+Loan Opening Balances
+Loan Drawdowns
+Loan Interest Paid
+Loan Repayments
+Loan Closing Balances
+Loan Fixed Variable
+Loan Commitment Fees
+Loan Fees Amortisation
+Bond Premium Amortisation

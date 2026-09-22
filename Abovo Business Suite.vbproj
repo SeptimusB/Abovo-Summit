@@ -461,6 +461,7 @@
     <Compile Include="Interface\Interface Services\GeneralFunctions.vb" />
     <Compile Include="Interface\Interface Services\AnalyserVirtualSelectionManager.vb" />
     <Compile Include="Interface\Interface Services\WorkbookGridClipboardSupport.vb" />
+    <Compile Include="Interface\Interface Services\FundingPaymentDateSupport.vb" />
     <Compile Include="Interface\Custom Controls\ReadOnlyMappedTableGrid.vb">
       <SubType>Component</SubType>
     </Compile>
@@ -615,7 +616,18 @@
     <Compile Include="Services\ExcelDataExport.vb" />
     <Compile Include="Services\Calculation Engine and Custom Functions\ExcelFunctions.vb" />
     <Compile Include="Services\FileManager.vb" />
+    <Compile Include="Services\RecoveryBackupManager.vb" />
+    <Compile Include="Services\RecoveryXlsmCompatibility.vb" />
+    <Compile Include="Services\RecoveryHistoryStore.vb" />
     <Compile Include="Services\BusinessPlanComparisonService.vb" />
+    <Compile Include="Services\BalanceSheetStatement.vb" />
+    <Compile Include="Interface\User Interface\BPIncomeExpenditureAnalyserV2.BalanceSheet.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Interface\User Interface\DataInterfaceTemplate.Navigation.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Services\BalanceSheetSnapshot.vb" />
     <Compile Include="Services\ModelManagerDefinition.vb" />
     <Compile Include="Services\StructureAuthoringDraft.vb" />
     <Compile Include="Interface\User Interface\BPIncomeExpenditureAnalyserV2.Chart.vb">
@@ -690,6 +702,9 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Services\WorkbookStructureRuleManager.vb" />
+    <Compile Include="Services\StructuralInsertBenchmark.vb" />
+    <Compile Include="Services\WorkbookStructural3DReferences.vb" />
+    <Compile Include="Services\WorkbookXlsbFormulaCompatibility.vb" />
     <Compile Include="Services\ModelSafetyManager.vb" />
     <Compile Include="Services/ModelResourceRegistry.vb" />
     <Compile Include="Interface\User Interface\BPIncomeExpenditureAnalyserV2.Designer.vb">

@@ -20,6 +20,15 @@ Namespace Abovo
 
     Friend Module InplaceEditorFormatting
 
+        Public Function SameEditorValue(left As Object, right As Object) As Boolean
+            Dim normalise As Func(Of Object, String) = Function(value)
+                If TypeOf value Is OrdinalYearComboItem Then value = DirectCast(value, OrdinalYearComboItem).StoredValue
+                Dim text = Convert.ToString(value, Globalization.CultureInfo.InvariantCulture)
+                Return If(text.Trim().Equals("<Blank>", StringComparison.OrdinalIgnoreCase), "", text)
+            End Function
+            Return normalise(left) = normalise(right)
+        End Function
+
         Public Sub ApplyStandardDateFormat(ByVal Item As RepositoryItem)
 
             Dim DateItem As RepositoryItemDateEdit = TryCast(Item, RepositoryItemDateEdit)
@@ -42,6 +51,12 @@ Namespace Abovo
     End Module
 
     Public Class ColumnInplaceEditorHelper
+        Public Property Navigate As Func(Of Keys, Boolean)
+        Public ReadOnly Property GridControl As Control
+            Get
+                Return bgview?.GridControl
+            End Get
+        End Property
 
         Private _Item As RepositoryItem
         Private _Column As BandedGridColumn
@@ -127,7 +142,7 @@ Namespace Abovo
             Set(ByVal value As Object)
                 _EditValue = value
                 If _ActiveEditor IsNot Nothing AndAlso Not _ActiveEditor.IsDisposed Then
-                    _ActiveEditor.EditValue = value
+                    If _CommitInProgress OrElse Not _ActiveEditor.ContainsFocus Then _ActiveEditor.EditValue = value
                 End If
                 If bgview IsNot Nothing AndAlso bgview.GridControl IsNot Nothing AndAlso
                    Not bgview.GridControl.IsDisposed Then
@@ -441,7 +456,7 @@ Namespace Abovo
 
         Private Sub CloseEditor()
 
-            If ActiveEditor IsNot Nothing AndAlso Not _ClosingEditor Then
+            If ActiveEditor IsNot Nothing AndAlso Not _ClosingEditor AndAlso Not _CommitInProgress Then
 
                 _ClosingEditor = True
 
@@ -461,24 +476,27 @@ Namespace Abovo
 
         End Sub
 
-        Private Sub CommitActiveEditorValue()
+        Private Function CommitActiveEditorValue() As Boolean
 
-            If ActiveEditor Is Nothing OrElse _CommitInProgress Then Return
+            If ActiveEditor Is Nothing Then Return True
+            If _CommitInProgress Then Return False
 
             Dim editor As BaseEdit = ActiveEditor
             _CommitInProgress = True
 
             Try
-                EditValue = editor.EditValue
+                Dim requested = editor.EditValue
+                EditValue = requested
 
                 If _ValueChangedHandler IsNot Nothing Then
                     _ValueChangedHandler.Invoke(editor, EventArgs.Empty)
                 End If
+                Return Not editor.IsDisposed AndAlso InplaceEditorFormatting.SameEditorValue(requested, editor.EditValue)
             Finally
                 _CommitInProgress = False
             End Try
 
-        End Sub
+        End Function
 
         Private Sub CommitAndCloseEditor()
 
@@ -487,7 +505,7 @@ Namespace Abovo
             If Not _CommitInProgress Then
 
                 If Not ActiveEditor.DoValidate(PopupCloseMode.Normal) Then Return
-                CommitActiveEditorValue()
+                If Not CommitActiveEditorValue() Then Return
 
             End If
 
@@ -495,15 +513,26 @@ Namespace Abovo
 
         End Sub
 
+        Friend Function CommitForSave() As Boolean
+            If ActiveEditor Is Nothing Then Return True
+            If _ClosingEditor OrElse _CommitInProgress Then Return False
+            If Not ActiveEditor.DoValidate(PopupCloseMode.Normal) OrElse Not CommitActiveEditorValue() Then Return False
+            CloseEditor()
+            Return True
+        End Function
+
         Private Sub editor_PreviewKeyDown(ByVal sender As Object, ByVal e As PreviewKeyDownEventArgs)
 
-            If e.KeyCode = Keys.Tab Then e.IsInputKey = True
+            If {Keys.Tab, Keys.Left, Keys.Right, Keys.Up, Keys.Down}.Contains(e.KeyCode) Then e.IsInputKey = True
 
         End Sub
 
         Private Sub editor_KeyDown(ByVal sender As Object, ByVal e As KeyEventArgs)
 
-            If e.KeyCode <> Keys.Enter AndAlso e.KeyCode <> Keys.Tab Then Return
+            If e.Control OrElse e.Alt Then Return
+            Dim popup = TryCast(sender, PopupBaseEdit)
+            If popup IsNot Nothing AndAlso popup.IsPopupOpen Then Return
+            If e.KeyCode <> Keys.Enter AndAlso Not {Keys.Tab, Keys.Left, Keys.Right, Keys.Up, Keys.Down}.Contains(e.KeyCode) Then Return
 
             e.Handled = True
             e.SuppressKeyPress = True
@@ -517,7 +546,11 @@ Namespace Abovo
 
             End If
 
-            CommitActiveEditorValue()
+            If Not CommitActiveEditorValue() Then Return
+            If Navigate IsNot Nothing AndAlso e.KeyCode <> Keys.Enter Then
+                CloseEditor()
+                If Navigate(e.KeyData) Then Return
+            End If
             ScheduleAdvanceToEditor(
                 GetAdjacentVisibleHelper(e.KeyCode = Keys.Tab AndAlso e.Shift))
 
@@ -554,7 +587,7 @@ Namespace Abovo
 
         End Sub
 
-        Private Sub ShowEditorFromKeyboard()
+        Public Sub ShowEditorFromKeyboard()
 
             If bgview Is Nothing OrElse
                bgview.GridControl Is Nothing OrElse
@@ -621,6 +654,14 @@ End Namespace
 Namespace Abovo
 
     Public Class VGridRowInplaceEditorHelper
+        Public Property Navigate As Func(Of Keys, Boolean)
+        Public ReadOnly Property GridControl As Control
+            Get
+                Return _VGrid
+            End Get
+        End Property
+        Private _Committing As Boolean
+        Private _Closing As Boolean
 
         Private _Item As RepositoryItem
         Private _Row As DevExpress.XtraVerticalGrid.Rows.EditorRow
@@ -687,16 +728,9 @@ Namespace Abovo
             Set(ByVal value As Object)
                 _EditValue = value
                 If _ActiveEditor IsNot Nothing AndAlso Not _ActiveEditor.IsDisposed Then
-                    If _ValueChangedHandler IsNot Nothing Then
-                        RemoveHandler _ActiveEditor.EditValueChanged, _ValueChangedHandler
-                    End If
-                    Try
+                    If _Committing OrElse Not _ActiveEditor.ContainsFocus Then
                         _ActiveEditor.EditValue = value
-                    Finally
-                        If _ValueChangedHandler IsNot Nothing Then
-                            AddHandler _ActiveEditor.EditValueChanged, _ValueChangedHandler
-                        End If
-                    End Try
+                    End If
                 End If
                 If _VGrid IsNot Nothing AndAlso Not _VGrid.IsDisposed Then
                     _VGrid.InvalidateRow(_Row)
@@ -730,6 +764,10 @@ Namespace Abovo
             If e.CellIndex <> 0 Then Return
 
             _LastHeaderBounds = e.Bounds
+            If _ActiveEditor IsNot Nothing AndAlso Not _ActiveEditor.IsDisposed AndAlso _ActiveEditor.Parent IsNot Nothing Then
+                Dim rectangle = GetEditorBounds(e.Bounds)
+                _ActiveEditor.Bounds = New Rectangle(_ActiveEditor.Parent.PointToClient(_VGrid.PointToScreen(rectangle.Location)), rectangle.Size)
+            End If
 
             'Draw the normal row header first, but without the generated field
             'caption.  The repository editor is then painted inside the same
@@ -751,6 +789,7 @@ Namespace Abovo
 
         Private Sub VGrid_MouseDown(ByVal sender As Object, ByVal e As MouseEventArgs)
 
+            If Not CommitEditor() Then Return
             CloseEditor()
 
             If _LastHeaderBounds.IsEmpty Then Return
@@ -769,12 +808,14 @@ Namespace Abovo
 
         End Sub
 
-        Private Sub ShowEditor(ByVal Bounds As Rectangle)
+        Private Sub ShowEditor(ByVal Bounds As Rectangle, Optional keyboard As Boolean = False)
 
+            If _ActiveEditor IsNot Nothing Then CloseEditor()
             _ActiveEditor = _Item.CreateEditor()
             _ActiveEditor.Properties.LockEvents()
             _ActiveEditor.Properties.Assign(_Item)
             _ActiveEditor.Properties.AutoHeight = False
+            _ActiveEditor.EnterMoveNextControl = False
 
             _ActiveEditor.Properties.Appearance.Options.UseBackColor = True
             _ActiveEditor.Properties.Appearance.BackColor = _Item.Appearance.BackColor
@@ -795,6 +836,9 @@ Namespace Abovo
             'invalid state.  Instead, make the editor a sibling of the VGrid and
             'translate the row-header rectangle into the VGrid parent's coordinates.
             Dim EditorParent As Control = _VGrid.Parent
+            While TypeOf EditorParent Is TableLayoutPanel OrElse TypeOf EditorParent Is DevExpress.Utils.Layout.TablePanel OrElse TypeOf EditorParent Is DevExpress.XtraLayout.LayoutControl
+                EditorParent = EditorParent.Parent
+            End While
 
             If EditorParent Is Nothing Then
 
@@ -820,38 +864,98 @@ Namespace Abovo
             _ActiveEditor.BringToFront()
 
             AddHandler _ActiveEditor.Leave, AddressOf Editor_Leave
+            AddHandler _ActiveEditor.PreviewKeyDown, AddressOf Editor_PreviewKeyDown
+            AddHandler _ActiveEditor.KeyDown, AddressOf Editor_KeyDown
 
-            _ActiveEditor.SendMouse(_ActiveEditor.PointToClient(Control.MousePosition), Control.MouseButtons)
-            _ActiveEditor.Properties.UnLockEvents()
-
-            If _ValueChangedHandler IsNot Nothing Then
-                AddHandler _ActiveEditor.EditValueChanged, _ValueChangedHandler
+            If keyboard Then
+                _ActiveEditor.Focus()
+            Else
+                _ActiveEditor.SendMouse(_ActiveEditor.PointToClient(Control.MousePosition), Control.MouseButtons)
             End If
+            _ActiveEditor.Properties.UnLockEvents()
 
         End Sub
 
         Private Sub CloseEditor()
 
-            If _ActiveEditor Is Nothing Then Return
-
-            EditValue = _ActiveEditor.EditValue
-
-            If _ValueChangedHandler IsNot Nothing Then
-                RemoveHandler _ActiveEditor.EditValueChanged, _ValueChangedHandler
-            End If
-
-            RemoveHandler _ActiveEditor.Leave, AddressOf Editor_Leave
-            _ActiveEditor.Dispose()
-            _ActiveEditor = Nothing
+            If _ActiveEditor Is Nothing OrElse _Closing OrElse _Committing Then Return
+            _Closing = True
+            Try
+                EditValue = _ActiveEditor.EditValue
+                RemoveHandler _ActiveEditor.Leave, AddressOf Editor_Leave
+                RemoveHandler _ActiveEditor.PreviewKeyDown, AddressOf Editor_PreviewKeyDown
+                RemoveHandler _ActiveEditor.KeyDown, AddressOf Editor_KeyDown
+                _ActiveEditor.Dispose()
+                _ActiveEditor = Nothing
+            Finally
+                _Closing = False
+            End Try
 
         End Sub
 
         Private Sub Editor_Leave(ByVal sender As Object, ByVal e As EventArgs)
-            CloseEditor()
+            If CommitEditor() Then CloseEditor()
         End Sub
 
         Private Sub VGrid_Layout(ByVal sender As Object, ByVal e As EventArgs)
+            'A calculation can relayout the grid while an editor is committing.
+            'Disposing that editor here used to interrupt entry and reset focus.
+            If _ActiveEditor IsNot Nothing AndAlso Not _ActiveEditor.IsDisposed Then
+                _VGrid.InvalidateRow(_Row)
+            End If
+        End Sub
+
+        Private Function CommitEditor() As Boolean
+            If _ActiveEditor Is Nothing Then Return True
+            If _Committing OrElse _Closing Then Return False
+            If Not _ActiveEditor.DoValidate(PopupCloseMode.Normal) Then Return False
+            _Committing = True
+            Try
+                Dim requested = _ActiveEditor.EditValue
+                _EditValue = requested
+                If _ValueChangedHandler IsNot Nothing Then _ValueChangedHandler.Invoke(_ActiveEditor, EventArgs.Empty)
+                Return InplaceEditorFormatting.SameEditorValue(requested, _ActiveEditor.EditValue)
+            Finally
+                _Committing = False
+            End Try
+        End Function
+
+        Friend Function CommitForSave() As Boolean
+            If Not CommitEditor() Then Return False
             CloseEditor()
+            Return True
+        End Function
+
+        Private Sub Editor_PreviewKeyDown(sender As Object, e As PreviewKeyDownEventArgs)
+            If {Keys.Tab, Keys.Left, Keys.Right, Keys.Up, Keys.Down}.Contains(e.KeyCode) Then e.IsInputKey = True
+        End Sub
+
+        Private Sub Editor_KeyDown(sender As Object, e As KeyEventArgs)
+            If e.Control OrElse e.Alt Then Return
+            Dim popup = TryCast(sender, PopupBaseEdit)
+            If popup IsNot Nothing AndAlso popup.IsPopupOpen Then Return
+            If e.KeyCode = Keys.Escape Then
+                _ActiveEditor.EditValue = _EditValue
+                CloseEditor()
+                e.Handled = True : e.SuppressKeyPress = True
+                Return
+            End If
+            If Not {Keys.Tab, Keys.Enter, Keys.Left, Keys.Right, Keys.Up, Keys.Down}.Contains(e.KeyCode) Then Return
+            e.Handled = True : e.SuppressKeyPress = True
+            If Not CommitEditor() Then Return
+            CloseEditor()
+            If Navigate IsNot Nothing Then Navigate.Invoke(If(e.KeyCode = Keys.Enter, Keys.Down, e.KeyData))
+        End Sub
+
+        Public Sub ShowEditorFromKeyboard()
+            If _VGrid Is Nothing OrElse _VGrid.IsDisposed OrElse Not _Row.Visible Then Return
+            _VGrid.MakeRowVisible(_Row)
+            _VGrid.Refresh()
+            'The row can be outside the outer tab's viewport and not painted yet.
+            'Use native layout bounds, never a stale cached rectangle from before a scroll.
+            Dim rowInfo = _VGrid.ViewInfo.RowsViewInfo.Cast(Of DevExpress.XtraVerticalGrid.ViewInfo.BaseRowViewInfo)().FirstOrDefault(Function(info) info.Row Is _Row)
+            If rowInfo IsNot Nothing AndAlso rowInfo.HeaderInfo IsNot Nothing Then _LastHeaderBounds = rowInfo.HeaderInfo.HeaderCellsRect
+            If Not _LastHeaderBounds.IsEmpty Then ShowEditor(GetEditorBounds(_LastHeaderBounds), True)
         End Sub
 
         Public Sub DetachForDisposal()
@@ -863,6 +967,8 @@ Namespace Abovo
                 RemoveHandler _VGrid.MouseDown, AddressOf VGrid_MouseDown
                 RemoveHandler _VGrid.Layout, AddressOf VGrid_Layout
             End If
+            RemoveHandler PresentationScaleManager.ScaleChanged, AddressOf PresentationScaleChanged
+            Navigate = Nothing
 
             _Row = Nothing
             _Item = Nothing

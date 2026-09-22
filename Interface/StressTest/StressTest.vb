@@ -417,6 +417,7 @@ Public Class StressTest
 
     Public Sub SetActive()
 
+        ExcelModels(ModelID).EnsureDeferredSaveResultsCurrent("Preparing Stress Test figures...")
         If XtraTabControlStressTest.SelectedTabPage Is XtraTabPageMVP Then
             RefreshNativePlanner()
         ElseIf XtraTabControlStressTest.SelectedTabPage Is XtraTabPageDashboard Then
@@ -1357,6 +1358,7 @@ Public Class StressTest
 
             If DoChanges Then
 
+                ExcelModels(ModelID).RequireFullRebuild()
                 ActiveWorkbook.DefinedNames.GetDefinedName("Mode").RefersTo = """Stress Test"""
                 ModeCell(0, 0).Value = "Y"
                 StressTestModeAdjustments()
@@ -1374,6 +1376,7 @@ Public Class StressTest
 
             If DoChanges Then
 
+                ExcelModels(ModelID).RequireFullRebuild()
                 ActiveWorkbook.DefinedNames.GetDefinedName("Mode").RefersTo = """Business Plan"""
 
                 ModeCell(0, 0).Value = "N"
@@ -5473,6 +5476,7 @@ Public Class StressTest
                 RestoreRange(LiveAssumptionsA, SavedLiveA)
                 ActiveWorkbook.DefinedNames.GetDefinedName(
                     "StressTestMode").Range(0, 0).Value = CellValue.FromObject(SavedMode)
+                ExcelModels(ModelID).RequireFullRebuild()
                 ActiveWorkbook.DefinedNames.GetDefinedName("Mode").RefersTo = SavedModeReference
                 ExcelModels(ModelID).IsDirty = True
                 CalculateStressWorkbook(True)
@@ -5648,6 +5652,7 @@ Public Class StressTest
         End If
         ActiveWorkbook.DefinedNames.GetDefinedName("StressTestMode").Range(0, 0).Value =
             CellValue.FromObject(If(Enabled, "Y", "N"))
+        ExcelModels(ModelID).RequireFullRebuild()
         ActiveWorkbook.DefinedNames.GetDefinedName("Mode").RefersTo =
             If(Enabled, """Stress Test""", """Business Plan""")
 

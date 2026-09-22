@@ -32,6 +32,8 @@ Namespace Abovo
             Dim calculateMs As Long = 0
             Dim verifyMs As Long = 0
             Dim outcome As String = "failed"
+            Dim mutationStarted As Boolean = False
+            Dim protectedSheets As New Dictionary(Of Worksheet, WorksheetProtectionPermissions)
 
             Try
                 If FileManager.ExcelModels Is Nothing OrElse
@@ -43,6 +45,7 @@ Namespace Abovo
                 End If
 
                 Dim workbook As IWorkbook = FileManager.ExcelModels(modelID).WB
+                FileManager.ExcelModels(modelID).EnsureDeferredSaveResultsCurrent("Preparing snapshot results...")
                 Dim sourceSheet As Worksheet = RequireWorksheet(workbook, SourceWorksheetName)
                 snapshotSheet = RequireWorksheet(workbook, SnapshotWorksheetName)
                 comparisonSheet = RequireWorksheet(workbook, ComparisonWorksheetName)
@@ -74,11 +77,30 @@ Namespace Abovo
 
                 Dim comparisonColumns As Boolean() =
                     GetComparisonValueColumns(sourceRange)
+                BalanceSheetSnapshot.ValidateDestination(snapshotSheet, SnapshotRangeName)
+                BalanceSheetSnapshot.ValidateDestination(comparisonSheet, ComparisonRangeName)
+                Dim balanceSheet As BalanceSheetDocument = Nothing
+                Try
+                    balanceSheet = BalanceSheetStatement.Read(workbook)
+                Catch ex As InvalidOperationException
+                    'Unsupported/bespoke layouts must not disable existing SOCI/CF
+                    'snapshots. Their BS page reports the unsupported mapping.
+                    Diagnostics.Trace.WriteLine("[Balance Sheet snapshot] Not captured: " & ex.Message)
+                End Try
+                For Each sheet In {snapshotSheet, comparisonSheet}
+                    If sheet.IsProtected Then
+                        protectedSheets.Add(sheet, sheet.GetProtectionPermissions())
+                        WSSecurity.UNProtectWS(modelID, sheet.Name)
+                        If sheet.IsProtected Then Throw New InvalidOperationException("Cannot write the protected snapshot worksheet.")
+                    End If
+                Next
                 setupMs = benchmark.ElapsedMilliseconds
 
                 workbook.BeginUpdate()
                 Try
                     Dim phaseStartMs As Long = benchmark.ElapsedMilliseconds
+                    mutationStarted = True
+                    FileManager.ExcelModels(modelID).RequireFullRebuild()
                     snapshotSheet.GetUsedRange().ClearContents()
                     comparisonSheet.GetUsedRange().ClearContents()
                     clearMs = benchmark.ElapsedMilliseconds - phaseStartMs
@@ -127,6 +149,7 @@ Namespace Abovo
                         Next
                     Next
                     formulaMs = benchmark.ElapsedMilliseconds - phaseStartMs
+                    If balanceSheet IsNot Nothing Then BalanceSheetSnapshot.Capture(workbook, balanceSheet)
                 Finally
                     Dim phaseStartMs As Long = benchmark.ElapsedMilliseconds
                     workbook.EndUpdate()
@@ -135,6 +158,7 @@ Namespace Abovo
 
                 Dim calculateStartMs As Long = benchmark.ElapsedMilliseconds
                 comparisonRange.Calculate()
+                If balanceSheet IsNot Nothing Then comparisonSheet.DefinedNames.GetDefinedName(BalanceSheetSnapshot.ExtraRangeName).Range.Calculate()
                 calculateMs = benchmark.ElapsedMilliseconds - calculateStartMs
                 Dim verifyStartMs As Long = benchmark.ElapsedMilliseconds
                 VerifyComparisonValues(
@@ -142,6 +166,16 @@ Namespace Abovo
                     snapshotRange,
                     comparisonRange,
                     comparisonColumns)
+                If balanceSheet IsNot Nothing Then
+                    BalanceSheetSnapshot.Read(workbook, balanceSheet)
+                    For Each node In balanceSheet.Nodes.Where(Function(n) n.IsHeadline)
+                        Dim row = balanceSheet.OutputTop + Integer.Parse(node.Id.Substring(3))
+                        For p = 0 To 40
+                            Dim actual = comparisonSheet.Cells(row, BalanceSheetStatement.PeriodColumn(p)).Value
+                            If Not Double.IsNaN(node.Values(p)) AndAlso (Not actual.IsNumeric OrElse Math.Abs(actual.NumericValue) > 0.001) Then Throw New InvalidOperationException("Balance Sheet comparison did not initialise to zero.")
+                        Next
+                    Next
+                End If
                 verifyMs = benchmark.ElapsedMilliseconds - verifyStartMs
                 FileManager.ExcelModels(modelID).IsDirty = True
                 outcome = "ok"
@@ -149,9 +183,15 @@ Namespace Abovo
                 ''A failed run must not leave a partially-populated comparison which
                 ''could be mistaken for a valid snapshot. These sheets are dedicated
                 ''scratch outputs, so a clean blank state is the safe recovery state.
-                ClearPartialOutput(snapshotSheet, comparisonSheet)
+                If mutationStarted Then
+                    ClearPartialOutput(snapshotSheet, comparisonSheet)
+                    FileManager.ExcelModels(modelID).IsDirty = True
+                End If
                 Throw
             Finally
+                For Each entry In protectedSheets
+                    WSSecurity.ProtectWS(modelID, entry.Key.Name, entry.Value)
+                Next
                 Dim measuredMs As Long =
                     setupMs + clearMs + nameMs + copyMs + formulaMs +
                     endUpdateMs + calculateMs + verifyMs
@@ -319,8 +359,15 @@ Namespace Abovo
                 Return
             End Try
 
+            Dim protectedSheets As New Dictionary(Of Worksheet, WorksheetProtectionPermissions)
+            For Each sheet In {snapshotSheet, comparisonSheet}
+                If sheet.IsProtected Then protectedSheets.Add(sheet, sheet.GetProtectionPermissions())
+            Next
             workbook.BeginUpdate()
             Try
+                For Each sheet In protectedSheets.Keys
+                    WSSecurity.UNProtectWS(modelID, sheet.Name)
+                Next
                 'Snapshot validity is persisted by the two local named-range
                 'headers. Clearing only those headers invalidates both analyser
                 'datasources immediately and after save/reopen without paying to
@@ -328,8 +375,15 @@ Namespace Abovo
                 'snapshot creation clears and replaces both dedicated sheets.
                 ClearSnapshotHeader(workbook, snapshotSheet, SnapshotRangeName)
                 ClearSnapshotHeader(workbook, comparisonSheet, ComparisonRangeName)
+                BalanceSheetSnapshot.Invalidate(workbook)
             Finally
-                workbook.EndUpdate()
+                Try
+                    workbook.EndUpdate()
+                Finally
+                    For Each entry In protectedSheets
+                        WSSecurity.ProtectWS(modelID, entry.Key.Name, entry.Value)
+                    Next
+                End Try
             End Try
 
             FileManager.ExcelModels(modelID).IsDirty = True

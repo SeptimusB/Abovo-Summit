@@ -96,6 +96,10 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
         view.OptionsSelection.EnableAppearanceFocusedRow = False
         view.OptionsView.ShowGroupPanel = False
         view.OptionsView.ShowIndicator = False
+        If String.Equals(sheet.Name, "Check Sheet", StringComparison.OrdinalIgnoreCase) Then
+            view.OptionsView.ShowHorizontalLines = DefaultBoolean.False
+            view.OptionsView.ShowVerticalLines = DefaultBoolean.False
+        End If
         view.OptionsView.ColumnAutoWidth = False
         view.OptionsView.RowAutoHeight = True
         view.OptionsCustomization.AllowFilter = False

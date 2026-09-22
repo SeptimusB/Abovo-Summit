@@ -125,6 +125,7 @@ Public Class DataInterfaceTemplate
     Private PasteRefreshDepth As Integer = 0
     Private WorkbookRefreshQueued As Boolean = False
     Private InterfaceResourcesReleased As Boolean = False
+    Private SaveButtonBinding As ModelSaveButtonBinding
     Private FooterOn As Boolean
     Private FooterDone As Boolean
     Private DIInitialised As Boolean = False
@@ -489,8 +490,10 @@ Public Class DataInterfaceTemplate
 
         InitializeComponent()
         InitialiseExportActions()
+        InitialiseSaveActions()
         InitialiseClipboardActions()
         InitialiseRefreshAction()
+        OrderActionButtons()
         'Keep the toolbar outside the designer-scaled absolute table row.
         'A smaller host must give the saved interface its actual document width.
         TablePanelDIT.Controls.Remove(WindowsUIButtonPanelActions)
@@ -615,6 +618,10 @@ Public Class DataInterfaceTemplate
 
         ConfigureAuthoringPreview()
 
+        If Not IsAuthoringPreview Then
+            SaveButtonBinding = New ModelSaveButtonBinding(Me, ExcelModels(ModelID), WindowsUIButtonPanelActions, True)
+        End If
+
 
         ResizeFonts()
 
@@ -680,7 +687,7 @@ Public Class DataInterfaceTemplate
             registrationMs = timer.ElapsedMilliseconds
 
             stage = "calculation"
-            calculationSkipped = engine.NavigationCalculationCurrent
+            calculationSkipped = engine.NavigationCalculationCurrent AndAlso Not ExcelModels(ModelID).DeferredSaveResultsPending
             If calculationSkipped Then
                 System.Diagnostics.Trace.WriteLine(
                     "[Navigation Benchmark] CalcFile skipped: DIT model=" &
@@ -743,6 +750,8 @@ Public Class DataInterfaceTemplate
             Return
         End If
 
+        Dim restoreNavigation = CaptureNavigationPosition()
+        Try
         If Not IsNothing(DataPres) AndAlso GridControls IsNot Nothing Then
 
             For Each gridControl In GridControls
@@ -844,7 +853,9 @@ SkipRefresh:
         Next
 
         UpdateAllRules()
-
+        Finally
+            restoreNavigation()
+        End Try
     End Sub
 
     Private Sub QueueWorkbookRefresh()
@@ -852,7 +863,7 @@ SkipRefresh:
         WorkbookRefreshQueued = True
         BeginInvoke(New MethodInvoker(Sub()
             WorkbookRefreshQueued = False
-            If Not IsDisposed Then RefreshData()
+            If Not IsDisposed Then RefreshData(True)
         End Sub))
     End Sub
 
@@ -1105,6 +1116,10 @@ SkipRefresh:
         If InterfaceResourcesReleased Then Return
         InterfaceResourcesReleased = True
         AmActivated = False
+        If SaveButtonBinding IsNot Nothing Then
+            SaveButtonBinding.Dispose()
+            SaveButtonBinding = Nothing
+        End If
 
         Try
             ResumeLazyTabTransitionRedraw()
@@ -1400,7 +1415,8 @@ SkipRefresh:
             If TPs IsNot Nothing AndAlso SectionIndex < TPs.Length AndAlso
                 TPs(SectionIndex) IsNot Nothing AndAlso
                 FindChildControls(Of ReadOnlyMappedTableGrid)(TPs(SectionIndex)).Count > 0 AndAlso
-                Not ExcelModels(ModelID).WBCalcEngine.NavigationCalculationCurrent Then
+                (Not ExcelModels(ModelID).WBCalcEngine.NavigationCalculationCurrent OrElse
+                 ExcelModels(ModelID).DeferredSaveResultsPending) Then
                 ExcelModels(ModelID).WBCalcEngine.CalcFile(1, "DIT read-only mapped table activation")
             End If
             Return
@@ -3757,6 +3773,10 @@ SkipRefresh:
                             DateEditor.Mask.EditMask = "dd-MMM-yyyy"
                             DateEditor.Mask.UseMaskAsDisplayFormat = True
                             GridControls(GridCount).RepositoryItems.Add(DateEditor)
+                            If ColTag.ColumnHeading = "First Interest Payment Month" Then
+                                FundingPaymentDateSupport.Configure(DateEditor, ExcelModels(ModelID).WB)
+                                GVcolumn.DisplayFormat.FormatString = "mmm"
+                            End If
                             GVcolumn.ColumnEdit = DateEditor
                             ColTag.DefaultTextEditor = DateEditor
 
@@ -4348,6 +4368,7 @@ SkipRefresh:
                                     InColumnEditorTag.InPlaceColumnHelper = helper
                                     EditControl.Tag = InColumnEditorTag
                                     helper.Tag = InColumnEditorTag
+                                    ConfigureHeaderNavigation(helper)
                                     helper.EditValue = OriginColTag.EditRepNRHereInitialValue
                                     helper.LinkedComboBoxEdit = EditControl
                                     EditControl.InPlaceColumnHelper = helper
@@ -4447,6 +4468,7 @@ SkipRefresh:
                                     InColumnEditorTag.InPlaceColumnHelper = helper
                                     EditControl.Tag = InColumnEditorTag
                                     helper.Tag = InColumnEditorTag
+                                    ConfigureHeaderNavigation(helper)
                                     helper.EditValue = OriginColTag.EditRepNRHereInitialValue
                                     helper.LinkedDateEdit = EditControl
                                     EditControl.InPlaceColumnHelper = helper
@@ -5445,6 +5467,10 @@ SkipRefresh:
                             DateEditor.Mask.EditMask = "dd-MMM-yyyy"
                             DateEditor.Mask.UseMaskAsDisplayFormat = True
                             VertGrid.RepositoryItems.Add(DateEditor)
+                            If ColTag.ColumnHeading = "First Interest Payment Month" Then
+                                FundingPaymentDateSupport.Configure(DateEditor, ExcelModels(ModelID).WB)
+                                VRow.Properties.DisplayFormat.FormatString = "mmm"
+                            End If
                             VRow.Properties.RowEdit = DateEditor
                             ColTag.DefaultTextEditor = DateEditor
 
@@ -5688,6 +5714,7 @@ SkipRefresh:
                                                                          RetComb,
                                                                          AddressOf ColumnHeaderEmbededComboChanged)
                             Helper.Tag = InColumnEditorTag
+                            ConfigureHeaderNavigation(Helper)
                             Helper.EditValue = ColTag.EditRepNRHereInitialValue
                             Helper.LinkedComboBoxEdit = EditControl
 
@@ -5748,6 +5775,7 @@ SkipRefresh:
                                                                          RetDate,
                                                                          AddressOf ColumnHeaderEmbededDateEChanged)
                             Helper.Tag = InColumnEditorTag
+                            ConfigureHeaderNavigation(Helper)
                             Helper.EditValue = ColTag.EditRepNRHereInitialValue
                             Helper.LinkedDateEdit = EditControl
 
@@ -7614,6 +7642,107 @@ NextCell:
 #End Region
 
 #Region "Menu Button Actions"
+    Private Sub OrderActionButtons()
+        'Retain the actual buttons, artwork, enabled state and handler identities.
+        'Return is normally hidden; linked interfaces keep it beside Home.
+        Dim buttons = WindowsUIButtonPanelActions.Buttons.OfType(Of WindowsUIButton)().ToList()
+        Dim groups = {New String() {"MainMenu", "Return"},
+                      New String() {"SaveBP", "SaveBPAs"},
+                      New String() {"Copy", "Paste"},
+                      New String() {"ExportExcel", "ExportPdf"},
+                      New String() {"History", "Refresh", "Spreadsheet", "TogglePanels"},
+                      New String() {"Options", "Help"}}
+        WindowsUIButtonPanelActions.SuspendLayout()
+        Try
+            WindowsUIButtonPanelActions.Buttons.Clear()
+            For Each group In groups
+                Dim ordered = group.Select(Function(tag) buttons.FirstOrDefault(
+                    Function(b) String.Equals(Convert.ToString(b.Tag), tag, StringComparison.OrdinalIgnoreCase))).
+                    Where(Function(b) b IsNot Nothing).ToArray()
+                If ordered.Length = 0 Then Continue For
+                If WindowsUIButtonPanelActions.Buttons.Count > 0 Then
+                    WindowsUIButtonPanelActions.Buttons.Add(New WindowsUISeparator())
+                End If
+                For Each button In ordered
+                    WindowsUIButtonPanelActions.Buttons.Add(button)
+                    buttons.Remove(button)
+                Next
+            Next
+            'Do not silently discard a future model-specific command.
+            For Each button In buttons
+                WindowsUIButtonPanelActions.Buttons.Add(button)
+            Next
+            'Designer buttons used the reverse-packed IsLeft group; runtime
+            'buttons did not. Use one ordered flow, aligned by the panel itself.
+            For index As Integer = 0 To WindowsUIButtonPanelActions.Buttons.Count - 1
+                Dim item = WindowsUIButtonPanelActions.Buttons(index)
+                Dim button = TryCast(item, WindowsUIButton)
+                Dim separator = TryCast(item, WindowsUISeparator)
+                If button IsNot Nothing Then
+                    button.IsLeft = False
+                    button.VisibleIndex = index
+                End If
+                If separator IsNot Nothing Then
+                    separator.IsLeft = False
+                    separator.VisibleIndex = index
+                End If
+            Next
+        Finally
+            WindowsUIButtonPanelActions.ResumeLayout()
+        End Try
+    End Sub
+
+    Private Sub InitialiseSaveActions()
+        'Reuse the exact embedded File Instance artwork and the model's save service.
+        Dim resources As New System.ComponentModel.ComponentResourceManager(GetType(FileInstanceInterface))
+        Dim insertAt As Integer = 0
+        For Each spec In {New String() {"SaveBP", "Save", "WindowsUIButtonImageOptions9.Image"},
+                          New String() {"SaveBPAs", "Save As", "WindowsUIButtonImageOptions10.Image"}}
+            If WindowsUIButtonPanelActions.Buttons.OfType(Of WindowsUIButton)().Any(Function(b) Convert.ToString(b.Tag) = spec(0)) Then Continue For
+            Dim imageOptions As New WindowsUIButtonImageOptions With {.Image = DirectCast(resources.GetObject(spec(2)), Image)}
+            Dim button As New WindowsUIButton(spec(1), False, imageOptions, ButtonStyle.PushButton,
+                If(spec(0) = "SaveBP", "Save this business plan", "Save this business plan with a new file name"),
+                -1, True, Nothing, True, False, True, spec(0), -1, False)
+            WindowsUIButtonPanelActions.Buttons.Insert(insertAt, button)
+            insertAt += 1
+        Next
+        If insertAt > 0 Then WindowsUIButtonPanelActions.Buttons.Insert(insertAt, New WindowsUISeparator())
+    End Sub
+
+    Friend Function CommitEditorsForSave() As Boolean
+        If IsAuthoringPreview OrElse IsDisposed OrElse Disposing Then Return False
+        'Validate while transient editors still exist; closing them first would
+        'discard the control that owns a WinForms Validating cancellation.
+        If Not ValidateChildren() Then Return False
+        For Each sectionTags In InColumnEditorTagsBySection.Values.ToArray()
+            For Each editorTag In sectionTags.ToArray()
+                Dim combo = TryCast(editorTag, InColumnEditorTagCombo)
+                Dim dateTag = TryCast(editorTag, InColumnEditorTagDateEdit)
+                Dim columnHelper = If(combo?.InPlaceColumnHelper, dateTag?.InPlaceColumnHelper)
+                Dim rowHelper = If(combo?.InPlaceVGridRowHelper, dateTag?.InPlaceVGridRowHelper)
+                If columnHelper IsNot Nothing AndAlso Not columnHelper.CommitForSave() Then Return False
+                If rowHelper IsNot Nothing AndAlso Not rowHelper.CommitForSave() Then Return False
+            Next
+        Next
+        For Each saveGrid As GridControl In FindChildControls(Of GridControl)(Me).ToArray()
+            Dim view = TryCast(saveGrid.FocusedView, GridView)
+            If view Is Nothing OrElse view.ActiveEditor Is Nothing Then Continue For
+            If Not view.ActiveEditor.DoValidate(DevExpress.XtraEditors.PopupCloseMode.Normal) Then Return False
+            If Not view.PostEditor() OrElse Not view.UpdateCurrentRow() Then Return False
+            view.CloseEditor()
+        Next
+        For Each saveGrid As VGridControl In FindChildControls(Of VGridControl)(Me).ToArray()
+            If saveGrid.ActiveEditor Is Nothing Then Continue For
+            If Not saveGrid.ActiveEditor.DoValidate(DevExpress.XtraEditors.PopupCloseMode.Normal) Then Return False
+            If Not saveGrid.PostEditor() Then Return False
+            saveGrid.CloseEditor()
+        Next
+        If Not ValidateChildren() Then Return False
+        'Single-cell controls use their normal Leave posting path.
+        WindowsUIButtonPanelActions.Focus()
+        Return True
+    End Function
+
     Private Sub InitialiseRefreshAction()
         If ParentGroupForm IsNot Nothing Then ParentGroupForm.AttachPanelsButton(WindowsUIButtonPanelActions)
         For Each item As Object In WindowsUIButtonPanelActions.Buttons
@@ -7653,6 +7782,7 @@ NextCell:
 
     Public Function GetExportCandidates() As List(Of DITExportCandidate)
 
+        If ExcelModels(ModelID).EnsureDeferredSaveResultsCurrent("Preparing grid export...") Then RefreshData()
         Dim candidates As New List(Of DITExportCandidate)()
         Dim selectedPage As XtraTabPage = XtraTabControlNewGIT.SelectedTabPage
 
@@ -7781,6 +7911,21 @@ SectionSelect:
         Dim tag As String = ButSender.Tag.ToString()
 
         Select Case tag
+
+            Case "SaveBP", "SaveBPAs"
+
+                If Not CommitEditorsForSave() Then Return
+                Dim previousCursor As Cursor = Me.Cursor
+                Try
+                    Me.Cursor = Cursors.WaitCursor
+                    If tag = "SaveBPAs" Then
+                        ExcelModels(ModelID).SaveFileAs()
+                    Else
+                        ExcelModels(ModelID).SaveFile()
+                    End If
+                Finally
+                    Me.Cursor = previousCursor
+                End Try
 
             Case "History"
 
@@ -7912,33 +8057,67 @@ SectionSelect:
 
         End If
 
-        Dim Trans As AbovoTransaction
+        Dim Trans As AbovoTransaction = Nothing
+        Dim Activity As FormSplashScreen = Nothing
+        Dim ActionClock As System.Diagnostics.Stopwatch = Nothing
+        Dim MutationMs As Long = 0
+        Dim RebuildMs As Long = 0
+        Dim Outcome As String = "failed"
+        Dim PreviousProgress = GridTag.StructuralProgress
+        Dim PreviousCursor = Me.Cursor
+        Dim PreviousWaitCursor = Me.UseWaitCursor
+        'The service invokes this only AFTER the count dialog has been accepted.
+        'Keep the notice alive across both the workbook operation and UI rebuild.
+        GridTag.StructuralProgress =
+            Sub(Description As String)
+                If Description Is Nothing Then
+                    If ActionClock IsNot Nothing Then
+                        ActionClock.Stop()
+                        MutationMs = ActionClock.ElapsedMilliseconds
+                    End If
+                    If Activity IsNot Nothing Then Activity.Dispose()
+                    Activity = Nothing
+                    Return
+                End If
+                If ActionClock Is Nothing Then ActionClock = System.Diagnostics.Stopwatch.StartNew()
+                If Activity Is Nothing Then
+                    Activity = New FormSplashScreen(Me.FindForm(), "Adding records", Description)
+                Else
+                    Activity.Update(Description)
+                End If
+                Me.UseWaitCursor = True
+                Me.Cursor = Cursors.WaitCursor
+            End Sub
         Try
-            Trans = ExcelModels(ModelID).EventCoordinator.TriggerEvent(
+            Try
+                Trans = ExcelModels(ModelID).EventCoordinator.TriggerEvent(
                     "GridButton",
                     GridTag,
                     ParentGroupForm)
-        Catch ex As Exception
-            SystemMessageManager.Publish(
+            Catch ex As Exception
+                GridTag.StructuralProgress.Invoke(Nothing)
+                SystemMessageManager.Publish(
+                    ModelID,
+                    "The structural grid command failed unexpectedly: " & ex.Message,
+                    SystemMessageSeverity.Error,
+                    "Data Interface",
+                    GridTag.CommandData)
+                XtraMessageBox.Show(Me, ex.Message, "Workbook structure",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Error)
+                Return
+            End Try
+            If ActionClock IsNot Nothing AndAlso MutationMs = 0 Then MutationMs = ActionClock.ElapsedMilliseconds
+
+            ModelSafetyManager.PublishResult(
                 ModelID,
-                "The structural grid command failed unexpectedly: " & ex.Message,
-                SystemMessageSeverity.Error,
-                "Data Interface",
-                GridTag.CommandData)
-            XtraMessageBox.Show(Me, ex.Message, "Workbook structure",
-                                MessageBoxButtons.OK, MessageBoxIcon.Error)
-            Return
-        End Try
+                GridTag.CommandData,
+                Trans,
+                "Data Interface")
 
-        ModelSafetyManager.PublishResult(
-            ModelID,
-            GridTag.CommandData,
-            Trans,
-            "Data Interface")
-
-        If Trans Is Nothing OrElse Trans.BError Then Return
-
-        Try
+            If Trans Is Nothing OrElse Trans.BError Then
+                If Trans IsNot Nothing AndAlso Trans.EventCancelled Then Outcome = "cancelled"
+                Return
+            End If
 
             'The specific structural routine holds the wait cursor while workbook
             'mutation is in progress. Reassert it here so it remains busy during
@@ -7947,12 +8126,39 @@ SectionSelect:
             Me.Cursor = Cursors.WaitCursor
             Cursor.Current = Cursors.WaitCursor
 
-            RebuildAllSections()
+            If Activity IsNot Nothing Then Activity.Update("Rebuilding the interface...")
+            Dim RebuildClock = System.Diagnostics.Stopwatch.StartNew()
+            Try
+                RebuildAllSections()
+            Finally
+                RebuildMs = RebuildClock.ElapsedMilliseconds
+            End Try
+            Outcome = "ok"
+            'Exclude the brief Complete display from work timing.
+            If ActionClock IsNot Nothing Then ActionClock.Stop()
+            If Activity IsNot Nothing Then Activity.Complete("Records added.")
+            If ActionClock IsNot Nothing AndAlso Not Trans.BSuccess Then
+                SystemMessageManager.Publish(ModelID,
+                    Trans.StringReturn & " Interface refreshed. Completed in " &
+                    ActionClock.Elapsed.TotalSeconds.ToString("0.0") & " seconds.",
+                    SystemMessageSeverity.Success, "Data Interface", GridTag.CommandData)
+            End If
 
         Finally
 
-            Me.UseWaitCursor = False
-            Me.Cursor = Cursors.Default
+            GridTag.StructuralProgress = PreviousProgress
+            If Activity IsNot Nothing Then Activity.Dispose()
+            If ActionClock IsNot Nothing Then
+                System.Diagnostics.Trace.WriteLine(
+                    "[Population Benchmark] DIT grid-insert: model=" & ModelID.ToString() &
+                    ", command=" & GridTag.CommandData &
+                    ", structuralAction=" & MutationMs.ToString() & " ms" &
+                    ", sectionRebuild=" & RebuildMs.ToString() & " ms" &
+                    ", total=" & ActionClock.ElapsedMilliseconds.ToString() & " ms" &
+                    ", outcome=" & Outcome)
+            End If
+            Me.UseWaitCursor = PreviousWaitCursor
+            Me.Cursor = PreviousCursor
             Cursor.Current = Cursors.Default
 
         End Try
@@ -8162,6 +8368,10 @@ SectionSelect:
             Return
         End If
 
+        If Not e.Handled AndAlso NavigateGrid(GC, e.KeyData) Then
+            e.Handled = True : e.SuppressKeyPress = True
+            Return
+        End If
         If Not e.Control OrElse e.Alt Then Return
 
         If e.KeyCode = Keys.C Then
@@ -8182,6 +8392,10 @@ SectionSelect:
         Dim VG As VGridControl = TryCast(sender, VGridControl)
         If VG Is Nothing Then Return
 
+        If Not e.Handled AndAlso NavigateGrid(VG, e.KeyData) Then
+            e.Handled = True : e.SuppressKeyPress = True
+            Return
+        End If
         If VG.ActiveEditor Is Nothing AndAlso Not e.Control AndAlso Not e.Shift AndAlso
            (e.KeyCode = Keys.F4 OrElse (e.Alt AndAlso e.KeyCode = Keys.Down)) AndAlso
            VG.FocusedRow IsNot Nothing AndAlso
@@ -10463,6 +10677,7 @@ SectionSelect:
         If VG.ActiveEditor Is Nothing Then Return
         SetClipboardTarget(VG)
         VG.ActiveEditor.ContextMenuStrip = ClipboardContextMenu
+        ConfigureEditorNavigation(VG.ActiveEditor)
         If TypeOf VG.ActiveEditor Is ComboBoxEdit Then
             RemoveHandler VG.ActiveEditor.KeyDown, AddressOf ClipboardEditor_KeyDown
             AddHandler VG.ActiveEditor.KeyDown, AddressOf ClipboardEditor_KeyDown
@@ -12252,6 +12467,7 @@ SectionSelect:
         If gv.GridControl IsNot Nothing Then SetClipboardTarget(gv.GridControl)
         If gv.ActiveEditor IsNot Nothing Then
             gv.ActiveEditor.ContextMenuStrip = ClipboardContextMenu
+            ConfigureEditorNavigation(gv.ActiveEditor)
             If TypeOf gv.ActiveEditor Is ComboBoxEdit Then
                 RemoveHandler gv.ActiveEditor.KeyDown, AddressOf ClipboardEditor_KeyDown
                 AddHandler gv.ActiveEditor.KeyDown, AddressOf ClipboardEditor_KeyDown
@@ -12373,7 +12589,15 @@ SectionSelect:
     Public Sub RunAction(ActToken As ActionToken)
         If IsAuthoringPreview Then Return
 
-        Select Case ActToken.ActionType
+        'Presentation tokens do not define the workbook axis. Route known
+        'families through the same validated add/delete service as footer actions.
+        Dim EffectiveAction = ActToken.ActionType
+        If ExcelModels(ModelID).WorkbookStructureRules IsNot Nothing AndAlso
+           (String.Equals(EffectiveAction, "NRCI", StringComparison.OrdinalIgnoreCase) OrElse
+            String.Equals(EffectiveAction, "NRRIbyCOL", StringComparison.OrdinalIgnoreCase)) Then
+            If Not String.IsNullOrEmpty(ExcelModels(ModelID).WorkbookStructureRules.ResolveRuleID(ActToken.ActionStrData1)) Then EffectiveAction = "NRRI"
+        End If
+        Select Case EffectiveAction
 
             Case "NRRIbyCOL", "NRRIByCol", "NRRIBYCOL"
 
@@ -12841,20 +13065,23 @@ SectionSelect:
                 Dim NewRows As Integer = CInt(result)
 
                 If NewRows > 0 Then
-
-                    Me.Cursor = Cursors.WaitCursor
-
-                    Dim ChangedWorksheet As String = GetStructuralActionWorksheet(ActToken)
-
-                    WorkbookManager.InsertRows(ModelID, ActToken.ActionStrData1, NewRows)
-
-                    TransDBManager.CheckTransDBActions(ModelID, ActToken.ActionStrData1)
-
-                    NotifyStructuralWorksheetChange(ChangedWorksheet)
-                    UpdateAllRules()
-
-                    Me.Cursor = Cursors.Default
-
+                    Try
+                        Me.Cursor = Cursors.WaitCursor
+                        Dim ChangedWorksheet As String = GetStructuralActionWorksheet(ActToken)
+                        Dim InsertResult = WorkbookManager.InsertRows(ModelID, ActToken.ActionStrData1, NewRows)
+                        If InsertResult Is Nothing OrElse InsertResult.BError Then
+                            XtraMessageBox.Show(If(InsertResult Is Nothing, "No insertion result was returned.", InsertResult.StringReturn),
+                                "Abovo Summit", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                            Return
+                        End If
+                        TransDBManager.CheckTransDBActions(ModelID, ActToken.ActionStrData1)
+                        NotifyStructuralWorksheetChange(ChangedWorksheet)
+                        UpdateAllRules()
+                    Finally
+                        Me.Cursor = Cursors.Default
+                        editor.Dispose()
+                    End Try
+                    Return
                 End If
 
 
@@ -12891,20 +13118,23 @@ SectionSelect:
                 Dim NewCols As Integer = CInt(result)
 
                 If NewCols > 0 Then
-
-                    Me.Cursor = Cursors.WaitCursor
-
-                    Dim ChangedWorksheet As String = GetStructuralActionWorksheet(ActToken)
-
-                    WorkbookManager.InsertColumns(ModelID, ActToken.ActionStrData1, NewCols)
-
-                    TransDBManager.CheckTransDBActions(ModelID, ActToken.ActionStrData1)
-
-                    NotifyStructuralWorksheetChange(ChangedWorksheet)
-                    UpdateAllRules()
-
-                    Me.Cursor = Cursors.Default
-
+                    Try
+                        Me.Cursor = Cursors.WaitCursor
+                        Dim ChangedWorksheet As String = GetStructuralActionWorksheet(ActToken)
+                        Dim InsertResult = WorkbookManager.InsertColumns(ModelID, ActToken.ActionStrData1, NewCols)
+                        If InsertResult Is Nothing OrElse InsertResult.BError Then
+                            XtraMessageBox.Show(If(InsertResult Is Nothing, "No insertion result was returned.", InsertResult.StringReturn),
+                                "Abovo Summit", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                            Return
+                        End If
+                        TransDBManager.CheckTransDBActions(ModelID, ActToken.ActionStrData1)
+                        NotifyStructuralWorksheetChange(ChangedWorksheet)
+                        UpdateAllRules()
+                    Finally
+                        Me.Cursor = Cursors.Default
+                        editor.Dispose()
+                    End Try
+                    Return
                 End If
 
                 editor.Dispose()
@@ -13418,7 +13648,7 @@ SectionSelect:
                     }
         Try
 
-            If ChangeMan.ProcessChangeByNRAddressing(DCM).BError = True Then
+            If Not CommitHeaderWorkbookChange(sender, DCM, SourceTag.LastEditorValue) Then
 
                 'Select Case SourceTag.EditorFormat
 
@@ -13510,7 +13740,7 @@ SectionSelect:
                     }
         Try
 
-            If ChangeMan.ProcessChangeByNRAddressing(DCM).BError = True Then
+            If Not CommitHeaderWorkbookChange(sender, DCM, SourceTag.LastEditorValue) Then
 
                 'Select Case SourceTag.EditorFormat
 

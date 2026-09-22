@@ -19,6 +19,7 @@ Namespace Abovo
         End Sub
         Public Sub ShowGroupInterface(ModelID As Integer, GSID As Integer, ShowStyle As String, InterfaceType As String, ParentLoadingForm As FileInstanceInterface, Optional ByVal LinkTag As ElementInterfaceLinkTag = Nothing)
 
+            If GSID = 2 Then ExcelModels(ModelID).EnsureDeferredSaveResultsCurrent("Opening model outputs...")
             Dim IntCheck As GroupInterfaceObject
 
             If GroupInterfaceCount > -1 Then

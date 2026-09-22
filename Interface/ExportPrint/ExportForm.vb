@@ -101,7 +101,76 @@ Public Class ExportForm
         'Dim WsOptions As New ExcelDataExport.ExcelExportAdditions
 
     End Sub
+    Private Sub ExportBalanceSheet(package As GridExportPackage)
+        SpreadsheetControlExport.Enabled = True
+        ExWorkbook = SpreadsheetControlExport.Document
+        ExWorkbook.BeginUpdate()
+        Try
+            Dim name = package.Description & " Export"
+            If ExWorkbook.Worksheets.Contains(name) Then ExWorkbook.Worksheets.Remove(ExWorkbook.Worksheets(name))
+            Dim sheet = ExWorkbook.Worksheets.Insert(0, name)
+            Dim document = package.BalanceSheetData
+            If document Is Nothing Then
+                sheet.Cells(0, 0).Value = package.BalanceSheetError
+                Return
+            End If
+            sheet.Cells(0, 0).Value = "Balances include opening amounts; transaction contributions are cumulative. Parent and child rows must not be added together."
+            sheet.Cells(1, 0).Value = "Item / Description"
+            For p = 0 To 40
+                sheet.Cells(1, p + 1).Value = document.Periods(p)
+            Next
+            sheet.Cells(1, 42).Value = "Source"
+            sheet.Cells(1, 43).Value = "Rule / diagnostic"
+            Dim row As Integer = 2
+            ExportBalanceChildren(sheet, document, "", 0, row)
+            sheet.Columns(0).WidthInCharacters = 58
+            For c = 1 To 41
+                sheet.Columns(c).WidthInCharacters = 15
+            Next
+            sheet.Columns(42).WidthInCharacters = 45
+            sheet.Columns(43).WidthInCharacters = 65
+            sheet.FreezeRows(2)
+        Finally
+            ExWorkbook.EndUpdate()
+        End Try
+    End Sub
+
+    Private Sub ExportBalanceChildren(sheet As Worksheet, document As BalanceSheetDocument, parent As String, depth As Integer, ByRef row As Integer)
+        For Each node In document.Children(parent)
+            sheet.Cells(row, 0).Value = node.Caption
+            sheet.Cells(row, 0).Alignment.Indent = depth
+            For c = 0 To 41
+                Dim cell = sheet.Cells(row, c)
+                Dim style = document.Styles(node.Styles(c))
+                If c > 0 Then
+                    Dim amount = node.Values(c - 1)
+                    If Double.IsNaN(amount) OrElse Double.IsInfinity(amount) Then
+                        cell.Value = "Unavailable"
+                    Else
+                        cell.Value = amount
+                    End If
+                End If
+                cell.NumberFormat = style.Format
+                cell.Font.Name = style.FontName
+                cell.Font.Bold = style.Bold
+                cell.Font.Italic = style.Italic
+                cell.Font.UnderlineType = If(style.Underline, UnderlineType.Single, UnderlineType.None)
+                cell.Font.Color = System.Drawing.Color.FromArgb(style.Foreground)
+                cell.Fill.BackgroundColor = System.Drawing.Color.FromArgb(style.Background)
+                cell.Alignment.Horizontal = CType(style.Alignment, SpreadsheetHorizontalAlignment)
+            Next
+            sheet.Cells(row, 42).Value = node.Source
+            sheet.Cells(row, 43).Value = node.Diagnostic & If(node.Diagnostic.Length > 0, " | ", "") & node.Rule
+            row += 1
+            ExportBalanceChildren(sheet, document, node.Id, depth + 1, row)
+        Next
+    End Sub
+
     Sub ExportAnalysisToExcel(ExportPackage As GridExportPackage)
+        If ExportPackage.BalanceSheetData IsNot Nothing OrElse ExportPackage.BalanceSheetError IsNot Nothing Then
+            ExportBalanceSheet(ExportPackage)
+            Return
+        End If
 
         Dim NumberFormatString As String = "#,###;[red](#,###);0"
         Dim ExportedGrid As GridView = ExportPackage.GridView

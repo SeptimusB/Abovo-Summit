@@ -197,11 +197,11 @@ Namespace Abovo
         End Function
 
         Friend Sub UpdatePanelsButton(button As WindowsUIButton, panelsHidden As Boolean)
-            button.Caption = If(panelsHidden, "Restore", "Compact")
+            button.Caption = If(panelsHidden, "Restore sidebars", "Maximise working area")
             button.UseCaption = False
             button.ToolTip = If(panelsHidden,
-                "Restore — return navigators and sidebars to their previous state",
-                "Compact — hide navigators and sidebars")
+                "Restore sidebars",
+                "Maximise working area")
             'Shared vectors retain the native button's size and colour treatment.
             'Compact uses outward arrows; Restore shows the three-panel layout.
             button.ImageOptions.SvgImage = If(panelsHidden, RestorePanelsIcon, CompactPanelsIcon)

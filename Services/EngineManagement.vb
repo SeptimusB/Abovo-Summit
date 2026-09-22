@@ -34,6 +34,9 @@ Namespace Abovo
 
         Public Sub MarkPotentialWorkbookChange()
             System.Threading.Interlocked.Increment(NavigationMutationGeneration)
+            If ExcelModels IsNot Nothing AndAlso ModelID >= 0 AndAlso ModelID < ExcelModels.Length AndAlso ExcelModels(ModelID) IsNot Nothing Then
+                ExcelModels(ModelID).MarkCalculationPending()
+            End If
         End Sub
 
         Private Sub MarkNavigationCalculationCurrentIfUnchanged(ByVal requestedGeneration As Long)
@@ -179,6 +182,14 @@ Namespace Abovo
             Next
 
         End Sub
+        Public Sub RefreshAfterDeferredCalculation()
+            WBCalcDirty = False
+            WBCalcMinDirty = False
+            MarkNavigationCalculationCurrentIfUnchanged(System.Threading.Interlocked.Read(NavigationMutationGeneration))
+            RefreshObjsData()
+            RaiseEvent CalculationCompleted(Me, EventArgs.Empty)
+        End Sub
+
         Sub CalculateWSs(Optional ByVal InvalidateNavigation As Boolean = True,
                          Optional ByVal MetricContext As String = Nothing)
 
@@ -377,8 +388,16 @@ NextWS:
                             Optional ByVal MetricContext As String = Nothing)
 
             'If FileManager.BIsSaving Then Exit Sub
+            'Structural services own calculation during their guarded mutation.
+            'Do not inject a reader gate into an unfinished insert/import.
+            Dim completedDeferredCalculation As Boolean = False
+            If Not ModelSafetyManager.IsBulkWorkbookMutationInProgress(ModelID) Then
+                completedDeferredCalculation = ExcelModels(ModelID).EnsureDeferredSaveResultsCurrent("Refreshing workbook outputs...")
+            End If
+            If completedDeferredCalculation AndAlso CalMode = 1 Then Return
 
             Dim Workbook As IWorkbook = ExcelModels(ModelID).WB
+            Dim saveRevision = ExcelModels(ModelID).CalculationRevision
             Dim timer As System.Diagnostics.Stopwatch =
                 If(String.IsNullOrEmpty(MetricContext), Nothing,
                    System.Diagnostics.Stopwatch.StartNew())
@@ -420,6 +439,10 @@ NextWS:
                     MarkNavigationCalculationCurrentIfUnchanged(requestedGeneration)
                 End If
                 succeeded = True
+                If CalMode = 3 AndAlso Workbook.Options.CalculationEngineType = CalculationEngineType.Recursive AndAlso
+                   (CalculationService Is Nothing OrElse Not CalculationService.DontCalcTDBS) Then
+                    ExcelModels(ModelID).MarkFullCalculationCurrent(saveRevision, True)
+                End If
             Finally
                 If Not succeeded Then MarkPotentialWorkbookChange()
                 If timer IsNot Nothing Then
@@ -445,6 +468,10 @@ NextWS:
         Public Sub CalculateDependencySensitiveFile(Optional ByVal Reason As String = "Unspecified",
                                                     Optional ByVal Force As Boolean = False)
 
+            If ExcelModels(ModelID).EnsureDeferredSaveResultsCurrent(Reason) Then
+                DependencyGraphPrepared = True
+                Return
+            End If
             Dim Workbook As IWorkbook = ExcelModels(ModelID).WB
             Dim requestedGeneration As Long =
                 System.Threading.Interlocked.Read(NavigationMutationGeneration)
@@ -502,6 +529,7 @@ NextWS:
 
         Public Sub InvalidateDependencyGraph()
             DependencyGraphPrepared = False
+            If ExcelModels IsNot Nothing AndAlso ModelID >= 0 AndAlso ModelID < ExcelModels.Length AndAlso ExcelModels(ModelID) IsNot Nothing Then ExcelModels(ModelID).RequireFullRebuild()
             MarkPotentialWorkbookChange()
         End Sub
         Public Sub CalcManual()

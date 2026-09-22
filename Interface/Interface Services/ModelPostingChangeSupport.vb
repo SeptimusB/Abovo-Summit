@@ -106,6 +106,82 @@ Namespace Abovo
 
     End Module
 
+    'A pending editor is not yet a workbook edit. Keep Save clickable for it so
+    'the normal commit/validation path still works on the first click. This
+    'binding observes state only: no posting, calculation or dirty writes.
+    Friend NotInheritable Class ModelSaveButtonBinding
+        Implements IDisposable
+
+        Private ReadOnly Owner As Control
+        Private ReadOnly Model As ExcelModel
+        Private ReadOnly SaveButton As DevExpress.XtraBars.Docking2010.WindowsUIButton
+        Private ReadOnly ObserveEditor As Boolean
+        Private DisposedBinding As Boolean
+
+        Friend Sub New(control As Control, modelInstance As ExcelModel,
+                       panel As DevExpress.XtraBars.Docking2010.WindowsUIButtonPanel,
+                       Optional includePendingEditor As Boolean = False)
+            Owner = control
+            Model = modelInstance
+            ObserveEditor = includePendingEditor
+            SaveButton = panel.Buttons.OfType(Of DevExpress.XtraBars.Docking2010.WindowsUIButton)().
+                FirstOrDefault(Function(button) Convert.ToString(button.Tag) = "SaveBP")
+            AddHandler Model.DirtyStateChanged, AddressOf StateChanged
+            AddHandler Owner.Disposed, AddressOf OwnerDisposed
+            If ObserveEditor Then AddHandler Application.Idle, AddressOf CheckPendingEditor
+            RefreshState()
+        End Sub
+
+        Private Sub StateChanged(sender As Object, e As EventArgs)
+            If DisposedBinding OrElse Owner.IsDisposed OrElse Owner.Disposing Then Return
+            If Owner.InvokeRequired Then
+                If Not Owner.IsHandleCreated Then Return
+                Try
+                    Owner.BeginInvoke(New MethodInvoker(AddressOf RefreshState))
+                Catch ex As InvalidOperationException
+                    'The UI handle may have gone away during model shutdown.
+                End Try
+            Else
+                RefreshState()
+            End If
+        End Sub
+
+        Private Sub CheckPendingEditor(sender As Object, e As EventArgs)
+            If DisposedBinding OrElse Not Owner.Visible Then Return
+            RefreshState()
+        End Sub
+
+        Private Sub RefreshState()
+            If DisposedBinding OrElse Owner.IsDisposed OrElse Owner.Disposing OrElse SaveButton Is Nothing Then Return
+            Dim canSave = Not Model.IsClosing AndAlso
+                (Model.IsDirty OrElse (ObserveEditor AndAlso HasPendingEditor()))
+            If SaveButton.Enabled <> canSave Then SaveButton.Enabled = canSave
+        End Sub
+
+        Private Function HasPendingEditor() As Boolean
+            'Walk only the focus branch, not every grid/cell in a large DIT.
+            Dim focused As Control = Owner
+            While focused IsNot Nothing AndAlso focused.ContainsFocus
+                Dim editor = TryCast(focused, BaseEdit)
+                If editor IsNot Nothing Then Return editor.IsModified AndAlso Not editor.Properties.ReadOnly
+                focused = focused.Controls.Cast(Of Control)().FirstOrDefault(Function(child) child.ContainsFocus)
+            End While
+            Return False
+        End Function
+
+        Private Sub OwnerDisposed(sender As Object, e As EventArgs)
+            Dispose()
+        End Sub
+
+        Public Sub Dispose() Implements IDisposable.Dispose
+            If DisposedBinding Then Return
+            DisposedBinding = True
+            RemoveHandler Model.DirtyStateChanged, AddressOf StateChanged
+            RemoveHandler Owner.Disposed, AddressOf OwnerDisposed
+            If ObserveEditor Then RemoveHandler Application.Idle, AddressOf CheckPendingEditor
+        End Sub
+    End Class
+
     'Standalone model windows need the same workbook history shortcuts and
     'post-undo refresh as DIT, including when a native editor owns the key message.
     Friend NotInheritable Class ModelFormHistoryBinding
@@ -139,10 +215,17 @@ Namespace Abovo
         End Sub
 
         Private Sub RefreshWhenShown(sender As Object, e As EventArgs)
-            If DisposedBinding OrElse Refreshing OrElse Not NeedsRefresh OrElse
+            If DisposedBinding OrElse Refreshing OrElse
                 Owner.IsDisposed OrElse Not Owner.Visible Then Return
+            If BIsSaving OrElse ModelSafetyManager.IsBulkWorkbookMutationInProgress(ModelID) Then Return
+            Dim model = ExcelModels(ModelID)
+            If model Is Nothing OrElse model.IsClosing Then Return
+            If Not NeedsRefresh AndAlso Not model.DeferredSaveResultsPending Then Return
             Refreshing = True
             Try
+                'An already-open output form can be activated without passing
+                'through FileInstance's Show command after a fast input save.
+                model.EnsureDeferredSaveResultsCurrent("Refreshing " & Owner.Text & "...")
                 RefreshAction()
                 NeedsRefresh = False
             Finally

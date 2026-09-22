@@ -12469,8 +12469,8 @@
             <DataFieldDefinition>
               <HasRule>TRUE</HasRule>
               <FieldName>First Interest Payment Month</FieldName>
-              <DataFormat>S</DataFormat>
-              <RepositaryItemID>Rep_FundMonthDesc</RepositaryItemID>
+              <DataFormat>D</DataFormat>
+              <TipText>Choose a month-end date from the workbook's funding month list. The cell displays the month; the editor shows the full date.</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
           <CellRangeDataSource>
@@ -13009,7 +13009,9 @@
           <SourceDataFormat>Rows</SourceDataFormat>
           <ColsExpandBy>NR</ColsExpandBy>
           <RO>FALSE</RO>
-          <RowsExpandBy>None</RowsExpandBy>
+          <RowsExpandBy>NRRI</RowsExpandBy>
+          <RowsExpandModel>NRRI</RowsExpandModel>
+          <RowExpandByNR>IC_IntercoFunding_01</RowExpandByNR>
           <DSType>MergeDownAndPivot</DSType>
           <MergeSources>Down</MergeSources>
           <MergedHeader>False</MergedHeader>
@@ -13123,7 +13125,9 @@
           <SourceDataFormat>Rows</SourceDataFormat>
           <ColsExpandBy>NR</ColsExpandBy>
           <RO>FALSE</RO>
-          <RowsExpandBy>None</RowsExpandBy>
+          <RowsExpandBy>NRRI</RowsExpandBy>
+          <RowsExpandModel>NRRI</RowsExpandModel>
+          <RowExpandByNR>IC_IntercoFunding_02</RowExpandByNR>
           <DSType>MergeDownAndPivot</DSType>
           <MergeSources>Down</MergeSources>
           <MergedHeader>False</MergedHeader>

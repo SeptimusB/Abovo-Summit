@@ -14,6 +14,7 @@ using DevExpress.XtraTab;
 using DevExpress.Spreadsheet;
 using DevExpress.Utils.Menu;
 using DevExpress.XtraBars.Docking2010;
+using DevExpress.XtraTreeList;
 
 // Native controls on a private, unsaved workbook copy. No user windows touched.
 public static class AnalyserChartFixture {
@@ -52,6 +53,7 @@ public static class AnalyserChartFixture {
             int groupsChecked=0,leavesChecked=0;
             for(int i=0;i<3;i++) {
                 tabs.SelectedTabPageIndex=i; Application.DoEvents();
+                if(i==2)VerifyBalanceGridAndExport(app,analyser,args[2]);
                 object state=charts[i];
                 var view=(GridView)Field(state,"View");
                 var before=Expansion(view);
@@ -161,6 +163,7 @@ public static class AnalyserChartFixture {
             // An ordinary typed rent edit must leave Snapshot frozen and update Live/Differences.
             Call(analyser,"SwitchDataSource",Enum.Parse(modeType,"Snapshot"));Application.DoEvents();
             double[] frozen=Values(sociChart,"Rents Receivable");
+            var frozenBalance=Headlines(Call(analyser,"ReadBalanceSheet"));
             IWorkbook book=(IWorkbook)model.WB;
             var rent=book.DefinedNames.GetDefinedName("TransRents").Range[0,0];
             // Mirror a second open assumptions interface: its worksheet participates
@@ -176,11 +179,17 @@ public static class AnalyserChartFixture {
             Check(frozen.SequenceEqual(Values(sociChart,"Rents Receivable")),"Snapshot chart remains frozen after edit");
             Call(analyser,"SwitchDataSource",Enum.Parse(modeType,"Live"));Application.DoEvents();Verify(soci);
             double[] live=Values(sociChart,"Rents Receivable");
+            var editedBalance=Headlines(Call(analyser,"ReadBalanceSheet"));
+            if(Path.GetFileName(args[1]).StartsWith("Demo"))Check(!SameHeadlines(frozenBalance,editedBalance),"Live Balance Sheet changes after typed rent edit");
             if(Path.GetFileName(args[1]).StartsWith("Demo"))Check(!frozen.SequenceEqual(live),"Populated live chart changes after rent edit");
             Call(analyser,"SwitchDataSource",Enum.Parse(modeType,"Comparison"));Application.DoEvents();Verify(soci);
             double[] difference=Values(sociChart,"Rents Receivable");
             for(int y=0;y<live.Length;y++)Check(Math.Abs(difference[y]-(live[y]-frozen[y]))<0.001,"Difference equals live minus snapshot year "+(y+1));
             Call(analyser,"SwitchDataSource",Enum.Parse(modeType,"Live"));Application.DoEvents();
+            dynamic undone=model.ChangeManager.Undo();Application.DoEvents();
+            Check(!undone.BError && SameHeadlines(frozenBalance,Headlines(Call(analyser,"ReadBalanceSheet"))),"Undo restores Balance Sheet headlines");
+            dynamic redone=model.ChangeManager.Redo();Application.DoEvents();
+            Check(!redone.BError && SameHeadlines(editedBalance,Headlines(Call(analyser,"ReadBalanceSheet"))),"Redo restores edited Balance Sheet headlines");
             model.WBCalcEngine.RemoveActiveObject(editRegistration);
             // Refresh/reconnect re-reads group summaries without losing branch or grid layout.
             string expansion=Expansion((GridView)Field(soci,"View"));
@@ -213,8 +222,57 @@ public static class AnalyserChartFixture {
         }
         Console.WriteLine("PASS: native chart/grid parity, drill, sources, state preservation, deferred safety and sizing. No source saved.");
     }
+    static Dictionary<string,double[]> Headlines(object document) {
+        return ((IEnumerable)Field(document,"Nodes")).Cast<object>().Where(n=>(bool)Field(n,"IsHeadline")).ToDictionary(n=>(string)Field(n,"Id"),n=>(double[])Field(n,"Values"));
+    }
+    static bool SameHeadlines(Dictionary<string,double[]> a,Dictionary<string,double[]> b) {
+        return a.Count==b.Count && a.All(pair=>b.ContainsKey(pair.Key) && pair.Value.Zip(b[pair.Key],(x,y)=>Math.Abs(x-y)<=0.001).All(equal=>equal));
+    }
+    static void VerifyBalanceGridAndExport(Assembly app,Control analyser,string output) {
+        object state=Field(analyser,"BalanceSheetView");
+        object document=Call(state,"EnsureDocument");
+        Check(document!=null,"Native Balance Sheet document available");
+        var tree=(TreeList)Field(state,"Tree");
+        Check(tree.Visible && tree.Columns.Count==42,"BS figures shows opening plus forty years");
+        Check(tree.OptionsSelection.MultiSelect && tree.OptionsSelection.MultiSelectMode==TreeListMultiSelectMode.CellSelect,"BS supports cell multiselect/copy");
+        dynamic soci=Field(analyser,"WrapCG_SOCI");
+        Check(tree.Font.Name==soci.WrappedGridView.Appearance.Row.Font.Name && tree.Font.SizeInPoints==soci.WrappedGridView.Appearance.Row.Font.SizeInPoints,"BS font matches SOCI font");
+        Check(tree.Appearance.HeaderPanel.ForeColor==soci.WrappedGridView.Appearance.HeaderPanel.ForeColor,"BS header palette matches SOCI");
+        var probe=tree.Nodes[0];Call(state,"SetHotNode",probe);
+        Check(Object.ReferenceEquals(Field(state,"HotNode"),probe),"BS hover targets actual node");
+        tree.SelectCell(probe,tree.Columns[1]);Check(tree.IsCellSelected(probe,tree.Columns[1]),"BS cell selection remains available during hot tracking");
+        Call(state,"SetHotNode",new object[]{null});tree.ClearSelection();
+        tree.Nodes[0].Expanded=true;
+        if(tree.Nodes[0].Nodes.Count>1)tree.Nodes[0].Nodes[1].Expanded=true;
+        tree.FocusedNode=tree.Nodes[0].Nodes[1];tree.Columns[0].Width=390;
+        string selected=(string)Field(tree.FocusedNode.Tag,"Id");
+        Call(state,"SourceChanged",false);Application.DoEvents();
+        Check(tree.Nodes[0].Expanded && tree.Nodes[0].Nodes[1].Expanded && (string)Field(tree.FocusedNode.Tag,"Id")==selected && tree.Columns[0].Width==390,"BS refresh retains expansion, focus and column width");
+        using(var bmp=new Bitmap(analyser.Width,analyser.Height)){
+            analyser.DrawToBitmap(bmp,new Rectangle(Point.Empty,bmp.Size));bmp.Save(Path.Combine(output,"balance-sheet-grid.png"));
+        }
+        using(var export=(Form)Activator.CreateInstance(app.GetType("ExportForm"))) {
+            var package=Activator.CreateInstance(app.GetType("Abovo.GridExportPackage"));
+            package.GetType().GetField("Description").SetValue(package,"Balance Sheet");
+            package.GetType().GetField("BalanceSheetData").SetValue(package,document);
+            Call(export,"ExportBalanceSheet",package);
+            var book=(IWorkbook)Field(export,"ExWorkbook");var sheet=book.Worksheets["Balance Sheet Export"];
+            var nodes=((IEnumerable)Field(document,"Nodes")).Cast<object>().ToList();int row=2;
+            VerifyExportChildren(sheet,nodes,"",ref row);
+            Check(row==nodes.Count+2,"Every BS node exported with all 41 numeric values");
+            book.SaveDocument(Path.Combine(output,"balance-sheet-export.xlsx"),DocumentFormat.Xlsx);
+        }
+    }
+    static void VerifyExportChildren(Worksheet sheet,List<object> nodes,string parent,ref int row) {
+        foreach(var node in nodes.Where(n=>(string)Field(n,"ParentId")==parent)) {
+            if(sheet.Cells[row,0].Value.ToString()!=(string)Field(node,"Caption"))throw new Exception("BS export caption/order");
+            var values=(double[])Field(node,"Values");
+            for(int p=0;p<41;p++)if(!sheet.Cells[row,p+1].Value.IsNumeric || Math.Abs(sheet.Cells[row,p+1].Value.NumericValue-values[p])>0.001)throw new Exception("BS export numeric parity");
+            row++;VerifyExportChildren(sheet,nodes,(string)Field(node,"Id"),ref row);
+        }
+    }
     static void Walk(object state,ref int groups,ref int leaves,int depth) {
-        if(depth>5)throw new Exception("Unbounded drill");
+        if(depth>9)throw new Exception("Unbounded drill");
         Verify(state);
         var chart=(ChartControl)Field(state,"Chart");
         var nodes=chart.Series.Cast<Series>().Select(s=>s.Tag).ToArray();
@@ -229,6 +287,13 @@ public static class AnalyserChartFixture {
         var chart=(ChartControl)Field(state,"Chart");
         if(((LabelControl)Field(state,"Status")).Text.StartsWith("Chart unavailable"))throw new Exception(((LabelControl)Field(state,"Status")).Text);
         foreach(Series series in chart.Series) {
+            var balance=Field(series.Tag,"BalanceNode");
+            if(balance!=null) {
+                var amounts=(double[])balance.GetType().GetProperty("Values").GetValue(balance,null);
+                if(series.Points.Count!=41)throw new Exception("Balance Sheet opening/forecast periods missing");
+                for(int p=0;p<41;p++)if(Double.IsNaN(amounts[p])?!series.Points[p].IsEmpty:Math.Abs(series.Points[p].Values[0]-amounts[p])>0.001)throw new Exception("Balance Sheet chart parity");
+                continue;
+            }
             int handle=(int)Field(series.Tag,"RowHandle");
             var summaries=view.IsGroupRow(handle)?view.GetGroupSummaryValues(handle):null;
             int point=0;

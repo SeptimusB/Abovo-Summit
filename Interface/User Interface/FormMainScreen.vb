@@ -452,7 +452,7 @@ Public Class FormMainScreen
         Dim FileToOpen As String = AutoFileToOpen
         Dim OpenedModelID As Integer = -1
 
-        XtraOpenFileDialogMainScreen.Filter = "Abovo Models|*.xlsb;*.abp;*.adsa"
+        XtraOpenFileDialogMainScreen.Filter = "Abovo Models and recovery copies|*.xlsb;*.xlsm;*.abp;*.adsa"
 
         If String.IsNullOrWhiteSpace(FileToOpen) OrElse
            String.Equals(FileToOpen, "None", StringComparison.OrdinalIgnoreCase) Then
@@ -482,6 +482,12 @@ Public Class FormMainScreen
             Return
         End If
 
+        FileToOpen = RecoveryBackupStore.SelectOpenPath(Me, FileToOpen)
+        If String.IsNullOrWhiteSpace(FileToOpen) Then Return
+        If FileManager.IsFileOpen(FileToOpen) Then
+            MessageBox.Show(Me, "This recovery copy is already open.", "Open Abovo Model", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
         Me.Cursor = Cursors.WaitCursor
 
         Try
@@ -536,6 +542,15 @@ Public Class FormMainScreen
             End Select
 
             ProgressPanel("Model ready.", "Abovo BP", 2)
+            If Not String.IsNullOrWhiteSpace(ExcelModels(OpenedModelID).RecoverySourcePath) Then
+                If SplashScreenManagerMainForm.IsSplashFormVisible Then SplashScreenManagerMainForm.CloseWaitForm()
+                Dim recovered = ExcelModels(OpenedModelID)
+                Dim prompt = "Recovery copy opened. The original file is unchanged." & Environment.NewLine & Environment.NewLine &
+                    "Use Save As to save an Excel Binary Workbook (.xlsb). The original folder and filename will be suggested; choose a new name or confirm replacement." & Environment.NewLine & Environment.NewLine &
+                    "Would you like to view the last edits made before the recovery was saved?" & Environment.NewLine &
+                    recovered.ChangeManager.RecoveryHistoryCount.ToString() & " recovered history rows are available (up to 1,000). These are read-only; Undo is available only for new edits in this session."
+                If DevExpress.XtraEditors.XtraMessageBox.Show(Me, prompt, "Recovered business plan", MessageBoxButtons.YesNo, MessageBoxIcon.Information) = DialogResult.Yes Then recovered.HistoryManager.ShowForUser(Me)
+            End If
 
         Catch ex As Exception
             If SplashScreenManagerMainForm.IsSplashFormVisible Then

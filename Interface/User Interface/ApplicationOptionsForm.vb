@@ -13,6 +13,8 @@ Namespace Abovo
         Private ReadOnly OkButton As SimpleButton
         Private ReadOnly CancelActionButton As SimpleButton
         Private ReadOnly ResetButton As SimpleButton
+        Private ReadOnly BackupEnabled As CheckEdit
+        Private ReadOnly BackupMinutes As SpinEdit
 
         Public Sub New()
             Text = "Abovo Summit options"
@@ -20,13 +22,22 @@ Namespace Abovo
             MinimizeBox = False
             MaximizeBox = False
             ShowIcon = False
-            MinimumSize = New Size(520, 315)
-            Size = New Size(620, 370)
+            MinimumSize = New Size(620, 410)
+            Size = New Size(720, 460)
+            Dim shell As New TableLayoutPanel With {.Dock = DockStyle.Fill, .ColumnCount = 1, .RowCount = 2, .Padding = New Padding(8)}
+            shell.RowStyles.Add(New RowStyle(SizeType.Percent, 100))
+            shell.RowStyles.Add(New RowStyle(SizeType.AutoSize))
+            Controls.Add(shell)
+            Dim tabs As New DevExpress.XtraTab.XtraTabControl With {.Dock = DockStyle.Fill}
+            Dim displayTab As New DevExpress.XtraTab.XtraTabPage With {.Text = "Display"}
+            Dim backupTab As New DevExpress.XtraTab.XtraTabPage With {.Text = "Recovery backup"}
+            tabs.TabPages.AddRange({displayTab, backupTab})
+            shell.Controls.Add(tabs, 0, 0)
 
             Dim Layout As New TableLayoutPanel With {
                 .Dock = DockStyle.Fill,
                 .ColumnCount = 1,
-                .RowCount = 6,
+                .RowCount = 5,
                 .Padding = New Padding(18)
             }
             Layout.RowStyles.Add(New RowStyle(SizeType.AutoSize))
@@ -34,8 +45,7 @@ Namespace Abovo
             Layout.RowStyles.Add(New RowStyle(SizeType.AutoSize))
             Layout.RowStyles.Add(New RowStyle(SizeType.Percent, 100.0F))
             Layout.RowStyles.Add(New RowStyle(SizeType.AutoSize))
-            Layout.RowStyles.Add(New RowStyle(SizeType.AutoSize))
-            Controls.Add(Layout)
+            displayTab.Controls.Add(Layout)
 
             Dim Heading As New LabelControl With {
                 .Text = "Interface scale",
@@ -118,7 +128,7 @@ Namespace Abovo
             CancelActionButton = New SimpleButton With {.Text = "Cancel", .DialogResult = DialogResult.Cancel}
             OkButton = New SimpleButton With {.Text = "OK"}
             ApplyButton = New SimpleButton With {.Text = "Apply"}
-            ResetButton = New SimpleButton With {.Text = "Reset to 100%"}
+            ResetButton = New SimpleButton With {.Text = "Reset to 100%", .AutoSize = True, .MinimumSize = New Size(110, 24)}
             AddHandler OkButton.Click, AddressOf OkButton_Click
             AddHandler ApplyButton.Click, AddressOf ApplyButton_Click
             AddHandler ResetButton.Click, AddressOf ResetButton_Click
@@ -127,7 +137,35 @@ Namespace Abovo
             Buttons.Controls.Add(OkButton)
             Buttons.Controls.Add(ApplyButton)
             Buttons.Controls.Add(ResetButton)
-            Layout.Controls.Add(Buttons, 0, 5)
+            shell.Controls.Add(Buttons, 0, 1)
+
+            RecoveryBackupManager.Initialise()
+            Dim backupLayout As New TableLayoutPanel With {.Dock = DockStyle.Fill, .AutoScroll = True, .ColumnCount = 1, .RowCount = 4, .Padding = New Padding(18)}
+            backupLayout.RowStyles.Add(New RowStyle(SizeType.AutoSize))
+            backupLayout.RowStyles.Add(New RowStyle(SizeType.AutoSize))
+            backupLayout.RowStyles.Add(New RowStyle(SizeType.AutoSize))
+            backupLayout.RowStyles.Add(New RowStyle(SizeType.Percent, 100))
+            backupTab.Controls.Add(backupLayout)
+            BackupEnabled = New CheckEdit With {.Text = "Enable backup save", .Dock = DockStyle.Top, .Checked = RecoveryBackupManager.Enabled}
+            backupLayout.Controls.Add(BackupEnabled, 0, 0)
+            Dim interval As New FlowLayoutPanel With {.Dock = DockStyle.Top, .AutoSize = True, .WrapContents = False, .Padding = New Padding(0, 12, 0, 12)}
+            interval.Controls.Add(New LabelControl With {.Text = "Every", .Padding = New Padding(0, 5, 6, 0)})
+            BackupMinutes = New SpinEdit With {.Width = 80, .Enabled = BackupEnabled.Checked}
+            BackupMinutes.Properties.IsFloatValue = False
+            BackupMinutes.Properties.MinValue = 1
+            BackupMinutes.Properties.MaxValue = 120
+            BackupMinutes.Properties.Increment = 1
+            BackupMinutes.EditValue = RecoveryBackupManager.Minutes
+            interval.Controls.Add(BackupMinutes)
+            interval.Controls.Add(New LabelControl With {.Text = "minutes", .Padding = New Padding(6, 5, 0, 0)})
+            backupLayout.Controls.Add(interval, 0, 1)
+            AddHandler BackupEnabled.CheckedChanged, Sub() BackupMinutes.Enabled = BackupEnabled.Checked
+            Dim guidance As New LabelControl With {.Dock = DockStyle.Top, .AutoSizeMode = LabelAutoSizeMode.Vertical,
+                .Text = "Recovery backups are separate XLSM files named <plan>_recovery.xlsm in the plan's folder. They contain committed inputs and preserve formulas and VBA; full calculated results are refreshed when recovered in Summit." & Environment.NewLine & Environment.NewLine &
+                        "Normal Save still saves your XLSB business plan. A recovery backup does not clear unsaved changes and is not a replacement for Save." & Environment.NewLine & Environment.NewLine &
+                        "Backups wait for a short idle period and for edits or long operations to finish. Newer recovery copies are offered when opening the original, even if backup saving is later disabled." & Environment.NewLine & Environment.NewLine &
+                        "After recovery: use Save As, choose Excel Binary Workbook (.xlsb), and use the suggested original folder/filename or a new name. Replacing the original requires confirmation."}
+            backupLayout.Controls.Add(guidance, 0, 2)
 
             AcceptButton = OkButton
             CancelButton = CancelActionButton
@@ -156,14 +194,26 @@ Namespace Abovo
         End Sub
 
         Private Sub ApplyButton_Click(ByVal sender As Object, ByVal e As EventArgs)
+            If Not ApplyBackupSettings() Then Return
             PresentationScaleManager.SetInterfaceScale(SelectedPercent)
         End Sub
 
         Private Sub OkButton_Click(ByVal sender As Object, ByVal e As EventArgs)
+            If Not ApplyBackupSettings() Then Return
             PresentationScaleManager.SetInterfaceScale(SelectedPercent)
             DialogResult = DialogResult.OK
             Close()
         End Sub
+
+        Private Function ApplyBackupSettings() As Boolean
+            Try
+                RecoveryBackupManager.Configure(BackupEnabled.Checked, Convert.ToInt32(BackupMinutes.EditValue))
+                Return True
+            Catch ex As Exception
+                XtraMessageBox.Show(Me, "The backup options could not be saved: " & ex.Message, "Options", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                Return False
+            End Try
+        End Function
 
         Private Sub ResetButton_Click(ByVal sender As Object, ByVal e As EventArgs)
             ScaleTrack.EditValue = PresentationScaleManager.DefaultPercent

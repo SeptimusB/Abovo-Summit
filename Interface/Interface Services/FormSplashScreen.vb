@@ -8,10 +8,22 @@
         Private IsOpen As Boolean
         Private Completed As Boolean
         Private Disposed As Boolean
+        Private Shared ActiveOperations As Integer
+        Friend ReadOnly Property IsShowing As Boolean
+            Get
+                Return IsOpen
+            End Get
+        End Property
+        Friend Shared ReadOnly Property OperationInProgress As Boolean
+            Get
+                Return ActiveOperations > 0
+            End Get
+        End Property
 
         Public Sub New(Owner As System.Windows.Forms.Form,
                        Caption As String,
                        Description As String)
+            System.Threading.Interlocked.Increment(ActiveOperations)
             If Owner Is Nothing OrElse Owner.IsDisposed OrElse
                Not Owner.IsHandleCreated OrElse Owner.InvokeRequired Then
                 System.Diagnostics.Trace.WriteLine(
@@ -22,7 +34,7 @@
             Try
                 Manager = New DevExpress.XtraSplashScreen.SplashScreenManager(
                     Owner, GetType(Global.WaitFormA), False, False)
-                Manager.ClosingDelay = 400
+                Manager.ClosingDelay = 900
                 Manager.ShowWaitForm()
                 IsOpen = True
                 Manager.SetWaitFormCaption(Caption)
@@ -54,9 +66,17 @@
         End Sub
 
         Public Sub Complete(Optional Description As String = "Complete")
+            Finish("Complete", Description)
+        End Sub
+
+        Public Sub Fail(Description As String)
+            Finish("Not saved", Description)
+        End Sub
+
+        Private Sub Finish(Caption As String, Description As String)
             If Not IsOpen Then Return
             Try
-                Manager.SetWaitFormCaption("Complete")
+                Manager.SetWaitFormCaption(Caption)
                 Manager.SetWaitFormDescription(Description)
                 Completed = True
             Catch ex As System.Exception
@@ -80,6 +100,7 @@
         Public Sub Dispose() Implements System.IDisposable.Dispose
             If Disposed Then Return
             Disposed = True
+            System.Threading.Interlocked.Decrement(ActiveOperations)
             Close()
             If Manager Is Nothing Then Return
             If Not Completed Then
@@ -93,7 +114,7 @@
             End If
 
             'Keep the manager alive until its brief closing delay has elapsed.
-            Dim CleanupTimer As New System.Windows.Forms.Timer With {.Interval = 500}
+            Dim CleanupTimer As New System.Windows.Forms.Timer With {.Interval = 1100}
             AddHandler CleanupTimer.Tick,
                 Sub()
                     CleanupTimer.Stop()

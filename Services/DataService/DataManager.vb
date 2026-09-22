@@ -2357,7 +2357,8 @@ NextDFD2:
             Return StrOutput.ToString()
 
         End Function
-        Public Function RenderIEHTMLCourceFromDR(DataRanges As List(Of DevExpress.Spreadsheet.CellRange)) As String
+        Public Function RenderIEHTMLCourceFromDR(DataRanges As List(Of DevExpress.Spreadsheet.CellRange),
+                                               Optional columnOffsets As Integer() = Nothing) As String
 
             Dim StrOutput As New StringBuilder(My.Resources.StringTemplates.HTMLFinanceTableHeader)
             StrOutput.Append(My.Resources.StringTemplates.HTMLFinanceTablePrecursor)
@@ -2368,7 +2369,21 @@ NextDFD2:
             Dim NumExamine As Double
             Dim HeightS As String = "80"
 
-            For Each DataRange In DataRanges
+            For rangeIndex As Integer = 0 To DataRanges.Count - 1
+                Dim DataRange = DataRanges(rangeIndex)
+                Dim offset As Integer = If(columnOffsets Is Nothing, 0, columnOffsets(rangeIndex))
+                'Presentation-only padding; keep source cells and workbook names untouched.
+                If offset < 0 OrElse offset >= DataRange.ColumnCount Then Throw New ArgumentOutOfRangeException(NameOf(columnOffsets))
+                For r As Integer = 0 To DataRange.RowCount - 1
+                    For c As Integer = DataRange.ColumnCount - offset To DataRange.ColumnCount - 1
+                        If Not String.IsNullOrWhiteSpace(DataRange(r, c).DisplayText) Then
+                            'A bespoke workbook may use the trailing column. Keep
+                            'all values rather than lose its summary on refresh.
+                            offset = 0
+                            Exit For
+                        End If
+                    Next
+                Next
 
 
 
@@ -2376,7 +2391,10 @@ NextDFD2:
 
                     StrOutput.Append("<tr class=xl822235 height=").Append(HeightS).Append(" style='height:15.45pt'>")
 
-                    For j = 0 To DataRange.ColumnCount - 1
+                    For padding As Integer = 1 To offset
+                        StrOutput.Append("<td></td>")
+                    Next
+                    For j = 0 To DataRange.ColumnCount - offset - 1
 
                         CellExamine = DataRange(i, j)
 
@@ -2427,7 +2445,7 @@ NextDFD2:
                                               Font-family: Arial, sans - serif;mso-background-source: auto;mso-pattern:red thin - diag - stripe'>")
 
 
-                        StrOutput.Append(CellExamine.DisplayText)
+                        StrOutput.Append(System.Net.WebUtility.HtmlEncode(CellExamine.DisplayText))
                         StrOutput.Append("</td>")
                     Next
 

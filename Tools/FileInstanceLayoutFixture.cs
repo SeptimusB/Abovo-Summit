@@ -55,6 +55,13 @@ public static class FileInstanceLayoutFixture
             var browser = Find(ui, "WebBrowserBPInfo");
             Check(Tags(top) == "GoAssumpt,GoWorkings,GoOutputs,GoData,GoFFR,StressTest,Spreadsheet", "Navigation order");
             Check(Tags(left) == "SaveBP,SaveBPAs,CloseBP", "File-action order");
+            var save=left.Buttons.OfType<WindowsUIButton>().Single(b=>Convert.ToString(b.Tag)=="SaveBP");
+            var saveAs=left.Buttons.OfType<WindowsUIButton>().Single(b=>Convert.ToString(b.Tag)=="SaveBPAs");
+            Check(!save.Enabled && saveAs.Enabled,"Clean File Instance Save disabled, Save As available");
+            modelType.GetProperty("IsDirty").SetValue(model,true,null);
+            Check(save.Enabled && saveAs.Enabled,"Dirty File Instance Save enabled immediately");
+            modelType.GetProperty("IsDirty").SetValue(model,false,null);
+            Check(!save.Enabled && saveAs.Enabled,"Clear dirty state disables File Instance Save immediately");
             Check(Tags(badge) == "BusinessPlan", "BP placeholder");
             Check(((WindowsUIButton)badge.Buttons[0]).Caption == "HA BP" &&
                 ((WindowsUIButton)badge.Buttons[0]).UseCaption, "HA BP model caption");
@@ -98,7 +105,34 @@ public static class FileInstanceLayoutFixture
             Check(((WindowsUIButton)badge.Buttons[0]).Caption == "DSA", "DSA model caption");
         }
         Console.WriteLine("PASS: layout, button order and native hit targets; no workbook used.");
+        var render=app.GetType("FileInstanceInterface").GetMethod("BuildFileSummaryHtml",BindingFlags.Static|BindingFlags.NonPublic);
+        using(var form=new Form())using(var browser=new WebBrowser()) {
+            form.Opacity=0;form.ShowInTaskbar=false;form.Controls.Add(browser);browser.Dock=DockStyle.Fill;form.Show();
+            foreach(int width in new[]{360,800,1400}) {
+                form.ClientSize=new Size(width,800);
+                string html=(string)render.Invoke(null,new object[]{"HA Business Plan","Example & Partners <Housing>","2026-04-01",@"C:\Sandbox\A deliberately long folder name for a client business plan\BP v26_0001 - New Blank.xlsb","21/09/2026 12:30:00","17/09/2026 09:33:28","Not recorded","11.68 MB",10f,15f,false,null});
+                Check(!html.Contains("editbpdate") && !html.Contains("<a ") && html.Contains("&amp;") && html.Contains("&lt;Housing&gt;"),"Read-only summary encodes user text, without Edit link");
+                browser.DocumentText=html;
+                var wait=System.Diagnostics.Stopwatch.StartNew();
+                while(wait.ElapsedMilliseconds<2000 && (browser.ReadyState!=WebBrowserReadyState.Complete || browser.Document==null || browser.Document.Body==null)){Application.DoEvents();System.Threading.Thread.Sleep(10);}
+                Application.DoEvents();
+                Check(browser.Document.Body.InnerText.Contains("Example & Partners <Housing>") && browser.Document.GetElementsByTagName("tr").Count==4,"Summary contains all metadata rows");
+                dynamic body=browser.Document.Body.DomElement;
+                Check((int)body.scrollWidth<=width,"No horizontal overflow at summary width "+width);
+                File.WriteAllText(Path.Combine(args[1],"summary-"+width+".html"),html);
+                using(var bitmap=new Bitmap(width,800))using(var g=Graphics.FromImage(bitmap)) {
+                    var unk=System.Runtime.InteropServices.Marshal.GetIUnknownForObject(browser.Document.DomDocument);
+                    var hdc=g.GetHdc();var bounds=new Rectangle(0,0,width,800);
+                    try{int result=OleDraw(unk,1,hdc,ref bounds);Check(result==0,"Native HTML render");}
+                    finally{g.ReleaseHdc(hdc);System.Runtime.InteropServices.Marshal.Release(unk);}
+                    bitmap.Save(Path.Combine(args[1],"summary-"+width+".png"));
+                }
+            }
+        }
+        Console.WriteLine("PASS: modern HTML summary, escaping, no links, responsive native rendering.");
     }
+    [System.Runtime.InteropServices.DllImport("ole32.dll")]
+    static extern int OleDraw(IntPtr unknown,uint aspect,IntPtr hdc,ref Rectangle bounds);
 
     static void AssertButtonsReachable(WindowsUIButtonPanel panel)
     {

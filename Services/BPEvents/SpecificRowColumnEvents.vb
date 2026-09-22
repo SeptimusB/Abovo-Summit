@@ -265,12 +265,18 @@ Namespace Abovo
 
                 ActioningForm.Cursor = Cursors.WaitCursor
 
+                If GridCommandTag IsNot Nothing Then
+                    GridCommandTag.StructuralProgress?.Invoke("Adding " & InsertRecordCount.ToString() &
+                        " " & RecordDescription & " records. Updating workbook structure...")
+                End If
+
                 Dim Result As AbovoTransaction =
                     ExcelModels(ModelID).WorkbookStructureRules.AddRecords(RuleID, InsertRecordCount)
 
                 CopyTransactionResult(Result, SetTransaction)
 
                 If Result.BError Then
+                    If GridCommandTag IsNot Nothing Then GridCommandTag.StructuralProgress?.Invoke(Nothing)
                     XtraMessageBox.Show("An error occurred while trying to add the " &
                                         RecordDescription & " records." &
                                         Environment.NewLine & Result.StringReturn)

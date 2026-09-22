@@ -394,6 +394,7 @@ Public Class BPIncomeExpenditureAnalyserV2
         HasSnapshots = TransactionalDBSnapshotManager.HasValidSnapshot(ModelID)
         UpdateDataSourceButtons()
 
+        InitialiseBalanceSheet()
         InitialiseChartViews()
 
         Exit Sub
@@ -447,6 +448,9 @@ Public Class BPIncomeExpenditureAnalyserV2
         TransDBDataRange = definedName.Range
         Dim nameLookupMs As Long = benchmark.ElapsedMilliseconds
         Dim dependencyStartMs As Long = benchmark.ElapsedMilliseconds
+        If CurrentDataSourceMode <> AnalyserDataSourceMode.Snapshot Then
+            ExcelModels(ModelID).EnsureDeferredSaveResultsCurrent("Preparing analyser results...")
+        End If
         If calculateDependencies AndAlso
            (CurrentDataSourceMode = AnalyserDataSourceMode.Live OrElse
             CurrentDataSourceMode = AnalyserDataSourceMode.Comparison) Then
@@ -488,6 +492,7 @@ Public Class BPIncomeExpenditureAnalyserV2
     Public Sub DisconnectRDS()
 
         VirtualSelection.Clear()
+        BalanceSheetView?.SourceChanged(True)
         InvalidateChartViews(True)
 
         If DSAnalDataRange IsNot Nothing Then
@@ -694,6 +699,7 @@ Public Class BPIncomeExpenditureAnalyserV2
             UpdateDataSourceButtons()
             Dim buttonsMs As Long = benchmark.ElapsedMilliseconds - buttonsStartMs
 
+            BalanceSheetView?.SourceChanged(False)
             InvalidateChartViews(False)
 
             Dim totalMs As Long = benchmark.ElapsedMilliseconds
@@ -799,11 +805,17 @@ Public Class BPIncomeExpenditureAnalyserV2
                 RunSideBySide(ModelID, "Assumptions", ParentGIT, True)
 
             Case "ExpandAll"
-
+                If XtraTabControlAnalyser.SelectedTabPage Is XtraTabPageBSWrapped Then
+                    BalanceSheetView.SetExpanded(True)
+                    Return
+                End If
                 GridView_Process_ExpandAll(ActiveGridView)
 
             Case "CollapseAll"
-
+                If XtraTabControlAnalyser.SelectedTabPage Is XtraTabPageBSWrapped Then
+                    BalanceSheetView.SetExpanded(False)
+                    Return
+                End If
                 ActiveGridView.CollapseAllGroups()
                 ActiveGridView.ExpandGroupLevel(0)
                 GridView_Process_SetExpandedLevels(ActiveGridView)
@@ -1691,14 +1703,9 @@ Public Class BPIncomeExpenditureAnalyserV2
             .IDCount = GetPeriodColumns(WrapCG_SOCI.WrappedGridView).Count - 1}
 
         Dim BSExportPackage As New GridExportPackage With {
-            .GridView = WrapCG_BS.WrappedGridView,
             .Description = "Balance Sheet Data",
-            .GroupA = RequireColumn(WrapCG_BS.WrappedGridView, "OrderedBSGroup").AbsoluteIndex,
-            .GroupB = RequireColumn(WrapCG_BS.WrappedGridView, "OrderedBSHeading").AbsoluteIndex,
-            .GroupC = RequireColumn(WrapCG_BS.WrappedGridView, "Level 1 Copy").AbsoluteIndex,
-            .GroupD = RequireColumn(WrapCG_BS.WrappedGridView, "Level 2 Copy").AbsoluteIndex,
-            .IDStart = GetPeriodColumns(WrapCG_BS.WrappedGridView)(0).AbsoluteIndex,
-            .IDCount = GetPeriodColumns(WrapCG_BS.WrappedGridView).Count - 1}
+            .BalanceSheetData = BalanceSheetView.EnsureDocument(),
+            .BalanceSheetError = "Balance Sheet unavailable. See its figures panel for the source diagnostic."}
 
         Exporter.ClearExportPackages()
 

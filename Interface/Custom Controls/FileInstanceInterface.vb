@@ -23,6 +23,7 @@ Public Class FileInstanceInterface
     Private STInit As Boolean
     Private FFRInit As Boolean
     Private MyChildInterfaces() As GroupInterfaceTemplate
+    Private SaveButtonBinding As ModelSaveButtonBinding
     Public Property BPModelInstance As Integer
 
         Get
@@ -57,6 +58,7 @@ Public Class FileInstanceInterface
         FFRInit = False
         FileManager.RegisterModelInterface(BPModelID, Me)
         ConfigureModelActions()
+        SaveButtonBinding = New ModelSaveButtonBinding(Me, ExcelModels(BPModelID), WindowsUIButtonPanelSaveClose)
         WebBrowserBPInfo.Tag = PresentationLayout.BrowserOwnsScale
         SetScale()
         LayoutFileActionControls()
@@ -240,6 +242,7 @@ Public Class FileInstanceInterface
     End Sub
 
     Public Sub ShowFFRInterface()
+        ExcelModels(BPModelID).EnsureDeferredSaveResultsCurrent("Opening Financial Forecast Return...")
         If Not FFRInit OrElse FFRer Is Nothing OrElse FFRer.IsDisposed Then
             Me.Cursor = Cursors.WaitCursor
             Try
@@ -263,6 +266,7 @@ Public Class FileInstanceInterface
     End Sub
 
     Public Sub ShowStressTestInterface()
+        ExcelModels(BPModelID).EnsureDeferredSaveResultsCurrent("Opening Stress Test...")
         If Not STInit OrElse StressTester Is Nothing OrElse StressTester.IsDisposed Then
             StressTester = New StressTest(BPModelID)
             STInit = True
@@ -297,6 +301,8 @@ Public Class FileInstanceInterface
         STInit = False
     End Sub
 
+    Private ReadOnly InfoOpenedAt As DateTime = DateTime.Now
+
     Public Sub PopulateFileInfo()
 
         ScaleUnits = GetDisplayScale(Me)
@@ -304,7 +310,6 @@ Public Class FileInstanceInterface
         'HTML points share the native controls' scale; do not also apply browser zoom.
         Dim detailFontPoints As Single = GetDisplayFont("Small", Me).SizeInPoints
         Dim prominentFontPoints As Single = GetDisplayFont("Medium", Me).SizeInPoints
-        Dim StrFileDescription As New StringBuilder()
 
         MyFilePath = ExcelModels(BPModelID).FileName
         MyCompanyName = ExcelModels(BPModelID).WBStructure.CompanyName
@@ -314,40 +319,51 @@ Public Class FileInstanceInterface
                "Abovo model",
                ExcelModels(BPModelID).Profile.DisplayName)
 
-        StrFileDescription.Append("<html><head><style>")
-        StrFileDescription.Append("body{font-family:Verdana,sans-serif;font-size:")
-        StrFileDescription.Append(detailFontPoints.ToString("0.##", Globalization.CultureInfo.InvariantCulture))
-        StrFileDescription.Append("pt;line-height:1.35;margin:8px;color:#202020;overflow-wrap:anywhere;}")
-        StrFileDescription.Append(".primary{font-size:")
-        StrFileDescription.Append(prominentFontPoints.ToString("0.##", Globalization.CultureInfo.InvariantCulture))
-        StrFileDescription.Append("pt;margin:0 0 5px 0;}.detail{margin:0 0 3px 0;}")
-        StrFileDescription.Append("</style></head><body>")
-        StrFileDescription.Append("<div class='primary'>Model type: ")
-        StrFileDescription.Append(WebUtility.HtmlEncode(ModelDescription))
-        StrFileDescription.Append("</div><div class='primary'>Model name: ")
-        StrFileDescription.Append(WebUtility.HtmlEncode(ExcelModels(BPModelID).WBStructure.CompanyName))
-        StrFileDescription.Append("</div><div class='primary'>Start Date: ")
-        StrFileDescription.Append(WebUtility.HtmlEncode(Convert.ToString(ExcelModels(BPModelID).WBStructure.StartDate)))
-        StrFileDescription.Append(" (<a href='editbpdate'>edit</a>)</div><div class='detail'>File Name: ")
-        StrFileDescription.Append(WebUtility.HtmlEncode(ExcelModels(BPModelID).FileName))
-        StrFileDescription.Append("</div><div class='detail'>Opened: ")
-        StrFileDescription.Append(WebUtility.HtmlEncode(Now().ToString()))
-        StrFileDescription.Append("</div><div class='detail'>Created: ")
-        StrFileDescription.Append(WebUtility.HtmlEncode(ExcelModels(BPModelID).FileInfo.CreationTime.ToString()))
-        StrFileDescription.Append("</div><div class='detail'>Previous File Access: ")
-        StrFileDescription.Append(WebUtility.HtmlEncode(
-            If(ExcelModels(BPModelID).PreviousFileAccessTime = DateTime.MinValue,
-               "Not recorded",
-               ExcelModels(BPModelID).PreviousFileAccessTime.ToString())))
-        StrFileDescription.Append("</div><div class='detail'>Size: ")
-        StrFileDescription.Append(WebUtility.HtmlEncode(
-            Format((ExcelModels(BPModelID).FileInfo.Length / 1000000), "###.##") & "Mb"))
-        StrFileDescription.Append("</div></body></html>")
-
-        WebBrowserBPInfo.DocumentText = StrFileDescription.ToString()
+        Dim model = ExcelModels(BPModelID)
+        WebBrowserBPInfo.DocumentText = BuildFileSummaryHtml(ModelDescription, MyCompanyName,
+            Convert.ToString(model.WBStructure.StartDate), model.FileName,
+            InfoOpenedAt.ToString("dd/MM/yyyy HH:mm:ss"), model.FileInfo.CreationTime.ToString("dd/MM/yyyy HH:mm:ss"),
+            If(model.PreviousFileAccessTime = DateTime.MinValue, "Not recorded", model.PreviousFileAccessTime.ToString("dd/MM/yyyy HH:mm:ss")),
+            (model.FileInfo.Length / 1000000.0R).ToString("0.##") & " MB", detailFontPoints, prominentFontPoints,
+            model.DeferredSaveResultsPending, model.RecoverySourcePath)
         LayoutFileActionControls()
 
     End Sub
+    Friend Shared Function BuildFileSummaryHtml(modelType As String, company As String, startDate As String,
+                                               path As String, opened As String, created As String,
+                                               previous As String, size As String, bodyPoints As Single,
+                                               titlePoints As Single, Optional resultsPending As Boolean = False,
+                                               Optional recoverySource As String = Nothing) As String
+        'IE-compatible layout: no dependency on WebView2, flex/grid or script.
+        Dim html As New StringBuilder("<!DOCTYPE html><html><head><meta http-equiv='X-UA-Compatible' content='IE=edge'><style>")
+        html.Append("body{margin:0;padding:12px;font-family:'Segoe UI',Arial,sans-serif;color:#243746;background:white;font-size:")
+        html.Append(bodyPoints.ToString("0.##", Globalization.CultureInfo.InvariantCulture))
+        html.Append("pt;line-height:1.45}.card{border:1px solid #dce5ec;border-top:4px solid #005baa;padding:18px 22px;max-width:1050px}")
+        html.Append(".type{color:#005baa;font-weight:600;margin-bottom:4px}h1{font-weight:600;margin:0 0 16px;font-size:")
+        html.Append(titlePoints.ToString("0.##", Globalization.CultureInfo.InvariantCulture))
+        html.Append("pt}.key{display:inline-block;vertical-align:top;margin:0 32px 16px 0}.label{color:#617280;font-size:90%;font-weight:400}")
+        html.Append(".value{margin-top:3px}table{width:100%;border-collapse:collapse;table-layout:fixed}td{padding:9px 0;border-top:1px solid #edf1f4;vertical-align:top;word-wrap:break-word}td.label{width:32%;padding-right:12px}")
+        html.Append("</style></head><body><div class='card'><div class='type'>").Append(WebUtility.HtmlEncode(modelType))
+        html.Append("</div><h1>").Append(WebUtility.HtmlEncode(company)).Append("</h1>")
+        For Each pair In {New String() {"Plan start", startDate}, New String() {"File size", size}}
+            html.Append("<div class='key'><div class='label'>").Append(pair(0)).Append("</div><div class='value'>")
+            html.Append(WebUtility.HtmlEncode(pair(1))).Append("</div></div>")
+        Next
+        html.Append("<table>")
+        If Not String.IsNullOrWhiteSpace(recoverySource) Then
+            html.Append("<tr><td class='label'>Recovery copy</td><td><strong>This is not your normal business-plan file.</strong><br>Use Save As and choose Excel Binary Workbook (.xlsb). The original folder and filename below will be suggested. Confirm replacement, or choose a different name.<br>")
+            html.Append(WebUtility.HtmlEncode(recoverySource)).Append("</td></tr>")
+        End If
+        If resultsPending Then
+            html.Append("<tr><td class='label'>Calculation</td><td>Inputs saved; full results pending. Results update when required or when reopened in Summit.</td></tr>")
+        End If
+        For Each pair In {New String() {"File", path}, New String() {"Opened", opened},
+                          New String() {"Created", created}, New String() {"Previous file access", previous}}
+            html.Append("<tr><td class='label'>").Append(pair(0)).Append("</td><td>")
+            html.Append(WebUtility.HtmlEncode(pair(1))).Append("</td></tr>")
+        Next
+        Return html.Append("</table></div></body></html>").ToString()
+    End Function
     Private Sub WindowsUIButtonPanelSaveClose_ButtonClick(sender As Object, e As ButtonEventArgs) Handles WindowsUIButtonPanelSaveClose.ButtonClick
 
         Dim ButSender As WindowsUIButton = TryCast(e.Button, DevExpress.XtraBars.Docking2010.WindowsUIButton)

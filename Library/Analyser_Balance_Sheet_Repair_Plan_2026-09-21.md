@@ -1,10 +1,10 @@
 # Analyser Balance Sheet repair plan
 
-21 September 2026. **Proposed only: no Balance Sheet, synchroniser, calculation or XLSB schema repair has been implemented.** The 2.48 delivery changes chart controls and sidebar presentation separately.
+21 September 2026. **Implemented as test-release 2.51 following approval of this plan.** Financial/client acceptance remains pending. See `Balance_Sheet_Funding_Navigation_Trial_2026-09-21.md` for implementation boundaries, actual validation and remaining tests. The detailed plan below records the design and acceptance gates, not a claim that every manual gate has passed.
 
 ## Decision
 
-No extra XLSB worksheets are required for the recommended approach. Read the already-calculated SOFP output through a separate, read-only Balance Sheet adapter. Keep SOCI/Cashflow on their existing transaction feed. For persistent Balance Sheet snapshots, propose additional explicitly defined regions on the existing `TDB Snapshot` and `TDB Comparison` worksheets, created only by the user's snapshot command, not by opening a file. Region names/layout and Excel/VBA compatibility still require approval and validation before implementation.
+No extra XLSB worksheets are required. Read the already-calculated SOFP output through a separate, read-only Balance Sheet adapter. Keep SOCI/Cashflow on their existing transaction feed. Persistent Balance Sheet snapshots use additional explicitly defined regions on the existing `TDB Snapshot` and `TDB Comparison` worksheets, created only by the user's snapshot command, not by opening a file. Native XLSB/Excel persistence has been checked on private results; interactive VBA execution and financial acceptance remain required.
 
 Do not extend `Transactional_Records` over the intervening SOCI, report or check blocks. Do not fill its unfinished BM/BN/UseInBS fields merely to make the current grid display something: transactions are annual movements, whereas the Balance Sheet is an opening balance plus accumulated signed movements.
 

@@ -29,6 +29,21 @@ Namespace Abovo
         Private ActiveGroup As ChangeHistoryGroupV2
         Private ActiveGroupDepth As Integer
         Private IsApplyingHistory As Boolean
+        Private RecoveryHistory As DataTable
+        Friend Sub RestoreRecoveryHistory(table As DataTable)
+            RecoveryHistory = table.Copy()
+            RaiseHistoryChanged(False, Enumerable.Empty(Of String)())
+        End Sub
+        Friend ReadOnly Property RecoveryHistoryCount As Integer
+            Get
+                Return If(RecoveryHistory Is Nothing, 0, RecoveryHistory.Rows.Count)
+            End Get
+        End Property
+        Friend ReadOnly Property ChangeInProgress As Boolean
+            Get
+                Return IsApplyingHistory OrElse ActiveGroup IsNot Nothing
+            End Get
+        End Property
 
         Public ReadOnly Property ModelID As Integer
         'Only the isolated Structure Manager sets this; normal edit paths are unchanged.
@@ -132,6 +147,7 @@ Namespace Abovo
                         targets.Add(target)
                     End If
                     target.LastChange = change
+                    If cell.HasFormula Then FileManager.ExcelModels(ModelID).RequireFullRebuild()
                     WriteTypedValue(cell, change.ChangedValue, change.DataFormat)
                 Next
                 writeMs = timer.ElapsedMilliseconds
@@ -273,6 +289,7 @@ Namespace Abovo
             Dim calculationMs As Long = 0
             Dim outcome As String = "failed"
             Try
+                If targetCell.HasFormula Then FileManager.ExcelModels(ModelID).RequireFullRebuild()
                 WriteTypedValue(targetCell, sentEvent.ChangedValue, sentEvent.DataFormat)
                 writeMs = benchmark.ElapsedMilliseconds - setupMs
                 FileManager.ExcelModels(ModelID).WBCalcEngine.CalculateWSs(
@@ -409,6 +426,7 @@ Namespace Abovo
                 For Each entry As ChangeHistoryEntryV2 In ordered
                     Dim cell As Cell = WB.Worksheets(entry.WorksheetName).Cells(entry.CellAddress)
                     Dim targetSnapshot As CellSnapshotV2 = If(redo, entry.AfterSnapshot, entry.BeforeSnapshot)
+                    If cell.HasFormula OrElse targetSnapshot.HasFormula Then FileManager.ExcelModels(ModelID).RequireFullRebuild()
                     targetSnapshot.Apply(cell)
                     applied.Add(entry)
                 Next
@@ -498,6 +516,11 @@ Namespace Abovo
             table.Columns.Add("DataType", GetType(String))
             table.Columns.Add("GroupSize", GetType(Integer))
             table.Columns.Add("Action", GetType(String))
+            If RecoveryHistory IsNot Nothing Then
+                For Each row As DataRow In RecoveryHistory.Rows
+                    table.ImportRow(row)
+                Next
+            End If
             For Each group As ChangeHistoryGroupV2 In Journal
                 For Each entry As ChangeHistoryEntryV2 In group.Entries
                     table.Rows.Add(group.GroupID, entry.TimeStamp, entry.Description,
@@ -584,6 +607,12 @@ Namespace Abovo
         Private Shared Sub WriteTypedValue(ByVal targetCell As Cell,
                                            ByVal changedValue As Object,
                                            ByVal dataFormat As String)
+            Dim fundingDate = FundingPaymentDateSupport.ValidateChange(targetCell, changedValue)
+            If fundingDate.HasValue Then
+                'Also protect workbooks using an older embedded XML text definition.
+                targetCell.Value = CellValue.FromObject(fundingDate.Value)
+                Return
+            End If
             If changedValue Is Nothing OrElse Convert.IsDBNull(changedValue) Then
                 targetCell.ClearContents()
                 Return

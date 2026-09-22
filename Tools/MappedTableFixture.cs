@@ -51,6 +51,7 @@ public static class MappedTableFixture
                     if (grid == null) throw new Exception("No mapped grid found.");
                     dynamic nativeGrid = grid;
                     dynamic view = nativeGrid.MainView;
+                    if(view.OptionsView.ShowHorizontalLines.ToString()!="False" || view.OptionsView.ShowVerticalLines.ToString()!="False")throw new Exception("Check Sheet gridlines remain visible.");
                     if (view.RowCount != 57 || view.Columns.Count != 8 ||
                         !view.OptionsBehavior.Editable || !view.OptionsSelection.MultiSelect)
                         throw new Exception("Mapped geometry/selection contract failed.");

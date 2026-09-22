@@ -451,6 +451,9 @@ CreatePresentation:
             Public CommandTip As String
             Public RequestedRecordCount As Integer
             Public DeleteLastRecords As Boolean
+            'Temporary UI-owned callback: begin after the count prompt; Nothing dismisses
+            'the notice before an error dialog. Cleared by the caller after the rebuild.
+            Public StructuralProgress As Action(Of String)
 
             'Normal XtraGrid owner.
             Public AttachedGrid As DevExpress.XtraGrid.GridControl

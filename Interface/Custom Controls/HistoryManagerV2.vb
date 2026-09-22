@@ -289,7 +289,8 @@ Public NotInheritable Class HistoryManagerV2
         StatusLabel.Text = "Selected: " & selectedDate &
             "   |   Undo " & If(Manager.CanUndo, "available", "unavailable") &
             "   |   Redo " & If(Manager.CanRedo, "available", "unavailable") &
-            "   |   Structural changes are not automatically reversible."
+            "   |   Structural changes are not automatically reversible." &
+            If(Manager.RecoveryHistoryCount > 0, "   |   Recovered history is read-only (last 1,000 rows).", String.Empty)
     End Sub
 
     Private Function FocusedGroupID() As Integer

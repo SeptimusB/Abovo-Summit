@@ -70,6 +70,7 @@ Public Class FFRForm
 
         Dim SheetName As String = Convert.ToString(Page.Tag)
         If String.IsNullOrWhiteSpace(SheetName) Then Return
+        ExcelModels(ModelID).EnsureDeferredSaveResultsCurrent("Preparing Financial Forecast Return figures...")
         SheetCaption.Text = "Financial Forecast Return  •  " & SheetName
 
         Dim ExistingView As Control = Nothing
@@ -197,6 +198,7 @@ Public Class FFRForm
     End Sub
 
     Private Sub CreateFFRReturn()
+        ExcelModels(ModelID).EnsureDeferredSaveResultsCurrent("Preparing Financial Forecast Return export...")
         Dim SourceWorkbook As IWorkbook = FileManager.GetWorkBook(ModelID)
         If SourceWorkbook Is Nothing Then Return
 

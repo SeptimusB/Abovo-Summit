@@ -49,6 +49,7 @@ public static class PresentationLayoutFixture {
             Check(Elements(nav.Elements).Where(x=>x.HeaderVisible).All(x=>x.Appearance.Normal.TextOptions.WordWrap==DevExpress.Utils.WordWrap.NoWrap),"No wrapping");
             var sidebar=(AccordionControl)Field(group,"AccordionControlSum");
             Check(sidebar.Elements.Count>=6,"Dynamic history header included");
+            Check(sidebar.Elements.All(x=>x.Expanded==(x.Text=="BP Status" || x.Text=="Funding Status")),"Initial sidebar opens only BP and Funding Status");
             var expanded=sidebar.Elements.Select(x=>x.Expanded).ToArray();
             foreach(var item in sidebar.Elements) {
                 Check(item.Style==ElementStyle.Item && item.ContentContainer!=null,"Sidebar keeps its content container: "+item.Text);
@@ -72,24 +73,26 @@ public static class PresentationLayoutFixture {
                 var compactIcon=((WindowsUIButton)first.Buttons[0]).ImageOptions.SvgImage;
                 ((WindowsUIButton)first.Buttons[0]).ImageOptions.SvgImageSize=new Size(42,42);
                 Invoke(group,"ToggleInterfacePanels");
-                Check(states.All(p=>p.Visibility==DockVisibility.Hidden),"All panels hidden");
+                Check(left.Visibility==DockVisibility.Hidden && right.Visibility==DockVisibility.AutoHide && states[0].Visibility==DockVisibility.AutoHide,"Compact contents with both edge strips retained");
                 Check(second.Visibility==secondState,"Other window unchanged");
                 Invoke(group,"AttachPanelsButton",next);
                 var nextButton=(WindowsUIButton)next.Buttons[0];
                 var restoreIcon=nextButton.ImageOptions.SvgImage;
                 Check(!Object.ReferenceEquals(compactIcon,restoreIcon),"Restore has a distinct matching icon");
                 Check(Object.ReferenceEquals(((WindowsUIButton)first.Buttons[0]).ImageOptions.SvgImage,restoreIcon),"Existing and new interfaces show the same restore icon");
-                Check(nextButton.Caption=="Restore" && !nextButton.UseCaption && nextButton.ToolTip.StartsWith("Restore"),"New interface shares icon-only restore state");
+                Check(nextButton.Caption=="Restore sidebars" && !nextButton.UseCaption && nextButton.ToolTip=="Restore sidebars","New interface shares icon-only restore state");
                 Invoke(group,"ToggleInterfacePanels");
                 for(int i=0;i<states.Length;i++) Check(states[i].Visibility==visibility[i],"Visibility restored");
                 Check(left.Width==leftWidth,"Navigator width restored");
                 var firstButton=(WindowsUIButton)first.Buttons[0];
-                Check(firstButton.Caption=="Compact" && !firstButton.UseCaption && firstButton.ToolTip.StartsWith("Compact"),"Icon-only compact button restored");
+                Check(firstButton.Caption=="Maximise working area" && !firstButton.UseCaption && firstButton.ToolTip=="Maximise working area","Icon-only working-area button restored");
                 Check(firstButton.ImageOptions.HasSvgImage && nextButton.ImageOptions.HasSvgImage,"Panel icon retained in both states");
                 Check(Object.ReferenceEquals(firstButton.ImageOptions.SvgImage,compactIcon),"Approved Compact icon restored");
                 Check(firstButton.ImageOptions.SvgImageSize==new Size(42,42),"Icon switch preserves display size");
             }
             Console.WriteLine("PASS: XML routing, no-wrap navigator, independent hide/restore, exact visibility/width and new-interface toggle state.");
+            TestCompactPanels(group,other);
+            if(args.Length>3 && args[3]=="--panels-only")return;
             if(args.Length>3 && args[3]=="--sidebar-only") {
                 right.Visibility=DockVisibility.Visible;
                 var wait=System.Diagnostics.Stopwatch.StartNew();
@@ -105,6 +108,10 @@ public static class PresentationLayoutFixture {
                     }
                 }
                 foreach(int width in new[]{1900,2800,5000,1900,1280}) {
+                    var fundingBrowser=(WebBrowser)Field(group,"WebBrowserFundSum");
+                    var fundingRows=fundingBrowser.Document.GetElementsByTagName("tr").Cast<HtmlElement>();
+                    var lower=fundingRows.First(row=>(row.InnerText??"").Contains("YE Net Debt"));
+                    Check(lower.GetElementsByTagName("td")[2].InnerText.Trim()=="YE Net Debt","Funding lower figures align one column to the right");
                     group.ClientSize=new Size(width,1200);Invoke(group,"ApplyPresentationScale");Application.DoEvents();
                     Check(sidebar.Elements.Select(x=>x.Expanded).SequenceEqual(expanded),"Sidebar expansion retained on resize");
                     Check(sidebar.Elements.All(x=>x.Appearance.Normal.BackColor==nav.Appearance.Group.Default.BackColor && x.Appearance.Normal.ForeColor==Color.White),"Sidebar colours retained on resize");
@@ -359,6 +366,63 @@ public static class PresentationLayoutFixture {
     }
     static IEnumerable<Control> Descendants(Control root) {
         foreach(Control c in root.Controls) { yield return c; foreach(var n in Descendants(c)) yield return n; }
+    }
+    static void TestCompactPanels(Form group,Form other) {
+        var left=(DockPanel)Field(group,"DockPanelNewNavigator");
+        var stripPanel=(DockPanel)Field(group,"DockPanelNavigator");
+        var right=(DockPanel)Field(group,"DockPanelDetail");
+        var otherLeft=(DockPanel)Field(other,"DockPanelNewNavigator");
+        var otherRight=(DockPanel)Field(other,"DockPanelDetail");
+        var otherLeftState=otherLeft.Visibility;var otherRightState=otherRight.Visibility;
+        var originalLeft=left.Visibility;var originalRight=right.Visibility;
+        foreach(bool leftOpen in new[]{false,true})foreach(bool rightOpen in new[]{false,true}) {
+            left.Visibility=leftOpen?DockVisibility.Visible:DockVisibility.Hidden;
+            right.Visibility=rightOpen?DockVisibility.Visible:DockVisibility.AutoHide;
+            if(!rightOpen)right.HideImmediately();
+            Application.DoEvents();
+            var originalStrip=stripPanel.Parent;
+            int leftWidth=left.Width,rightWidth=right.Width,rightOriginalWidth=right.OriginalSize.Width;
+            for(int cycle=0;cycle<3;cycle++) {
+                Invoke(group,"ToggleInterfacePanels");Application.DoEvents();
+                Check(left.Visibility==DockVisibility.Hidden && !left.Visible,"Navigator contents closed in compact mode");
+                Check(stripPanel.Visibility==DockVisibility.AutoHide && stripPanel.Parent!=null && stripPanel.Parent.Visible && stripPanel.Parent.Width>0,"Left edge strip remains visible");
+                Check(Object.ReferenceEquals(originalStrip,stripPanel.Parent) && !originalStrip.IsDisposed,"Navigator reopen strip survives repeated toggling");
+                Check(right.Visibility==DockVisibility.AutoHide && !right.Visible && right.Parent!=null && right.Parent.Visible && right.Parent.Width>0,"Right edge strip remains visible with contents closed");
+                typeof(Control).GetMethod("OnClick",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(stripPanel.Parent,new object[]{EventArgs.Empty});
+                Application.DoEvents();Check(left.Visibility==DockVisibility.Visible,"Navigator reopens from retained strip while compact");
+                typeof(Control).GetMethod("OnClick",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(right.Parent,new object[]{EventArgs.Empty});
+                Application.DoEvents();
+                Check(right.Visibility==DockVisibility.Visible,"Summary reopens and remains pinned while compact");
+                Invoke(group,"DockPanelDetail_CustomButtonClick",right,new ButtonEventArgs(right.CustomHeaderButtons[1]));
+                Check(right.Visibility==DockVisibility.AutoHide && !right.Visible && right.Parent.Visible,"Summary close arrow immediately returns to its edge strip");
+                Invoke(group,"HideNewNavContainer",left,new ButtonEventArgs(left.CustomHeaderButtons[0]));
+                Check(left.Visibility==DockVisibility.Hidden && stripPanel.Parent.Visible,"Navigator close arrow keeps its edge strip");
+                Invoke(group,"ToggleInterfacePanels");Application.DoEvents();
+                Check(left.Visibility==(leftOpen?DockVisibility.Visible:DockVisibility.Hidden),"Restore returns navigator to its previous open/closed state");
+                Check(right.Visibility==(rightOpen?DockVisibility.Visible:DockVisibility.AutoHide),"Restore returns summary to its previous open/closed state");
+                Check(left.Width==leftWidth,"Navigator width retained across cycles");
+                Check(rightOpen?right.Width==rightWidth:right.OriginalSize.Width==rightOriginalWidth,"Summary width retained across cycles");
+                Check(otherLeft.Visibility==otherLeftState && otherRight.Visibility==otherRightState,"Side-by-side window states remain independent");
+            }
+            // A queued expansion must not undo a newer restore to closed state.
+            Invoke(group,"ToggleInterfacePanels");
+            right.ShowSliding();
+            Invoke(group,"ToggleInterfacePanels");
+            var settle=System.Diagnostics.Stopwatch.StartNew();
+            while(settle.ElapsedMilliseconds<800){Application.DoEvents();System.Threading.Thread.Sleep(10);}
+            Check(right.Visibility==(rightOpen?DockVisibility.Visible:DockVisibility.AutoHide),"Queued expansion cannot override a newer restore");
+            Console.WriteLine("PASS: compact strips/reopen/restore x3, initial navigator="+leftOpen+", summary="+rightOpen);
+        }
+        // Defensively reattach WithEvents if a native layout reload replaces the strip.
+        stripPanel.Visibility=DockVisibility.Hidden;Application.DoEvents();
+        Invoke(group,"ToggleInterfacePanels");Application.DoEvents();
+        Check(Object.ReferenceEquals(Field(group,"hideContainerLeft"),stripPanel.Parent),"Replacement strip is rebound to its reopen handler");
+        typeof(Control).GetMethod("OnClick",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(stripPanel.Parent,new object[]{EventArgs.Empty});
+        Check(left.Visibility==DockVisibility.Visible,"Replacement strip reopens navigator");
+        Invoke(group,"ToggleInterfacePanels");Application.DoEvents();
+        left.Visibility=originalLeft;right.Visibility=originalRight;
+        if(right.Visibility==DockVisibility.AutoHide)right.HideImmediately();
+        Application.DoEvents();
     }
     static object Field(object obj,string name) {
         for(Type t=obj.GetType();t!=null;t=t.BaseType) {

@@ -176,7 +176,152 @@ Namespace Abovo
             Public ExpendAnalyser As BPIncomeExpenditureAnalyser
             Public ExpendAnalyserV2 As BPIncomeExpenditureAnalyserV2
             Public ReadOnly ResourceRegistry As New ModelResourceRegistry
-            Public IsDirty As Boolean
+            Private _isDirty As Boolean
+            Private _calculationRevision As Long
+            Private _calculatedRevision As Long = -1
+            Private _needsFullRebuild As Boolean = True
+            'An unopened/unverified dependency graph needs a rebuild before its
+            'results are consumed, but does not imply an in-session structural edit.
+            Private _saveRebuildRequired As Boolean
+            Private _formulaStructureRevision As Long
+            Private _checkedFormulaStructureRevision As Long = -1
+            Private _knownCloseValidationFailure As Boolean
+            Private _writingPreparedWorkbook As Boolean
+            Private _writingRecoveryWorkbook As Boolean
+            Public RecoverySourcePath As String
+            Friend RecoveryHasVerifiedBinaryMetadata As Boolean
+            Private Const ResultsPendingProperty As String = "Abovo.Summit.ResultsPending"
+            Private _deferredSaveResultsPending As Boolean
+
+            Public ReadOnly Property ResultsPending As Boolean
+                Get
+                    Return _needsFullRebuild OrElse _calculatedRevision <> _calculationRevision
+                End Get
+            End Property
+
+            Public ReadOnly Property DeferredSaveResultsPending As Boolean
+                Get
+                    Return _deferredSaveResultsPending
+                End Get
+            End Property
+
+            'Saved inputs and calculated outputs are separate states. Sheet-level
+            'CalculateWSs/IsCalculated refreshes do not certify whole-model caches.
+            Public Function EnsureDeferredSaveResultsCurrent(reason As String) As Boolean
+                If Not _deferredSaveResultsPending Then Return False
+                Using activity As New FormSplashScreen(Form.ActiveForm, "Updating business plan results", reason)
+                    EnsureSaveCalculationCurrent(AddressOf activity.Update)
+                    If WBCalcEngine IsNot Nothing Then WBCalcEngine.RefreshAfterDeferredCalculation()
+                    If InstanceInterface IsNot Nothing AndAlso Not InstanceInterface.IsDisposed Then InstanceInterface.PopulateFileInfo()
+                    activity.Complete("Results updated.")
+                End Using
+                Return True
+            End Function
+
+            Friend Sub RestoreDeferredSaveState()
+                Dim properties = WB.DocumentProperties.Custom
+                If Not properties.Names.Contains(ResultsPendingProperty) Then Return
+                Dim state = properties(ResultsPendingProperty)
+                'Unknown/malformed markers are conservative, never treated as current.
+                _deferredSaveResultsPending = Not (state.IsBoolean AndAlso Not state.BooleanValue)
+                EnsureDeferredSaveResultsCurrent("Updating results saved with calculation pending...")
+            End Sub
+            'Retain the exact delegates: relaxed AddressOf conversions otherwise
+            'create new wrappers that cannot be removed during model shutdown.
+            Private ReadOnly SavedHandler As EventHandler = Sub(sender, e)
+                                                                If Not _writingRecoveryWorkbook Then ClearDirtyFlag()
+                                                            End Sub
+            Private ReadOnly ContentHandler As EventHandler = Sub(sender, e) WorkbookContentChanged()
+            Private ReadOnly PropertiesHandler As DocumentPropertiesChangedEventHandler = Sub(sender, e)
+                                                                                              'Save updates author/timestamp metadata itself.
+                                                                                              If Not _writingPreparedWorkbook Then SetDirtyFlag()
+                                                                                          End Sub
+            Private ReadOnly NativeCellHandler As CellValueChangedEventHandler = Sub(sender, e) NativeWorkbookStructureChanged()
+            Private ReadOnly NativeRowsInsertedHandler As RowsInsertedEventHandler = Sub(sender, e) NativeWorkbookStructureChanged()
+            Private ReadOnly NativeRowsRemovedHandler As RowsRemovedEventHandler = Sub(sender, e) NativeWorkbookStructureChanged()
+            Private ReadOnly NativeColumnsInsertedHandler As ColumnsInsertedEventHandler = Sub(sender, e) NativeWorkbookStructureChanged()
+            Private ReadOnly NativeColumnsRemovedHandler As ColumnsRemovedEventHandler = Sub(sender, e) NativeWorkbookStructureChanged()
+            Private ReadOnly NativeSheetInsertedHandler As SheetInsertedEventHandler = Sub(sender, e) NativeWorkbookStructureChanged()
+            Private ReadOnly NativeSheetRemovedHandler As SheetRemovedEventHandler = Sub(sender, e) NativeWorkbookStructureChanged()
+            Private ReadOnly NativeSheetRenamedHandler As SheetRenamedEventHandler = Sub(sender, e) NativeWorkbookStructureChanged()
+            Private ReadOnly NativeNameEditedHandler As DefinedNameEditedEventHandler = Sub(sender, e) NativeWorkbookStructureChanged()
+            Private ReadOnly NativeNameAddedHandler As DefinedNameAddedEventHandler = Sub(sender, e) NativeWorkbookStructureChanged()
+            Private ReadOnly NativeNameDeletedHandler As DefinedNameDeletedEventHandler = Sub(sender, e) NativeWorkbookStructureChanged()
+
+            Public Event DirtyStateChanged As EventHandler
+
+            Public Property IsDirty As Boolean
+                Get
+                    Return _isDirty
+                End Get
+                Set(value As Boolean)
+                    Dim changed = (_isDirty <> value)
+                    _isDirty = value
+                    If value Then MarkCalculationPending()
+                    If changed Then RaiseEvent DirtyStateChanged(Me, EventArgs.Empty)
+                End Set
+            End Property
+
+            Public ReadOnly Property NeedsFullRebuild As Boolean
+                Get
+                    Return _needsFullRebuild
+                End Get
+            End Property
+
+            Public ReadOnly Property NeedsSaveRebuild As Boolean
+                Get
+                    Return _saveRebuildRequired
+                End Get
+            End Property
+
+            Public ReadOnly Property CloseValidationRequired As Boolean
+                Get
+                    Return WB Is Nothing OrElse IsDirty OrElse RecoverySaveAsRequired OrElse
+                        IntegrityState <> ModelIntegrityState.Healthy OrElse _knownCloseValidationFailure OrElse
+                        ModelSafetyManager.IsBulkWorkbookMutationInProgress(ModelID)
+                End Get
+            End Property
+
+            Public ReadOnly Property NeedsFormulaPreflight As Boolean
+                Get
+                    Return _checkedFormulaStructureRevision <> _formulaStructureRevision
+                End Get
+            End Property
+
+            Friend ReadOnly Property CalculationRevision As Long
+                Get
+                    Return _calculationRevision
+                End Get
+            End Property
+
+            Friend Sub MarkCalculationPending()
+                _calculationRevision += 1
+            End Sub
+
+            Public Sub RequireFullRebuild()
+                If Not _needsFullRebuild Then System.Diagnostics.Trace.WriteLine("[Rebuild State] model=" & ModelID.ToString() & ", pending=True")
+                _needsFullRebuild = True
+                _saveRebuildRequired = True
+                'A calculation/rebuild does not prove XLSB export compatibility.
+                'Keep this separate from ordinary value/calculation revisions.
+                _formulaStructureRevision += 1
+                MarkCalculationPending()
+            End Sub
+
+            Friend Sub MarkFullCalculationCurrent(revision As Long, rebuilt As Boolean)
+                If revision <> _calculationRevision OrElse ModelSafetyManager.IsBulkWorkbookMutationInProgress(ModelID) Then
+                    System.Diagnostics.Trace.WriteLine("[Rebuild State] completion withheld: revision=" & revision.ToString() & ", current=" & _calculationRevision.ToString())
+                    Return
+                End If
+                If rebuilt Then
+                    _needsFullRebuild = False
+                    _saveRebuildRequired = False
+                End If
+                If Not _needsFullRebuild Then
+                    _calculatedRevision = revision
+                    _deferredSaveResultsPending = False
+                End If
+            End Sub
             Public IntegrityState As ModelIntegrityState = ModelIntegrityState.Healthy
             Public RecoverySaveAsRequired As Boolean = False
             Public IntegrityReason As String = String.Empty
@@ -224,8 +369,20 @@ Namespace Abovo
 
                 InitiateWorkbook(SetModelID)
 
-                AddHandler ModelSpreadsheetControl.DocumentSaved, AddressOf ClearDirtyFlag
-                AddHandler ModelSpreadsheetControl.DocumentPropertiesChanged, AddressOf SetDirtyFlag
+                AddHandler ModelSpreadsheetControl.DocumentSaved, SavedHandler
+                AddHandler ModelSpreadsheetControl.DocumentPropertiesChanged, PropertiesHandler
+                AddHandler ModelSpreadsheetControl.ContentChanged, ContentHandler
+                AddHandler ModelSpreadsheetControl.CellValueChanged, NativeCellHandler
+                AddHandler ModelSpreadsheetControl.RowsInserted, NativeRowsInsertedHandler
+                AddHandler ModelSpreadsheetControl.RowsRemoved, NativeRowsRemovedHandler
+                AddHandler ModelSpreadsheetControl.ColumnsInserted, NativeColumnsInsertedHandler
+                AddHandler ModelSpreadsheetControl.ColumnsRemoved, NativeColumnsRemovedHandler
+                AddHandler ModelSpreadsheetControl.SheetInserted, NativeSheetInsertedHandler
+                AddHandler ModelSpreadsheetControl.SheetRemoved, NativeSheetRemovedHandler
+                AddHandler ModelSpreadsheetControl.SheetRenamed, NativeSheetRenamedHandler
+                AddHandler ModelSpreadsheetControl.DefinedNameEdited, NativeNameEditedHandler
+                AddHandler ModelSpreadsheetControl.DefinedNameAdded, NativeNameAddedHandler
+                AddHandler ModelSpreadsheetControl.DefinedNameDeleted, NativeNameDeletedHandler
                 AddHandler ModelSpreadsheetControl.UnhandledException, AddressOf SSCUnhandledEvent
                 AddHandler ModelSpreadsheetControl.ActiveSheetChanged, AddressOf ProcessSheetChange
 
@@ -240,10 +397,25 @@ Namespace Abovo
             Sub SetDirtyFlag()
 
                 IsDirty = True
+                RequireFullRebuild() 'Unknown/bulk import or document-property change.
                 If WBCalcEngine IsNot Nothing Then
                     WBCalcEngine.MarkPotentialWorkbookChange()
                 End If
 
+            End Sub
+            Private Sub WorkbookContentChanged()
+                'ContentChanged can be delivered later, after load/save has set
+                'the native save point. Do not revive those already-clean changes.
+                If Not IsClosing AndAlso Not _writingPreparedWorkbook AndAlso ModelSpreadsheetControl.Modified Then IsDirty = True
+            End Sub
+
+            Private Sub NativeWorkbookStructureChanged()
+                If IsClosing Then Return
+                'UI-only events: a native formula edit, rename or insertion is not
+                'necessarily routed through the typed-edit/structural services.
+                IsDirty = True
+                RequireFullRebuild()
+                If WBCalcEngine IsNot Nothing Then WBCalcEngine.InvalidateDependencyGraph()
             End Sub
             Sub ProcessSheetChange()
 
@@ -251,6 +423,8 @@ Namespace Abovo
 
             End Sub
             Public Sub ShowSpreadsheet(Optional ByVal SetSpreadsheet As DevExpress.Spreadsheet.Worksheet = Nothing, Optional ByVal Parent As Object = Nothing)
+
+                EnsureDeferredSaveResultsCurrent("Opening the spreadsheet...")
 
                 If Not SSViewInitialised Then
 
@@ -456,6 +630,8 @@ Namespace Abovo
             Public Function SaveFileAs(Optional ByVal RequireDifferentPath As Boolean = False) As Boolean
 
                 Dim OriginalPath As String = FileName
+                Dim restoringRecovery = Not String.IsNullOrWhiteSpace(RecoverySourcePath)
+                RequireDifferentPath = RequireDifferentPath OrElse restoringRecovery
 
                 Try
 
@@ -463,7 +639,7 @@ Namespace Abovo
 
                         Using SaveDialog As New SaveFileDialog()
 
-                            SaveDialog.Title = "Save validated model copy"
+                            SaveDialog.Title = If(restoringRecovery, "Save recovered business plan as XLSB", "Save validated model copy")
                             SaveDialog.Filter = "Excel Binary Workbook (*.xlsb)|*.xlsb"
                             SaveDialog.DefaultExt = "xlsb"
                             SaveDialog.AddExtension = True
@@ -472,7 +648,7 @@ Namespace Abovo
                             SaveDialog.RestoreDirectory = True
 
                             Dim OriginalDirectory As String =
-                                System.IO.Path.GetDirectoryName(OriginalPath)
+                                System.IO.Path.GetDirectoryName(If(restoringRecovery, RecoverySourcePath, OriginalPath))
 
                             If Not String.IsNullOrWhiteSpace(OriginalDirectory) AndAlso
                                System.IO.Directory.Exists(OriginalDirectory) Then
@@ -481,8 +657,8 @@ Namespace Abovo
                             End If
 
                             SaveDialog.FileName =
-                                System.IO.Path.GetFileNameWithoutExtension(OriginalPath) &
-                                " - validation copy.xlsb"
+                                If(restoringRecovery, System.IO.Path.GetFileNameWithoutExtension(RecoverySourcePath) & ".xlsb",
+                                   System.IO.Path.GetFileNameWithoutExtension(OriginalPath) & " - validation copy.xlsb")
 
                             Do
 
@@ -506,13 +682,12 @@ Namespace Abovo
                                     Continue Do
                                 End If
 
-                                ModelSpreadsheetControl.SaveDocument(
-                                    SelectedPath,
-                                    DocumentFormat.Xlsb)
+                                If Not SavePreparedWorkbook(Sub() ModelSpreadsheetControl.SaveDocument(SelectedPath, DocumentFormat.Xlsb)) Then Return False
                                 FileName = SelectedPath
                                 FileInfo = New System.IO.FileInfo(FileName)
                                 IsDirty = False
                                 RecoverySaveAsRequired = False
+                                RefreshSavedFilePresentation()
                                 SystemMessageManager.Publish(
                                     ModelID,
                                     If(IntegrityState = ModelIntegrityState.RecoveryRequired,
@@ -529,18 +704,16 @@ Namespace Abovo
 
                     End If
 
-                    ModelSpreadsheetControl.SaveDocumentAs()
+                    If Not SavePreparedWorkbook(Sub() ModelSpreadsheetControl.SaveDocumentAs(), ShowNativeSaveDialog:=True) Then Return False
 
                     Dim SavedPath As String = WB.Path
-                    If String.IsNullOrWhiteSpace(SavedPath) OrElse
-                       String.Equals(SavedPath,
-                                     OriginalPath,
-                                     StringComparison.OrdinalIgnoreCase) Then Return False
+                    If String.IsNullOrWhiteSpace(SavedPath) Then Return False
 
                     FileName = System.IO.Path.GetFullPath(SavedPath)
                     FileInfo = New System.IO.FileInfo(FileName)
                     IsDirty = False
                     RecoverySaveAsRequired = False
+                    RefreshSavedFilePresentation()
                     SystemMessageManager.Publish(
                         ModelID,
                         "Model saved as '" & System.IO.Path.GetFileName(FileName) & "'.",
@@ -579,11 +752,12 @@ Namespace Abovo
                        String.Equals(FullPath, System.IO.Path.GetFullPath(OriginalPath), StringComparison.OrdinalIgnoreCase) Then
                         Throw New InvalidOperationException("The populated model must be saved to a different file.")
                     End If
-                    ModelSpreadsheetControl.SaveDocument(FullPath, DocumentFormat.Xlsb)
+                    If Not SavePreparedWorkbook(Sub() ModelSpreadsheetControl.SaveDocument(FullPath, DocumentFormat.Xlsb)) Then Return False
                     FileName = FullPath
                     FileInfo = New System.IO.FileInfo(FileName)
                     IsDirty = False
                     RecoverySaveAsRequired = False
+                    RefreshSavedFilePresentation()
                     SystemMessageManager.Publish(
                         ModelID,
                         "Populated model saved as '" & System.IO.Path.GetFileName(FileName) & "'.",
@@ -613,7 +787,9 @@ Namespace Abovo
                 If RecoverySaveAsRequired Then
                     SystemMessageManager.Publish(
                         ModelID,
-                        "Normal save was redirected to Save As because an earlier workbook operation could not be rolled back reliably.",
+                        If(Not String.IsNullOrWhiteSpace(RecoverySourcePath),
+                           "This is a recovery copy. Save As will suggest the original XLSB filename; confirm replacement or choose a new name.",
+                           "Normal save was redirected to Save As because an earlier workbook operation could not be rolled back reliably."),
                         SystemMessageSeverity.Warning,
                         "File Manager",
                         FileName)
@@ -623,8 +799,9 @@ Namespace Abovo
                 If Not IsDirty Then Return True
 
                 Try
-                    ModelSpreadsheetControl.SaveDocument()
+                    If Not SavePreparedWorkbook(Sub() ModelSpreadsheetControl.SaveDocument()) Then Return False
                     IsDirty = False
+                    RefreshSavedFilePresentation()
                     SystemMessageManager.Publish(
                         ModelID,
                         "Model saved successfully.",
@@ -650,6 +827,196 @@ Namespace Abovo
                 End Try
 
             End Function
+            'A stream export must not become the document's Save point or filename.
+            'XLSM retains the unmodified formulas; the normal XLSB preflight remains
+            'mandatory when the recovered plan is explicitly saved as XLSB.
+            Friend Sub WriteRecoverySnapshot(output As System.IO.Stream)
+                If _writingPreparedWorkbook OrElse _writingRecoveryWorkbook Then Throw New InvalidOperationException("Another save is in progress.")
+                Dim nativeModified = ModelSpreadsheetControl.Modified
+                Dim dirty = _isDirty
+                Dim revision = _calculationRevision
+                Dim originalPath = WB.Path
+                Dim mode = WB.Options.CalculationMode
+                Dim properties = WB.DocumentProperties.Custom
+                Dim names = {RecoveryBackupStore.SourceProperty, RecoveryBackupStore.VersionProperty,
+                             RecoveryBackupStore.DateProperty, RecoveryBackupStore.PendingProperty}
+                Dim originals = names.ToDictionary(Function(n) n, Function(n) properties(n))
+                Dim modifiedAt = WB.DocumentProperties.Modified
+                Dim modifiedBy = WB.DocumentProperties.LastModifiedBy
+                _writingPreparedWorkbook = True
+                _writingRecoveryWorkbook = True
+                Try
+                    WB.Options.CalculationMode = WorkbookCalculationMode.Manual
+                    properties(RecoveryBackupStore.SourceProperty) = System.IO.Path.GetFullPath(FileName)
+                    properties(RecoveryBackupStore.VersionProperty) = "1"
+                    properties(RecoveryBackupStore.DateProperty) = DateTime.UtcNow.ToString("O")
+                    properties(RecoveryBackupStore.PendingProperty) = True
+                    WB.SaveDocument(output, DocumentFormat.Xlsm)
+                    If WB.Path <> originalPath Then Throw New InvalidOperationException("Recovery export unexpectedly changed the document path.")
+                Finally
+                    Try
+                        For Each item In originals
+                            properties(item.Key) = item.Value
+                        Next
+                        WB.DocumentProperties.Modified = modifiedAt
+                        WB.DocumentProperties.LastModifiedBy = modifiedBy
+                        WB.Options.CalculationMode = mode
+                        ModelSpreadsheetControl.Modified = nativeModified
+                        _isDirty = dirty
+                        _calculationRevision = revision
+                    Finally
+                        _writingRecoveryWorkbook = False
+                        _writingPreparedWorkbook = False
+                    End Try
+                End Try
+            End Sub
+
+            Private Function SavePreparedWorkbook(saveAction As Action, Optional ShowNativeSaveDialog As Boolean = False) As Boolean
+                'Value edits retain their immediate sheet calculation but may save
+                'pending whole-model caches. Structural/unknown changes still rebuild.
+                Dim previousEngine = WB.Options.CalculationEngineType
+                Dim previousSkip = If(WBCalculationService Is Nothing, False, WBCalculationService.DontCalcTDBS)
+                Dim originalDirty = IsDirty
+                Dim originalDeferred = _deferredSaveResultsPending
+                Dim originalMarker As CellValue = WB.DocumentProperties.Custom(ResultsPendingProperty)
+                Dim saved As Boolean = False
+                Dim checkedFormulaRevision As Long = -1
+                Dim saveActionMs As Long
+                Dim savedHandler As EventHandler = Sub(sender, args) saved = True
+                Dim clock = System.Diagnostics.Stopwatch.StartNew()
+                AddHandler ModelSpreadsheetControl.DocumentSaved, savedHandler
+                Try
+                    Using activity As New FormSplashScreen(Form.ActiveForm, "Saving business plan",
+                        If(NeedsFormulaPreflight, "Checking XLSB formula compatibility...", "Preparing workbook results..."))
+                        Dim checkFormulas = NeedsFormulaPreflight
+                        WorkbookXlsbFormulaCompatibility.Save(WB,
+                            Function()
+                                If Not checkFormulas AndAlso NeedsFormulaPreflight Then
+                                    Throw New InvalidOperationException("Workbook formulas changed during save preparation. Please retry the save.")
+                                End If
+                                checkedFormulaRevision = _formulaStructureRevision
+                                If ModelSafetyManager.IsBulkWorkbookMutationInProgress(ModelID) Then
+                                    Throw New InvalidOperationException("Wait for the current workbook operation to finish before saving.")
+                                End If
+                                If NeedsSaveRebuild OrElse (NeedsFullRebuild AndAlso
+                                   (RecoverySaveAsRequired OrElse IntegrityState <> ModelIntegrityState.Healthy OrElse _knownCloseValidationFailure)) Then
+                                    If WBCalculationService IsNot Nothing Then WBCalculationService.DontCalcTDBS = False
+                                    WB.Options.CalculationEngineType = CalculationEngineType.Recursive
+                                    EnsureSaveCalculationCurrent(AddressOf activity.Update)
+                                Else
+                                    System.Diagnostics.Trace.WriteLine("[Save Calculation Benchmark] model=" & ModelID.ToString() &
+                                        ", mode=" & If(ResultsPending, "deferred", "current") & ", total=0 ms" &
+                                        ", initialRebuildPending=" & NeedsFullRebuild.ToString())
+                                End If
+                                If checkedFormulaRevision <> _formulaStructureRevision Then
+                                    Throw New InvalidOperationException("Workbook formulas changed during calculation. Please retry the save.")
+                                End If
+                                System.Diagnostics.Trace.WriteLine("[XLSB Save Benchmark] prepared=" & clock.ElapsedMilliseconds.ToString() & " ms")
+                                'Do not cover a native Save As dialog with a wait form.
+                                If ShowNativeSaveDialog Then activity.Dispose() Else activity.Update("Writing the workbook...")
+                                _writingPreparedWorkbook = True
+                                Dim writeStarted = clock.ElapsedMilliseconds
+                                Try
+                                    _deferredSaveResultsPending = ResultsPending
+                                    WB.DocumentProperties.Custom(ResultsPendingProperty) = _deferredSaveResultsPending
+                                    saveAction()
+                                    If Not saved Then WB.DocumentProperties.Custom(ResultsPendingProperty) = originalMarker
+                                Catch
+                                    WB.DocumentProperties.Custom(ResultsPendingProperty) = originalMarker
+                                    Throw
+                                Finally
+                                    saveActionMs = clock.ElapsedMilliseconds - writeStarted
+                                    _writingPreparedWorkbook = False
+                                End Try
+                                If saved Then activity.Complete("Business plan saved.")
+                                Return saved
+                            End Function, AddressOf RequireFullRebuild, checkFormulas)
+                        If saved AndAlso checkedFormulaRevision = _formulaStructureRevision AndAlso
+                           Not ModelSafetyManager.IsBulkWorkbookMutationInProgress(ModelID) Then
+                            _checkedFormulaStructureRevision = checkedFormulaRevision
+                        End If
+                    End Using
+                Finally
+                    RemoveHandler ModelSpreadsheetControl.DocumentSaved, savedHandler
+                    Dim restoreStarted = clock.ElapsedMilliseconds
+                    Try
+                        If WB.Options.CalculationEngineType <> previousEngine Then WB.Options.CalculationEngineType = previousEngine
+                    Finally
+                        If WBCalculationService IsNot Nothing Then WBCalculationService.DontCalcTDBS = previousSkip
+                        If Not saved Then
+                            _deferredSaveResultsPending = originalDeferred
+                            IsDirty = originalDirty
+                            RequireFullRebuild() 'The compatibility guard may have rolled formulas back.
+                        End If
+                        System.Diagnostics.Trace.WriteLine("[XLSB Save Benchmark] total=" & clock.ElapsedMilliseconds.ToString() &
+                            " ms, saveAction=" & saveActionMs.ToString() & " ms, restore=" & (clock.ElapsedMilliseconds - restoreStarted).ToString() &
+                            " ms, nativeSaveDialog=" & ShowNativeSaveDialog.ToString() & ", saved=" & saved.ToString())
+                    End Try
+                End Try
+                Return saved
+            End Function
+
+            Private Sub EnsureSaveCalculationCurrent(Optional report As Action(Of String) = Nothing)
+                If WB Is Nothing Then Throw New InvalidOperationException("The workbook is unavailable.")
+                If ModelSafetyManager.IsBulkWorkbookMutationInProgress(ModelID) Then
+                    Throw New InvalidOperationException("Wait for the current workbook operation to finish before saving or closing.")
+                End If
+                Dim revision = _calculationRevision
+                Dim rebuild = NeedsFullRebuild
+                Dim calculationMode = If(rebuild, "rebuild", If(_calculatedRevision <> revision, "full", "current"))
+                Dim timer = System.Diagnostics.Stopwatch.StartNew()
+                If calculationMode = "current" Then
+                    System.Diagnostics.Trace.WriteLine("[Save Calculation Benchmark] model=" & ModelID.ToString() & ", mode=current, total=0 ms")
+                    Return
+                End If
+                Dim previousEngine = WB.Options.CalculationEngineType
+                Dim previousMode = WB.Options.CalculationMode
+                Dim previousSkip = If(WBCalculationService Is Nothing, False, WBCalculationService.DontCalcTDBS)
+                Try
+                    If report IsNot Nothing Then report(If(rebuild, "Rebuilding workbook dependencies...", "Updating workbook results..."))
+                    WB.Options.CalculationMode = WorkbookCalculationMode.Manual
+                    If WBCalculationService IsNot Nothing Then WBCalculationService.DontCalcTDBS = False
+                    WB.Options.CalculationEngineType = CalculationEngineType.Recursive
+                    If rebuild Then WB.CalculateFullRebuild() Else WB.CalculateFull()
+                    MarkFullCalculationCurrent(revision, rebuild)
+                    If _calculatedRevision <> _calculationRevision OrElse NeedsFullRebuild Then
+                        Throw New InvalidOperationException("The workbook changed during calculation. Please retry after the current operation has finished.")
+                    End If
+                Catch
+                    RequireFullRebuild()
+                    Throw
+                Finally
+                    Try
+                        WB.Options.CalculationEngineType = previousEngine
+                    Finally
+                        WB.Options.CalculationMode = previousMode
+                        If WBCalculationService IsNot Nothing Then WBCalculationService.DontCalcTDBS = previousSkip
+                        System.Diagnostics.Trace.WriteLine("[Save Calculation Benchmark] model=" & ModelID.ToString() & ", mode=" & calculationMode & ", total=" & timer.ElapsedMilliseconds.ToString() & " ms")
+                    End Try
+                End Try
+            End Sub
+
+            Private Sub RefreshSavedFilePresentation()
+                RecoverySourcePath = Nothing
+                'DocumentSaved fires before Save As updates this model's path.
+                'Refresh only after that path and the successful-save state agree.
+                Try
+                    FileInfo = New System.IO.FileInfo(FileName)
+                    FileInfo.Refresh()
+                    If InstanceInterface IsNot Nothing AndAlso Not InstanceInterface.IsDisposed Then InstanceInterface.PopulateFileInfo()
+                Catch ex As Exception
+                    System.Diagnostics.Trace.WriteLine("[Save Summary] File summary refresh failed: " & ex.Message)
+                End Try
+                If WBInterface Is Nothing OrElse WBInterface.GroupInterfaces Is Nothing Then Return
+                For Each group In WBInterface.GroupInterfaces
+                    Try
+                        If group IsNot Nothing AndAlso group.RenderedForm IsNot Nothing AndAlso Not group.RenderedForm.IsDisposed Then group.RenderedForm.RequestSidebarRefresh()
+                    Catch ex As Exception
+                        System.Diagnostics.Trace.WriteLine("[Save Summary] Sidebar refresh failed: " & ex.Message)
+                    End Try
+                Next
+            End Sub
+
             Public Function CommitToCloseModel() As AbovoTransaction
 
                 Dim CloseTrans As New AbovoTransaction
@@ -743,6 +1110,16 @@ Namespace Abovo
             End Function
 
             Private Function CalculateAndValidateForClose() As CloseModelValidationResult
+                If Not CloseValidationRequired Then
+                    System.Diagnostics.Trace.WriteLine("[Close Validation] model=" & ModelID.ToString() & ", skipped=clean")
+                    Return New CloseModelValidationResult()
+                End If
+                Dim result = CalculateAndValidateChangedModel()
+                _knownCloseValidationFailure = result.HasFailures
+                Return result
+            End Function
+
+            Private Function CalculateAndValidateChangedModel() As CloseModelValidationResult
 
                 Dim Result As New CloseModelValidationResult()
 
@@ -769,11 +1146,7 @@ Namespace Abovo
                     WB.Options.CalculationEngineType =
                         CalculationEngineType.Recursive
 
-                    If WBCalcEngine IsNot Nothing Then
-                        WBCalcEngine.CalcFile(3)
-                    Else
-                        WB.CalculateFullRebuild()
-                    End If
+                    EnsureSaveCalculationCurrent()
 
                 Catch ex As Exception
                     Result.ValidationError =
@@ -1059,6 +1432,7 @@ Namespace Abovo
 
                 If IsClosing Then Return
                 IsClosing = True
+                RecoveryBackupManager.Forget(Me)
 
                 Try
                     ResourceRegistry.ReleaseAll()
@@ -1070,6 +1444,20 @@ Namespace Abovo
                     If ModelSpreadsheetControl IsNot Nothing Then
                         RemoveHandler ModelSpreadsheetControl.UnhandledException,
                                       AddressOf SSCUnhandledEvent
+                        RemoveHandler ModelSpreadsheetControl.ContentChanged, ContentHandler
+                        RemoveHandler ModelSpreadsheetControl.DocumentSaved, SavedHandler
+                        RemoveHandler ModelSpreadsheetControl.DocumentPropertiesChanged, PropertiesHandler
+                        RemoveHandler ModelSpreadsheetControl.CellValueChanged, NativeCellHandler
+                        RemoveHandler ModelSpreadsheetControl.RowsInserted, NativeRowsInsertedHandler
+                        RemoveHandler ModelSpreadsheetControl.RowsRemoved, NativeRowsRemovedHandler
+                        RemoveHandler ModelSpreadsheetControl.ColumnsInserted, NativeColumnsInsertedHandler
+                        RemoveHandler ModelSpreadsheetControl.ColumnsRemoved, NativeColumnsRemovedHandler
+                        RemoveHandler ModelSpreadsheetControl.SheetInserted, NativeSheetInsertedHandler
+                        RemoveHandler ModelSpreadsheetControl.SheetRemoved, NativeSheetRemovedHandler
+                        RemoveHandler ModelSpreadsheetControl.SheetRenamed, NativeSheetRenamedHandler
+                        RemoveHandler ModelSpreadsheetControl.DefinedNameEdited, NativeNameEditedHandler
+                        RemoveHandler ModelSpreadsheetControl.DefinedNameAdded, NativeNameAddedHandler
+                        RemoveHandler ModelSpreadsheetControl.DefinedNameDeleted, NativeNameDeletedHandler
                     End If
                 Catch ex As Exception
                     WriteLog("Error detaching spreadsheet handlers: " & ex.Message, FileName)
@@ -1578,7 +1966,12 @@ Namespace Abovo
                 'LastAccessTime. Capture the filesystem value before LoadDocument.
                 NewModel.FileInfo.Refresh()
                 NewModel.PreviousFileAccessTime = NewModel.FileInfo.LastAccessTime
-                NewModel.ModelSpreadsheetControl.LoadDocument(FullPath)
+                If Not NewModel.ModelSpreadsheetControl.LoadDocument(FullPath) Then
+                    Throw New System.IO.InvalidDataException("The spreadsheet engine could not read this workbook. No model was opened.")
+                End If
+                'Read at open, not from a potentially externally replaced original
+                'during a later recovery save. No source workbook changes.
+                NewModel.RecoveryHasVerifiedBinaryMetadata = RecoveryXlsmCompatibility.HasVerifiedBinaryProfile(FullPath)
 
                 'Read metadata only; never apply rules or mutate workbook schema on open.
                 Try
@@ -1623,11 +2016,27 @@ Namespace Abovo
                     NewModel.ModelSpreadsheetControl.Dock = DockStyle.Fill
                     NewModel.WBCalcEngine.CalcManual()
                     NewModel.WBCalcEngine.ChainCalc()
+                    'Do not rely on Excel VBA being enabled to refresh saved caches.
+                    NewModel.RestoreDeferredSaveState()
                     LoadedModelType = ContractResult.StringReturn
                 End If
 
                 OpenModelCount += 1
+                NewModel.ModelSpreadsheetControl.Modified = False
+                NewModel.IsDirty = False 'Loading/presentation setup is not a client edit.
                 If OpenMode = WorkbookOpenMode.FullModel Then
+                    NewModel.RecoverySourcePath = RecoveryBackupStore.RecoveryOrigin(FullPath)
+                    If Not String.IsNullOrWhiteSpace(NewModel.RecoverySourcePath) Then
+                        NewModel.RecoverySaveAsRequired = True
+                        NewModel.IsDirty = True
+                        Try
+                            NewModel.ChangeManager.RestoreRecoveryHistory(RecoveryHistoryStore.Read(FullPath, NewModel.ChangeManager.GetHistoryTable()))
+                        Catch historyError As Exception
+                            SystemMessageManager.Publish(NewModelID, "The recovery workbook opened, but its prior-session history could not be read: " & historyError.Message, SystemMessageSeverity.Warning, "Recovery backup", FullPath)
+                        End Try
+                        SystemMessageManager.Publish(NewModelID, "RECOVERY COPY: use Save As to save an XLSB business plan. Suggested original: " & NewModel.RecoverySourcePath & ". The original has not been overwritten.", SystemMessageSeverity.Warning, "Recovery backup", FullPath)
+                    End If
+                    RecoveryBackupManager.Track(NewModel)
                     InternalFileState = 2
                     ApplicationConfiguration.ActiveModelID = NewModelID
                 End If

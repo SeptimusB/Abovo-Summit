@@ -80,6 +80,8 @@ Namespace Abovo
 
     End Class
     Public Class GridExportPackage
+        Public BalanceSheetData As BalanceSheetDocument
+        Public BalanceSheetError As String
 
         Public GridView As GridView
         Public Description As String

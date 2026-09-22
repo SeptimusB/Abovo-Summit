@@ -70,10 +70,8 @@ Public Class GroupInterfaceTemplate
     Private SidebarHistoryElement As AccordionControlElement
     Private SidebarRefreshTimer As Timer
     Private SidebarEventsAttached As Boolean
-    Private SidebarHiddenReady As Boolean
-    Private SidebarHideTransition As Boolean
-    Private PanelsHidden As Boolean
-    Private ReadOnly SavedPanelStates As New Dictionary(Of DevExpress.XtraBars.Docking.DockPanel, Tuple(Of DevExpress.XtraBars.Docking.DockVisibility, Size))
+    Private PanelsHidden As Boolean 'Compacted contents; the edge strips remain available.
+    Private ReadOnly SavedPanelStates As New Dictionary(Of DevExpress.XtraBars.Docking.DockPanel, Tuple(Of DevExpress.XtraBars.Docking.DockVisibility, Size, Size))
     Private ReadOnly PanelButtons As New List(Of WindowsUIButton)
     Private PresentationReady As Boolean
     Private PresentationResizeQueued As Boolean
@@ -101,32 +99,54 @@ Public Class GroupInterfaceTemplate
 
     Public Sub ToggleInterfacePanels()
         DockManagerAssumptions.BeginUpdate()
-        SidebarHideTransition = True
         Try
             If Not PanelsHidden Then
                 SavedPanelStates.Clear()
-                For Each panel In {DockPanelNewNavigator, DockPanelNavigator, DockPanelDetail}
-                    SavedPanelStates.Add(panel, Tuple.Create(panel.Visibility, panel.Size))
+                For Each panel In {DockPanelNewNavigator, DockPanelDetail}
+                    SavedPanelStates.Add(panel, Tuple.Create(panel.Visibility, panel.Size, panel.OriginalSize))
                 Next
+                'Compact the contents, not the edge strips. Hiding the legacy
+                'navigator panel destroys its auto-hide container and Click handler.
                 PanelsHidden = True
-                For Each panel In SavedPanelStates.Keys
-                    panel.Visibility = DevExpress.XtraBars.Docking.DockVisibility.Hidden
-                Next
+                DockPanelNewNavigator.Visibility = DevExpress.XtraBars.Docking.DockVisibility.Hidden
+                DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide
             Else
                 For Each entry In SavedPanelStates
-                    entry.Key.OriginalSize = entry.Value.Item2
+                    entry.Key.OriginalSize = entry.Value.Item3
                     entry.Key.Visibility = entry.Value.Item1
                     entry.Key.Size = entry.Value.Item2
                 Next
                 PanelsHidden = False
             End If
-            UpdatePanelsButtons()
+            DockPanelNavigator.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide
+            'A previously hidden summary must also retain a way back in.
+            If DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.Hidden Then
+                DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide
+            End If
         Finally
-            SidebarHideTransition = False
             DockManagerAssumptions.EndUpdate()
         End Try
+        ReconnectPanelStrips()
+        DockPanelNavigator.HideImmediately()
+        If DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide Then
+            DockPanelDetail.HideImmediately()
+        End If
+        UpdatePanelsButtons()
         If Not PanelsHidden Then ResizeControls()
         ResizeGIT()
+    End Sub
+
+    Private Sub ReconnectPanelStrips()
+        'WithEvents follows any replacement container created by native docking.
+        'The left strip normally survives; the right is recreated when unpinned.
+        Dim navigatorStrip = DockPanelNavigator.ParentAutoHideContainer
+        If navigatorStrip IsNot Nothing AndAlso Not Object.ReferenceEquals(hideContainerLeft, navigatorStrip) Then
+            hideContainerLeft = navigatorStrip
+        End If
+        Dim summaryStrip = DockPanelDetail.ParentAutoHideContainer
+        If summaryStrip IsNot Nothing AndAlso Not Object.ReferenceEquals(hideContainerRightDetail, summaryStrip) Then
+            hideContainerRightDetail = summaryStrip
+        End If
     End Sub
 
     Private Sub UpdatePanelsButtons()
@@ -425,7 +445,7 @@ Public Class GroupInterfaceTemplate
             FDSList.Add(DataRange)
 
             SetSidebarDocument(WebBrowserFundSum, CompactSummaryHtml(
-                ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(FDSList)))
+                ExcelModels(MyModelID).WBData.RenderIEHTMLCourceFromDR(FDSList, New Integer() {0, 1})))
         Else
             SetSidebarDocument(WebBrowserFundSum,
                 "<html><body><p>No funding summary is defined for this " &
@@ -461,7 +481,8 @@ Public Class GroupInterfaceTemplate
 
         SetSidebarDocument(WebBrowserFile, CreateSidebarHtml(StrFileDescription))
         If SidebarMessageView IsNot Nothing Then SidebarMessageView.RefreshMessages()
-        DockPanelDetail.Text = "Summary — updated " & Now().ToString("HH:mm:ss")
+        DockPanelDetail.Text = If(ExcelModels(MyModelID).DeferredSaveResultsPending,
+            "Summary — full results pending", "Summary — updated " & Now().ToString("HH:mm:ss"))
         Debug.WriteLine("GroupInterfaceTemplate sidebar refresh completed. ModelID=" &
                         MyModelID.ToString() & ", GSID=" & GSID.ToString() &
                         ", instance=" & System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Me).ToString() &
@@ -483,9 +504,11 @@ Public Class GroupInterfaceTemplate
             Me.UseWaitCursor = True
             Me.Cursor = Cursors.WaitCursor
             System.Windows.Forms.Cursor.Current = Cursors.WaitCursor
-            workbook.Options.CalculationEngineType =
-                DevExpress.Spreadsheet.CalculationEngineType.Recursive
-            workbook.CalculateFull()
+            If Not ExcelModels(MyModelID).EnsureDeferredSaveResultsCurrent("Refreshing summary figures...") Then
+                workbook.Options.CalculationEngineType =
+                    DevExpress.Spreadsheet.CalculationEngineType.Recursive
+                workbook.CalculateFull()
+            End If
             Activity.Complete("Calculation complete.")
             Debug.WriteLine("GroupInterfaceTemplate sidebar workbook calculated. ModelID=" &
                             MyModelID.ToString() & ", reason=" & refreshReason)
@@ -560,6 +583,11 @@ Public Class GroupInterfaceTemplate
             .Text = "Interface History",
             .Expanded = False}
         AccordionControlSum.Elements.Add(SidebarHistoryElement)
+        'Initial state only. Refreshes and navigation must retain the user's choices.
+        For Each element As AccordionControlElement In AccordionControlSum.Elements
+            element.Expanded = element Is AccordionControlElementBPStat OrElse
+                               element Is AccordionControlElementFund
+        Next
         ApplySidebarAccordionAppearance()
 
         For Each browser As WebBrowser In {WebBrowserBPSum, WebBrowserDevSum,
@@ -586,8 +614,8 @@ Public Class GroupInterfaceTemplate
         SidebarRefreshTimer = New Timer With {.Interval = 400}
         AddHandler SidebarRefreshTimer.Tick, AddressOf SidebarRefreshTimer_Tick
         AddHandler DockPanelDetail.CustomButtonClick, AddressOf DockPanelDetail_CustomButtonClick
-        AddHandler DockPanelDetail.Collapsed, AddressOf DockPanelDetail_Collapsed
-        AddHandler DockPanelDetail.Expanded, AddressOf DockPanelDetail_Expanded
+        AddHandler DockPanelDetail.Expanding, AddressOf DockPanelDetail_Expanding
+        ReconnectPanelStrips()
 
         If ExcelModels(MyModelID).WBCalcEngine IsNot Nothing Then
             AddHandler ExcelModels(MyModelID).WBCalcEngine.CalculationCompleted,
@@ -605,7 +633,7 @@ Public Class GroupInterfaceTemplate
             "Interface")
     End Sub
 
-    Private Sub RequestSidebarRefresh()
+    Friend Sub RequestSidebarRefresh()
         If IsDisposed OrElse Disposing OrElse SidebarRefreshTimer Is Nothing Then Return
         If InvokeRequired Then
             BeginInvoke(New MethodInvoker(AddressOf RequestSidebarRefresh))
@@ -629,23 +657,18 @@ Public Class GroupInterfaceTemplate
         RefreshSummaryData("Automatic")
     End Sub
 
-    Private Sub DockPanelDetail_Collapsed(ByVal sender As Object,
-                                          ByVal e As DevExpress.XtraBars.Docking.DockPanelEventArgs)
-        SidebarHiddenReady = True
+    Private Sub DockPanelDetail_Expanding(ByVal sender As Object,
+                                         ByVal e As DevExpress.XtraBars.Docking.DockPanelCancelEventArgs)
+        'Like the navigator, reopen explicitly from the strip Click below.
+        'A delayed native hover expansion must not undo a newer compact/restore.
+        e.Cancel = True
     End Sub
 
-    Private Sub DockPanelDetail_Expanded(ByVal sender As Object,
-                                          ByVal e As DevExpress.XtraBars.Docking.DockPanelEventArgs)
-        If PanelsHidden OrElse Not SidebarHiddenReady OrElse SidebarHideTransition OrElse
-           IsDisposed OrElse Disposing Then Return
-        SidebarHiddenReady = False
-        BeginInvoke(New MethodInvoker(
-            Sub()
-                If IsDisposed OrElse Disposing OrElse PanelsHidden Then Return
-                If DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide Then
-                    DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.Visible
-                End If
-            End Sub))
+    Private Sub hideContainerRightDetail_Click(sender As Object, e As EventArgs) Handles hideContainerRightDetail.Click
+        If IsDisposed OrElse Disposing Then Return
+        If DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide Then
+            DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.Visible
+        End If
     End Sub
 
     Private Sub DockPanelDetail_CustomButtonClick(
@@ -654,22 +677,9 @@ Public Class GroupInterfaceTemplate
 
         If DockPanelDetail.CustomHeaderButtons.Count > 1 AndAlso
            Object.ReferenceEquals(e.Button, DockPanelDetail.CustomHeaderButtons(1)) Then
-            SidebarHideTransition = True
-            SidebarHiddenReady = False
             DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide
-            BeginInvoke(New MethodInvoker(
-                Sub()
-                    If IsDisposed OrElse Disposing Then Return
-                    Try
-                        If DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide Then
-                            DockPanelDetail.HideSliding()
-                        End If
-                    Finally
-                        SidebarHideTransition = False
-                        SidebarHiddenReady =
-                            DockPanelDetail.Visibility = DevExpress.XtraBars.Docking.DockVisibility.AutoHide
-                    End Try
-                End Sub))
+            DockPanelDetail.HideImmediately()
+            ReconnectPanelStrips()
             Return
         End If
 
@@ -760,8 +770,7 @@ Public Class GroupInterfaceTemplate
                     AddressOf WorkbookHistoryChanged
             End If
         End If
-        RemoveHandler DockPanelDetail.Collapsed, AddressOf DockPanelDetail_Collapsed
-        RemoveHandler DockPanelDetail.Expanded, AddressOf DockPanelDetail_Expanded
+        RemoveHandler DockPanelDetail.Expanding, AddressOf DockPanelDetail_Expanding
         SidebarEventsAttached = False
         If SidebarRefreshTimer IsNot Nothing Then
             SidebarRefreshTimer.Stop()
@@ -942,7 +951,9 @@ Public Class GroupInterfaceTemplate
         ScaleFactor = GetDisplayScale(Me)
         LastPresentationScale = ScaleFactor
 
-        Me.hideContainerRightDetail.Font = GetDisplayFont("Small", Me)
+        If Not hideContainerRightDetail.IsDisposed Then
+            hideContainerRightDetail.Font = GetDisplayFont("Small", Me)
+        End If
         Me.BarAndDockingControllerAssumptions.AppearancesDocking.ActiveTab.Font = GetDisplayFont("Medium", Me)
         Me.BarAndDockingControllerAssumptions.AppearancesDocking.HidePanelButton.Font = GetDisplayFont("Medium", Me)
         Me.BarAndDockingControllerAssumptions.AppearancesDocking.HidePanelButtonActive.Font = GetDisplayFont("Medium", Me)
@@ -1255,6 +1266,7 @@ Public Class GroupInterfaceTemplate
                 "The selected interface group is not available.")
         End If
         Dim documentKey As String = InterfaceDocumentKey(resolvedGSID, SetCSID)
+        If resolvedGSID = 2 Then ExcelModels(SetModelID).EnsureDeferredSaveResultsCurrent("Opening model outputs...")
         Dim documentTag As Object = If(IsCombined, CObj(documentKey), CObj(SetCSID))
         Dim groupName As String = ExcelModels(SetModelID).WBStructure.GroupStructures(resolvedGSID).GSName
         Dim doc As BaseDocument = DocumentManagerAssumptions.View.Documents.FirstOrDefault(
