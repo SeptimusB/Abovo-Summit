@@ -7,7 +7,7 @@
   "tracked_deletions": 0,
   "colour_legend": {
     "196B24": "Agreed; not necessarily error-free (user confirmation)",
-    "E97132": "User agrees this is an issue",
+    "E97132": "User believes this is fixed; verification still required",
     "inherited": "No acceptance inferred"
   },
   "paragraphs": [
@@ -89,7 +89,7 @@
       "direct_colours": [
         "E97132"
       ],
-      "stakeholder_status": "User agrees this is an issue",
+      "stakeholder_status": "User believes this is fixed; verification still required",
       "engineering_status": "Not yet independently verified"
     },
     {
@@ -111,7 +111,7 @@
       "direct_colours": [
         "E97132"
       ],
-      "stakeholder_status": "User agrees this is an issue",
+      "stakeholder_status": "User believes this is fixed; verification still required",
       "engineering_status": "Not yet independently verified"
     },
     {
@@ -133,7 +133,7 @@
       "direct_colours": [
         "E97132"
       ],
-      "stakeholder_status": "User agrees this is an issue",
+      "stakeholder_status": "User believes this is fixed; verification still required",
       "engineering_status": "Not yet independently verified"
     },
     {
@@ -155,7 +155,7 @@
       "direct_colours": [
         "E97132"
       ],
-      "stakeholder_status": "User agrees this is an issue",
+      "stakeholder_status": "User believes this is fixed; verification still required",
       "engineering_status": "Start-date Edit link previously removed; client visual confirmation pending."
     },
     {
@@ -177,7 +177,7 @@
       "direct_colours": [
         "E97132"
       ],
-      "stakeholder_status": "User agrees this is an issue",
+      "stakeholder_status": "User believes this is fixed; verification still required",
       "engineering_status": "Funding-status alignment previously changed; client visual confirmation pending."
     },
     {
@@ -199,7 +199,7 @@
       "direct_colours": [
         "E97132"
       ],
-      "stakeholder_status": "User agrees this is an issue",
+      "stakeholder_status": "User believes this is fixed; verification still required",
       "engineering_status": "Not yet independently verified"
     },
     {
@@ -367,7 +367,7 @@
         "196B24"
       ],
       "stakeholder_status": "Agreed (user-confirmed meaning); errors may remain",
-      "engineering_status": "22 September Teams clarification records client agreement to Enter/Shift+Enter traversal. Shared DIT navigation currently excludes Enter, has no remembered direction or whole-interface wrap; implementation and acceptance remain outstanding. See checkpoint record for the contract and open direction question."
+      "engineering_status": "Confirmed Enter/Shift+Enter contract implemented in 2.69: remembered horizontal/vertical axis, visible-tab wrapping, grids/header/standalone inputs and scrolling. Debug/Release native regressions passed, including validation recovery and Undo. Physical keyboard/client-workbook acceptance remains open; see trial and checkpoint records."
     },
     {
       "id": "P017",

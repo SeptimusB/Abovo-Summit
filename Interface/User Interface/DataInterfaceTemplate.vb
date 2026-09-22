@@ -996,6 +996,7 @@ SkipRefresh:
     Private Sub RegisterSingleCellHistoryRefresh(ByVal editor As Control,
                                                  ByVal worksheet As DevExpress.Spreadsheet.Worksheet)
         If editor Is Nothing OrElse worksheet Is Nothing Then Return
+        RegisterStandaloneNavigation(TryCast(editor, BaseEdit))
         Dim binding As New ModelPostingHistoryBinding(
             editor,
             ModelID,

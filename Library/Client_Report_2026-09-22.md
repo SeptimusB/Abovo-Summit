@@ -4,7 +4,7 @@ Source: `D:\Downloads\Summit v2.51 comments.docx`
 
 SHA-256: `955D44B6C714ED9BA6D5F9B4560C983764B38B83161A71B88C2BF400211BD9ED`
 
-The original is unchanged. Locators are OOXML paragraph numbers, not page numbers. Run-level colours are retained in the companion JSON. Green means **agreed**, not error-free; orange means the user agrees it is an issue. Report 2.51 predates the current implementation. Historical repairs are not client acceptance.
+The original is unchanged. Locators are OOXML paragraph numbers, not page numbers. Run-level colours are retained in the companion JSON. Green means **agreed**, not error-free; orange means the user believes it is fixed; verification is still required. Report 2.51 predates the current implementation. Historical repairs are not client acceptance.
 
 Review gates and subsequent evidence: [checkpoint record](Client_Review_Checkpoints_2026-09-22.md).
 
@@ -15,7 +15,7 @@ Review gates and subsequent evidence: [checkpoint record](Client_Review_Checkpoi
 Top icons not fully fitting (Open, New, Compare)
 
 - Source colour: `E97132`.
-- Stakeholder status: User agrees this is an issue.
+- Stakeholder status: User believes this is fixed; verification still required.
 - Engineering: Not yet independently verified
 
 ### P005
@@ -23,7 +23,7 @@ Top icons not fully fitting (Open, New, Compare)
 Icons a bit large for the circle button?
 
 - Source colour: `E97132`.
-- Stakeholder status: User agrees this is an issue.
+- Stakeholder status: User believes this is fixed; verification still required.
 - Engineering: Not yet independently verified
 
 ### P006
@@ -31,7 +31,7 @@ Icons a bit large for the circle button?
 “Program Information” (on main screen) not fully showing.
 
 - Source colour: `E97132`.
-- Stakeholder status: User agrees this is an issue.
+- Stakeholder status: User believes this is fixed; verification still required.
 - Engineering: Not yet independently verified
 
 ### P007
@@ -39,7 +39,7 @@ Icons a bit large for the circle button?
 Main screen – Start Date edit link doesn’t work.
 
 - Source colour: `E97132`.
-- Stakeholder status: User agrees this is an issue.
+- Stakeholder status: User believes this is fixed; verification still required.
 - Engineering: Start-date Edit link previously removed; client visual confirmation pending.
 
 ### P008
@@ -47,7 +47,7 @@ Main screen – Start Date edit link doesn’t work.
 BP Summary – Funding Status – YE Net Debt to be aligned with YE Peak Debt, etc.
 
 - Source colour: `E97132`.
-- Stakeholder status: User agrees this is an issue.
+- Stakeholder status: User believes this is fixed; verification still required.
 - Engineering: Funding-status alignment previously changed; client visual confirmation pending.
 
 ### P009
@@ -55,7 +55,7 @@ BP Summary – Funding Status – YE Net Debt to be aligned with YE Peak Debt, e
 BP Summary – has scroll left/right in each window – doesn’t need it.
 
 - Source colour: `E97132`.
-- Stakeholder status: User agrees this is an issue.
+- Stakeholder status: User believes this is fixed; verification still required.
 - Engineering: Not yet independently verified
 
 ### P010
@@ -112,7 +112,7 @@ Can pressing “Enter” take to next cell?
 
 - Source colour: `196B24`.
 - Stakeholder status: Agreed (user-confirmed meaning); errors may remain.
-- Engineering: 22 September Teams clarification records client agreement to Enter/Shift+Enter traversal. Shared DIT navigation currently excludes Enter, has no remembered direction or whole-interface wrap; implementation and acceptance remain outstanding. See checkpoint record for the contract and open direction question.
+- Engineering: Confirmed Enter/Shift+Enter contract implemented in 2.69: remembered horizontal/vertical axis, visible-tab wrapping, grids/header/standalone inputs and scrolling. Debug/Release native regressions passed, including validation recovery and Undo. Physical keyboard/client-workbook acceptance remains open; see trial and checkpoint records.
 
 ### P017
 

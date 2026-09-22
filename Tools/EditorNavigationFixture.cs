@@ -48,11 +48,117 @@ public static class EditorNavigationFixture {
     static List<object> Positions(object dit){return ((IEnumerable)Call(dit,"NavigationPositions")).Cast<object>().ToList();}
     static bool Same(object a,object b){return a!=null && b!=null && Object.ReferenceEquals(Field(a,"Host"),Field(b,"Host")) && (int)Field(a,"X")== (int)Field(b,"X") && (int)Field(a,"Y")== (int)Field(b,"Y");}
     static void AssertFocused(object p){
+        var standalone=Field(p,"Standalone") as BaseEdit;
+        if(standalone!=null){Check(standalone.ContainsFocus,"Standalone destination has focus");return;}
         var view=Field(p,"View") as GridView;
         var vertical=Field(p,"Host") as VGridControl;
         if(Field(p,"Header")!=null || Field(p,"VHeader")!=null)return;
         Check(view!=null ? view.FocusedRowHandle==(int)Field(p,"RowHandle") && Object.ReferenceEquals(view.FocusedColumn,Field(p,"Column")) : Object.ReferenceEquals(vertical.FocusedRow,Field(p,"VRow")) && vertical.FocusedRecord==(int)Field(p,"Record"),"Destination focus matches permitted cell");
     }
+    static BaseEdit Active(object p){
+        if(Field(p,"Standalone")!=null)return (BaseEdit)Field(p,"Standalone");
+        if(Field(p,"Header")!=null)return (BaseEdit)Field(Field(p,"Header"),"ActiveEditor");
+        if(Field(p,"VHeader")!=null)return (BaseEdit)Field(Field(p,"VHeader"),"_ActiveEditor");
+        var view=Field(p,"View") as GridView;
+        return view!=null?view.ActiveEditor:((VGridControl)Field(p,"Host")).ActiveEditor;
+    }
+    static List<object> EnterOrder(object dit,bool vertical){
+        var points=((IEnumerable)Call(dit,"EnterNavigationPositions")).Cast<object>().ToList();
+        var hosts=points.Select(p=>(Control)Field(p,"Host")).Distinct().OrderBy(h=>h.PointToScreen(Point.Empty).Y).ThenBy(h=>h.PointToScreen(Point.Empty).X);
+        return hosts.SelectMany(h=>points.Where(p=>Field(p,"Host")==h).OrderBy(p=>(int)Field(p,vertical?"X":"Y")).ThenBy(p=>(int)Field(p,vertical?"Y":"X"))).ToList();
+    }
+    static object ExpectedEnter(object dit,object origin,bool vertical,bool reverse){
+        var order=EnterOrder(dit,vertical);int index=order.FindIndex(p=>Same(p,origin));
+        if(index<0)throw new Exception("Independent expected origin is missing");
+        return order[(index+(reverse?-1:1)+order.Count)%order.Count];
+    }
+    static void PressEnter(object dit,object origin,object expected,bool reverse=false,bool closed=false,object edit=null){
+        Call(dit,"ActivateEditorPosition",origin);Application.DoEvents();
+        var editor=Active(origin);Check(editor!=null,"Enter origin editor available");
+        if(edit!=null)editor.EditValue=edit;
+        var key=new KeyEventArgs(Keys.Enter|(reverse?Keys.Shift:Keys.None));
+        if(closed){
+            var view=Field(origin,"View") as GridView;
+            if(view!=null){view.CloseEditor();Call(dit,"GridControl_ProcessGridKey",Field(origin,"Host"),key);}
+            else{((VGridControl)Field(origin,"Host")).CloseEditor();Call(dit,"VGrid_KeyDown",Field(origin,"Host"),key);}
+        }else typeof(Control).GetMethod("OnKeyDown",F).Invoke(editor,new object[]{key});
+        Check(key.Handled&&key.SuppressKeyPress,"Enter handled once: reverse="+reverse+", closed="+closed);
+        Application.DoEvents();Application.DoEvents();
+        AssertFocused(expected);
+        var destination=Active(expected);
+        Check(destination!=null&&!destination.IsDisposed&&destination.ContainsFocus,"Enter destination editor is focused (including headers)");
+        Control page=destination.Parent;
+        while(page!=null&&!(page is XtraTabPage))page=page.Parent;
+        if(page!=null)Check(page.RectangleToScreen(page.ClientRectangle).IntersectsWith(destination.RectangleToScreen(destination.ClientRectangle)),"Enter destination is scrolled into view");
+    }
+    static void EnterContract(object dit){
+        var initial=EnterOrder(dit,false);
+        Check(initial.Count>1,"Enter has multiple permitted destinations");
+        var routeCandidates=Call(dit,"EnterNavigationPositions");
+        foreach(bool columnMajor in new[]{false,true}){
+            var expectedOrder=EnterOrder(dit,columnMajor);
+            for(int i=0;i<expectedOrder.Count;i++)foreach(bool reverse in new[]{false,true}){
+                var target=Call(dit,"FindEnterTarget",expectedOrder[i],routeCandidates,columnMajor,reverse);
+                if(!Same(target,expectedOrder[(i+(reverse?-1:1)+expectedOrder.Count)%expectedOrder.Count]))throw new Exception("Enter route differs from independent circular order");
+            }
+        }
+        Check(true,"Every permitted Enter route matches independent horizontal/vertical forward/reverse order");
+        var normal=initial.First(p=>Field(p,"Header")==null&&Field(p,"VHeader")==null&&Field(p,"Standalone")==null);
+        foreach(Keys direction in new[]{Keys.Left,Keys.Up,Keys.Right,Keys.Down,Keys.Tab}){
+            Exercise(dit,normal,direction);
+            bool vertical=direction==Keys.Up||direction==Keys.Down;
+            Check((bool)Field(dit,"EnterNavigationVertical")==vertical,"Last navigation axis remembered: "+direction);
+            PressEnter(dit,normal,ExpectedEnter(dit,normal,vertical,false));
+            PressEnter(dit,normal,ExpectedEnter(dit,normal,vertical,true),true);
+        }
+        foreach(bool vertical in new[]{false,true}){
+            Exercise(dit,normal,vertical?Keys.Down:Keys.Right);
+            var order=EnterOrder(dit,vertical);
+            PressEnter(dit,order.Last(),order.First());
+            PressEnter(dit,order.First(),order.Last(),true);
+            // Independent row-/column-major ordering, not the production selector,
+            // supplies the boundary expectation and the reverse round trip.
+            var host=Field(normal,"Host");
+            var own=order.Where(p=>Field(p,"Host")==host).ToList();
+            var dimension=vertical?"X":"Y";
+            int boundary=own.FindIndex(p=>(int)Field(p,dimension)!=(int)Field(own[0],dimension));
+            if(boundary>0){PressEnter(dit,own[boundary-1],own[boundary]);PressEnter(dit,own[boundary],own[boundary-1],true);}
+            for(int i=0;i<order.Count-1;i++)if(Field(order[i],"Host")!=Field(order[i+1],"Host")){
+                PressEnter(dit,order[i],order[i+1]);PressEnter(dit,order[i+1],order[i],true);break;
+            }
+            PressEnter(dit,normal,ExpectedEnter(dit,normal,vertical,false),false,true);
+        }
+        // Validation failure consumes Enter without moving or posting.
+        Call(dit,"ActivateEditorPosition",normal);Application.DoEvents();
+        var rejected=Active(normal);System.ComponentModel.CancelEventHandler reject=(s,e)=>e.Cancel=true;
+        rejected.Validating+=reject;rejected.IsModified=true;
+        var rejectedKey=new KeyEventArgs(Keys.Enter);
+        typeof(Control).GetMethod("OnKeyDown",F).Invoke(rejected,new object[]{rejectedKey});Application.DoEvents();
+        Check(rejectedKey.Handled&&Object.ReferenceEquals(Active(normal),rejected),"Rejected Enter retains original editor");AssertFocused(normal);
+        rejected.Validating-=reject;
+        rejected.IsModified=true;
+        Check(rejected.DoValidate(),"Corrected validation can be accepted");
+        PressEnter(dit,normal,ExpectedEnter(dit,normal,true,false));
+        var comboPoint=initial.FirstOrDefault(p=>Field(p,"Header")==null&&Field(p,"VHeader")==null&&
+            ((Field(p,"Column") as DevExpress.XtraGrid.Columns.GridColumn)!=null&&((DevExpress.XtraGrid.Columns.GridColumn)Field(p,"Column")).ColumnEdit is DevExpress.XtraEditors.Repository.RepositoryItemComboBox ||
+             (Field(p,"VRow") as EditorRow)!=null&&((EditorRow)Field(p,"VRow")).Properties.RowEdit is DevExpress.XtraEditors.Repository.RepositoryItemComboBox));
+        if(comboPoint!=null){
+            Call(dit,"ActivateEditorPosition",comboPoint);Application.DoEvents();
+            var combo=(ComboBoxEdit)Active(comboPoint);combo.ShowPopup();Application.DoEvents();
+            Check(combo.IsPopupOpen,"Native dropdown open for keyboard test");
+            bool axis=(bool)Field(dit,"EnterNavigationVertical");
+            Check(!(bool)Call(dit,"NavigateGrid",Field(comboPoint,"Host"),Keys.Enter,null,null)&&!(bool)Call(dit,"NavigateGrid",Field(comboPoint,"Host"),Keys.Down,null,null),"Open dropdown retains native Enter/arrows");
+            Check((bool)Field(dit,"EnterNavigationVertical")==axis,"Dropdown selection does not change traversal axis");
+            combo.ClosePopup();Application.DoEvents();
+        }
+        Check(!(bool)Call(dit,"IsNavigationKey",Keys.Control|Keys.Enter)&&!(bool)Call(dit,"IsNavigationKey",Keys.Alt|Keys.Enter),"Ctrl/Alt Enter not hijacked");
+        // A value becoming locked after commit must not reset traversal.
+        var list=Call(dit,"EnterNavigationPositions");var all=((IEnumerable)list).Cast<object>().ToList();
+        var middle=all.Where(p=>Field(p,"Host")==hostOf(normal)).OrderBy(p=>(int)Field(p,"Y")).ThenBy(p=>(int)Field(p,"X")).ToList();
+        if(middle.Count>2){var origin=middle[1];((IList)list).Remove(origin);var target=Call(dit,"FindEnterTarget",origin,list,false,false);Check(Same(target,middle[2]),"Removed/locked origin still advances to next coordinates");}
+        Console.WriteLine("PASS: Enter contract for actual grid/header editors");
+    }
+    static object hostOf(object point){return Field(point,"Host");}
     static void Exercise(object dit,object origin,Keys key){
         var candidates=Positions(dit);
         var find=dit.GetType().GetMethod("FindNavigationTarget",F);
@@ -176,6 +282,8 @@ public static class EditorNavigationFixture {
                     Console.WriteLine("PASS: Targeted DIT save controls. Only private workbook copies saved.");
                     return 0;
                 }
+                Check(!(bool)Field(dit,"EnterNavigationVertical"),"New DIT defaults to horizontal Enter");
+                EnterContract(dit);
                 var payment=points.First(p=>Field(p,"VRow")!=null && ((EditorRow)Field(p,"VRow")).Properties.Caption.Replace("\n"," ").Contains("First Interest Payment Month"));
                 var paymentRow=(EditorRow)Field(payment,"VRow");
                 var dateRepo=paymentRow.Properties.RowEdit as DevExpress.XtraEditors.Repository.RepositoryItemDateEdit;
@@ -187,6 +295,7 @@ public static class EditorNavigationFixture {
                 var allowedDate=dates.OrderBy(x=>x).First();
                 Call(dit,"ActivateEditorPosition",payment);Application.DoEvents();
                 var paymentGrid=(VGridControl)Field(payment,"Host");
+                Console.WriteLine("PAYMENT focus="+(paymentGrid.FocusedRow==null?"null":paymentGrid.FocusedRow.Properties.Caption)+" editor="+(paymentGrid.ActiveEditor==null?"null":paymentGrid.ActiveEditor.GetType().Name));
                 Check(paymentGrid.ActiveEditor is DateEdit,"Payment cell opens native DateEdit");
                 paymentGrid.ActiveEditor.EditValue=allowedDate;
                 Check(paymentGrid.PostEditor(),"Native payment month date posted");paymentGrid.CloseEditor();Application.DoEvents();
@@ -242,6 +351,14 @@ public static class EditorNavigationFixture {
                 Check(textGrid.PostEditor(),"Native Funding text commit accepted");Application.DoEvents();
                 Check(Convert.ToString(textGrid.GetCellValue((BaseRow)Field(textPoint,"VRow"),(int)Field(textPoint,"Record")))=="Navigation regression loan","Posted text visible after calculation/refresh");
                 AssertFocused(textPoint);Exercise(dit,textPoint,Keys.Right);
+                var textCell=book.Worksheets["Funding Assumptions"].Cells["E47"];
+                var beforeEnter=textCell.Value;
+                PressEnter(dit,textPoint,ExpectedEnter(dit,textPoint,false,false),false,false,"Single Enter commit");
+                Check(textCell.Value.TextValue=="Single Enter commit"&&model.IsDirty,"Enter posts native text and marks dirty");
+                dynamic enterUndo=model.ChangeManager.Undo();
+                Check(!enterUndo.BError&&textCell.Value==beforeEnter,"One Undo reverses the Enter edit (no duplicate history write)");
+                model.ChangeManager.Redo();
+                Check(textCell.Value.TextValue=="Single Enter commit","Enter edit supports Redo");
                 // Check all current nodes can only route to enumerated permitted cells.
                 var find=dit.GetType().GetMethod("FindNavigationTarget",F);
                 var routes=Call(dit,"NavigationPositions");var allowed=Positions(dit);
@@ -296,6 +413,7 @@ public static class EditorNavigationFixture {
                 var hosts=ratePoints.Select(p=>(Control)Field(p,"Host")).Distinct().OrderBy(c=>c.PointToScreen(Point.Empty).Y).ThenBy(c=>c.PointToScreen(Point.Empty).X).ToList();
                 Console.WriteLine("METRIC CPI/RPI grids="+hosts.Count);
                 Check(hosts.Count>1,"CPI/RPI provides adjacent grids");
+                EnterContract(dit);
                 var boundary=ratePoints.Where(p=>Field(p,"Host")==hosts[0]).OrderByDescending(p=>(int)Field(p,"Y")).First();
                 find=dit.GetType().GetMethod("FindNavigationTarget",F);
                 var below=find.Invoke(null,new object[]{boundary,Call(dit,"NavigationPositions"),Keys.Down});
@@ -315,6 +433,36 @@ public static class EditorNavigationFixture {
                 Header(dit,rentPoints.First(p=>Field(p,"Header")!=null));
                 var cell=rentPoints.First(p=>Field(p,"Header")==null && Field(p,"View")!=null);
                 Exercise(dit,cell,Keys.Tab);Exercise(dit,cell,Keys.Down);
+                EnterContract(dit);
+                // Global assumptions provides actual standalone workbook inputs.
+                Call(form,"ShowInterface",0,0,false,"None",null,-1);Application.DoEvents();
+                dit=(Control)Field(form,"ActiveInterface");
+                var globalInputs=EnterOrder(dit,false);
+                var single=globalInputs.First(p=>Field(p,"Standalone")!=null && Field(p,"Standalone") is TextEdit && !(Field(p,"Standalone") is PopupBaseEdit));
+                Check(globalInputs.Any(p=>Field(p,"Standalone")!=null),"Global standalone inputs included in Enter traversal");
+                var singleEditor=(BaseEdit)Field(single,"Standalone");var singleTag=singleEditor.Tag;
+                var tabPreview=new PreviewKeyDownEventArgs(Keys.Tab);
+                Call(dit,"NavigationEditorPreviewKeyDown",singleEditor,tabPreview);
+                Check(!tabPreview.IsInputKey&&!(bool)Field(dit,"EnterNavigationVertical"),"Standalone Tab retains native dispatch and selects horizontal Enter");
+                singleEditor.Properties.ReadOnly=true;
+                Check(!EnterOrder(dit,false).Any(p=>Field(p,"Standalone")==singleEditor),"Read-only standalone input excluded");
+                singleEditor.Properties.ReadOnly=false;singleEditor.Enabled=false;
+                Check(!EnterOrder(dit,false).Any(p=>Field(p,"Standalone")==singleEditor),"Disabled standalone input excluded");
+                singleEditor.Enabled=true;
+                var singleSheet=(Worksheet)Field(singleTag,"TargetWorksheet");var singleCell=singleSheet.Cells[Convert.ToString(Field(singleTag,"TargetCell"))];
+                var oldSingle=singleCell.Value;
+                Call(dit,"ActivateEditorPosition",single);Application.DoEvents();
+                System.ComponentModel.CancelEventHandler rejectSingle=(s,e)=>e.Cancel=true;
+                singleEditor.Validating+=rejectSingle;singleEditor.IsModified=true;
+                var invalidSingle=new KeyEventArgs(Keys.Enter);typeof(Control).GetMethod("OnKeyDown",F).Invoke(singleEditor,new object[]{invalidSingle});Application.DoEvents();
+                Check(invalidSingle.Handled&&singleEditor.ContainsFocus&&singleCell.Value==oldSingle,"Rejected standalone Enter stays put without writing");
+                singleEditor.Validating-=rejectSingle;singleEditor.IsModified=true;Check(singleEditor.DoValidate(),"Standalone validation can recover");
+                var singleValue=Convert.ToString(Field(singleTag,"DataType"))=="S"?(object)"Enter standalone test":0.0275;
+                PressEnter(dit,single,ExpectedEnter(dit,single,false,false),false,false,singleValue);
+                Check(singleCell.Value!=oldSingle,"Standalone Enter commits through existing workbook handler");
+                dynamic singleUndo=model.ChangeManager.Undo();Check(!singleUndo.BError&&singleCell.Value==oldSingle,"Standalone Enter edit has one-step Undo");
+                globalInputs=EnterOrder(dit,false);
+                PressEnter(dit,globalInputs.Last(),globalInputs.First());PressEnter(dit,globalInputs.First(),globalInputs.Last(),true);
             }
             Console.WriteLine("PASS: Native Funding focus/navigation and DIT save controls. Only private workbook copies saved.");return 0;
         }catch(Exception ex){Console.Error.WriteLine(ex);return 1;}

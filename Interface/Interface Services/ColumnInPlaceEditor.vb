@@ -523,7 +523,7 @@ Namespace Abovo
 
         Private Sub editor_PreviewKeyDown(ByVal sender As Object, ByVal e As PreviewKeyDownEventArgs)
 
-            If {Keys.Tab, Keys.Left, Keys.Right, Keys.Up, Keys.Down}.Contains(e.KeyCode) Then e.IsInputKey = True
+            If {Keys.Tab, Keys.Enter, Keys.Left, Keys.Right, Keys.Up, Keys.Down}.Contains(e.KeyCode) Then e.IsInputKey = True
 
         End Sub
 
@@ -547,12 +547,12 @@ Namespace Abovo
             End If
 
             If Not CommitActiveEditorValue() Then Return
-            If Navigate IsNot Nothing AndAlso e.KeyCode <> Keys.Enter Then
+            If Navigate IsNot Nothing Then
                 CloseEditor()
                 If Navigate(e.KeyData) Then Return
             End If
             ScheduleAdvanceToEditor(
-                GetAdjacentVisibleHelper(e.KeyCode = Keys.Tab AndAlso e.Shift))
+                GetAdjacentVisibleHelper((e.KeyCode = Keys.Tab OrElse e.KeyCode = Keys.Enter) AndAlso e.Shift))
 
         End Sub
 
@@ -588,6 +588,11 @@ Namespace Abovo
         End Sub
 
         Public Sub ShowEditorFromKeyboard()
+
+            If ActiveEditor IsNot Nothing AndAlso Not ActiveEditor.IsDisposed Then
+                ActiveEditor.Focus()
+                Return
+            End If
 
             If bgview Is Nothing OrElse
                bgview.GridControl Is Nothing OrElse
@@ -927,7 +932,7 @@ Namespace Abovo
         End Function
 
         Private Sub Editor_PreviewKeyDown(sender As Object, e As PreviewKeyDownEventArgs)
-            If {Keys.Tab, Keys.Left, Keys.Right, Keys.Up, Keys.Down}.Contains(e.KeyCode) Then e.IsInputKey = True
+            If {Keys.Tab, Keys.Enter, Keys.Left, Keys.Right, Keys.Up, Keys.Down}.Contains(e.KeyCode) Then e.IsInputKey = True
         End Sub
 
         Private Sub Editor_KeyDown(sender As Object, e As KeyEventArgs)
@@ -944,10 +949,14 @@ Namespace Abovo
             e.Handled = True : e.SuppressKeyPress = True
             If Not CommitEditor() Then Return
             CloseEditor()
-            If Navigate IsNot Nothing Then Navigate.Invoke(If(e.KeyCode = Keys.Enter, Keys.Down, e.KeyData))
+            If Navigate IsNot Nothing Then Navigate.Invoke(e.KeyData)
         End Sub
 
         Public Sub ShowEditorFromKeyboard()
+            If _ActiveEditor IsNot Nothing AndAlso Not _ActiveEditor.IsDisposed Then
+                _ActiveEditor.Focus()
+                Return
+            End If
             If _VGrid Is Nothing OrElse _VGrid.IsDisposed OrElse Not _Row.Visible Then Return
             _VGrid.MakeRowVisible(_Row)
             _VGrid.Refresh()

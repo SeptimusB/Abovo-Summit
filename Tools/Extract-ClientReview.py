@@ -20,7 +20,7 @@ HISTORICAL = {
     8: 'Funding-status alignment previously changed; client visual confirmation pending.',
     12: 'Native Debug Save/Save As regression passed; client acceptance remains separate.',
     13: 'Navigator captions/width previously changed; physical DPI acceptance pending.',
-    16: '22 September Teams clarification records client agreement to Enter/Shift+Enter traversal. Shared DIT navigation currently excludes Enter, has no remembered direction or whole-interface wrap; implementation and acceptance remain outstanding. See checkpoint record for the contract and open direction question.',
+    16: 'Confirmed Enter/Shift+Enter contract implemented in 2.69: remembered horizontal/vertical axis, visible-tab wrapping, grids/header/standalone inputs and scrolling. Debug/Release native regressions passed, including validation recovery and Undo. Physical keyboard/client-workbook acceptance remains open; see trial and checkpoint records.',
     17: 'Single-value multi-cell paste implemented; exact client selection requires regression.',
     18: 'Check Sheet interface exists; save policy subsequently changed. Exact check needed.',
     29: 'Shared post-edit refitting defect repaired and tested on dropdown/numeric grids; confirm this Rent interface with the client.',
@@ -65,7 +65,7 @@ def main():
         colours = sorted({r['colour'].get('val', 'inherited') if r['colour'] else 'inherited'
                           for r in runs if r['text'].strip()})
         status = ('Agreed (user-confirmed meaning); errors may remain'
-                  if colours == ['196B24'] else 'User agrees this is an issue' if 'E97132' in colours
+                  if colours == ['196B24'] else 'User believes this is fixed; verification still required' if 'E97132' in colours
                   else 'Unclassified; no acceptance inferred')
         paragraphs.append({'id': 'P%03d' % index, 'paragraph': index, 'section': section,
                            'is_issue': bool(text.strip()) and index not in SECTIONS,
@@ -76,14 +76,14 @@ def main():
               'media_parts': media, 'tracked_insertions': len(list(root.iter(W+'ins'))),
               'tracked_deletions': len(list(root.iter(W+'del'))),
               'colour_legend': {'196B24': 'Agreed; not necessarily error-free (user confirmation)',
-                               'E97132': 'User agrees this is an issue', 'inherited': 'No acceptance inferred'},
+                               'E97132': 'User believes this is fixed; verification still required', 'inherited': 'No acceptance inferred'},
               'paragraphs': paragraphs}
     opts.output_stem.with_suffix('.json').write_text(json.dumps(result, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
     lines = ['# Client report issue register', '',
              'Source: `'+str(opts.source)+'`', '', 'SHA-256: `'+source_hash+'`', '',
              'The original is unchanged. Locators are OOXML paragraph numbers, not page numbers. '
              'Run-level colours are retained in the companion JSON. Green means **agreed**, not error-free; '
-             'orange means the user agrees it is an issue. Report 2.51 predates the current implementation. '
+             'orange means the user believes it is fixed; verification is still required. Report 2.51 predates the current implementation. '
              'Historical repairs are not client acceptance.', '',
              'Review gates and subsequent evidence: [checkpoint record](Client_Review_Checkpoints_2026-09-22.md).', '']
     section = None

@@ -3,6 +3,7 @@ Imports System.Drawing
 Imports System.Windows.Forms
 Imports Abovo
 Imports Abovo.CustomGrid
+Imports Abovo.DataObject
 Imports DevExpress.XtraEditors
 Imports DevExpress.XtraEditors.Controls
 Imports DevExpress.XtraGrid
@@ -13,7 +14,10 @@ Imports DevExpress.XtraVerticalGrid.Rows
 
 Partial Public Class DataInterfaceTemplate
     Private NavigationPending As Boolean
+    Private EnterNavigationVertical As Boolean
+    Private ReadOnly StandaloneNavigationEditors As New HashSet(Of BaseEdit)
     Private Sub ConfigureEditorNavigation(editor As BaseEdit)
+        editor.EnterMoveNextControl = False
         RemoveHandler editor.PreviewKeyDown, AddressOf NavigationEditorPreviewKeyDown
         AddHandler editor.PreviewKeyDown, AddressOf NavigationEditorPreviewKeyDown
         RemoveHandler editor.KeyDown, AddressOf NavigationEditorKeyDown
@@ -21,11 +25,25 @@ Partial Public Class DataInterfaceTemplate
     End Sub
 
     Private Sub NavigationEditorPreviewKeyDown(sender As Object, e As PreviewKeyDownEventArgs)
+        Dim editor = TryCast(sender, BaseEdit)
+        If editor IsNot Nothing AndAlso StandaloneNavigationEditors.Contains(editor) AndAlso e.KeyCode <> Keys.Enter Then
+            Dim popup = TryCast(editor, PopupBaseEdit)
+            If IsNavigationKey(e.KeyData) AndAlso (popup Is Nothing OrElse Not popup.IsPopupOpen) Then RememberEnterDirection(e.KeyData)
+            'Do not turn native standalone Tab/dialog navigation into an input key.
+            Return
+        End If
         If IsNavigationKey(e.KeyData) Then e.IsInputKey = True
     End Sub
 
     Private Sub NavigationEditorKeyDown(sender As Object, e As KeyEventArgs)
         If e.Handled Then Return
+        Dim standalone = TryCast(sender, BaseEdit)
+        If standalone IsNot Nothing AndAlso StandaloneNavigationEditors.Contains(standalone) Then
+            If NavigateStandalone(standalone, e.KeyData) Then
+                e.Handled = True : e.SuppressKeyPress = True
+            End If
+            Return
+        End If
         Dim host = DirectCast(sender, Control).Parent
         While host IsNot Nothing AndAlso Not TypeOf host Is GridControl AndAlso Not TypeOf host Is VGridControl
             host = host.Parent
@@ -107,6 +125,7 @@ Partial Public Class DataInterfaceTemplate
 
     Private Class EditorPosition
         Public Host As Control
+        Public Standalone As BaseEdit
         Public View As GridView
         Public Column As GridColumn
         Public RowHandle As Integer
@@ -121,8 +140,8 @@ Partial Public Class DataInterfaceTemplate
     Private Shared Function IsNavigationKey(keys As Keys) As Boolean
         If (keys And (Keys.Control Or Keys.Alt)) <> Keys.None Then Return False
         Select Case keys And Keys.KeyCode
-            Case Keys.Tab, Keys.Right, Keys.Left, Keys.Up, Keys.Down
-                Return (keys And Keys.Shift) = Keys.None OrElse (keys And Keys.KeyCode) = Keys.Tab
+            Case Keys.Tab, Keys.Enter, Keys.Right, Keys.Left, Keys.Up, Keys.Down
+                Return (keys And Keys.Shift) = Keys.None OrElse {Keys.Tab, Keys.Enter}.Contains(keys And Keys.KeyCode)
         End Select
         Return False
     End Function
@@ -154,17 +173,112 @@ Partial Public Class DataInterfaceTemplate
             If editor IsNot Nothing AndAlso Not vertical.PostEditor() Then Return True
             vertical.CloseEditor()
         End If
+        RememberEnterDirection(keys)
+        QueueEditorNavigation(origin, keys)
+        Return True
+    End Function
+
+    Private Sub RememberEnterDirection(keys As Keys)
+        Select Case keys And Keys.KeyCode
+            Case Keys.Up, Keys.Down : EnterNavigationVertical = True
+            Case Keys.Left, Keys.Right, Keys.Tab : EnterNavigationVertical = False
+        End Select
+    End Sub
+
+    Private Sub QueueEditorNavigation(origin As EditorPosition, keys As Keys)
+        Dim host = origin.Host
+        Dim isEnter = (keys And Keys.KeyCode) = Keys.Enter
+        Dim vertical = EnterNavigationVertical
         NavigationPending = True
         BeginInvoke(New MethodInvoker(Sub()
             NavigationPending = False
-            If IsDisposed OrElse host.IsDisposed OrElse Not host.Visible Then Return
+            If InterfaceResourcesReleased OrElse IsDisposed OrElse Disposing OrElse host.IsDisposed OrElse Not host.Visible Then Return
             'Re-evaluate locks after workbook calculation/rules and queued refresh.
-            Dim candidates = NavigationPositions()
-            Dim target = FindNavigationTarget(origin, candidates, keys)
+            Dim candidates = If(isEnter, EnterNavigationPositions(), NavigationPositions())
+            Dim target = If(isEnter, FindEnterTarget(origin, candidates, vertical, (keys And Keys.Shift) <> Keys.None),
+                            FindNavigationTarget(origin, candidates, keys))
             If target Is Nothing Then target = candidates.FirstOrDefault(Function(p) p.Host Is host AndAlso p.X = origin.X AndAlso p.Y = origin.Y)
             If target IsNot Nothing Then ActivateEditorPosition(target)
         End Sub))
+    End Sub
+
+    Private Sub RegisterStandaloneNavigation(editor As BaseEdit)
+        If editor Is Nothing OrElse Not TypeOf editor.Tag Is SingleCellDataTag Then Return
+        ConfigureEditorNavigation(editor)
+        If StandaloneNavigationEditors.Add(editor) Then AddHandler editor.Disposed, AddressOf StandaloneNavigationDisposed
+    End Sub
+
+    Private Sub StandaloneNavigationDisposed(sender As Object, e As EventArgs)
+        StandaloneNavigationEditors.Remove(DirectCast(sender, BaseEdit))
+    End Sub
+
+    Private Function CanNavigateStandalone(editor As BaseEdit) As Boolean
+        If editor Is Nothing OrElse editor.IsDisposed OrElse Not editor.Visible OrElse Not editor.Enabled OrElse
+           Not editor.TabStop OrElse editor.Properties.ReadOnly Then Return False
+        Dim tag = TryCast(editor.Tag, SingleCellDataTag)
+        Return tag IsNot Nothing AndAlso Not tag.IsCalculated AndAlso tag.TargetWorksheet IsNot Nothing AndAlso
+            Not tag.TargetWorksheet.Cells(tag.TargetCell).Protection.Locked
+    End Function
+
+    Private Function NavigateStandalone(editor As BaseEdit, keys As Keys) As Boolean
+        If InterfaceResourcesReleased OrElse IsDisposed OrElse Disposing OrElse Not IsHandleCreated OrElse IsAuthoringPreview Then Return False
+        If Not IsNavigationKey(keys) OrElse Not CanNavigateStandalone(editor) Then Return False
+        Dim popup = TryCast(editor, PopupBaseEdit)
+        If popup IsNot Nothing AndAlso popup.IsPopupOpen Then Return False
+        'Retain native caret/spin/Tab handling for standalone inputs; only Enter
+        'uses the shared traversal. Arrows still select its remembered axis.
+        If (keys And Keys.KeyCode) <> Keys.Enter Then
+            RememberEnterDirection(keys)
+            Return False
+        End If
+        If NavigationPending Then Return True
+        If Not editor.DoValidate(PopupCloseMode.Normal) Then Return True
+        Dim requested = editor.EditValue
+        Dim tag = DirectCast(editor.Tag, SingleCellDataTag)
+        Dim prior = EditorValueFromCell(tag.TargetWorksheet.Cells(tag.TargetCell), tag.DataType)
+        If Not InplaceEditorFormatting.SameEditorValue(requested, prior) Then
+            'Flush a pending buffered text/spin edit through its normal typed
+            'ChangeManager route before moving. A rejected/reverted edit stays put.
+            SingleCellDirtyMarker(editor, EventArgs.Empty)
+            SingleCell_Value_Push(editor, EventArgs.Empty)
+            If Not InplaceEditorFormatting.SameEditorValue(requested, editor.EditValue) Then Return True
+        End If
+        QueueEditorNavigation(New EditorPosition With {.Host = editor, .Standalone = editor}, keys)
         Return True
+    End Function
+
+    Private Function EnterNavigationPositions() As List(Of EditorPosition)
+        Dim result = NavigationPositions()
+        For Each editor In StandaloneNavigationEditors.ToArray()
+            If CanNavigateStandalone(editor) Then result.Add(New EditorPosition With {.Host = editor, .Standalone = editor})
+        Next
+        Return result
+    End Function
+
+    Private Shared Function FindEnterTarget(origin As EditorPosition, candidates As List(Of EditorPosition),
+                                           vertical As Boolean, previous As Boolean) As EditorPosition
+        If candidates.Count = 0 Then Return Nothing
+        Dim major As Func(Of EditorPosition, Integer) = Function(p) If(vertical, p.X, p.Y)
+        Dim minor As Func(Of EditorPosition, Integer) = Function(p) If(vertical, p.Y, p.X)
+        Dim ordered = candidates.Where(Function(p) p.Host Is origin.Host).OrderBy(major).ThenBy(minor)
+        'Compare coordinates rather than list indices: calculation can lock or
+        'remove the origin, which must not reset the next destination to the top.
+        Dim later As Func(Of EditorPosition, Boolean) = Function(p) major(p) > major(origin) OrElse
+            (major(p) = major(origin) AndAlso minor(p) > minor(origin))
+        Dim earlier As Func(Of EditorPosition, Boolean) = Function(p) major(p) < major(origin) OrElse
+            (major(p) = major(origin) AndAlso minor(p) < minor(origin))
+        Dim target = If(previous, ordered.LastOrDefault(earlier), ordered.FirstOrDefault(later))
+        If target IsNot Nothing Then Return target
+        Dim hosts = candidates.Select(Function(p) p.Host).Append(origin.Host).Distinct().
+            OrderBy(Function(c) c.PointToScreen(Point.Empty).Y).ThenBy(Function(c) c.PointToScreen(Point.Empty).X).ToList()
+        Dim index = hosts.IndexOf(origin.Host)
+        For offset = 1 To hosts.Count
+            Dim nextIndex = (index + If(previous, -offset, offset) + hosts.Count) Mod hosts.Count
+            Dim adjacent = candidates.Where(Function(p) p.Host Is hosts(nextIndex)).OrderBy(major).ThenBy(minor)
+            target = If(previous, adjacent.LastOrDefault(), adjacent.FirstOrDefault())
+            If target IsNot Nothing Then Return target
+        Next
+        Return Nothing
     End Function
 
     Private Function NavigationPositions() As List(Of EditorPosition)
@@ -248,7 +362,10 @@ Partial Public Class DataInterfaceTemplate
     End Function
 
     Private Sub ActivateEditorPosition(target As EditorPosition)
-        If target.Header IsNot Nothing Then
+        If target.Standalone IsNot Nothing Then
+            target.Standalone.Focus()
+            ScrollEditorIntoPage(target.Standalone)
+        ElseIf target.Header IsNot Nothing Then
             target.Header.ShowEditorFromKeyboard()
         ElseIf target.VHeader IsNot Nothing Then
             target.VHeader.ShowEditorFromKeyboard()
