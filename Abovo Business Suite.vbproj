@@ -617,6 +617,7 @@
     <Compile Include="Services\Calculation Engine and Custom Functions\ExcelFunctions.vb" />
     <Compile Include="Services\FileManager.vb" />
     <Compile Include="Services\RecoveryBackupManager.vb" />
+    <Compile Include="Services\IdleIntegrityManager.vb" />
     <Compile Include="Services\RecoveryXlsmCompatibility.vb" />
     <Compile Include="Services\RecoveryHistoryStore.vb" />
     <Compile Include="Services\BusinessPlanComparisonService.vb" />

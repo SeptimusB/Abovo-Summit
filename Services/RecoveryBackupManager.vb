@@ -202,7 +202,7 @@ Namespace Abovo
             Return False
         End Function
 
-        Private Shared Function PendingEditor() As Boolean
+        Friend Shared Function PendingEditor() As Boolean
             For Each form As Form In Application.OpenForms
                 If form.Modal Then Return True
                 Dim focus As Control = form
@@ -217,7 +217,7 @@ Namespace Abovo
             Return False
         End Function
 
-        Private Shared Function NoticeOwner(model As FileManager.ExcelModel) As Form
+        Friend Shared Function NoticeOwner(model As FileManager.ExcelModel) As Form
             'ActiveForm is Nothing while another application has focus. Still use
             'a live Summit window; do not activate it or restore a minimised one.
             Dim eligible As Func(Of Form, Boolean) =
@@ -225,13 +225,13 @@ Namespace Abovo
                             Not f.InvokeRequired AndAlso f.Visible AndAlso f.WindowState <> FormWindowState.Minimized AndAlso
                             Not TypeOf f Is DevExpress.XtraWaitForm.WaitForm
             If eligible(Form.ActiveForm) Then Return Form.ActiveForm
-            Dim modelForm = model.ModelSpreadsheetControl.FindForm()
+            Dim modelForm = If(model.ModelSpreadsheetControl Is Nothing, Nothing, model.ModelSpreadsheetControl.FindForm())
             If eligible(modelForm) Then Return modelForm
             Return Application.OpenForms.Cast(Of Form)().FirstOrDefault(eligible)
         End Function
 
         Private Shared Sub Tick(sender As Object, e As EventArgs)
-            If Not Enabled OrElse Busy OrElse FormSplashScreen.OperationInProgress OrElse FileManager.BIsSaving OrElse
+            If Not Enabled OrElse Busy OrElse IdleIntegrityManager.OperationInProgress OrElse FormSplashScreen.OperationInProgress OrElse FileManager.BIsSaving OrElse
                (DateTime.UtcNow - LastInputUtc).TotalSeconds < 15 OrElse PendingEditor() Then Return
             For Each pair In Plans.ToArray()
                 Dim model = pair.Key, state = pair.Value

@@ -1,5 +1,23 @@
 {
   "schemaVersion": 3,
+  "idleIntegrityTrial20260922": {
+    "documentation": "Library/Idle_Integrity_Trial_2026-09-22.md",
+    "testRelease": "2.67",
+    "testStatus": "Ready to test",
+    "enabledByDefault": false,
+    "defaultIntervalMinutes": 30,
+    "intervalRangeMinutes": [1, 120],
+    "minimumSessionIdleMinutes": 2,
+    "runningCalculationsInterrupted": false,
+    "uiThreadOnly": true,
+    "calculationAndRequiredResultRefreshAreOneUnit": true,
+    "changedRevisionRestartsPartialPass": true,
+    "automaticRepairOrSave": false,
+    "originalWorkbooksModified": false,
+    "debugReleaseBuildsAndNativeSafetyTestsPassed": true,
+    "blankDemoStateAndUndoRedoPreserved": true,
+    "existingErrorClassificationAndManualAcceptancePending": true
+  },
   "checkpointWorkList20260922": {
     "documentation": "Library/Outstanding_Tasks_2026-09-22.md",
     "checkpointTestRelease": "2.66",

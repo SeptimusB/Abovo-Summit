@@ -15,6 +15,8 @@ Namespace Abovo
         Private ReadOnly ResetButton As SimpleButton
         Private ReadOnly BackupEnabled As CheckEdit
         Private ReadOnly BackupMinutes As SpinEdit
+        Private ReadOnly IntegrityEnabled As CheckEdit
+        Private ReadOnly IntegrityMinutes As SpinEdit
 
         Public Sub New()
             Text = "Abovo Summit options"
@@ -31,7 +33,8 @@ Namespace Abovo
             Dim tabs As New DevExpress.XtraTab.XtraTabControl With {.Dock = DockStyle.Fill}
             Dim displayTab As New DevExpress.XtraTab.XtraTabPage With {.Text = "Display"}
             Dim backupTab As New DevExpress.XtraTab.XtraTabPage With {.Text = "Recovery backup"}
-            tabs.TabPages.AddRange({displayTab, backupTab})
+            Dim integrityTab As New DevExpress.XtraTab.XtraTabPage With {.Text = "Integrity"}
+            tabs.TabPages.AddRange({displayTab, backupTab, integrityTab})
             shell.Controls.Add(tabs, 0, 0)
 
             Dim Layout As New TableLayoutPanel With {
@@ -167,6 +170,30 @@ Namespace Abovo
                         "After recovery: use Save As, choose Excel Binary Workbook (.xlsb), and use the suggested original folder/filename or a new name. Replacing the original requires confirmation."}
             backupLayout.Controls.Add(guidance, 0, 2)
 
+            IdleIntegrityManager.Initialise()
+            Dim integrityLayout As New TableLayoutPanel With {.Dock = DockStyle.Fill, .AutoScroll = True, .ColumnCount = 1, .RowCount = 3, .Padding = New Padding(18)}
+            integrityLayout.RowStyles.Add(New RowStyle(SizeType.AutoSize))
+            integrityLayout.RowStyles.Add(New RowStyle(SizeType.AutoSize))
+            integrityLayout.RowStyles.Add(New RowStyle(SizeType.Percent, 100))
+            integrityTab.Controls.Add(integrityLayout)
+            IntegrityEnabled = New CheckEdit With {.Text = "Check integrity every", .Dock = DockStyle.Top, .Checked = IdleIntegrityManager.Enabled}
+            integrityLayout.Controls.Add(IntegrityEnabled, 0, 0)
+            Dim integrityInterval As New FlowLayoutPanel With {.Dock = DockStyle.Top, .AutoSize = True, .WrapContents = False, .Padding = New Padding(0, 12, 0, 12)}
+            IntegrityMinutes = New SpinEdit With {.Width = 80, .Enabled = IntegrityEnabled.Checked}
+            IntegrityMinutes.Properties.IsFloatValue = False
+            IntegrityMinutes.Properties.MinValue = 1
+            IntegrityMinutes.Properties.MaxValue = 120
+            IntegrityMinutes.EditValue = IdleIntegrityManager.Minutes
+            integrityInterval.Controls.Add(IntegrityMinutes)
+            integrityInterval.Controls.Add(New LabelControl With {.Text = "minutes if idle", .Padding = New Padding(6, 5, 0, 0)})
+            integrityLayout.Controls.Add(integrityInterval, 0, 1)
+            AddHandler IntegrityEnabled.CheckedChanged, Sub() IntegrityMinutes.Enabled = IntegrityEnabled.Checked
+            integrityLayout.Controls.Add(New LabelControl With {.Dock = DockStyle.Top, .AutoSizeMode = LabelAutoSizeMode.Vertical,
+                .Text = "Waits for at least two minutes without keyboard or mouse input in your Windows session, with no pending editor, dialog, save or workbook operation." & Environment.NewLine & Environment.NewLine &
+                        "Updates pending calculations and rebuilds dependencies when required, then checks the Check Sheet, named references, supported Transactional DB mirror sizes and cached cell errors in stages." & Environment.NewLine & Environment.NewLine &
+                        "Input pauses the next stage only. A calculation already running must finish safely and may temporarily delay interaction. Checks resume after two minutes idle; an edit restarts the pass." & Environment.NewLine & Environment.NewLine &
+                        "Results and sampled problem locations appear in System Messages. Nothing is automatically repaired or saved, and external links/macros are not run. This is not a financial sign-off or a replacement for Excel/VBA testing."}, 0, 2)
+
             AcceptButton = OkButton
             CancelButton = CancelActionButton
             UpdatePreview()
@@ -208,9 +235,10 @@ Namespace Abovo
         Private Function ApplyBackupSettings() As Boolean
             Try
                 RecoveryBackupManager.Configure(BackupEnabled.Checked, Convert.ToInt32(BackupMinutes.EditValue))
+                IdleIntegrityManager.Configure(IntegrityEnabled.Checked, Convert.ToInt32(IntegrityMinutes.EditValue))
                 Return True
             Catch ex As Exception
-                XtraMessageBox.Show(Me, "The backup options could not be saved: " & ex.Message, "Options", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                XtraMessageBox.Show(Me, "The options could not all be saved: " & ex.Message, "Options", MessageBoxButtons.OK, MessageBoxIcon.Warning)
                 Return False
             End Try
         End Function

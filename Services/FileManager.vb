@@ -957,6 +957,10 @@ Namespace Abovo
             End Function
 
             Private Sub EnsureSaveCalculationCurrent(Optional report As Action(Of String) = Nothing)
+                EnsureCalculationCurrent(report, "Save Calculation")
+            End Sub
+
+            Private Sub EnsureCalculationCurrent(report As Action(Of String), benchmark As String)
                 If WB Is Nothing Then Throw New InvalidOperationException("The workbook is unavailable.")
                 If ModelSafetyManager.IsBulkWorkbookMutationInProgress(ModelID) Then
                     Throw New InvalidOperationException("Wait for the current workbook operation to finish before saving or closing.")
@@ -966,7 +970,7 @@ Namespace Abovo
                 Dim calculationMode = If(rebuild, "rebuild", If(_calculatedRevision <> revision, "full", "current"))
                 Dim timer = System.Diagnostics.Stopwatch.StartNew()
                 If calculationMode = "current" Then
-                    System.Diagnostics.Trace.WriteLine("[Save Calculation Benchmark] model=" & ModelID.ToString() & ", mode=current, total=0 ms")
+                    System.Diagnostics.Trace.WriteLine("[" & benchmark & " Benchmark] model=" & ModelID.ToString() & ", mode=current, total=0 ms")
                     Return
                 End If
                 Dim previousEngine = WB.Options.CalculationEngineType
@@ -991,9 +995,18 @@ Namespace Abovo
                     Finally
                         WB.Options.CalculationMode = previousMode
                         If WBCalculationService IsNot Nothing Then WBCalculationService.DontCalcTDBS = previousSkip
-                        System.Diagnostics.Trace.WriteLine("[Save Calculation Benchmark] model=" & ModelID.ToString() & ", mode=" & calculationMode & ", total=" & timer.ElapsedMilliseconds.ToString() & " ms")
+                        System.Diagnostics.Trace.WriteLine("[" & benchmark & " Benchmark] model=" & ModelID.ToString() & ", mode=" & calculationMode & ", total=" & timer.ElapsedMilliseconds.ToString() & " ms")
                     End Try
                 End Try
+            End Sub
+
+            Friend Sub CalculateForIdleIntegrity(report As Action(Of String))
+                'Atomic: do not pump input or cancel between engine selection and restoration.
+                EnsureCalculationCurrent(report, "Idle Integrity Calculation")
+            End Sub
+
+            Friend Sub RecordIdleCheckSheetResult(revision As Long, hasFailures As Boolean)
+                If revision = _calculationRevision AndAlso Not ResultsPending Then _knownCloseValidationFailure = hasFailures
             End Sub
 
             Private Sub RefreshSavedFilePresentation()
@@ -1162,6 +1175,16 @@ Namespace Abovo
                     End If
                 End Try
 
+                Return ReadCheckSheetValidation()
+            End Function
+
+            Friend Function ReadCheckSheetValidation() As CloseModelValidationResult
+                'Read cached results only. Callers must first establish a current revision.
+                Dim Result As New CloseModelValidationResult()
+                If WB Is Nothing Then
+                    Result.ValidationError = "The workbook is not available for validation."
+                    Return Result
+                End If
                 If Profile IsNot Nothing AndAlso
                    String.Equals(
                     Profile.ModelType,
@@ -1405,7 +1428,7 @@ Namespace Abovo
 
             End Function
 
-            Private NotInheritable Class CloseModelValidationResult
+            Friend NotInheritable Class CloseModelValidationResult
 
                 Public ReadOnly Issues As New List(Of CloseModelValidationIssue)()
                 Public ValidationError As String
@@ -1419,7 +1442,7 @@ Namespace Abovo
 
             End Class
 
-            Private NotInheritable Class CloseModelValidationIssue
+            Friend NotInheritable Class CloseModelValidationIssue
 
                 Public CheckRow As Integer
                 Public Label As String
@@ -1433,6 +1456,7 @@ Namespace Abovo
                 If IsClosing Then Return
                 IsClosing = True
                 RecoveryBackupManager.Forget(Me)
+                IdleIntegrityManager.Forget(Me)
 
                 Try
                     ResourceRegistry.ReleaseAll()
@@ -2037,6 +2061,7 @@ Namespace Abovo
                         SystemMessageManager.Publish(NewModelID, "RECOVERY COPY: use Save As to save an XLSB business plan. Suggested original: " & NewModel.RecoverySourcePath & ". The original has not been overwritten.", SystemMessageSeverity.Warning, "Recovery backup", FullPath)
                     End If
                     RecoveryBackupManager.Track(NewModel)
+                    IdleIntegrityManager.Track(NewModel)
                     InternalFileState = 2
                     ApplicationConfiguration.ActiveModelID = NewModelID
                 End If

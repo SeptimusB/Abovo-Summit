@@ -1167,6 +1167,47 @@ Namespace Abovo
 
         End Function
 
+        Friend Iterator Function InspectMirrorGeometry(wb As IWorkbook) As IEnumerable(Of String)
+            'Inspection only: reuse the synchroniser's sizing rules without resizing,
+            'disconnecting grids, changing names, or inventing missing template areas.
+            If wb Is Nothing OrElse Not wb.Worksheets.Contains("Transactional DB") Then Return
+            Dim covered As New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)
+            For Each rule In SyncRules
+                Dim source = wb.DefinedNames.GetDefinedName(rule.SourceNamedRange)
+                Dim anyTarget = rule.TargetNamedRanges.Any(Function(n) wb.DefinedNames.GetDefinedName(n) IsNot Nothing)
+                If source Is Nothing AndAlso Not anyTarget Then Continue For 'Different model family.
+                If source Is Nothing OrElse source.Range Is Nothing Then
+                    Yield "Missing mirror source: " & rule.SourceNamedRange
+                    Continue For
+                End If
+                Dim required = Math.Max(0, source.Range.ColumnCount + rule.SourceColumnAdjustment) + 1
+                For Each targetName In rule.TargetNamedRanges
+                    covered.Add(targetName)
+                    Dim target = wb.DefinedNames.GetDefinedName(targetName)
+                    If target Is Nothing OrElse target.Range Is Nothing Then
+                        Yield "Missing mirror range: " & targetName & " (source " & rule.SourceNamedRange & ")"
+                    ElseIf target.Range.RowCount <> required Then
+                        Yield targetName & ": " & target.Range.RowCount.ToString() & " rows; expected " & required.ToString() & " from " & rule.SourceNamedRange
+                    End If
+                Next
+            Next
+            'Legacy row mirrors use source rows plus the footer, including Journals.
+            For Each target In wb.DefinedNames
+                If Not target.Name.StartsWith("TransCopy_", StringComparison.OrdinalIgnoreCase) OrElse covered.Contains(target.Name) Then Continue For
+                Dim sourceName = target.Name.Substring("TransCopy_".Length)
+                Dim source = wb.DefinedNames.GetDefinedName(sourceName)
+                If source Is Nothing AndAlso System.Text.RegularExpressions.Regex.IsMatch(sourceName, "_0[1-6]$") Then
+                    sourceName = sourceName.Substring(0, sourceName.Length - 3)
+                    source = wb.DefinedNames.GetDefinedName(sourceName)
+                End If
+                If source Is Nothing OrElse source.Range Is Nothing OrElse target.Range Is Nothing Then Continue For
+                Dim required = source.Range.RowCount + 1
+                If target.Range.RowCount <> required Then
+                    Yield target.Name & ": " & target.Range.RowCount.ToString() & " rows; expected " & required.ToString() & " from " & sourceName
+                End If
+            Next
+        End Function
+
         Private Function GetTransactionDBShiftBounds(ByVal WS As Worksheet,
                                                      ByVal RangeLeft As Integer,
                                                      ByVal RangeRight As Integer,
