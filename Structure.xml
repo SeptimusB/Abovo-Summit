@@ -5,7 +5,7 @@
   <FileID>2077</FileID>
   <RejData>23_t4qhe</RejData>
   <StartDate>01/04/2024</StartDate>
-  <XMLVer>1752</XMLVer>
+  <XMLVer>1753</XMLVer>
   <CompanyName>Demonstration Housing</CompanyName>
   <GroupStructure Name="Assumptions">
     <GSName>Assumptions</GSName>
@@ -5266,10 +5266,10 @@
             <NRDSName>Rep_DevBP_01d</NRDSName>
             <PositID>1</PositID>
             <DataFieldDefinition>
-              <FieldName>Period vblf completed (to)</FieldName>
+              <FieldName>Period Units into vblf Mgmt (to)</FieldName>
               <DataFormat>S</DataFormat>
               <RepositaryItemID>Rep_DvptMonths</RepositaryItemID>
-              <TipText>Period Completed (to) Select from drop down menu completion date for works and oncosts</TipText>
+              <TipText>Period Units into Mgmt (to) Select from the drop down menu the final period in which units come into management.</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>
           <CellRangeDataSource>
@@ -5667,7 +5667,7 @@
           <CellRangeDataSource>
             <BandID>Grant Assumptions</BandID>
             <Worksheet>Development BP Assumptions</Worksheet>
-            <NRDSName>SHGProfileIn</NRDSName>
+            <NRDSName>SHGMethodsIn</NRDSName>
             <PositID>7</PositID>
             <DataFieldDefinition>
               <FieldName>SHG vblf Calculation vblf Basis</FieldName>

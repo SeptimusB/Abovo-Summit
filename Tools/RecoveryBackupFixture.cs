@@ -13,7 +13,7 @@ using DevExpress.Spreadsheet;
 
 public static class RecoveryBackupFixture {
  const BindingFlags F=BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static;
- static Assembly app;static Type store,history,files;static string output;
+ static Assembly app;static Type store,history,files;static string output;static int fundingRecords;
  static object Call(object target,string name,params object[] args){return (target as Type??target.GetType()).GetMethods(F).Single(m=>m.Name==name&&m.IsStatic==(target is Type)&&m.GetParameters().Length==args.Length).Invoke(target is Type?null:target,args);}
  static object Get(object target,string name){return target.GetType().GetProperty(name,F).GetValue(target);}
  static string Hash(string path){using(var h=SHA256.Create())return BitConverter.ToString(h.ComputeHash(File.ReadAllBytes(path)));}
@@ -32,6 +32,11 @@ public static class RecoveryBackupFixture {
   app=Assembly.LoadFrom(Path.Combine(args[0],"Abovo-summit.exe"));output=args[1];store=app.GetType("Abovo.RecoveryBackupStore");history=app.GetType("Abovo.RecoveryHistoryStore");files=app.GetType("Abovo.FileManager");
   app.GetType("Abovo.AbovoAppCls").GetMethod("Initialise").Invoke(null,null);Call(files,"Initialise",new object[]{null});
   Trace.Listeners.Add(new ConsoleTraceListener());
+  if(args.Length>4&&args[3]=="--funding"){
+   fundingRecords=int.Parse(args[4]);if(fundingRecords<1||fundingRecords>100)throw new ArgumentOutOfRangeException("fundingRecords");
+   int exceptions=0;AppDomain.CurrentDomain.FirstChanceException+=(s,e)=>{if(e.Exception is InvalidOperationException&&exceptions<5&&(e.Exception.StackTrace??"").Contains("Abovo.")){exceptions++;Console.WriteLine("FUNDING FIRST CHANCE: "+e.Exception);}};
+   Console.WriteLine("FUNDING_RECOVERY bitness="+(IntPtr.Size*8)+", records="+fundingRecords);Populated(args[2]);return 0;
+  }
   if(args.Length>4&&args[3]=="--values"){var left=ReadModelValues(args[2]);GC.Collect();GC.WaitForPendingFinalizers();var right=ReadModelValues(args[4]);int differences=0;foreach(var key in left.Keys.Union(right.Keys)){SavedValue a,b;if(!left.TryGetValue(key,out a)||!right.TryGetValue(key,out b)||!a.Matches(b)){differences++;if(differences<=10)Console.WriteLine("CALC DIFFERENCE: "+key);}}Check(differences==0,"Recalculated native SOCI, SOFP, cashflow, Check Sheet and Development Expenditure agree across "+left.Count+" cells");return 0;}
   if(args.Length>5&&args[3]=="--sheet-compare"){var left=ReadSheetCells(args[2],args[5]);GC.Collect();GC.WaitForPendingFinalizers();var right=ReadSheetCells(args[4],args[5]);int count=0;foreach(var key in left.Keys.Union(right.Keys).OrderBy(k=>k)){string a,b;left.TryGetValue(key,out a);right.TryGetValue(key,out b);if(a!=b){count++;if(count<=12)Console.WriteLine("DIFFERENCE "+key+"\nLEFT "+a+"\nRIGHT "+b);}}Console.WriteLine("DIFFERENT_CELLS="+count);return count==0?0:1;}
   if(args.Length>4&&args[3]=="--verify-digests"){CheckExcelDigestDetails(args[2],args[4]);return 0;}
@@ -157,9 +162,25 @@ public static class RecoveryBackupFixture {
   string source=Path.Combine(output,"populated.xlsb");File.Copy(input,source);string original=Hash(source);
   var open=files.GetMethod("OpenModel");dynamic result=open.Invoke(null,new object[]{source,new FileInfo(source),Enum.ToObject(open.GetParameters()[2].ParameterType,0)});Check(!result.BError,"Open private populated model");
   dynamic model=((Array)files.GetField("ExcelModels").GetValue(null)).GetValue(0);IWorkbook w=model.WB;
+  Application.DoEvents(); // Drain load events BEFORE the edit/Undo baseline.
+  string recordName=null;int expectedColumns=0;
+  if(fundingRecords>0){
+   object rule=Call((object)model.WorkbookStructureRules,"GetRule","FUNDING_RECORDS");
+   recordName=(string)rule.GetType().GetField("RecordCountNamedRange",F).GetValue(rule);
+   expectedColumns=w.DefinedNames.GetDefinedName(recordName).Range.ColumnCount+fundingRecords;
+   var calc=w.Options.CalculationMode;var engine=w.Options.CalculationEngineType;
+   var protection=w.Worksheets.ToDictionary(s=>s.Name,s=>s.IsProtected);
+   var timerInsert=Stopwatch.StartNew();dynamic inserted=model.WorkbookStructureRules.AddRecords("FUNDING_RECORDS",fundingRecords);
+   Console.WriteLine("FUNDING_TOTAL_MS="+timerInsert.ElapsedMilliseconds);
+   Check(!inserted.BError,"Funding insertion succeeds: "+inserted.StringReturn);
+   Check(w.DefinedNames.GetDefinedName(recordName).Range.ColumnCount==expectedColumns,"Funding record count increased by requested amount");
+   Check(w.Options.CalculationMode==calc&&w.Options.CalculationEngineType==engine&&w.Worksheets.All(s=>s.IsProtected==protection[s.Name]),"Funding restores calculation engine/mode and all worksheet protection states");
+   var issues=((System.Collections.IEnumerable)Call((object)model.TransDBSync,"InspectMirrorGeometry",w)).Cast<string>().ToArray();
+   Check(issues.Length==0,"All supported Transactional DB mirror geometries agree after Funding insertion: "+String.Join("; ",issues));
+  }
   var target=w.DefinedNames.GetDefinedName("CurrStNo").Range[0,0];double before=target.Value.NumericValue;
   Check(Change(model,target.Worksheet.Name,target.GetReferenceA1(),before+1).BSuccess,"Populated committed stock edit");
-  string expected=WorkbookDigest(w);var timer=Stopwatch.StartNew();string backup=(string)Call(store,"Write",model);Console.WriteLine("RECOVERY_TOTAL_MS="+timer.ElapsedMilliseconds);
+  string expected=WorkbookDigest(w);var timer=Stopwatch.StartNew();string backup=fundingRecords>0?ScheduledPopulatedSave((object)model):(string)Call(store,"Write",model);Console.WriteLine("RECOVERY_TOTAL_MS="+timer.ElapsedMilliseconds);
   Check(model.IsDirty&&model.FileName==source&&Hash(source)==original&&model.ChangeManager.CanUndo,"Populated backup leaves original, dirty flag and Undo intact");
   File.SetLastWriteTimeUtc(source,DateTime.UtcNow.AddMinutes(-2));Check((string)Call(store,"NewerRecovery",source)==backup,"Populated recovery discovery");
   Call(files,"CloseModel",0);
@@ -170,9 +191,35 @@ public static class RecoveryBackupFixture {
   Check(model.RecoverySaveAsRequired&&model.RecoverySourcePath==source&&model.IsDirty,"Recovered model explicitly requires Save As to XLSB");
   Check((int)Get(model.ChangeManager,"RecoveryHistoryCount")==1&&!model.ChangeManager.CanUndo,"Recovered populated history is present and read-only");
   Check(w.DefinedNames.GetDefinedName("CurrStNo").Range[0,0].Value.NumericValue==before+1&&!model.DeferredSaveResultsPending,"Committed inputs recovered and pending-result gate completed");
+  if(recordName!=null){Check(w.DefinedNames.GetDefinedName(recordName).Range.ColumnCount==expectedColumns,"Recovered model retains all inserted Funding columns");var issues=((System.Collections.IEnumerable)Call((object)model.TransDBSync,"InspectMirrorGeometry",w)).Cast<string>().ToArray();Check(issues.Length==0,"Recovered model retains matching Transactional DB geometry");}
   string normal=Path.Combine(output,"recovered-normal.xlsb");Check(model.SaveFileAsTo(normal,true),"Recovered model saves as normal XLSB through compatibility policy");
   Check(String.IsNullOrEmpty((string)model.RecoverySourcePath)&&!model.RecoverySaveAsRequired&&!model.IsDirty&&Hash(source)==original,"Save As clears recovery guidance without overwriting the original");
   Call(files,"CloseModel",(int)model.ModelID);Console.WriteLine("BACKUP="+backup);Console.WriteLine("NORMAL="+normal);
+ }
+ static string ScheduledPopulatedSave(dynamic model){
+  var manager=app.GetType("Abovo.RecoveryBackupManager");var safety=app.GetType("Abovo.ModelSafetyManager");
+  string backup=(string)Call(store,"RecoveryPath",(string)model.FileName);
+  Call(manager,"Configure",true,1,false);Call(manager,"Track",(object)model);
+  var plans=(System.Collections.IDictionary)manager.GetField("Plans",F).GetValue(null);object state=plans[(object)model];
+  Action due=()=>{state.GetType().GetField("DueUtc",F).SetValue(state,DateTime.UtcNow.AddMinutes(-1));manager.GetField("LastInputUtc",F).SetValue(null,DateTime.UtcNow.AddSeconds(-30));};
+  Action tick=()=>Call(manager,"Tick",null,EventArgs.Empty);
+  try{
+   using(var owner=new Form()){owner.ShowInTaskbar=false;owner.Opacity=0;owner.Show();Application.DoEvents();
+    Call(safety,"BeginBulkWorkbookMutation",(int)model.ModelID);
+    try{due();tick();Check(!File.Exists(backup),"Due recovery is deferred during structural mutation");}finally{Call(safety,"EndBulkWorkbookMutation",(int)model.ModelID);}
+    due();files.GetField("InternalBIsSaving",F).SetValue(null,true);try{tick();Check(!File.Exists(backup),"Due recovery is deferred during normal saving");}finally{files.GetField("InternalBIsSaving",F).SetValue(null,false);}
+    due();manager.GetField("LastInputUtc",F).SetValue(null,DateTime.UtcNow);tick();Check(!File.Exists(backup),"Due recovery waits for idle after user activity");
+    due();var timer=Stopwatch.StartNew();tick();Console.WriteLine("SCHEDULED_RECOVERY_MS="+timer.ElapsedMilliseconds);
+    Check(File.Exists(backup),"Due idle scheduler writes recovery after Funding has finished");
+    string savedHash=Hash(backup);due();tick();Check(Hash(backup)==savedHash,"No duplicate recovery for unchanged revision");
+    System.Threading.Thread.Sleep(1200);Application.DoEvents();owner.Close(); // Atomic save has already returned.
+   }
+   using(var lease=(IDisposable)Call(app.GetType("Abovo.SystemMessageManager"),"Acquire",(int)model.ModelID)){
+    var messages=((System.Collections.IEnumerable)Call(lease,"SnapshotItems")).Cast<object>().Select(x=>(string)Get(x,"Message")).ToArray();
+    Check(messages.Any(x=>x.StartsWith("Saving recovery copy:"))&&messages.Any(x=>x.StartsWith("Recovery copy saved:")),"Scheduled recovery start/completion messages recorded");
+   }
+   return backup;
+  }finally{Call(manager,"Configure",false,10,false);Call(manager,"Forget",(object)model);}
  }
  sealed class ThrowingStream:MemoryStream{public override void Write(byte[] buffer,int offset,int count){throw new IOException("Injected serializer failure");}}
 }

@@ -1,0 +1,3028 @@
+{
+  "source": "D:\\Downloads\\Summit v2.51 comments.docx",
+  "sha256": "955D44B6C714ED9BA6D5F9B4560C983764B38B83161A71B88C2BF400211BD9ED",
+  "paragraph_count": 137,
+  "media_parts": [],
+  "tracked_insertions": 0,
+  "tracked_deletions": 0,
+  "colour_legend": {
+    "196B24": "Agreed; not necessarily error-free (user confirmation)",
+    "E97132": "User agrees this is an issue",
+    "inherited": "No acceptance inferred"
+  },
+  "paragraphs": [
+    {
+      "id": "P001",
+      "paragraph": 1,
+      "section": "Summit v2.51",
+      "is_issue": false,
+      "text": "Summit v2.51",
+      "runs": [
+        {
+          "text": "Summit ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "v2.",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "51",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P002",
+      "paragraph": 2,
+      "section": "Summit v2.51",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P003",
+      "paragraph": 3,
+      "section": "General",
+      "is_issue": false,
+      "text": "General",
+      "runs": [
+        {
+          "text": "General",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P004",
+      "paragraph": 4,
+      "section": "General",
+      "is_issue": true,
+      "text": "Top icons not fully fitting (Open, New, Compare)",
+      "runs": [
+        {
+          "text": "Top icons not fully fitting (Open, New, Compare)",
+          "colour": {
+            "val": "E97132",
+            "themeColor": "accent2"
+          },
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "E97132"
+      ],
+      "stakeholder_status": "User agrees this is an issue",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P005",
+      "paragraph": 5,
+      "section": "General",
+      "is_issue": true,
+      "text": "Icons a bit large for the circle button?",
+      "runs": [
+        {
+          "text": "Icons a bit large for the circle button?",
+          "colour": {
+            "val": "E97132",
+            "themeColor": "accent2"
+          },
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "E97132"
+      ],
+      "stakeholder_status": "User agrees this is an issue",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P006",
+      "paragraph": 6,
+      "section": "General",
+      "is_issue": true,
+      "text": "“Program Information” (on main screen) not fully showing.",
+      "runs": [
+        {
+          "text": "“Program Information” (on main screen) not fully showing.",
+          "colour": {
+            "val": "E97132",
+            "themeColor": "accent2"
+          },
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "E97132"
+      ],
+      "stakeholder_status": "User agrees this is an issue",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P007",
+      "paragraph": 7,
+      "section": "General",
+      "is_issue": true,
+      "text": "Main screen – Start Date edit link doesn’t work.",
+      "runs": [
+        {
+          "text": "Main screen – Start Date edit link doesn’t work.",
+          "colour": {
+            "val": "E97132",
+            "themeColor": "accent2"
+          },
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "E97132"
+      ],
+      "stakeholder_status": "User agrees this is an issue",
+      "engineering_status": "Start-date Edit link previously removed; client visual confirmation pending."
+    },
+    {
+      "id": "P008",
+      "paragraph": 8,
+      "section": "General",
+      "is_issue": true,
+      "text": "BP Summary – Funding Status – YE Net Debt to be aligned with YE Peak Debt, etc.",
+      "runs": [
+        {
+          "text": "BP Summary – Funding Status – YE Net Debt to be aligned with YE Peak Debt, etc.",
+          "colour": {
+            "val": "E97132",
+            "themeColor": "accent2"
+          },
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "E97132"
+      ],
+      "stakeholder_status": "User agrees this is an issue",
+      "engineering_status": "Funding-status alignment previously changed; client visual confirmation pending."
+    },
+    {
+      "id": "P009",
+      "paragraph": 9,
+      "section": "General",
+      "is_issue": true,
+      "text": "BP Summary – has scroll left/right in each window – doesn’t need it.",
+      "runs": [
+        {
+          "text": "BP Summary – has scroll left/right in each window – doesn’t need it.",
+          "colour": {
+            "val": "E97132",
+            "themeColor": "accent2"
+          },
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "E97132"
+      ],
+      "stakeholder_status": "User agrees this is an issue",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P010",
+      "paragraph": 10,
+      "section": "General",
+      "is_issue": true,
+      "text": "Where does it get “Demonstration Housing” from (top left of Assumptions screen) – does this update when the Global Assumptions name changes?",
+      "runs": [
+        {
+          "text": "Where does it get “Demonstration Housing” from ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "(top left of Assumptions screen) ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "– does this update when the Global Assumptions name changes?",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P011",
+      "paragraph": 11,
+      "section": "General",
+      "is_issue": true,
+      "text": "Blank button on Assumptions window.",
+      "runs": [
+        {
+          "text": "Blank button on Assumptions window.",
+          "colour": {
+            "val": "196B24",
+            "themeColor": "accent3"
+          },
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "196B24"
+      ],
+      "stakeholder_status": "Agreed (user-confirmed meaning); errors may remain",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P012",
+      "paragraph": 12,
+      "section": "General",
+      "is_issue": true,
+      "text": "Save button on Assumptions window.",
+      "runs": [
+        {
+          "text": "Save button on ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "A",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "ssumptions",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " window.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "DIT Save/Save As implemented; native save-controls regression available."
+    },
+    {
+      "id": "P013",
+      "paragraph": 13,
+      "section": "General",
+      "is_issue": true,
+      "text": "Assumptions Navigator a tad wider, so “Management Cost Assumptions >” fits on 1 line.",
+      "runs": [
+        {
+          "text": "Assumptions Navigator a tad wider, so “Management Cost Assumptions >” fits on 1 line.",
+          "colour": {
+            "val": "196B24",
+            "themeColor": "accent3"
+          },
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "196B24"
+      ],
+      "stakeholder_status": "Agreed (user-confirmed meaning); errors may remain",
+      "engineering_status": "Navigator captions/width previously changed; physical DPI acceptance pending."
+    },
+    {
+      "id": "P014",
+      "paragraph": 14,
+      "section": "General",
+      "is_issue": true,
+      "text": "Some “From Yr” is “Year 1” (Voids and Bad Debts tabs) other is “1” (Service and Support Charges tab). <the repeating columinplaceeditors>",
+      "runs": [
+        {
+          "text": "Some “From Yr” is “Year 1” (Voids and Bad Debts tabs) other is “1” (Service and Support Charges tab). <the repeating columinplaceeditors>",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P015",
+      "paragraph": 15,
+      "section": "General",
+      "is_issue": true,
+      "text": "“Return” button looks like undo, could this be a “left back arrow” as per internet browser.",
+      "runs": [
+        {
+          "text": "“Return” button looks like undo, could this be a “left back arrow” as per internet browser.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P016",
+      "paragraph": 16,
+      "section": "General",
+      "is_issue": true,
+      "text": "Can pressing “Enter” take to next cell?",
+      "runs": [
+        {
+          "text": "Can pressing “Enter” take to next cell?",
+          "colour": {
+            "val": "196B24",
+            "themeColor": "accent3"
+          },
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "196B24"
+      ],
+      "stakeholder_status": "Agreed (user-confirmed meaning); errors may remain",
+      "engineering_status": "Shared keyboard navigation implemented; native editor regression available."
+    },
+    {
+      "id": "P017",
+      "paragraph": 17,
+      "section": "General",
+      "is_issue": true,
+      "text": "Paste tricky to use, e.g. want to copy one dropdown cell to a range of others, e.g. Management Cost Assumptions tab and Summary Cost Category column.",
+      "runs": [
+        {
+          "text": "Paste tricky to use, e.g. want to copy one dropdown cell to a range of others, e.g. Management Cost Assumptions tab ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "and ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "Summary Cost Category column.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Single-value multi-cell paste implemented; exact client selection requires regression."
+    },
+    {
+      "id": "P018",
+      "paragraph": 18,
+      "section": "General",
+      "is_issue": true,
+      "text": "Validation Check sheet – where is this, as it doesn’t allow user to save with a check outstanding?",
+      "runs": [
+        {
+          "text": "Validation Check sheet – where is this, as it doesn’t allow user to save with a check outstanding?",
+          "colour": {
+            "val": "196B24",
+            "themeColor": "accent3"
+          },
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "196B24"
+      ],
+      "stakeholder_status": "Agreed (user-confirmed meaning); errors may remain",
+      "engineering_status": "Check Sheet interface exists; save policy subsequently changed. Exact check needed."
+    },
+    {
+      "id": "P019",
+      "paragraph": 19,
+      "section": "General",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P020",
+      "paragraph": 20,
+      "section": "Global Assumptions",
+      "is_issue": false,
+      "text": "Global Assumptions",
+      "runs": [
+        {
+          "text": "Global Assumptions",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P021",
+      "paragraph": 21,
+      "section": "Global Assumptions",
+      "is_issue": true,
+      "text": "Hard to enter Company Name.",
+      "runs": [
+        {
+          "text": "Hard to enter Company Name",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": ".",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P022",
+      "paragraph": 22,
+      "section": "Global Assumptions",
+      "is_issue": true,
+      "text": "Check Sheet tab – showing checks when Excel BP is clear?",
+      "runs": [
+        {
+          "text": "Check Sheet tab – showing checks when Excel BP is clear?",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P023",
+      "paragraph": 23,
+      "section": "Global Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P024",
+      "paragraph": 24,
+      "section": "Opening Stock",
+      "is_issue": false,
+      "text": "Opening Stock",
+      "runs": [
+        {
+          "text": "Opening Stock",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P025",
+      "paragraph": 25,
+      "section": "Opening Stock",
+      "is_issue": true,
+      "text": "Wider “Stock Description” column in blank BP.",
+      "runs": [
+        {
+          "text": "Wider “Stock Description” column in blank BP",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": ".",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P026",
+      "paragraph": 26,
+      "section": "Opening Stock",
+      "is_issue": true,
+      "text": "Gap between “Current Stock Numbers” and “Pre BP-Start Date New Build”.",
+      "runs": [
+        {
+          "text": "Gap between “Current Stock Numbers” and “Pre BP-Start Date New Build”.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P027",
+      "paragraph": 27,
+      "section": "Opening Stock",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P028",
+      "paragraph": 28,
+      "section": "Rent Assumptions",
+      "is_issue": false,
+      "text": "Rent Assumptions",
+      "runs": [
+        {
+          "text": "Rent Assumptions",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P029",
+      "paragraph": 29,
+      "section": "Rent Assumptions",
+      "is_issue": true,
+      "text": "Column widths get wider per each input (e.g. Voids tab).",
+      "runs": [
+        {
+          "text": "Column widths get wider per each input",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " (",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "e.g. V",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "oids tab)",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": ".",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P030",
+      "paragraph": 30,
+      "section": "Rent Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P031",
+      "paragraph": 31,
+      "section": "Service Charge Assumptions",
+      "is_issue": false,
+      "text": "Service Charge Assumptions",
+      "runs": [
+        {
+          "text": "Service Charge Assumptions",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P032",
+      "paragraph": 32,
+      "section": "Service Charge Assumptions",
+      "is_issue": true,
+      "text": "Formatting on “Click to access Economic Assumptions” indented.",
+      "runs": [
+        {
+          "text": "Formatting on “Click to access Economic Assumptions” indented.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P033",
+      "paragraph": 33,
+      "section": "Service Charge Assumptions",
+      "is_issue": true,
+      "text": "Summary Categories tab - Button to link to inflationary increases not showing all text.",
+      "runs": [
+        {
+          "text": "Summary Categories tab - ",
+          "colour": {
+            "val": "196B24",
+            "themeColor": "accent3"
+          },
+          "highlight": null
+        },
+        {
+          "text": "Button to link to inflationary increases not showing all text.",
+          "colour": {
+            "val": "196B24",
+            "themeColor": "accent3"
+          },
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "196B24"
+      ],
+      "stakeholder_status": "Agreed (user-confirmed meaning); errors may remain",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P034",
+      "paragraph": 34,
+      "section": "Service Charge Assumptions",
+      "is_issue": true,
+      "text": "Service and Support Charges tab - “Avg Service Charge per week” format to 2 d.p.",
+      "runs": [
+        {
+          "text": "Service and Support Charges tab - ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "“",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "Avg",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " Service Charge per week” format to 2 ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "d",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": ".",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "p",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": ".",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P035",
+      "paragraph": 35,
+      "section": "Service Charge Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P036",
+      "paragraph": 36,
+      "section": "Specific Income Assumptions",
+      "is_issue": false,
+      "text": "Specific Income Assumptions",
+      "runs": [
+        {
+          "text": "Specific Income Assumptions",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P037",
+      "paragraph": 37,
+      "section": "Specific Income Assumptions",
+      "is_issue": true,
+      "text": "Formatting on “Click to access Economic Assumptions” indented.",
+      "runs": [
+        {
+          "text": "Formatting on “Click to access Economic Assumptions” indented.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P038",
+      "paragraph": 38,
+      "section": "Specific Income Assumptions",
+      "is_issue": true,
+      "text": "Button to link to inflationary increases not showing all text.",
+      "runs": [
+        {
+          "text": "Button to link to inflationary increases not showing all text.",
+          "colour": {
+            "val": "196B24",
+            "themeColor": "accent3"
+          },
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "196B24"
+      ],
+      "stakeholder_status": "Agreed (user-confirmed meaning); errors may remain",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P039",
+      "paragraph": 39,
+      "section": "Specific Income Assumptions",
+      "is_issue": true,
+      "text": "“Summary Other Income Category” doesn’t have “add lines” macro in BP.",
+      "runs": [
+        {
+          "text": "“Summary Other Income Category” doesn’t have ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "“a",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "dd lines",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "” macro",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " in BP.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P040",
+      "paragraph": 40,
+      "section": "Specific Income Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P041",
+      "paragraph": 41,
+      "section": "Other Income Assumptions",
+      "is_issue": false,
+      "text": "Other Income Assumptions",
+      "runs": [
+        {
+          "text": "Other Income Assumptions",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P042",
+      "paragraph": 42,
+      "section": "Other Income Assumptions",
+      "is_issue": true,
+      "text": "Columns get too wide after typing in numbers.",
+      "runs": [
+        {
+          "text": "Columns get too wide after typing in numbers.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P043",
+      "paragraph": 43,
+      "section": "Other Income Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P044",
+      "paragraph": 44,
+      "section": "Management Cost Assumptions",
+      "is_issue": false,
+      "text": "Management Cost Assumptions",
+      "runs": [
+        {
+          "text": "Management Cost Assumptions",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P045",
+      "paragraph": 45,
+      "section": "Management Cost Assumptions",
+      "is_issue": true,
+      "text": "Summary Categories tab – formatting of default categories.",
+      "runs": [
+        {
+          "text": "Summary Categories ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "tab ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "– formatting of default categories.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P046",
+      "paragraph": 46,
+      "section": "Management Cost Assumptions",
+      "is_issue": true,
+      "text": "Management Costs Assumptions tab – conditional formatting on Summary Cost Cat and SOCI Expense Desc columns.",
+      "runs": [
+        {
+          "text": "Management Costs Assumptions",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " tab",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " – conditional formatting on Summary Cost Cat and SOCI Expense ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "Desc",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " columns.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P047",
+      "paragraph": 47,
+      "section": "Management Cost Assumptions",
+      "is_issue": true,
+      "text": "Management Costs Assumptions tab – year 1 should be locked in both Staff Costs and Other Costs tables.",
+      "runs": [
+        {
+          "text": "Management Cost",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "s",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " Assumptions ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "tab ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "– year 1 should be locked in both Staff Costs and Other Costs tables.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P048",
+      "paragraph": 48,
+      "section": "Management Cost Assumptions",
+      "is_issue": true,
+      "text": "Column widths get wider per each input e.g. Other Costs table.",
+      "runs": [
+        {
+          "text": "Column widths get wider per each input",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " e.g. Other Costs table.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P049",
+      "paragraph": 49,
+      "section": "Management Cost Assumptions",
+      "is_issue": true,
+      "text": "Need Description column locked, so can see when scroll to right.",
+      "runs": [
+        {
+          "text": "Need Description column locked, so can see when scroll to right.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P050",
+      "paragraph": 50,
+      "section": "Management Cost Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P051",
+      "paragraph": 51,
+      "section": "Repairs & Maintenance",
+      "is_issue": false,
+      "text": "Repairs & Maintenance",
+      "runs": [
+        {
+          "text": "Repairs & Maintenance",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P052",
+      "paragraph": 52,
+      "section": "Repairs & Maintenance",
+      "is_issue": true,
+      "text": "Repairs and Maintenance Assumptions tab – conditional formatting on “Summary Cost Category” column.  Table descriptions don’t fit.  Formatting on 3 tables not instant (had to switch away from section).",
+      "runs": [
+        {
+          "text": "Repairs and Maintenance Assumptions tab – conditional formatting on “Summary Cost Category” column.  Table descriptions don’t fit.",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "  Formatting on 3 tables",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " not instant (had to switch away from section).",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P053",
+      "paragraph": 53,
+      "section": "Repairs & Maintenance",
+      "is_issue": true,
+      "text": "Stock Survey Allocation tab – date default as 30/12/1899, as can’t seem to change?",
+      "runs": [
+        {
+          "text": "Stock Survey Allocation ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "tab ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "– ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "d",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "ate default as 30/12/1899",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": ", as can’t seem to change",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "?",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P054",
+      "paragraph": 54,
+      "section": "Repairs & Maintenance",
+      "is_issue": true,
+      "text": "Survey Input – headers need wrapping and columns narrowing.  Scroll within a scroll.  Can’t seem to paste into input cells (not allowing decimal places?) – this is more than likely going to need to be able to paste in from an Excel table.",
+      "runs": [
+        {
+          "text": "Survey Input",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "– headers ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "need",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " wrapping and columns narrowing.  Scroll within a scroll.",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "  Can’t seem to paste into input cells ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "(not allowing decimal places?) ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "– this is more than likely going to need to be able to paste in from an Excel table.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P055",
+      "paragraph": 55,
+      "section": "Repairs & Maintenance",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P056",
+      "paragraph": 56,
+      "section": "Development Assumptions",
+      "is_issue": false,
+      "text": "Development Assumptions",
+      "runs": [
+        {
+          "text": "Development Assumptions",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P057",
+      "paragraph": 57,
+      "section": "Development Assumptions",
+      "is_issue": true,
+      "text": "Import and Edit Schemes – need to scroll.",
+      "runs": [
+        {
+          "text": "Import and Edit Schemes – need to scroll.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P058",
+      "paragraph": 58,
+      "section": "Development Assumptions",
+      "is_issue": true,
+      "text": "BP Input Schemes – not letting me type a Scheme Name. Not picking up default “Unidentified”.",
+      "runs": [
+        {
+          "text": "BP Input Schemes – not letting me type a Scheme Name",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": ". Not picking up default “",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "Unidentified",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "”.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P059",
+      "paragraph": 59,
+      "section": "Dvpt Details:",
+      "is_issue": false,
+      "text": "Dvpt Details:",
+      "runs": [
+        {
+          "text": "Dvpt",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " Details:",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P060",
+      "paragraph": 60,
+      "section": "Dvpt Details:",
+      "is_issue": true,
+      "text": "Header says “Property” – can this be “House Type”. “Identified Scheme” be “Scheme Name” (not picking up.",
+      "runs": [
+        {
+          "text": "Header says “Property” – can this be “House Type”. “Identified Scheme” be “Scheme Name” (not picking up.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P061",
+      "paragraph": 61,
+      "section": "Dvpt Details:",
+      "is_issue": true,
+      "text": "“Inflate Capital Costs” spelling.",
+      "runs": [
+        {
+          "text": "“Inflate Capital Costs” spelling.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P062",
+      "paragraph": 62,
+      "section": "Dvpt Details:",
+      "is_issue": true,
+      "text": "Two headings “Period Completed (to)”, 2nd one should be “Period Units into Mgmt (to)”.",
+      "runs": [
+        {
+          "text": "Two headings “Period Completed (to)”, 2",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "nd",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " one should be “",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "Period Units into ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "Mgmt",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " (to)",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "”.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P063",
+      "paragraph": 63,
+      "section": "Dvpt Details:",
+      "is_issue": true,
+      "text": "Conditional Formatting required based on populating first description “House Type”.",
+      "runs": [
+        {
+          "text": "Conditional Formatting required based on populating first description “House Type”.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P064",
+      "paragraph": 64,
+      "section": "Dvpt Details:",
+      "is_issue": true,
+      "text": "Conditional Formatting when “Include?” set to “No”.",
+      "runs": [
+        {
+          "text": "Conditional Formatting when “Include?” set to “No”.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P065",
+      "paragraph": 65,
+      "section": "Dvpt Details:",
+      "is_issue": true,
+      "text": "Capital Costs tab – space before “On Costs Calculation Method”.",
+      "runs": [
+        {
+          "text": "Capital Costs tab – space before “On Costs Calculation Method”.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P066",
+      "paragraph": 66,
+      "section": "Dvpt Details:",
+      "is_issue": true,
+      "text": "Grant/HFG tab – “Partial Sale of Property %” should be on Capital Sales tab.",
+      "runs": [
+        {
+          "text": "Grant/HFG tab – “Partial Sale of Property %” should be on Capital Sales tab.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P067",
+      "paragraph": 67,
+      "section": "Dvpt Details:",
+      "is_issue": true,
+      "text": "Grant/HFG tab – SHG Profiling and SHG Calculation basis seem to populate each other.",
+      "runs": [
+        {
+          "text": "Grant/HFG tab – SHG Profiling and SHG Calculation basis seem to populate each other.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P068",
+      "paragraph": 68,
+      "section": "Dvpt Details:",
+      "is_issue": true,
+      "text": "Capital Sales tab – Sales Value per Unit formatting.",
+      "runs": [
+        {
+          "text": "Capital Sales tab – Sales Value per Unit formatting.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P069",
+      "paragraph": 69,
+      "section": "Dvpt Details:",
+      "is_issue": true,
+      "text": "Development Revenue tab – Weekly Rent and Service Charge / Property display as 2 d.p.",
+      "runs": [
+        {
+          "text": "Development Revenue tab – Weekly Rent and Service Charge / Property display as 2 ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "d.p.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P070",
+      "paragraph": 70,
+      "section": "Dvpt Details:",
+      "is_issue": true,
+      "text": "Development Revenue tab – Void Rate from Year, Bad Debt Rate from Year.",
+      "runs": [
+        {
+          "text": "Development Revenue tab – Void Rate from Year, Bad Debt Rate from Year.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P071",
+      "paragraph": 71,
+      "section": "Dvpt Details:",
+      "is_issue": true,
+      "text": "Development Revenue tab – can Staircasing Units table be a separate tab called “Staircasing Assumptions?",
+      "runs": [
+        {
+          "text": "Development Revenue tab – can Staircasing",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " Units",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " table be a separate tab",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " called “Staircasing Assumptions",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "?",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P072",
+      "paragraph": 72,
+      "section": "Dvpt Details:",
+      "is_issue": true,
+      "text": "Can Capitalised Interest input table be a tab on Development Consol and Import Options”?",
+      "runs": [
+        {
+          "text": "Can",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " Capitalised Interest input table be a tab on Development Consol and Import Options”",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "?",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P073",
+      "paragraph": 73,
+      "section": "Dvpt Details:",
+      "is_issue": true,
+      "text": "Valuations/Impairment tab – “From Year” col should be “% of OMV”.",
+      "runs": [
+        {
+          "text": "Valuations/Impairment tab – “From Year” col should be “% of OMV”.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P074",
+      "paragraph": 74,
+      "section": "Dvpt Details:",
+      "is_issue": true,
+      "text": "Rename “BP Inputs” tab “BP Dvpt Summary”",
+      "runs": [
+        {
+          "text": "Rename “BP Inputs” tab “BP ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "Dvpt",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " Summary”",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P075",
+      "paragraph": 75,
+      "section": "Dvpt Details:",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P076",
+      "paragraph": 76,
+      "section": "Dvpt Expenditure Assumptions:",
+      "is_issue": false,
+      "text": "Dvpt Expenditure Assumptions:",
+      "runs": [
+        {
+          "text": "Dvpt",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " Expenditure Assumptions:",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P077",
+      "paragraph": 77,
+      "section": "Dvpt Expenditure Assumptions:",
+      "is_issue": true,
+      "text": "Not letting input/paste to 2 d.p. to Management Costs table.",
+      "runs": [
+        {
+          "text": "Not letting ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "input/",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "paste ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "to 2 ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "d.p.",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "to Management Costs table.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P078",
+      "paragraph": 78,
+      "section": "Dvpt Expenditure Assumptions:",
+      "is_issue": true,
+      "text": "Planned Maintenance table not input cells for “From Yr”.",
+      "runs": [
+        {
+          "text": "Planned Maintenance table not input cells for “From Yr”.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P079",
+      "paragraph": 79,
+      "section": "Dvpt Expenditure Assumptions:",
+      "is_issue": true,
+      "text": "All tables should be “From Year”.",
+      "runs": [
+        {
+          "text": "All tables should be “From Year”.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P080",
+      "paragraph": 80,
+      "section": "Dvpt Expenditure Assumptions:",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P081",
+      "paragraph": 81,
+      "section": "Economic Assumptions",
+      "is_issue": false,
+      "text": "Economic Assumptions",
+      "runs": [
+        {
+          "text": "Economic Assumptions",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P082",
+      "paragraph": 82,
+      "section": "Economic Assumptions",
+      "is_issue": true,
+      "text": "CPI and RPI tab – each table needs a label whether CPI or RPI.",
+      "runs": [
+        {
+          "text": "CPI and RPI tab – each table needs a label whether CPI or RPI.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P083",
+      "paragraph": 83,
+      "section": "Economic Assumptions",
+      "is_issue": true,
+      "text": "Real Rents tab – need conditional formatting. Scroll within scroll.",
+      "runs": [
+        {
+          "text": "Real Rents tab – need conditional formatting. Scroll within scroll.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P084",
+      "paragraph": 84,
+      "section": "Economic Assumptions",
+      "is_issue": true,
+      "text": "Not allowing negative % inputs.",
+      "runs": [
+        {
+          "text": "Not allowing negative % inputs.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P085",
+      "paragraph": 85,
+      "section": "Economic Assumptions",
+      "is_issue": true,
+      "text": "Conditional formatting.",
+      "runs": [
+        {
+          "text": "Conditional formatting.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P086",
+      "paragraph": 86,
+      "section": "Economic Assumptions",
+      "is_issue": true,
+      "text": "Column widths of real % increases to be uniform.",
+      "runs": [
+        {
+          "text": "Column widths of real % increases to be uniform.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P087",
+      "paragraph": 87,
+      "section": "Economic Assumptions",
+      "is_issue": true,
+      "text": "Real Dvpt R&M Costs tab – inputs aren’t like BP – is this Real Dvpt Service Costs, and it is missing Dvpt R&M?",
+      "runs": [
+        {
+          "text": "Real ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "Dvpt",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " R&M Costs tab – inputs aren’t like BP – is this Real ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "Dvpt",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " Service Costs, and it is missing ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "Dvpt",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " R&M?",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P088",
+      "paragraph": 88,
+      "section": "Economic Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P089",
+      "paragraph": 89,
+      "section": "Funding Assumptions",
+      "is_issue": false,
+      "text": "Funding Assumptions",
+      "runs": [
+        {
+          "text": "Funding Assumptions",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P090",
+      "paragraph": 90,
+      "section": "Funding Assumptions",
+      "is_issue": true,
+      "text": "Cell doesn’t highlight when selected, so not sure of typing in right cell.",
+      "runs": [
+        {
+          "text": "Cell doesn’t highlight when selected, so not sure of typing in right cell.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P091",
+      "paragraph": 91,
+      "section": "Facilities & Loans tab:",
+      "is_issue": false,
+      "text": "Facilities & Loans tab:",
+      "runs": [
+        {
+          "text": "Facilities & ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "Loans ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "tab:",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P092",
+      "paragraph": 92,
+      "section": "Facilities & Loans tab:",
+      "is_issue": true,
+      "text": "Wider first column to see descriptions.",
+      "runs": [
+        {
+          "text": "Wider first column to see descriptions.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P093",
+      "paragraph": 93,
+      "section": "Facilities & Loans tab:",
+      "is_issue": true,
+      "text": "Scroll left/right not visible with additional columns – have to go to bottom of ‘tab’.",
+      "runs": [
+        {
+          "text": "Scroll left/right not visible with additional columns – ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "have to",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " go to bottom of ‘tab’.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P094",
+      "paragraph": 94,
+      "section": "Facilities & Loans tab:",
+      "is_issue": true,
+      "text": "Loan description screen freeze, so when scrolling down, can see which loan entering against.",
+      "runs": [
+        {
+          "text": "Loan description screen freeze, so when scrolling down, can see which loan entering against.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P095",
+      "paragraph": 95,
+      "section": "Facilities & Loans tab:",
+      "is_issue": true,
+      "text": "Jumps back to top of sheet a lot when inputting.",
+      "runs": [
+        {
+          "text": "Jumps back to top of sheet a lot when inputting.",
+          "colour": {
+            "val": "196B24",
+            "themeColor": "accent3"
+          },
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "196B24"
+      ],
+      "stakeholder_status": "Agreed (user-confirmed meaning); errors may remain",
+      "engineering_status": "Funding navigation repaired after 2.51; native editor regression available."
+    },
+    {
+      "id": "P096",
+      "paragraph": 96,
+      "section": "Facilities & Loans tab:",
+      "is_issue": true,
+      "text": "Add/Delete loan columns not visible/prominent.",
+      "runs": [
+        {
+          "text": "Add/Delete loan columns not visible/prominent.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P097",
+      "paragraph": 97,
+      "section": "Facilities & Loans tab:",
+      "is_issue": true,
+      "text": "Facility Name dropdown not correct one.",
+      "runs": [
+        {
+          "text": "Facility Name dropdown ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "not correct",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " one.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P098",
+      "paragraph": 98,
+      "section": "Facilities & Loans tab:",
+      "is_issue": true,
+      "text": "Loan Description needs to wrap text.",
+      "runs": [
+        {
+          "text": "Loan Description needs to wrap text.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P099",
+      "paragraph": 99,
+      "section": "Facilities & Loans tab:",
+      "is_issue": true,
+      "text": "Annuity section needs date formatting/ghost.",
+      "runs": [
+        {
+          "text": "Annuity section needs date formatting/ghost.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P100",
+      "paragraph": 100,
+      "section": "Facilities & Loans tab:",
+      "is_issue": true,
+      "text": "Interest Rates “Fixed until and including” needs date formatting/ghost.",
+      "runs": [
+        {
+          "text": "Interest Rates “Fixed until and including” needs date formatting/ghost.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P101",
+      "paragraph": 101,
+      "section": "Facilities & Loans tab:",
+      "is_issue": true,
+      "text": "First Interest Payment Month – causes issue as this is technically a date, but Summit doesn’t populate BP with a date.",
+      "runs": [
+        {
+          "text": "First Interest Payment Month – causes issue as this is technically a date, but Summit doesn’t populate BP with a date.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Month-end date editor implemented; native editor regression available."
+    },
+    {
+      "id": "P102",
+      "paragraph": 102,
+      "section": "Variable and Cash Rates:",
+      "is_issue": false,
+      "text": "Variable and Cash Rates:",
+      "runs": [
+        {
+          "text": "Variable and Cash Rates:",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P103",
+      "paragraph": 103,
+      "section": "Variable and Cash Rates:",
+      "is_issue": true,
+      "text": "Needs wider first column",
+      "runs": [
+        {
+          "text": "Needs wider first column",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P104",
+      "paragraph": 104,
+      "section": "Variable and Cash Rates:",
+      "is_issue": true,
+      "text": "First date cell to be locked.",
+      "runs": [
+        {
+          "text": "First date cell to be locked.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P105",
+      "paragraph": 105,
+      "section": "Variable and Cash Rates:",
+      "is_issue": true,
+      "text": "Other Fees – tables locked.",
+      "runs": [
+        {
+          "text": "Other Fees – tables locked.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P106",
+      "paragraph": 106,
+      "section": "Variable and Cash Rates:",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P107",
+      "paragraph": 107,
+      "section": "Covenant Assumptions",
+      "is_issue": false,
+      "text": "Covenant Assumptions",
+      "runs": [
+        {
+          "text": "Covenant Assumptions",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P108",
+      "paragraph": 108,
+      "section": "Covenant Assumptions",
+      "is_issue": true,
+      "text": "BP Year and Year columns missing.",
+      "runs": [
+        {
+          "text": "BP Year and Year columns missing.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P109",
+      "paragraph": 109,
+      "section": "Covenant Assumptions",
+      "is_issue": true,
+      "text": "Input cells locked.",
+      "runs": [
+        {
+          "text": "Input cells locked.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P110",
+      "paragraph": 110,
+      "section": "Covenant Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P111",
+      "paragraph": 111,
+      "section": "Taxation Assumptions",
+      "is_issue": false,
+      "text": "Taxation Assumptions",
+      "runs": [
+        {
+          "text": "Taxation Assumptions",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P112",
+      "paragraph": 112,
+      "section": "Taxation Assumptions",
+      "is_issue": true,
+      "text": "Capital Allowances tab – Description column not showing.",
+      "runs": [
+        {
+          "text": "Capital Allowances tab – Description column not showing.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P113",
+      "paragraph": 113,
+      "section": "Taxation Assumptions",
+      "is_issue": true,
+      "text": "“Capital Allowances %” heading spell check.",
+      "runs": [
+        {
+          "text": "“Capital Allowances %” heading spell check.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P114",
+      "paragraph": 114,
+      "section": "Taxation Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P115",
+      "paragraph": 115,
+      "section": "Capitalisation Assumptions",
+      "is_issue": false,
+      "text": "Capitalisation Assumptions",
+      "runs": [
+        {
+          "text": "Capitalisation ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "Assumptions",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P116",
+      "paragraph": 116,
+      "section": "Capitalisation Assumptions",
+      "is_issue": true,
+      "text": "Management Costs Capitalisation tab – can this be transposed?  And will be “From Yr”.  Scroll within scroll.",
+      "runs": [
+        {
+          "text": "Management Costs Capitali",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "s",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "ation tab – can this be transposed?  And will be “From Yr”.  Scroll within scroll.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P117",
+      "paragraph": 117,
+      "section": "Capitalisation Assumptions",
+      "is_issue": true,
+      "text": "Repairs Maint Costs Capitalisation tab – transposed too?  “Depreciate Capitalised Management Costs?” heading should be “Depreciate Capitalised Repairs & Mainte Costs?”.",
+      "runs": [
+        {
+          "text": "Repairs ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "Maint",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " Costs Capitalisation tab – transposed too?  “Depreciate Capitalised Management Costs?” heading should be “",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "Depreciate ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "C",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "apitalised ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "R",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "epairs & ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "M",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "ainte",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "C",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "osts?",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "”.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P118",
+      "paragraph": 118,
+      "section": "Capitalisation Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P119",
+      "paragraph": 119,
+      "section": "Housing Asset Assumptions",
+      "is_issue": false,
+      "text": "Housing Asset Assumptions",
+      "runs": [
+        {
+          "text": "Housing Asset Assumptions",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P120",
+      "paragraph": 120,
+      "section": "Housing Asset Assumptions",
+      "is_issue": true,
+      "text": "Housing Asset Assumptions tab – not allowing decimal places in inputs.",
+      "runs": [
+        {
+          "text": "Housing Asset Assumptions tab – not allowing ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "decimal places in inputs.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P121",
+      "paragraph": 121,
+      "section": "Housing Asset Assumptions",
+      "is_issue": true,
+      "text": "Need a way to enter other component descriptions, which would appear next to Land and Structure.",
+      "runs": [
+        {
+          "text": "Need a way to enter other component descriptions, which would appear next to Land and Structure.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P122",
+      "paragraph": 122,
+      "section": "Housing Asset Assumptions",
+      "is_issue": true,
+      "text": "Housing Asset Grant Assumptions tab – has depreciation tables on.",
+      "runs": [
+        {
+          "text": "Housing Asset Grant Assumptions tab – has depreciation tables on.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P123",
+      "paragraph": 123,
+      "section": "Housing Asset Assumptions",
+      "is_issue": true,
+      "text": "Remaining Useful Life tab – has grant assumptions.",
+      "runs": [
+        {
+          "text": "Remaining Useful Life tab – has grant assumptions.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P124",
+      "paragraph": 124,
+      "section": "Housing Asset Assumptions",
+      "is_issue": true,
+      "text": "Housing Asset Depreciation tab – looks ok, includes both depreciation and useful life inputs.  “Useful Life for Structure” heading spell check.",
+      "runs": [
+        {
+          "text": "Housing Asset Depreciation tab – looks ok, includes both depreciation and useful life inputs.  “Useful Life for Structure” heading spell check.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P125",
+      "paragraph": 125,
+      "section": "Housing Asset Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P126",
+      "paragraph": 126,
+      "section": "Other Current Asset Assumptions",
+      "is_issue": false,
+      "text": "Other Current Asset Assumptions",
+      "runs": [
+        {
+          "text": "Other Current Asset Assumptions",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P127",
+      "paragraph": 127,
+      "section": "Other Current Asset Assumptions",
+      "is_issue": true,
+      "text": "Doesn’t allow decimal places in inputs.",
+      "runs": [
+        {
+          "text": "Doesn’t allow decimal places in inputs.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P128",
+      "paragraph": 128,
+      "section": "Other Current Asset Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P129",
+      "paragraph": 129,
+      "section": "Journal Assumptions",
+      "is_issue": false,
+      "text": "Journal Assumptions",
+      "runs": [
+        {
+          "text": "Journal Assumptions",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P130",
+      "paragraph": 130,
+      "section": "Journal Assumptions",
+      "is_issue": true,
+      "text": "Doesn’t allow decimal places.",
+      "runs": [
+        {
+          "text": "Doesn’t allow decimal places.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P131",
+      "paragraph": 131,
+      "section": "Journal Assumptions",
+      "is_issue": true,
+      "text": "Scroll within scroll.",
+      "runs": [
+        {
+          "text": "Scroll within scroll.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P132",
+      "paragraph": 132,
+      "section": "Journal Assumptions",
+      "is_issue": true,
+      "text": "“Add lines” row insert doesn’t update the “IR_Journals” range name, and causes a Check Sheet check.",
+      "runs": [
+        {
+          "text": "“Add lines” row insert doesn’t update the “",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "IR_Journals",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "” range ",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": "name, and",
+          "colour": null,
+          "highlight": null
+        },
+        {
+          "text": " causes a Check Sheet check.",
+          "colour": null,
+          "highlight": null
+        }
+      ],
+      "direct_colours": [
+        "inherited"
+      ],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Journal structural rule repaired; private add/delete regression available."
+    },
+    {
+      "id": "P133",
+      "paragraph": 133,
+      "section": "Journal Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P134",
+      "paragraph": 134,
+      "section": "Journal Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P135",
+      "paragraph": 135,
+      "section": "Journal Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P136",
+      "paragraph": 136,
+      "section": "Journal Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    },
+    {
+      "id": "P137",
+      "paragraph": 137,
+      "section": "Journal Assumptions",
+      "is_issue": false,
+      "text": "",
+      "runs": [],
+      "direct_colours": [],
+      "stakeholder_status": "Unclassified; no acceptance inferred",
+      "engineering_status": "Not yet independently verified"
+    }
+  ]
+}
