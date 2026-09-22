@@ -49,6 +49,8 @@ Evidence: `obj/client-review-funding-recovery-x86.log`, `obj/client-review-excel
 
 ## CP3 — first bounded client-report repair
 
+Intake, combined recovery validation and the first two repairs are checkpointed locally as `e1140cf`.
+
 2.68 / XML 1753 contains only two master-verified Development XML repairs at this checkpoint:
 
 - **P067:** Identified Development's SHG Calculation Basis was incorrectly bound to `SHGProfileIn` (row 122, validated by `SHGProfile`). The master labels/validation identify the separate `SHGMethodsIn` (row 125, validated by `SHGMethods`); multiyear Development already used that correct range. A failing regression was captured before changing the identified binding. Real DIT dropdown commits now alter the separate correct cells; two Undo operations restore them independently; dirty state and protection pass.
@@ -56,10 +58,26 @@ Evidence: `obj/client-review-funding-recovery-x86.log`, `obj/client-review-excel
 
 Debug and Release builds pass. The new fixture passes against the repository Demo master without saving it. Existing Debug native Funding focus/date/navigation/Save/Save As regression also passes: P012, the tested portion of P095, P101, and adjacent-grid/header navigation. This does not certify every DPI layout or the separate Enter-key request P016. Evidence: `obj/client-report-before-fix.log` (expected failure), `obj/client-report-inspection.log`, `obj/client-report-after-fix.log`, `obj/client-review-build-debug.log`, `obj/client-review-build-release.log`, `obj/client-review-navigation-debug.log`.
 
+## CP3b — width stability and two monetary input types
+
+The same 2.68 test delivery now uses XML 1754. Additional changes are limited to:
+
+- **P029/P042/P048 shared cause:** the normal DIT post-edit handler re-ran BestFit and added 15% padding to the edited column. A real dropdown test reproduced a manually set width changing from 333 to 217 pixels after one commit. Removed that post-edit sizing only; initial build and explicit font/layout fitting remain. Repeated dropdown edits and numeric edits now preserve their chosen widths. These tests cover the shared handler, not every named client screen or physical DPI setting.
+- **P127:** `Rep_OCA_01` Amount was typed as integer in XML. The real editor stored 2345.67 as 2346. Changed this monetary field to the existing decimal `M` type.
+- **P130:** Journal Amount was also typed as integer. The same real-editor test failed for 1234.56; changed only Amount to `M`, retaining Year as `I`.
+
+Actual DIT writes use ChangeManager, not direct test assignments. Monetary tests verify exact stored values, unchanged source number formats/protection, Undo/Redo and normal Summit XLSB Save As/reopen on private copies. Workbook display formats intentionally remain unchanged: accepting decimals does not authorise changing the model's whole-number display. Other monetary/count/year definitions were not changed speculatively.
+
+Debug and Release build and both final native fixtures pass, including Save As/reopen for both monetary values. Both runnable output folders contain the same XML 1754 as the repository (SHA-256 `5F1DFDF8516CDF5983B7739729471AB819C577D993FFE54C80847C8A3A9E3FDF`). Evidence: `obj/client-report-width-before-fix.log`, `obj/client-report-decimal-before-fix.log`, `obj/client-report-oca-before-fix.log` (three expected reproductions), `obj/client-report-final-release.log`, `obj/client-report-final-debug.log`. The fixture also logs a non-fatal WebView2 class-unregistration diagnostic at private form teardown; no claim is made to have repaired unrelated browser lifecycle issues.
+
+**P132 regression:** `obj/client-review-journals-regression.log` passes five-row add, both formula mirrors, dirty/protection preservation, save/reopen, delete back to original geometry, noncontiguous deletion, and rejection of pre-existing name inconsistency before mutation. This confirms the tested later repair rather than treating the old report as a new uninvestigated failure.
+
+Repository Blank/Demo hashes still match the baseline; no authoritative workbook or source DOCX was edited. No passwords, raw VBA or extraction dependencies were added to the repository.
+
 ## Remaining investigations and ambiguity gates
 
 1. **Input precision, negative percentages and locks:** reproduce through the actual editor, clipboard parser and source cell protection. Do not change every `I` XML type to decimal: counts/years must remain integers. P022 needs the exact disagreeing Check Sheet message and workbook; P085's unspecified conditional formatting needs a field/rule example; P099/P100's "ghost" needs a defined desired date/blank appearance.
-2. **Column widths / scrolling / layouts:** repeated edits currently call BestFit and add 15% in the shared commit handler; this is a concrete lead for P029/P042/P048, not yet a repair or proof for each interface. Physical monitor/DPI reports require client acceptance. Housing Asset Grant/Remaining Useful Life sections contain overlapping grant/depreciation sources, so P122/P123 is not simply two labels to swap; decide the intended separation before rewriting sections.
+2. **Column widths / scrolling / layouts:** shared post-edit width repair is covered above; verify P029/P042/P048 on the client's specific screens. Physical monitor/DPI reports require client acceptance. Housing Asset Grant/Remaining Useful Life sections contain overlapping grant/depreciation sources, so P122/P123 is not simply two labels to swap; decide the intended separation before rewriting sections. Three concise questions about report workbook/Check Sheet, asset-tab separation and date "ghost" meaning have been sent; no replies are assumed.
 3. **Structural and performance work:** source column shifts and TDB mirror resizing dominate Funding. Keep optional Excel automation and capacity/schema changes as separately reviewed prototypes; do not silently switch execution or alter authoritative workbook schema. Development/multiyear warm-analyser/snapshot benchmarks and the 32 GB client-class matrix remain open.
 4. **Business/financial requests:** retain accountant acceptance of the repaired balance sheet, Excel/VBA calculations, grants/component structure and bespoke upgrade contracts. A copied screenshot or green paragraph is not financial approval.
 5. **Client release:** no installer publication/push or recent-files feature added. Remind the user about the deferred recent-files HTML launcher when preparing the next client-testing release.

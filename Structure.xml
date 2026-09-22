@@ -5,7 +5,7 @@
   <FileID>2077</FileID>
   <RejData>23_t4qhe</RejData>
   <StartDate>01/04/2024</StartDate>
-  <XMLVer>1753</XMLVer>
+  <XMLVer>1754</XMLVer>
   <CompanyName>Demonstration Housing</CompanyName>
   <GroupStructure Name="Assumptions">
     <GSName>Assumptions</GSName>
@@ -16344,7 +16344,7 @@
             <PositID>1</PositID>
             <DataFieldDefinition>
               <FieldName>Amount £'000</FieldName>
-              <DataFormat>I</DataFormat>
+              <DataFormat>M</DataFormat>
               <TipText>Enter the Value</TipText>
               <ShowSummary>Sum</ShowSummary>
             </DataFieldDefinition>
@@ -16526,7 +16526,7 @@
               <FieldName>Amount vblf £'000</FieldName>
               <MinWidthChars>12</MinWidthChars>
               <HasRule>TRUE</HasRule>
-              <DataFormat>I</DataFormat>
+              <DataFormat>M</DataFormat>
               <TipText>Enter the Entry Amount</TipText>
             </DataFieldDefinition>
           </CellRangeDataSource>

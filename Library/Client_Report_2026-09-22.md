@@ -80,11 +80,11 @@ Save button on Assumptions window.
 
 - Source colour: `inherited`.
 - Stakeholder status: Unclassified; no acceptance inferred.
-- Engineering: DIT Save/Save As implemented; native save-controls regression available.
+- Engineering: Native Debug Save/Save As regression passed; client acceptance remains separate.
 
 ### P013
 
-Assumptions Navigator a tad wider, so “Management Cost Assumptions >” fits on 1 line.
+Assumptions Navigator a tad wider, so “Management Cost Assumptions &gt;” fits on 1 line.
 
 - Source colour: `196B24`.
 - Stakeholder status: Agreed (user-confirmed meaning); errors may remain.
@@ -92,7 +92,7 @@ Assumptions Navigator a tad wider, so “Management Cost Assumptions >” fits o
 
 ### P014
 
-Some “From Yr” is “Year 1” (Voids and Bad Debts tabs) other is “1” (Service and Support Charges tab). <the repeating columinplaceeditors>
+Some “From Yr” is “Year 1” (Voids and Bad Debts tabs) other is “1” (Service and Support Charges tab). &lt;the repeating columinplaceeditors&gt;
 
 - Source colour: `inherited`.
 - Stakeholder status: Unclassified; no acceptance inferred.
@@ -112,7 +112,7 @@ Can pressing “Enter” take to next cell?
 
 - Source colour: `196B24`.
 - Stakeholder status: Agreed (user-confirmed meaning); errors may remain.
-- Engineering: Shared keyboard navigation implemented; native editor regression available.
+- Engineering: Tab/arrows and adjacent-grid navigation tested; this specific Enter-key request remains unverified.
 
 ### P017
 
@@ -174,7 +174,7 @@ Column widths get wider per each input (e.g. Voids tab).
 
 - Source colour: `inherited`.
 - Stakeholder status: Unclassified; no acceptance inferred.
-- Engineering: Not yet independently verified
+- Engineering: Shared post-edit refitting defect repaired and tested on dropdown/numeric grids; confirm this Rent interface with the client.
 
 ## Service Charge Assumptions
 
@@ -236,7 +236,7 @@ Columns get too wide after typing in numbers.
 
 - Source colour: `inherited`.
 - Stakeholder status: Unclassified; no acceptance inferred.
-- Engineering: Not yet independently verified
+- Engineering: Shared post-edit refitting defect repaired and tested on dropdown/numeric grids; confirm this Other Income interface with the client.
 
 ## Management Cost Assumptions
 
@@ -270,7 +270,7 @@ Column widths get wider per each input e.g. Other Costs table.
 
 - Source colour: `inherited`.
 - Stakeholder status: Unclassified; no acceptance inferred.
-- Engineering: Not yet independently verified
+- Engineering: Shared post-edit refitting defect repaired and tested on dropdown/numeric grids; confirm this Management Costs interface with the client.
 
 ### P049
 
@@ -348,7 +348,7 @@ Two headings “Period Completed (to)”, 2nd one should be “Period Units into
 
 - Source colour: `inherited`.
 - Stakeholder status: Unclassified; no acceptance inferred.
-- Engineering: Not yet independently verified
+- Engineering: Reproduced and repaired in XML: management-period caption now matches the master row. Editor/range unchanged.
 
 ### P063
 
@@ -388,7 +388,7 @@ Grant/HFG tab – SHG Profiling and SHG Calculation basis seem to populate each 
 
 - Source colour: `inherited`.
 - Stakeholder status: Unclassified; no acceptance inferred.
-- Engineering: Not yet independently verified
+- Engineering: Reproduced and repaired: distinct master-verified SHG bindings. Actual dropdown edits and independent Undo passed.
 
 ### P068
 
@@ -516,7 +516,7 @@ Column widths of real % increases to be uniform.
 
 ### P087
 
-Real Dvpt R&M Costs tab – inputs aren’t like BP – is this Real Dvpt Service Costs, and it is missing Dvpt R&M?
+Real Dvpt R&amp;M Costs tab – inputs aren’t like BP – is this Real Dvpt Service Costs, and it is missing Dvpt R&amp;M?
 
 - Source colour: `inherited`.
 - Stakeholder status: Unclassified; no acceptance inferred.
@@ -564,7 +564,7 @@ Jumps back to top of sheet a lot when inputting.
 
 - Source colour: `196B24`.
 - Stakeholder status: Agreed (user-confirmed meaning); errors may remain.
-- Engineering: Funding navigation repaired after 2.51; native editor regression available.
+- Engineering: Native Funding refresh, focus, scroll, keyboard and subsequent-edit regression passed; physical client acceptance remains open.
 
 ### P096
 
@@ -612,7 +612,7 @@ First Interest Payment Month – causes issue as this is technically a date, but
 
 - Source colour: `inherited`.
 - Stakeholder status: Unclassified; no acceptance inferred.
-- Engineering: Month-end date editor implemented; native editor regression available.
+- Engineering: Native month-end date/serial, validation, blank, Undo/Redo and grouped-invalid-date regression passed.
 
 ## Variable and Cash Rates:
 
@@ -688,7 +688,7 @@ Management Costs Capitalisation tab – can this be transposed?  And will be “
 
 ### P117
 
-Repairs Maint Costs Capitalisation tab – transposed too?  “Depreciate Capitalised Management Costs?” heading should be “Depreciate Capitalised Repairs & Mainte Costs?”.
+Repairs Maint Costs Capitalisation tab – transposed too?  “Depreciate Capitalised Management Costs?” heading should be “Depreciate Capitalised Repairs &amp; Mainte Costs?”.
 
 - Source colour: `inherited`.
 - Stakeholder status: Unclassified; no acceptance inferred.
@@ -744,7 +744,7 @@ Doesn’t allow decimal places in inputs.
 
 - Source colour: `inherited`.
 - Stakeholder status: Unclassified; no acceptance inferred.
-- Engineering: Not yet independently verified
+- Engineering: Reproduced integer rounding in Rep_OCA_01; changed this monetary field only to decimal type M. Actual editor, Undo/Redo and XLSB save/reopen passed. Workbook display format retained.
 
 ## Journal Assumptions
 
@@ -754,7 +754,7 @@ Doesn’t allow decimal places.
 
 - Source colour: `inherited`.
 - Stakeholder status: Unclassified; no acceptance inferred.
-- Engineering: Not yet independently verified
+- Engineering: Reproduced integer rounding in the Journal Amount field; changed the monetary field to type M, leaving Year integer. Actual editor, Undo/Redo and XLSB save/reopen passed. Workbook display format retained.
 
 ### P131
 
@@ -770,4 +770,4 @@ Scroll within scroll.
 
 - Source colour: `inherited`.
 - Stakeholder status: Unclassified; no acceptance inferred.
-- Engineering: Journal structural rule repaired; private add/delete regression available.
+- Engineering: Private five-row add, both formula mirrors, save/reopen, delete, noncontiguous delete and damaged-name rejection regression passed.

@@ -285,7 +285,7 @@
         "inherited"
       ],
       "stakeholder_status": "Unclassified; no acceptance inferred",
-      "engineering_status": "DIT Save/Save As implemented; native save-controls regression available."
+      "engineering_status": "Native Debug Save/Save As regression passed; client acceptance remains separate."
     },
     {
       "id": "P013",
@@ -367,7 +367,7 @@
         "196B24"
       ],
       "stakeholder_status": "Agreed (user-confirmed meaning); errors may remain",
-      "engineering_status": "Shared keyboard navigation implemented; native editor regression available."
+      "engineering_status": "Tab/arrows and adjacent-grid navigation tested; this specific Enter-key request remains unverified."
     },
     {
       "id": "P017",
@@ -633,7 +633,7 @@
         "inherited"
       ],
       "stakeholder_status": "Unclassified; no acceptance inferred",
-      "engineering_status": "Not yet independently verified"
+      "engineering_status": "Shared post-edit refitting defect repaired and tested on dropdown/numeric grids; confirm this Rent interface with the client."
     },
     {
       "id": "P030",
@@ -925,7 +925,7 @@
         "inherited"
       ],
       "stakeholder_status": "Unclassified; no acceptance inferred",
-      "engineering_status": "Not yet independently verified"
+      "engineering_status": "Shared post-edit refitting defect repaired and tested on dropdown/numeric grids; confirm this Other Income interface with the client."
     },
     {
       "id": "P043",
@@ -1086,7 +1086,7 @@
         "inherited"
       ],
       "stakeholder_status": "Unclassified; no acceptance inferred",
-      "engineering_status": "Not yet independently verified"
+      "engineering_status": "Shared post-edit refitting defect repaired and tested on dropdown/numeric grids; confirm this Management Costs interface with the client."
     },
     {
       "id": "P049",
@@ -1461,7 +1461,7 @@
         "inherited"
       ],
       "stakeholder_status": "Unclassified; no acceptance inferred",
-      "engineering_status": "Not yet independently verified"
+      "engineering_status": "Reproduced and repaired in XML: management-period caption now matches the master row. Editor/range unchanged."
     },
     {
       "id": "P063",
@@ -1556,7 +1556,7 @@
         "inherited"
       ],
       "stakeholder_status": "Unclassified; no acceptance inferred",
-      "engineering_status": "Not yet independently verified"
+      "engineering_status": "Reproduced and repaired: distinct master-verified SHG bindings. Actual dropdown edits and independent Undo passed."
     },
     {
       "id": "P068",
@@ -2197,7 +2197,7 @@
         "196B24"
       ],
       "stakeholder_status": "Agreed (user-confirmed meaning); errors may remain",
-      "engineering_status": "Funding navigation repaired after 2.51; native editor regression available."
+      "engineering_status": "Native Funding refresh, focus, scroll, keyboard and subsequent-edit regression passed; physical client acceptance remains open."
     },
     {
       "id": "P096",
@@ -2321,7 +2321,7 @@
         "inherited"
       ],
       "stakeholder_status": "Unclassified; no acceptance inferred",
-      "engineering_status": "Month-end date editor implemented; native editor regression available."
+      "engineering_status": "Native month-end date/serial, validation, blank, Undo/Redo and grouped-invalid-date regression passed."
     },
     {
       "id": "P102",
@@ -2860,7 +2860,7 @@
         "inherited"
       ],
       "stakeholder_status": "Unclassified; no acceptance inferred",
-      "engineering_status": "Not yet independently verified"
+      "engineering_status": "Reproduced integer rounding in Rep_OCA_01; changed this monetary field only to decimal type M. Actual editor, Undo/Redo and XLSB save/reopen passed. Workbook display format retained."
     },
     {
       "id": "P128",
@@ -2909,7 +2909,7 @@
         "inherited"
       ],
       "stakeholder_status": "Unclassified; no acceptance inferred",
-      "engineering_status": "Not yet independently verified"
+      "engineering_status": "Reproduced integer rounding in the Journal Amount field; changed the monetary field to type M, leaving Year integer. Actual editor, Undo/Redo and XLSB save/reopen passed. Workbook display format retained."
     },
     {
       "id": "P131",
@@ -2967,7 +2967,7 @@
         "inherited"
       ],
       "stakeholder_status": "Unclassified; no acceptance inferred",
-      "engineering_status": "Journal structural rule repaired; private add/delete regression available."
+      "engineering_status": "Private five-row add, both formula mirrors, save/reopen, delete, noncontiguous delete and damaged-name rejection regression passed."
     },
     {
       "id": "P133",

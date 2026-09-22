@@ -2,6 +2,8 @@
 
 This is the current work list, not a claim that every historical audit item is an active defect. Implemented repairs and their engineering checks are checkpointed; client, accountant and interactive Excel/VBA acceptance remain separate.
 
+22 September client-review update: [checkpoint results and review gates](Client_Review_Checkpoints_2026-09-22.md) and [all 90 report issue paragraphs](Client_Report_2026-09-22.md) retain stakeholder colours separately from engineering evidence. The automated ten-Funding-column/recovery/Excel-copy test passes its stated gates, with the documented formula-text normalization caveat. 2.68 adds verified SHG/date-caption, post-edit width and Journal/Other Current Assets decimal-type repairs. This does not close the remaining report, performance or financial-acceptance work.
+
 ## Agreed requirements
 
 - Minimum RAM: **32 GB**.

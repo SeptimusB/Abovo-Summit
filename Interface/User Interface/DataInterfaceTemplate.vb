@@ -11991,16 +11991,9 @@ SectionSelect:
 
             PushDSData(UDSSender.UBSTag.DSIndex, e.RowIndex, ColSent, e.Value)
 
-            If UDSSender.InBandedMode Then
-                UDSSender.ActiveGridBandedView.Columns(ColSent).BestFit()
-                UDSSender.ActiveGridBandedView.Columns(ColSent).Width = UDSSender.ActiveGridBandedView.Columns(ColSent).Width * 1.15
-            ElseIf Not UDSSender.InVertMode Then
-                Try
-                    UDSSender.ActiveGridView.Columns(ColSent).BestFit()
-                    UDSSender.ActiveGridView.Columns(ColSent).Width = UDSSender.ActiveGridView.Columns(ColSent).Width * 1.15
-                Catch
-                End Try
-            End If
+            'An edit changes data, not the user's column layout. Initial build
+            'and explicit font/layout changes already fit the grid. Re-fitting
+            'and adding padding here made columns jump after every entry.
 
             UpdateRules(UDSSender.UBSTag.DSIndex)
         Finally

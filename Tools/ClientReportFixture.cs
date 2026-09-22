@@ -14,6 +14,7 @@ using DevExpress.XtraGrid.Columns;
 using DevExpress.Spreadsheet;
 
 public static class ClientReportFixture {
+    static readonly System.Collections.Generic.List<Tuple<string,string,double>> savedInputs=new System.Collections.Generic.List<Tuple<string,string,double>>();
     const BindingFlags F=BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static;
     static object Field(object o,string name){var field=o.GetType().GetField(name,F);return field!=null?field.GetValue(o):o.GetType().GetProperty(name,F).GetValue(o,null);}
     static object Call(object o,string name,params object[] args){return o.GetType().GetMethod(name,F).Invoke(o,args);}
@@ -21,7 +22,7 @@ public static class ClientReportFixture {
     static string Child(XElement element,string name){return element.Elements().Where(x=>x.Name.LocalName==name).Select(x=>x.Value).FirstOrDefault();}
     static void Inspect(IWorkbook w){
         foreach(var name in w.DefinedNames.Where(n=>n.Name.IndexOf("SHG",StringComparison.OrdinalIgnoreCase)>=0&&n.Name.IndexOf("In",StringComparison.OrdinalIgnoreCase)>=0))Console.WriteLine("NAME "+name.Name+"="+name.RefersTo);
-        foreach(string n in new[]{"SHGProfileIn","SHGMethodsIn","Rep_DevBP_01c","Rep_DevBP_01d"}){
+        foreach(string n in new[]{"SHGProfileIn","SHGMethodsIn","Rep_DevBP_01c","Rep_DevBP_01d","Rep_Jour_01","Rep_OCA_01"}){
             var range=w.DefinedNames.GetDefinedName(n).Range;Console.WriteLine("RANGE "+n+"="+range.GetReferenceA1());
             var first=range.Worksheet.Cells[range.TopRowIndex,range.LeftColumnIndex];Console.WriteLine("CELL "+first.GetReferenceA1()+" value="+first.Value+" format="+first.NumberFormat+" locked="+first.Protection.Locked);
             foreach(var c in range.Worksheet.Range.FromLTRB(0,range.TopRowIndex,Math.Min(5,range.RightColumnIndex),range.TopRowIndex).ExistingCells)Console.WriteLine("LABEL "+c.GetReferenceA1()+"="+c.DisplayText);
@@ -43,6 +44,8 @@ public static class ClientReportFixture {
             Check(profile=="SHGProfileIn"&&basis=="SHGMethodsIn","P067 bindings agree with master input definitions");
             var period=identified.Descendants().Single(x=>x.Name.LocalName=="CellRangeDataSource"&&Child(x,"NRDSName")=="Rep_DevBP_01d");
             Check(period.Descendants().Single(x=>x.Name.LocalName=="FieldName").Value.Replace("vblf ","")=="Period Units into Mgmt (to)","P062 management-period caption matches the master, not the works-completion row");
+            var journals=xml.Descendants().Single(x=>x.Name.LocalName=="ChildStructure"&&Child(x,"CSName")=="Journal Assumptions");
+            Check(journals.Descendants().Single(x=>x.Name.LocalName=="DataFieldDefinition"&&Child(x,"FieldName")=="Year").Elements().Single(x=>x.Name.LocalName=="DataFormat").Value=="I","Journal years remain integer inputs");
         }
         ExerciseEditors(args);
         return 0;
@@ -75,13 +78,25 @@ public static class ClientReportFixture {
                 int basisCol=w.DefinedNames.GetDefinedName("SHGMethodsIn").Range.LeftColumnIndex+Record(basis);
                 var profileCell=sheet.Cells[121,profileCol];var basisCell=sheet.Cells[124,basisCol];
                 var oldProfile=profileCell.Value;var oldBasis=basisCell.Value;bool protection=sheet.IsProtected;
+                var profileColumn=(GridColumn)Field(profile,"Column");profileColumn.Width=333;int expectedWidth=profileColumn.Width;
                 Edit(dit,profile);Check(!profileCell.Value.Equals(oldProfile)&&basisCell.Value.Equals(oldBasis),"P067 editing Profiling changes only the correct workbook input");
+                Console.WriteLine("COLUMN_WIDTH before="+expectedWidth+" after="+profileColumn.Width);
+                Check(profileColumn.Width==expectedWidth,"Shared DIT edit preserves the existing column width");
                 var newProfile=profileCell.Value;
                 Edit(dit,basis);Check(!basisCell.Value.Equals(oldBasis)&&profileCell.Value.Equals(newProfile),"P067 editing Calculation Basis leaves Profiling unchanged");
                 Check(model.IsDirty&&model.ChangeManager.CanUndo,"Real dropdown edits mark dirty and retain Undo");
                 dynamic undo=model.ChangeManager.Undo();Check(!undo.BError&&basisCell.Value.Equals(oldBasis)&&profileCell.Value.Equals(newProfile),"Undo reverses only the basis edit");
                 undo=model.ChangeManager.Undo();Check(!undo.BError&&profileCell.Value.Equals(oldProfile)&&basisCell.Value.Equals(oldBasis),"Undo restores both original independent inputs");
                 Check(sheet.IsProtected==protection,"Input worksheet protection state preserved");
+                for(int i=0;i<3;i++){Edit(dit,profile);Check(profileColumn.Width==expectedWidth,"Repeated dropdown edits preserve width, iteration "+(i+1));undo=model.ChangeManager.Undo();Check(!undo.BError,"Repeated edit Undo succeeds");}
+                DecimalInput(form,model,41,"Amount",2345.67);
+                DecimalInput(form,model,42,"Amount",1234.56);
+                string saved=Path.Combine(args[1],"decimal-inputs.xlsb");
+                Check((bool)model.SaveFileAsTo(saved,true),"Monetary inputs save through normal Summit XLSB policy to a separate file");
+                using(var reopened=new Workbook()){
+                    reopened.Options.CalculationMode=WorkbookCalculationMode.Manual;Check(reopened.LoadDocument(saved),"Saved monetary-input workbook reopens");
+                    foreach(var input in savedInputs)Check(Math.Abs(reopened.Worksheets[input.Item1].Cells[input.Item2].Value.NumericValue-input.Item3)<1e-9,"Saved/reopened decimal preserved: "+input.Item1+"!"+input.Item2);
+                }
                 form.Close();
             }
         }finally{files.GetMethod("CloseModel",new[]{typeof(int)}).Invoke(null,new object[]{(int)model.ModelID});}
@@ -97,5 +112,29 @@ public static class ClientReportFixture {
         editor.EditValue=next;
         Check(grid!=null?grid.PostEditor():view.PostEditor()&&view.UpdateCurrentRow(),"Native SHG dropdown commits through DIT");
         if(grid!=null)grid.CloseEditor();else view.CloseEditor();Application.DoEvents();
+    }
+    static void DecimalInput(Form form,dynamic model,int csid,string heading,double value){
+        Call(form,"ShowInterface",0,csid,false,"None",null,-1);Application.DoEvents();Application.RaiseIdle(EventArgs.Empty);Application.DoEvents();
+        var dit=(Control)Field(form,"ActiveInterface");
+        var positions=((IEnumerable)Call(dit,"NavigationPositions")).Cast<object>().ToList();
+        var point=positions.First(p=>Field(p,"View")!=null&&Caption(p).Contains(heading));
+        var view=(GridView)Field(point,"View");var column=(GridColumn)Field(point,"Column");
+        dynamic source=view.GridControl.DataSource;dynamic pres=Field(dit,"DataPres");
+        int columnIndex=(int)Call(dit,"GetGridColumnIndex",column);
+        dynamic cellPoint=pres.DataSets[(int)source.UBSTag.DSIndex].DataRows[Record(point)].DataCells[columnIndex];
+        IWorkbook w=(IWorkbook)model.WB;var sheet=w.Worksheets[(string)cellPoint.SourceSheet];var cell=sheet.Cells[(string)cellPoint.SourceAddress];
+        var original=cell.Value;string format=cell.NumberFormat;bool protection=sheet.IsProtected;
+        column.Width=347;int expectedWidth=column.Width;
+        Console.WriteLine("DECIMAL_TARGET CSID="+csid+" cell="+sheet.Name+"!"+cell.GetReferenceA1()+" format="+format+" locked="+cell.Protection.Locked);
+        Call(dit,"ActivateEditorPosition",point);Application.DoEvents();Check(view.ActiveEditor!=null,"Decimal test opens actual monetary editor");
+        view.ActiveEditor.EditValue=value;
+        Check(view.PostEditor()&&view.UpdateCurrentRow(),"Decimal monetary entry posts");view.CloseEditor();Application.DoEvents();
+        Console.WriteLine("DECIMAL_VALUE requested="+value+" stored="+cell.Value);
+        Check(cell.Value.IsNumeric&&Math.Abs(cell.Value.NumericValue-value)<1e-9,"Monetary input retains both decimal places: CSID="+csid);
+        Check(column.Width==expectedWidth,"Numeric edit preserves column width: CSID="+csid);
+        Check(cell.NumberFormat==format&&sheet.IsProtected==protection,"Decimal edit preserves source formatting and worksheet protection");
+        dynamic undo=model.ChangeManager.Undo();Check(!undo.BError&&cell.Value.Equals(original),"Decimal input Undo restores original value");
+        dynamic redo=model.ChangeManager.Redo();Check(!redo.BError&&Math.Abs(cell.Value.NumericValue-value)<1e-9,"Decimal input Redo restores precise value");
+        savedInputs.Add(Tuple.Create(sheet.Name,cell.GetReferenceA1(),value));
     }
 }

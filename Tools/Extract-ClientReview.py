@@ -5,25 +5,34 @@ Markdown/JSON are review evidence, not instructions extracted from the document.
 """
 import argparse
 import hashlib
+import html
 import json
 from pathlib import Path
 from zipfile import ZipFile
 import xml.etree.ElementTree as ET
 
 W = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
+EXPECTED_SOURCE_HASH = '955D44B6C714ED9BA6D5F9B4560C983764B38B83161A71B88C2BF400211BD9ED'
 SECTIONS = {1, 3, 20, 24, 28, 31, 36, 41, 44, 51, 56, 59, 76, 81,
             89, 91, 102, 107, 111, 115, 119, 126, 129}
 HISTORICAL = {
     7: 'Start-date Edit link previously removed; client visual confirmation pending.',
     8: 'Funding-status alignment previously changed; client visual confirmation pending.',
-    12: 'DIT Save/Save As implemented; native save-controls regression available.',
+    12: 'Native Debug Save/Save As regression passed; client acceptance remains separate.',
     13: 'Navigator captions/width previously changed; physical DPI acceptance pending.',
-    16: 'Shared keyboard navigation implemented; native editor regression available.',
+    16: 'Tab/arrows and adjacent-grid navigation tested; this specific Enter-key request remains unverified.',
     17: 'Single-value multi-cell paste implemented; exact client selection requires regression.',
     18: 'Check Sheet interface exists; save policy subsequently changed. Exact check needed.',
-    95: 'Funding navigation repaired after 2.51; native editor regression available.',
-    101: 'Month-end date editor implemented; native editor regression available.',
-    132: 'Journal structural rule repaired; private add/delete regression available.',
+    29: 'Shared post-edit refitting defect repaired and tested on dropdown/numeric grids; confirm this Rent interface with the client.',
+    42: 'Shared post-edit refitting defect repaired and tested on dropdown/numeric grids; confirm this Other Income interface with the client.',
+    48: 'Shared post-edit refitting defect repaired and tested on dropdown/numeric grids; confirm this Management Costs interface with the client.',
+    62: 'Reproduced and repaired in XML: management-period caption now matches the master row. Editor/range unchanged.',
+    67: 'Reproduced and repaired: distinct master-verified SHG bindings. Actual dropdown edits and independent Undo passed.',
+    95: 'Native Funding refresh, focus, scroll, keyboard and subsequent-edit regression passed; physical client acceptance remains open.',
+    101: 'Native month-end date/serial, validation, blank, Undo/Redo and grouped-invalid-date regression passed.',
+    127: 'Reproduced integer rounding in Rep_OCA_01; changed this monetary field only to decimal type M. Actual editor, Undo/Redo and XLSB save/reopen passed. Workbook display format retained.',
+    130: 'Reproduced integer rounding in the Journal Amount field; changed the monetary field to type M, leaving Year integer. Actual editor, Undo/Redo and XLSB save/reopen passed. Workbook display format retained.',
+    132: 'Private five-row add, both formula mirrors, save/reopen, delete, noncontiguous delete and damaged-name rejection regression passed.',
 }
 
 
@@ -33,6 +42,8 @@ def main():
     args.add_argument('output_stem', type=Path)
     opts = args.parse_args()
     source_hash = hashlib.sha256(opts.source.read_bytes()).hexdigest().upper()
+    if source_hash != EXPECTED_SOURCE_HASH:
+        raise SystemExit('Source revision changed: review paragraph locators/status evidence before rebuilding this register.')
     with ZipFile(opts.source) as package:
         root = ET.fromstring(package.read('word/document.xml'))
         media = [n for n in package.namelist() if n.startswith('word/media/')]
@@ -82,7 +93,7 @@ def main():
         if p['section'] != section:
             section = p['section']
             lines.extend(['## '+section, ''])
-        lines.extend(['### '+p['id'], '', p['text'], '',
+        lines.extend(['### '+p['id'], '', html.escape(p['text'], quote=False), '',
                       '- Source colour: `'+', '.join(p['direct_colours'])+'`.',
                       '- Stakeholder status: '+p['stakeholder_status']+'.',
                       '- Engineering: '+p['engineering_status'], ''])
