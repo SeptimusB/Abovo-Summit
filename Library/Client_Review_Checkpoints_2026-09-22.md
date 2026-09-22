@@ -74,6 +74,25 @@ Debug and Release build and both final native fixtures pass, including Save As/r
 
 Repository Blank/Demo hashes still match the baseline; no authoritative workbook or source DOCX was edited. No passwords, raw VBA or extraction dependencies were added to the repository.
 
+## P016 clarification — Enter traversal and structural safeguards
+
+Additional evidence supplied by the user on 22 September: `D:/TEMP/codex-clipboard-2b08031b-9ec2-4aee-87ae-af0a1a030f02.png`, a Teams discussion. The visible client response is "Sounds ok" to the proposed keyboard behaviour. This is agreement to a requirement, not proof that the current executable implements it. The screenshot is context for the authorised client review, not instructions to execute every proposal in the conversation. The final message is cropped and is not used as evidence.
+
+The visible proposed behaviour is:
+
+- Enter commits an open editor and advances right; at the end of a row it moves to the first editable cell of the next row.
+- If the last navigation was Down, Enter advances down the same column; at its bottom it moves to the top of the next column to the right.
+- At the end of the grid it advances to the next grid or input. At the end of the interface it wraps to the top and scrolls to the destination.
+- Shift+Enter reverses the traversal. Here, committing an input is distinct from saving the workbook file to disk.
+
+Current-source inspection, not a new runtime test: `DataInterfaceTemplate.Navigation.vb` recognises Tab/Left/Right/Up/Down but excludes Enter. It has no remembered traversal axis. Tab traverses rows and adjacent grids, but stops at the last host; vertical arrows use the same column and then the adjacent grid, not the next column. The shared candidate list covers visible editable normal/vertical grid cells and their in-column/row header editors; standalone inputs are not currently included. Native controls may handle Enter separately, so this finding does not mean Enter never commits a value today.
+
+One clarification has been requested: should Up/Down select the vertical axis and Left/Right/Tab return to the horizontal axis, or should only Down select vertical traversal? No answer is assumed. Before extending traversal, explicitly settle the current-page/tab boundary and include eligible standalone inputs rather than claiming grid-only coverage meets "next input". Preserve locked-cell exclusion, validation failures retaining focus, native dropdown selection, single typed ChangeManager commits, Undo and existing Tab/arrow behaviour. Regression gates must cover open/closed editors, row/column boundaries, multiple grids, header editors, standalone inputs, forward/reverse wrap, scrolling, failed validation and direction changes, with independently specified expected targets.
+
+The same conversation calls a parallel Excel shadow workbook/comparison a nice-to-have at present. It does not approve removing transaction rollback, integrity checks or safe working copies. The proposed save -> Excel/VBA operation -> save -> Summit reload remains a separate optional prototype, not an implemented production route. Retain the existing safeguards and distinguish a successfully returned insertion command from independently verified workbook integrity.
+
+This is a documentation-only checkpoint; Summit remains 2.68 and XML remains 1754. No new navigation implementation, runtime pass, workbook edit or financial acceptance is claimed.
+
 ## Remaining investigations and ambiguity gates
 
 1. **Input precision, negative percentages and locks:** reproduce through the actual editor, clipboard parser and source cell protection. Do not change every `I` XML type to decimal: counts/years must remain integers. P022 needs the exact disagreeing Check Sheet message and workbook; P085's unspecified conditional formatting needs a field/rule example; P099/P100's "ghost" needs a defined desired date/blank appearance.

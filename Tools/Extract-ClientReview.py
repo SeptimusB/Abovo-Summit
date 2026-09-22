@@ -20,7 +20,7 @@ HISTORICAL = {
     8: 'Funding-status alignment previously changed; client visual confirmation pending.',
     12: 'Native Debug Save/Save As regression passed; client acceptance remains separate.',
     13: 'Navigator captions/width previously changed; physical DPI acceptance pending.',
-    16: 'Tab/arrows and adjacent-grid navigation tested; this specific Enter-key request remains unverified.',
+    16: '22 September Teams clarification records client agreement to Enter/Shift+Enter traversal. Shared DIT navigation currently excludes Enter, has no remembered direction or whole-interface wrap; implementation and acceptance remain outstanding. See checkpoint record for the contract and open direction question.',
     17: 'Single-value multi-cell paste implemented; exact client selection requires regression.',
     18: 'Check Sheet interface exists; save policy subsequently changed. Exact check needed.',
     29: 'Shared post-edit refitting defect repaired and tested on dropdown/numeric grids; confirm this Rent interface with the client.',

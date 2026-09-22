@@ -112,7 +112,7 @@ Can pressing “Enter” take to next cell?
 
 - Source colour: `196B24`.
 - Stakeholder status: Agreed (user-confirmed meaning); errors may remain.
-- Engineering: Tab/arrows and adjacent-grid navigation tested; this specific Enter-key request remains unverified.
+- Engineering: 22 September Teams clarification records client agreement to Enter/Shift+Enter traversal. Shared DIT navigation currently excludes Enter, has no remembered direction or whole-interface wrap; implementation and acceptance remain outstanding. See checkpoint record for the contract and open direction question.
 
 ### P017
 
