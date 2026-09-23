@@ -24,6 +24,7 @@ Public Class FileInstanceInterface
     Private FFRInit As Boolean
     Private MyChildInterfaces() As GroupInterfaceTemplate
     Private SaveButtonBinding As ModelSaveButtonBinding
+    Private CheckSheetModel As FileManager.ExcelModel
     Public Property BPModelInstance As Integer
 
         Get
@@ -60,9 +61,27 @@ Public Class FileInstanceInterface
         ConfigureModelActions()
         SaveButtonBinding = New ModelSaveButtonBinding(Me, ExcelModels(BPModelID), WindowsUIButtonPanelSaveClose)
         WebBrowserBPInfo.Tag = PresentationLayout.BrowserOwnsScale
+        CheckSheetModel = ExcelModels(BPModelID)
+        AddHandler CheckSheetModel.CheckSheetStatusChanged, AddressOf CheckSheetStatusChanged
         SetScale()
         LayoutFileActionControls()
 
+    End Sub
+
+    Private Sub CheckSheetStatusChanged(sender As Object, e As EventArgs)
+        If Not IsDisposed AndAlso Not Disposing Then PopulateFileInfo()
+    End Sub
+
+    Private Sub ReleaseCheckSheetBinding(sender As Object, e As EventArgs) Handles Me.Disposed
+        If CheckSheetModel IsNot Nothing Then RemoveHandler CheckSheetModel.CheckSheetStatusChanged, AddressOf CheckSheetStatusChanged
+        CheckSheetModel = Nothing
+    End Sub
+
+    Private Sub FileInfoNavigating(sender As Object, e As WebBrowserNavigatingEventArgs) Handles WebBrowserBPInfo.Navigating
+        If e.Url IsNot Nothing AndAlso e.Url.Scheme.Equals("summit-checksheet", StringComparison.OrdinalIgnoreCase) Then
+            e.Cancel = True
+            RecoveryBackupManager.OpenCheckSheet(CheckSheetModel)
+        End If
     End Sub
 
     Private Sub FileInstanceInterface_Resize(sender As Object, e As EventArgs) Handles MyBase.Resize
@@ -325,7 +344,7 @@ Public Class FileInstanceInterface
             InfoOpenedAt.ToString("dd/MM/yyyy HH:mm:ss"), model.FileInfo.CreationTime.ToString("dd/MM/yyyy HH:mm:ss"),
             If(model.PreviousFileAccessTime = DateTime.MinValue, "Not recorded", model.PreviousFileAccessTime.ToString("dd/MM/yyyy HH:mm:ss")),
             (model.FileInfo.Length / 1000000.0R).ToString("0.##") & " MB", detailFontPoints, prominentFontPoints,
-            model.DeferredSaveResultsPending, model.RecoverySourcePath)
+            model.DeferredSaveResultsPending, model.RecoverySourcePath, model.CheckSheetWarningActive, model.CheckSheetWarningNeedsRecheck)
         LayoutFileActionControls()
 
     End Sub
@@ -333,7 +352,9 @@ Public Class FileInstanceInterface
                                                path As String, opened As String, created As String,
                                                previous As String, size As String, bodyPoints As Single,
                                                titlePoints As Single, Optional resultsPending As Boolean = False,
-                                               Optional recoverySource As String = Nothing) As String
+                                               Optional recoverySource As String = Nothing,
+                                               Optional checkSheetWarning As Boolean = False,
+                                               Optional checkSheetRecheck As Boolean = False) As String
         'IE-compatible layout: no dependency on WebView2, flex/grid or script.
         Dim html As New StringBuilder("<!DOCTYPE html><html><head><meta http-equiv='X-UA-Compatible' content='IE=edge'><style>")
         html.Append("body{margin:0;padding:12px;font-family:'Segoe UI',Arial,sans-serif;color:#243746;background:white;font-size:")
@@ -344,7 +365,10 @@ Public Class FileInstanceInterface
         html.Append("pt}.key{display:inline-block;vertical-align:top;margin:0 32px 16px 0}.label{color:#617280;font-size:90%;font-weight:400}")
         html.Append(".value{margin-top:3px}table{width:100%;border-collapse:collapse;table-layout:fixed}td{padding:9px 0;border-top:1px solid #edf1f4;vertical-align:top;word-wrap:break-word}td.label{width:32%;padding-right:12px}")
         html.Append("</style></head><body><div class='card'><div class='type'>").Append(WebUtility.HtmlEncode(modelType))
-        html.Append("</div><h1>").Append(WebUtility.HtmlEncode(company)).Append("</h1>")
+        html.Append("</div><h1>")
+        If checkSheetWarning Then html.Append("<a href='summit-checksheet://open' style='color:#b22222' title='Review the Check Sheet; run integrity check in Options'>").
+            Append(If(checkSheetRecheck, "(Check sheet: recheck required)", "(Check sheet)")).Append("</a> ")
+        html.Append(WebUtility.HtmlEncode(company)).Append("</h1>")
         For Each pair In {New String() {"Plan start", startDate}, New String() {"File size", size}}
             html.Append("<div class='key'><div class='label'>").Append(pair(0)).Append("</div><div class='value'>")
             html.Append(WebUtility.HtmlEncode(pair(1))).Append("</div></div>")

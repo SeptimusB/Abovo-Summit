@@ -4,9 +4,17 @@ Audit date: 24 August 2026
 
 ## Standing review requirement
 
+23 September follow-up: test 2.72 adds override-aware Check Sheet validation, a persisted recovery hold with an explicit user opt-in to continue, non-modal linked warnings and staged Run now. See `Check_Sheet_Recovery_Policy_2026-09-23.md`. A CELL wrapper was rejected after failing XLSB/Excel export; no Summit menu repair is included. The user confirms that Summit does not use that Excel menu sheet. Subsequently, the user explicitly authorised replacing the repository Blank with an exact copy of the Sandbox New Blank containing the prior VBA menu calculation fix. See `BP_v26_0001_Master_Acceptance.md` for the current hash. Demo and source files are unchanged; the audit below remains historical evidence.
+
 Review this document and `Contract_XLSB_Audit_Evidence_2026-08-24.json` before any workbook, calculation engine, Transactional DB, custom-function, structural range, or validation change.
 
+23 September, test 2.73: a real-timer regression reproduced the saved Check Sheet warning remaining after successful calculation because its validation was deferred by input. The brief Check Sheet validation now completes in the calculation unit, and explicit Run now starts its first safe unit without an idle delay. Longer checks and all workbook-operation gates retain their protections. No workbook or user hold settings are edited by this repair; see the policy document's follow-up section.
+
 ## Authority and method
+
+23 September, test 2.75: live 2.74 exports show both manual requests (02:28 and 02:38) targeted New Blank rather than AGL. Options now takes its target from the DIT or selected main-screen model tab, requires a choice for ambiguous multi-file context, and displays the full target path. Ordinary unsaved changes are not a clearance gate. Client acceptance of this corrected handoff is pending; see the policy document. No workbook calculation/financial semantics changed.
+
+23 September, test 2.74: the user's repeated warning failure is still not reproduced in a two-model, real-timer Options test including both File Instance cards and the group/sidebar. Do not treat that report as resolved. Added explicit selected-plan/check-stage diagnostics and authoritative message exports. Check Sheet columns now use a compact native auto-width layout; Display reset is inside its tab and preview content cannot collapse. No workbook files or actual user pause settings were changed. See the policy document for test evidence and the remaining acceptance boundary.
 
 - Authoritative master: `Z:\Sandbox\TestFileClean.xlsb`
 - Repository copy: `Library/TestFileClean.xlsb`
@@ -35,6 +43,10 @@ The priority is correctness across Excel/VBA and Summit rather than wholesale fo
 ## Findings
 
 ### F1 - High: Summit PMCOST metadata does not match the eight-position compatibility signature
+
+22 September 2026 follow-up: test release 2.70 corrects the required eight-position metadata and VBA-style PMCost name. Debug/Release native regression tests and a read-only recovered-XLSM rebuild pass; Excel/VBA financial parity remains a separate acceptance gate. See [PMCost repair and profiling evidence](PMCost_Repair_and_Profile_2026-09-22.md). The original audit evidence below is retained.
+
+22 September 2026 second follow-up: 2.71 promotes direct DevExpress approximate MATCH in PMCost and RespCost, returning worksheet errors for invalid lookups instead of range-index exceptions. Paired legacy/production tests retain identical full-workbook formula/value digests on the AGL evidence. Recovery scheduling now uses committed-user revisions, independent of calculation/background changes; see [recovery policy and tests](Recovery_User_Changes_2026-09-22.md). Malformed-input VBA suppression is not claimed equivalent.
 
 Evidence: The workbook has 380 PMCOST calls and passes eight compatibility arguments, but FinalYear is deliberately unused, so seven inputs affect the result. clsPMCost.vb lines 20-27 advertises five value parameters plus two references (seven positions), while lines 85-92 accepts parameters 0 through 7 (eight positions).
 

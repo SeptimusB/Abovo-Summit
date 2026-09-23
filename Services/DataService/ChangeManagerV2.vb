@@ -241,7 +241,7 @@ Namespace Abovo
                 entry.GroupID = group.GroupID
                 group.Entries.Add(entry)
             Next
-            FileManager.ExcelModels(ModelID).IsDirty = True
+            FileManager.ExcelModels(ModelID).MarkUserChange()
             CommitNewGroup(group)
             For Each entry As ChangeHistoryEntryV2 In group.Entries
                 Try
@@ -318,7 +318,7 @@ Namespace Abovo
                 group.Entries.Add(entry)
                 MasterChangeLog.AddChangeLogEvent(ToLogEvent(entry, 1, "Apply"))
                 If automaticGroup Then CommitNewGroup(group)
-                FileManager.ExcelModels(ModelID).IsDirty = True
+                FileManager.ExcelModels(ModelID).MarkUserChange()
                 result.BSuccess = True
                 result.StrResponseMessage = "Change applied."
                 If automaticGroup Then RaiseHistoryChanged(False, {targetCell.Worksheet.Name})
@@ -495,7 +495,7 @@ Namespace Abovo
             For Each entry As ChangeHistoryEntryV2 In ordered
                 MasterChangeLog.AddChangeLogEvent(ToLogEvent(entry, If(redo, 5, 4), If(redo, "Redo", "Undo")))
             Next
-            FileManager.ExcelModels(ModelID).IsDirty = True
+            FileManager.ExcelModels(ModelID).MarkUserChange()
             result.BSuccess = True
             result.StrResponseMessage = If(redo, "Change redone.", "Change undone.")
             RaiseHistoryChanged(True, group.Entries.Select(Function(item) item.WorksheetName))

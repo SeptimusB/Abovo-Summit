@@ -8007,7 +8007,7 @@ SectionSelect:
 
             Case "Options"
 
-                Abovo.PresentationScaleManager.ShowOptions(Me)
+                Abovo.PresentationScaleManager.ShowOptions(Me, ModelID)
 
 
         End Select

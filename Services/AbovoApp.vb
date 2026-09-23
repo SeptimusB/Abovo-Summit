@@ -16,7 +16,7 @@ Namespace Abovo
         Public Shared WorkMode As String = "INTERFACE"
         Public Shared ReadOnly Property IsDev As Boolean = True
         Public Shared ReadOnly Property MaxGridHeight As Integer = CInt(Screen.PrimaryScreen.Bounds.Height * 0.7)
-        Public Shared ReadOnly Property DecVersionNumber As Decimal = 2.69D
+        Public Shared ReadOnly Property DecVersionNumber As Decimal = 2.79D
         Public Shared ReadOnly Property AppTitle As String = "abovo summit"
         Public Shared Property DefaultLrgFontSize As Integer = 12
         Public Shared Property DefaultMediumFontSize As Integer = 10
@@ -79,9 +79,9 @@ Namespace Abovo
             MasterChangeLog.Initialise()
             MasterChangeLog.AddChangeLogEvent(New ChangeLogEvent With {
                 .ModelID = -1,
-                .Description = "Abovo Summit opened",
+                .Description = "Abovo Summit opened — version " & DecVersionNumber.ToString("0.00") & " (" & If(Environment.Is64BitProcess, "64-bit", "32-bit") & ")",
                 .WSName = "System Message",
-                .CellAddress = "",
+                .CellAddress = Application.ExecutablePath,
                 .OriginalValue = "",
                 .ChangedValue = "",
                 .TimeStamp = Now(),

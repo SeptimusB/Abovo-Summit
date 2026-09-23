@@ -1580,7 +1580,10 @@ Namespace Abovo
 
                 End If
 
-                If MutationStarted Then ExcelModels(ModelID).IsDirty = True
+                If MutationStarted Then
+                    ExcelModels(ModelID).IsDirty = True
+                    If Not Result.BError Then ExcelModels(ModelID).MarkUserChange()
+                End If
                 System.Diagnostics.Trace.WriteLine(
                     "[Population Benchmark] Structure insert: model=" & ModelID.ToString() &
                     ", rule=" & Rule.RuleID &
@@ -1865,7 +1868,10 @@ Namespace Abovo
 
             End If
 
-            If MutationStarted Then ExcelModels(ModelID).IsDirty = True
+            If MutationStarted Then
+                ExcelModels(ModelID).IsDirty = True
+                If Not Result.BError Then ExcelModels(ModelID).MarkUserChange()
+            End If
             Return Result
 
         End Function

@@ -1362,7 +1362,7 @@ Public Class StressTest
                 ActiveWorkbook.DefinedNames.GetDefinedName("Mode").RefersTo = """Stress Test"""
                 ModeCell(0, 0).Value = "Y"
                 StressTestModeAdjustments()
-                ExcelModels(ModelID).IsDirty = True
+                ExcelModels(ModelID).MarkUserChange()
 
             End If
 
@@ -1381,7 +1381,7 @@ Public Class StressTest
 
                 ModeCell(0, 0).Value = "N"
                 DeStressAdjustments()
-                ExcelModels(ModelID).IsDirty = True
+                ExcelModels(ModelID).MarkUserChange()
 
             End If
 
@@ -1482,7 +1482,7 @@ Public Class StressTest
                 BottomRow(0, 0).Value = CellValue.FromObject(CaptureName)
             End If
 
-            ExcelModels(ModelID).IsDirty = True
+            ExcelModels(ModelID).MarkUserChange()
             CalculateStressWorkbook()
         Finally
             If WasProtected Then ProtectWS(ModelID, SensitivitySheet.Name)
@@ -2519,7 +2519,7 @@ Public Class StressTest
                     DataRows.BottomRowIndex)
 
             CaptureArea.ClearContents()
-            ExcelModels(ModelID).IsDirty = True
+            ExcelModels(ModelID).MarkUserChange()
             CalculateStressWorkbook()
             RenderStressHeaderHTMLData()
         Finally
@@ -2906,7 +2906,7 @@ Public Class StressTest
                     Convert.ToInt32(NativeSensitivityView.GetRowCellValue(RowHandle, "SourceRow"))
                 SensitivitySheet.Range.FromLTRB(0, SourceRow, 60, SourceRow).ClearContents()
             Next
-            ExcelModels(ModelID).IsDirty = True
+            ExcelModels(ModelID).MarkUserChange()
             CalculateStressWorkbook()
             RefreshNativeSensitivityList()
         Finally
@@ -4730,7 +4730,7 @@ Public Class StressTest
                 ActiveWorkbook.DefinedNames.GetDefinedName(
                     "AssumptionsA" & TargetIndex.ToString()).Range)
 
-            ExcelModels(ModelID).IsDirty = True
+            ExcelModels(ModelID).MarkUserChange()
             CalculateStressWorkbook(True)
 
             LoadingNativeViews = True
@@ -5174,7 +5174,7 @@ Public Class StressTest
             ActiveWorkbook.DefinedNames.GetDefinedName(
                 "S" & ScenarioIndex.ToString() & "Data").Range.ClearContents()
         End If
-        ExcelModels(ModelID).IsDirty = True
+        ExcelModels(ModelID).MarkUserChange()
         CalculateStressWorkbook()
         RefreshNativePlanner()
 
@@ -5489,6 +5489,7 @@ Public Class StressTest
             End Try
         End Try
 
+        If GenerationSucceeded Then ExcelModels(ModelID).MarkUserChange()
         If GenerationSucceeded AndAlso Activity Is Nothing Then
             Activity = New FormSplashScreen(
                 Me, "Generating dashboard", "Refreshing dashboard views...")

@@ -16,6 +16,8 @@ public static class IdleIntegrityFixture {
     static Type scheduler,files;
     static DateTime now;
     static string output;
+    static Timer warningCloser;
+    static int warningCount;
     static object Call(object target,string name,params object[] args) {
         return (target as Type??target.GetType()).GetMethods(F).Single(m=>m.Name==name&&m.IsStatic==(target is Type)&&m.GetParameters().Length==args.Length).Invoke(target is Type?null:target,args);
     }
@@ -72,9 +74,16 @@ public static class IdleIntegrityFixture {
             Call(app.GetType("Abovo.RecoveryBackupManager"),"Configure",false,10,false);
             // Prevent real timers from interfering with the deterministic injected clock.
             ((Timer)scheduler.GetField("Clock",F).GetValue(null)).Stop();
+            warningCloser=new Timer{Interval=50};
+            warningCloser.Tick+=(sender,e)=>{
+                foreach(Form form in Application.OpenForms.Cast<Form>().ToArray())
+                    if(form.Text=="Recovery autosaves paused"){warningCount++;form.DialogResult=DialogResult.No;form.Close();}
+            };
+            warningCloser.Start(); // Only acknowledge this fixture's own warning.
             if(args.Length>2)Real(args[2]);else Synthetic();
             return 0;
         } catch(Exception ex) {Console.Error.WriteLine(ex);return 1;}
+        finally{if(warningCloser!=null)warningCloser.Dispose();}
     }
     static void Synthetic() {
         var type=app.GetType("Abovo.FileManager+ExcelModel");var ctor=type.GetConstructors().Single();
@@ -117,15 +126,19 @@ public static class IdleIntegrityFixture {
             model.RecoverySaveAsRequired=true;Check(!Step(121),"Recovery-required model is not automatically checked");model.RecoverySaveAsRequired=false;
             Check(Step(121),"Due idle calculation runs as one unit");
             Check(!(bool)model.ResultsPending&&w.Options.CalculationMode==mode&&w.Options.CalculationEngineType==engine,"Atomic calculation finishes and restores state");
-            object pass=Field(State((object)model),"Work");Check(Field(pass,"Stage").ToString()=="CheckSheet","Calculation plus required UI refresh finishes before a later inspection stage");
+            object pass=Field(State((object)model),"Work");Check(Field(pass,"Stage").ToString()=="Names"&&(bool)Prop(model,"RecoveryAutosaveSuspended"),"Calculation, refresh and Check Sheet failure recording finish together before yielding");
             Check(!Step(0)&&Object.ReferenceEquals(pass,Field(State((object)model),"Work")),"Input after calculation pauses next task and retains safe progress");
             Check(!Step(119),"Resume still requires another two idle minutes");
+            DrainNotices();
+            Check(Step(121)&&(bool)Prop(model,"RecoveryAutosaveSuspended"),"Remaining stages resume without losing the already recorded Check Sheet hold");
+            Check(warningCount==0&&(bool)Prop(model,"CheckSheetWarningActive")&&Field(State((object)model),"LastReport")==null,"Non-modal warning state appears before final report; no popup");
             string report=Finish((object)model);
             Check(report.Contains("Check Sheet: row 1")&&report.Contains("BrokenTest")&&!report.Contains("Broken name: LiteralTest"),"Check Sheet and broken names reported without mistaking string literals");
             Check(report.Contains("Inputs!C1")&&report.Contains("Inputs!E1")&&!report.Contains("Inputs!D1"),"Only explicit NA() sentinel excluded; other N/A and division errors reported");
-            Check(report.Contains("TransCopy_IR_Journals_01")&&report.Contains("XLSB compatibility: Inputs!F1"),"Mirror mismatch and export hazard reported without repair");
+            Check(report.Contains("TransCopy_IR_Journals_01")&&report.Contains("Save compatibility notice: Inputs!F1")&&report.Contains("1 supported save-normalization notices"),"Mirror mismatch stays actionable; verified save normalization is a separate notice");
             Check(Digest(w)==before&&!(bool)model.IsDirty&&w.History.Count==history,"Formula/name/input/protection/dirty/history state unchanged by checks");
             Check((bool)model.CloseValidationRequired,"Known Check Sheet failure remains visible to existing close validation");
+            Check((bool)Prop(model,"RecoveryAutosaveSuspended")&&warningCount==0,"Completing the report retains pause without a popup");
             DrainNotices();Due((object)model);Check(Step(121),"Unchanged workbook can be inspected at next interval");
             Check(!(bool)Field(Field(State((object)model),"Work"),"Calculated"),"Unchanged results do not trigger repeated full calculation");
             pass=Field(State((object)model),"Work");model.IsDirty=true;Check(Step(121),"Changed revision starts a fresh pass");
@@ -134,6 +147,15 @@ public static class IdleIntegrityFixture {
             model.RequireFullRebuild();bool failed=false;
             try{Call((object)model,"CalculateForIdleIntegrity",new Action<string>(x=>{throw new InvalidOperationException("Injected calculation-stage failure");}));}catch(TargetInvocationException){failed=true;}
             Check(failed&&model.NeedsFullRebuild&&w.Options.CalculationMode==mode&&w.Options.CalculationEngineType==engine,"Failed calculation leaves results pending and restores calculation settings");
+            checks.Cells["E1"].Value="OK";model.RequireFullRebuild();
+            DrainNotices();Call(scheduler,"RequestNow",(object)model);now=DateTime.UtcNow;
+            uint stamp=(uint)Call(app.GetType("Abovo.IntegrityInputClock"),"InputStamp");State((object)model).GetType().GetField("RequestedInputStamp",F).SetValue(State((object)model),(uint?)(stamp^1u));
+            files.GetField("InternalBIsSaving",F).SetValue(null,true);try{Check(!Step(0)&&(bool)Field(State((object)model),"ManualStartPending"),"Explicit first-unit intent survives a save gate without bypassing it");}finally{files.GetField("InternalBIsSaving",F).SetValue(null,false);}
+            Check(Step(0),"Explicit Run now starts despite input since the click, with schedules disabled");
+            Check(!(bool)Prop(model,"CheckSheetWarningActive")&&!(bool)Prop(model,"RecoveryAutosaveSuspended")&&Field(Field(State((object)model),"Work"),"Stage").ToString()=="Names","Fresh passing Check Sheet clears remembered warning in the calculation unit, before any second scheduler tick");
+            stamp=(uint)Call(app.GetType("Abovo.IntegrityInputClock"),"InputStamp");State((object)model).GetType().GetField("RequestedInputStamp",F).SetValue(State((object)model),(uint?)(stamp^1u));
+            Check(!Step(0)&&!(bool)Prop(model,"CheckSheetWarningActive"),"Input after calculation still pauses the long scan but cannot strand the old heading warning");
+            DrainNotices();string manualReport=Finish((object)model);Check(manualReport.Contains("Integrity check completed")&&!(bool)Field(State((object)model),"ManualRequested"),"Requested staged check completes and does not enable recurring checks");
             owner.Close();
         }
         using(var options=(Form)Activator.CreateInstance(app.GetType("Abovo.ApplicationOptionsForm"))) {

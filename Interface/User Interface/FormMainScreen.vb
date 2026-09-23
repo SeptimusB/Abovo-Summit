@@ -854,7 +854,7 @@ Public Class FormMainScreen
 
             Case "Options"
 
-                Abovo.PresentationScaleManager.ShowOptions(Me)
+                Abovo.PresentationScaleManager.ShowOptions(Me, SelectedOptionsModelID())
 
         End Select
     End Sub
@@ -866,6 +866,23 @@ Public Class FormMainScreen
         OpenDSAProcedure()
 
     End Sub
+
+    Friend Function SelectedOptionsModelID() As Integer?
+        'ActiveModel tracks the last file opened, not subsequent tab selection.
+        'Use the visible file tab; never silently check an unrelated open plan.
+        Dim page As DevExpress.XtraTab.XtraTabPage = Nothing
+        If XtraTabControlMainNavigator.SelectedTabPage Is XtraTabPageMainHABP Then
+            page = XtraTabControlModels.SelectedTabPage
+        ElseIf XtraTabControlMainNavigator.SelectedTabPage Is XtraTabPageEvolveDSA AndAlso DsaModelsTabControl IsNot Nothing Then
+            page = DsaModelsTabControl.SelectedTabPage
+        End If
+        If page Is Nothing Then Return Nothing
+        If Not TypeOf page.Tag Is Integer Then Return Nothing
+        Dim modelID = CInt(page.Tag)
+        If ExcelModels Is Nothing OrElse modelID < 0 OrElse modelID >= ExcelModels.Length OrElse
+           ExcelModels(modelID) Is Nothing OrElse ExcelModels(modelID).IsClosing Then Return Nothing
+        Return modelID
+    End Function
 
     Private Sub FormMainScreen_ResizeEnd(sender As Object, e As EventArgs) Handles MyBase.ResizeEnd
 

@@ -219,8 +219,8 @@ Namespace Abovo
             Return Value * UserScale
         End Function
 
-        Public Shared Sub ShowOptions(ByVal Owner As IWin32Window)
-            Using Options As New ApplicationOptionsForm()
+        Public Shared Sub ShowOptions(ByVal Owner As IWin32Window, Optional ByVal ModelID As Integer? = Nothing)
+            Using Options As New ApplicationOptionsForm(ModelID)
                 Options.ShowDialog(Owner)
             End Using
         End Sub

@@ -58,6 +58,31 @@ Public Class GroupInterfaceTemplate
     Private DataInterfaceCount As Integer
     Private MyName As String
     Private MyModelID As Integer
+    Private CheckSheetButton As DevExpress.XtraBars.BarButtonItem
+    Private CheckSheetModel As FileManager.ExcelModel
+
+    Private Sub AttachCheckSheetIndicator(model As FileManager.ExcelModel)
+        CheckSheetModel = model
+        CheckSheetButton = New DevExpress.XtraBars.BarButtonItem(BarManagerAssumptions, "(Check sheet)") With {
+            .Name = "CheckSheetWarning", .Hint = "Open the Check Sheet to review unresolved checks. Run integrity check now in Options after correcting them."}
+        For Each buttonAppearance In {CheckSheetButton.ItemAppearance.Normal, CheckSheetButton.ItemAppearance.Hovered, CheckSheetButton.ItemAppearance.Pressed}
+            buttonAppearance.ForeColor = Color.Firebrick
+            buttonAppearance.Options.UseForeColor = True
+        Next
+        BarTopBar.ItemLinks.Insert(0, CheckSheetButton)
+        AddHandler CheckSheetButton.ItemClick, Sub(sender, e) RecoveryBackupManager.OpenCheckSheet(CheckSheetModel)
+        AddHandler model.CheckSheetStatusChanged, AddressOf RefreshCheckSheetIndicator
+        RefreshCheckSheetIndicator(Me, EventArgs.Empty)
+    End Sub
+
+    Private Sub RefreshCheckSheetIndicator(sender As Object, e As EventArgs)
+        If IsDisposed OrElse Disposing OrElse CheckSheetButton Is Nothing Then Return
+        CheckSheetButton.Visibility = If(CheckSheetModel.CheckSheetWarningActive, DevExpress.XtraBars.BarItemVisibility.Always, DevExpress.XtraBars.BarItemVisibility.Never)
+        CheckSheetButton.Caption = CheckSheetModel.CheckSheetWarningCaption
+        CheckSheetButton.Hint = If(CheckSheetModel.CheckSheetWarningNeedsRecheck,
+            "A previous session failed validation. Run integrity check now in Options to check this reopened file.",
+            "Open the Check Sheet to review unresolved checks. Run integrity check now after correcting them.")
+    End Sub
     Private GITWindowState As FormWindowState
     Public ParentModelSSViewer As MainModelViewer
     Public ActiveWorksheet As String
@@ -176,6 +201,7 @@ Public Class GroupInterfaceTemplate
         ReDim DataInterfaces(-1)
         DataInterfaceCount = -1
         MyModelID = SetModelID
+        AttachCheckSheetIndicator(ExcelModels(SetModelID))
         'Me.LookAndFeel.UseDefaultLookAndFeel = False
         Me.BarManagerAssumptions.TransparentEditorsMode = True
         Me.BarAndDockingControllerAssumptions.LookAndFeel.Style = DevExpress.LookAndFeel.LookAndFeelStyle.UltraFlat
@@ -189,6 +215,7 @@ Public Class GroupInterfaceTemplate
         MyName = If(IsCombined, "Combined",
                     ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).GSName)
         Me.Text = ExcelModels(SetModelID).WBStructure.CompanyName & " / " & MyName & " Interface"
+        BarStaticItemDescription.Caption = ExcelModels(SetModelID).WBStructure.CompanyName & " • " & MyName
         DockPanelNewNavigator.Text = " " & MyName & " Navigator"
         DockPanelNavigator.Text = " " & MyName & " Navigator"
         Dim myTag As String = MyName & " Interface"
@@ -757,6 +784,8 @@ Public Class GroupInterfaceTemplate
 
     Private Sub GroupInterfaceTemplate_Disposed(ByVal sender As Object,
                                                 ByVal e As EventArgs) Handles Me.Disposed
+        If CheckSheetModel IsNot Nothing Then RemoveHandler CheckSheetModel.CheckSheetStatusChanged, AddressOf RefreshCheckSheetIndicator
+        CheckSheetModel = Nothing
         If SidebarEventsAttached AndAlso
            ExcelModels IsNot Nothing AndAlso
            MyModelID >= 0 AndAlso MyModelID < ExcelModels.Length AndAlso
@@ -961,6 +990,7 @@ Public Class GroupInterfaceTemplate
         Me.BarAndDockingControllerAssumptions.AppearancesDocking.PanelCaptionActive.Font = GetDisplayFont("Medium", Me)
         Me.BarTopBar.BarAppearance.Normal.Font = GetDisplayFont("Medium", Me)
         Me.BarStaticItemDescription.ItemAppearance.Normal.Font = GetDisplayFont("Medium", Me)
+        If CheckSheetButton IsNot Nothing Then CheckSheetButton.ItemAppearance.Normal.Font = GetDisplayFont("Medium", Me)
         BarTopBar.OptionsBar.MinHeight = CInt(36 * ScaleFactor)
         Me.AccordionControlNavigator.Appearance.Group.Hovered.Font = GetDisplayFont("Medium", Me)
         Me.AccordionControlNavigator.Appearance.Group.Default.Font = GetDisplayFont("Medium", Me)

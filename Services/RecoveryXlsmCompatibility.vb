@@ -63,44 +63,53 @@ Namespace Abovo
         End Sub
 
         Friend Shared Sub Prepare(filePath As String, verifiedBinaryProfile As Boolean)
-            Using package = ZipFile.Open(filePath, ZipArchiveMode.Update)
-                If package.GetEntry("xl/metadata.xml") IsNot Nothing Then Return
-                Dim hasMetadataCells As Boolean = False
-                For Each part In package.Entries
-                    If Not part.FullName.StartsWith("xl/worksheets/", StringComparison.Ordinal) OrElse
-                       Not part.FullName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) Then Continue For
-                    Using content = part.Open(), xml = Reader(content)
-                        While xml.Read()
-                            If xml.NodeType <> XmlNodeType.Element OrElse xml.LocalName <> "c" OrElse xml.NamespaceURI <> SpreadsheetNs Then Continue While
-                            Dim cm = xml.GetAttribute("cm"), vm = xml.GetAttribute("vm")
-                            If vm IsNot Nothing OrElse (cm IsNot Nothing AndAlso cm <> "1") Then
-                                Throw New InvalidDataException("Recovery XLSM export contains an unsupported missing metadata profile; the previous recovery is retained.")
-                            End If
-                            hasMetadataCells = hasMetadataCells OrElse cm IsNot Nothing
-                        End While
-                    End Using
-                Next
-                If Not hasMetadataCells Then Return
-                If Not verifiedBinaryProfile Then Throw New InvalidDataException("Recovery XLSM needs a verified dynamic-array metadata conversion for this workbook; the previous recovery is retained.")
+            'Opening worksheet entries in Update mode turns the read-only scan
+            'into an expensive decompress/recompress pass. Hold one exclusive
+            'file handle throughout validation and update, but open the large
+            'worksheet parts only in Read mode. Rejected/no-op files stay intact.
+            Using file As New FileStream(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None)
                 Dim relations As XDocument, types As XDocument
-                Using content = package.GetEntry("xl/_rels/workbook.xml.rels").Open(), xml = Reader(content)
-                    relations = XDocument.Load(xml)
+                Using package As New ZipArchive(file, ZipArchiveMode.Read, True)
+                    If package.GetEntry("xl/metadata.xml") IsNot Nothing Then Return
+                    Dim hasMetadataCells As Boolean = False
+                    For Each part In package.Entries
+                        If Not part.FullName.StartsWith("xl/worksheets/", StringComparison.Ordinal) OrElse
+                           Not part.FullName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) Then Continue For
+                        Using content = part.Open(), xml = Reader(content)
+                            While xml.Read()
+                                If xml.NodeType <> XmlNodeType.Element OrElse xml.LocalName <> "c" OrElse xml.NamespaceURI <> SpreadsheetNs Then Continue While
+                                Dim cm = xml.GetAttribute("cm"), vm = xml.GetAttribute("vm")
+                                If vm IsNot Nothing OrElse (cm IsNot Nothing AndAlso cm <> "1") Then
+                                    Throw New InvalidDataException("Recovery XLSM export contains an unsupported missing metadata profile; the previous recovery is retained.")
+                                End If
+                                hasMetadataCells = hasMetadataCells OrElse cm IsNot Nothing
+                            End While
+                        End Using
+                    Next
+                    If Not hasMetadataCells Then Return
+                    If Not verifiedBinaryProfile Then Throw New InvalidDataException("Recovery XLSM needs a verified dynamic-array metadata conversion for this workbook; the previous recovery is retained.")
+                    Using content = package.GetEntry("xl/_rels/workbook.xml.rels").Open(), xml = Reader(content)
+                        relations = XDocument.Load(xml)
+                    End Using
+                    If relations.Root.Elements().Any(Function(e) CStr(e.Attribute("Type")) = MetadataRelation) Then Throw New InvalidDataException("Recovery metadata relationship exists without its part.")
+                    Using content = package.GetEntry("[Content_Types].xml").Open(), xml = Reader(content)
+                        types = XDocument.Load(xml)
+                    End Using
+                    If types.Root.Elements().Any(Function(e) CStr(e.Attribute("PartName")) = "/xl/metadata.xml") Then Throw New InvalidDataException("Recovery metadata content type exists without its part.")
                 End Using
-                If relations.Root.Elements().Any(Function(e) CStr(e.Attribute("Type")) = MetadataRelation) Then Throw New InvalidDataException("Recovery metadata relationship exists without its part.")
-                Using content = package.GetEntry("[Content_Types].xml").Open(), xml = Reader(content)
-                    types = XDocument.Load(xml)
-                End Using
-                If types.Root.Elements().Any(Function(e) CStr(e.Attribute("PartName")) = "/xl/metadata.xml") Then Throw New InvalidDataException("Recovery metadata content type exists without its part.")
                 Dim bytes = XmlMetadata.Value
-                Using content = package.CreateEntry("xl/metadata.xml").Open()
-                    content.Write(bytes, 0, bytes.Length)
+                file.Position = 0
+                Using package As New ZipArchive(file, ZipArchiveMode.Update, True)
+                    Using content = package.CreateEntry("xl/metadata.xml").Open()
+                        content.Write(bytes, 0, bytes.Length)
+                    End Using
+                    relations.Root.Add(New XElement(relations.Root.Name.Namespace + "Relationship", New XAttribute("Id", "rIdRecoveryMetadata" & Guid.NewGuid().ToString("N")),
+                        New XAttribute("Type", MetadataRelation), New XAttribute("Target", "metadata.xml")))
+                    types.Root.Add(New XElement(types.Root.Name.Namespace + "Override", New XAttribute("PartName", "/xl/metadata.xml"),
+                        New XAttribute("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheetMetadata+xml")))
+                    Put(package, "xl/_rels/workbook.xml.rels", relations)
+                    Put(package, "[Content_Types].xml", types)
                 End Using
-                relations.Root.Add(New XElement(relations.Root.Name.Namespace + "Relationship", New XAttribute("Id", "rIdRecoveryMetadata" & Guid.NewGuid().ToString("N")),
-                    New XAttribute("Type", MetadataRelation), New XAttribute("Target", "metadata.xml")))
-                types.Root.Add(New XElement(types.Root.Name.Namespace + "Override", New XAttribute("PartName", "/xl/metadata.xml"),
-                    New XAttribute("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheetMetadata+xml")))
-                Put(package, "xl/_rels/workbook.xml.rels", relations)
-                Put(package, "[Content_Types].xml", types)
                 Diagnostics.Trace.WriteLine("[Recovery] Preserved verified XLSB dynamic-array metadata in XLSM.")
             End Using
         End Sub

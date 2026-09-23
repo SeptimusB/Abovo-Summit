@@ -177,6 +177,8 @@ Namespace Abovo
             Public ExpendAnalyserV2 As BPIncomeExpenditureAnalyserV2
             Public ReadOnly ResourceRegistry As New ModelResourceRegistry
             Private _isDirty As Boolean
+            Private _userChangeRevision As Long
+            Private _savedUserChangeRevision As Long
             Private _calculationRevision As Long
             Private _calculatedRevision As Long = -1
             Private _needsFullRebuild As Boolean = True
@@ -186,6 +188,14 @@ Namespace Abovo
             Private _formulaStructureRevision As Long
             Private _checkedFormulaStructureRevision As Long = -1
             Private _knownCloseValidationFailure As Boolean
+            Private _recoveryCheckSheetFailed As Boolean
+            Private _rememberedCheckSheetWarning As Boolean
+            Private _openingCheckSheetAcceptable As Boolean
+            Private _manualSavedSinceOpen As Boolean
+            Private _openingCheckSheetPath As String
+            Private _openingCheckSheetHash As String
+            Private _openingUserRevision As Long
+            Private _saveAfterCheckSheetClear As Boolean
             Private _writingPreparedWorkbook As Boolean
             Private _writingRecoveryWorkbook As Boolean
             Public RecoverySourcePath As String
@@ -229,12 +239,15 @@ Namespace Abovo
             'Retain the exact delegates: relaxed AddressOf conversions otherwise
             'create new wrappers that cannot be removed during model shutdown.
             Private ReadOnly SavedHandler As EventHandler = Sub(sender, e)
-                                                                If Not _writingRecoveryWorkbook Then ClearDirtyFlag()
+                                                                If Not _writingRecoveryWorkbook Then
+                                                                    _manualSavedSinceOpen = True
+                                                                    ClearDirtyFlag()
+                                                                End If
                                                             End Sub
             Private ReadOnly ContentHandler As EventHandler = Sub(sender, e) WorkbookContentChanged()
             Private ReadOnly PropertiesHandler As DocumentPropertiesChangedEventHandler = Sub(sender, e)
                                                                                               'Save updates author/timestamp metadata itself.
-                                                                                              If Not _writingPreparedWorkbook Then SetDirtyFlag()
+                                                                                              If Not _writingPreparedWorkbook Then SetDirtyFlag(userChange:=False)
                                                                                           End Sub
             Private ReadOnly NativeCellHandler As CellValueChangedEventHandler = Sub(sender, e) NativeWorkbookStructureChanged()
             Private ReadOnly NativeRowsInsertedHandler As RowsInsertedEventHandler = Sub(sender, e) NativeWorkbookStructureChanged()
@@ -249,6 +262,23 @@ Namespace Abovo
             Private ReadOnly NativeNameDeletedHandler As DefinedNameDeletedEventHandler = Sub(sender, e) NativeWorkbookStructureChanged()
 
             Public Event DirtyStateChanged As EventHandler
+            Friend Event ManualSaveAvailabilityChanged As EventHandler
+
+            Friend ReadOnly Property ManualSaveAvailable As Boolean
+                Get
+                    Return IsDirty OrElse _saveAfterCheckSheetClear
+                End Get
+            End Property
+
+            Private Sub OfferSaveAfterCheckSheetClear(available As Boolean)
+                If _saveAfterCheckSheetClear = available Then Return
+                _saveAfterCheckSheetClear = available
+                Try
+                    RaiseEvent ManualSaveAvailabilityChanged(Me, EventArgs.Empty)
+                Catch ex As Exception
+                    System.Diagnostics.Trace.WriteLine("[Save availability] Interface refresh failed: " & ex.Message)
+                End Try
+            End Sub
 
             Public Property IsDirty As Boolean
                 Get
@@ -257,10 +287,141 @@ Namespace Abovo
                 Set(value As Boolean)
                     Dim changed = (_isDirty <> value)
                     _isDirty = value
+                    If Not value Then _savedUserChangeRevision = _userChangeRevision
                     If value Then MarkCalculationPending()
                     If changed Then RaiseEvent DirtyStateChanged(Me, EventArgs.Empty)
                 End Set
             End Property
+
+            'Recovery eligibility is based on committed user work, not recalculation,
+            'background reconciliation, document timestamps or delayed content events.
+            Friend ReadOnly Property UserChangeRevision As Long
+                Get
+                    Return _userChangeRevision
+                End Get
+            End Property
+
+            Friend ReadOnly Property HasUnsavedUserChanges As Boolean
+                Get
+                    Return IsDirty AndAlso _userChangeRevision <> _savedUserChangeRevision
+                End Get
+            End Property
+
+            Friend ReadOnly Property RecoveryAutosaveSuspended As Boolean
+                Get
+                    Return _recoveryCheckSheetFailed AndAlso Not RecoveryBackupManager.ContinueOnCheckSheetError
+                End Get
+            End Property
+
+            Friend ReadOnly Property CheckSheetWarningActive As Boolean
+                Get
+                    Return _recoveryCheckSheetFailed
+                End Get
+            End Property
+
+            Friend ReadOnly Property CheckSheetWarningNeedsRecheck As Boolean
+                Get
+                    Return _recoveryCheckSheetFailed AndAlso _rememberedCheckSheetWarning
+                End Get
+            End Property
+
+            Friend ReadOnly Property CheckSheetWarningCaption As String
+                Get
+                    Return If(CheckSheetWarningNeedsRecheck, "(Check sheet: recheck required)", "(Check sheet)")
+                End Get
+            End Property
+
+            Friend Event CheckSheetStatusChanged As EventHandler
+
+            Private Sub SetCheckSheetWarning(active As Boolean, Optional remembered As Boolean = False)
+                remembered = active AndAlso remembered
+                If _recoveryCheckSheetFailed = active AndAlso _rememberedCheckSheetWarning = remembered Then Return
+                _recoveryCheckSheetFailed = active
+                _rememberedCheckSheetWarning = remembered
+                Try
+                    RaiseEvent CheckSheetStatusChanged(Me, EventArgs.Empty)
+                Catch ex As Exception
+                    'Presentation must never prevent persistence of a failure.
+                    System.Diagnostics.Trace.WriteLine("[Check Sheet warning] Interface refresh failed: " & ex.Message)
+                End Try
+            End Sub
+
+            Friend Sub RestoreRecoveryAutosaveHold(paused As Boolean)
+                If Not paused Then Return
+                If Not CheckSheetWarningActive Then SetCheckSheetWarning(True, remembered:=True)
+                _knownCloseValidationFailure = True
+            End Sub
+
+            Private Shared Function CheckSheetFileHash(stream As System.IO.Stream) As String
+                Using hash = System.Security.Cryptography.SHA256.Create()
+                    Return Convert.ToBase64String(hash.ComputeHash(stream))
+                End Using
+            End Function
+
+            Friend Sub CaptureCheckSheetDiskBeforeLoad()
+                _openingCheckSheetHash = Nothing
+                Try
+                    _openingCheckSheetPath = System.IO.Path.GetFullPath(FileName)
+                    Using source As New System.IO.FileStream(_openingCheckSheetPath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read)
+                        _openingCheckSheetHash = CheckSheetFileHash(source)
+                    End Using
+                Catch ex As Exception
+                    System.Diagnostics.Trace.WriteLine("[Check Sheet warning] Opening fingerprint unavailable: " & ex.Message)
+                End Try
+            End Sub
+
+            Friend Sub CaptureCheckSheetOpenState()
+                'A discard baseline describes the saved file AS OPENED, not a new
+                'integrity certification. Do not clear an existing hold from cached
+                'values. It only lets us undo a later, wholly unsaved session hold.
+                _openingCheckSheetAcceptable = False
+                _manualSavedSinceOpen = False
+                If _openingCheckSheetHash Is Nothing OrElse RecoverySaveAsRequired OrElse Not String.IsNullOrWhiteSpace(RecoverySourcePath) Then Return
+                Try
+                    Using source As New System.IO.FileStream(_openingCheckSheetPath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read)
+                        If CheckSheetFileHash(source) <> _openingCheckSheetHash Then Throw New System.IO.IOException("The saved file changed while it was opening.")
+                    End Using
+                    _openingUserRevision = _userChangeRevision
+                    _openingCheckSheetAcceptable = Not CheckSheetWarningActive AndAlso Not ReadCheckSheetValidation().HasFailures
+                Catch ex As Exception
+                    _openingCheckSheetHash = Nothing
+                    System.Diagnostics.Trace.WriteLine("[Check Sheet warning] Discard baseline unavailable: " & ex.Message)
+                End Try
+            End Sub
+
+            Friend ReadOnly Property CanDiscardSessionCheckSheetWarning As Boolean
+                Get
+                    Return CheckSheetWarningActive AndAlso _openingCheckSheetAcceptable AndAlso
+                        Not _manualSavedSinceOpen AndAlso _openingCheckSheetHash IsNot Nothing AndAlso
+                        Not RecoverySaveAsRequired AndAlso IntegrityState = ModelIntegrityState.Healthy AndAlso
+                        String.Equals(_openingCheckSheetPath, FileName, StringComparison.OrdinalIgnoreCase)
+                End Get
+            End Property
+
+            Private Sub ClearDiscardedSessionCheckSheetWarning()
+                If Not CanDiscardSessionCheckSheetWarning Then Return
+                Try
+                    'Keep the original protected against concurrent writes/deletion
+                    'until the settings update finishes. Timestamp equality is not
+                    'enough: compare its actual bytes with the opening baseline.
+                    Using source As New System.IO.FileStream(_openingCheckSheetPath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read)
+                        If CheckSheetFileHash(source) <> _openingCheckSheetHash Then Return
+                        If Not RecoveryBackupManager.PersistCheckSheetPause(Me, False) Then Return
+                        SetCheckSheetWarning(False)
+                        _knownCloseValidationFailure = False
+                        SystemMessageManager.Publish(ModelID, "Discarded the unsaved session's Check Sheet warning. The saved business plan is unchanged from opening.",
+                            SystemMessageSeverity.Information, "Integrity", FileName)
+                    End Using
+                Catch ex As Exception
+                    System.Diagnostics.Trace.WriteLine("[Check Sheet warning] Discard could not clear the remembered hold: " & ex.Message)
+                End Try
+            End Sub
+
+            Friend Sub MarkUserChange()
+                If IsClosing OrElse _writingPreparedWorkbook Then Return
+                _userChangeRevision += 1
+                IsDirty = True
+            End Sub
 
             Public ReadOnly Property NeedsFullRebuild As Boolean
                 Get
@@ -394,9 +555,13 @@ Namespace Abovo
             End Sub
 
 
-            Sub SetDirtyFlag()
+            Sub SetDirtyFlag(Optional userChange As Boolean = True)
 
-                IsDirty = True
+                If userChange Then
+                    MarkUserChange()
+                Else
+                    IsDirty = True
+                End If
                 RequireFullRebuild() 'Unknown/bulk import or document-property change.
                 If WBCalcEngine IsNot Nothing Then
                     WBCalcEngine.MarkPotentialWorkbookChange()
@@ -410,10 +575,10 @@ Namespace Abovo
             End Sub
 
             Private Sub NativeWorkbookStructureChanged()
-                If IsClosing Then Return
+                If IsClosing OrElse _writingPreparedWorkbook Then Return
                 'UI-only events: a native formula edit, rename or insertion is not
                 'necessarily routed through the typed-edit/structural services.
-                IsDirty = True
+                MarkUserChange()
                 RequireFullRebuild()
                 If WBCalcEngine IsNot Nothing Then WBCalcEngine.InvalidateDependencyGraph()
             End Sub
@@ -466,7 +631,6 @@ Namespace Abovo
             Sub InitiateWorkbook(SetModelID As Integer)
 
                 'SetCustomFunctions
-
                 Dim customFunction As New Abovo.PMCostFunction()
 
                 If Not WB.Functions.GlobalCustomFunctions.Contains(customFunction.Name) Then
@@ -796,7 +960,7 @@ Namespace Abovo
                     Return SaveFileAs(RequireDifferentPath:=True)
                 End If
 
-                If Not IsDirty Then Return True
+                If Not ManualSaveAvailable Then Return True
 
                 Try
                     If Not SavePreparedWorkbook(Sub() ModelSpreadsheetControl.SaveDocument()) Then Return False
@@ -1005,11 +1169,30 @@ Namespace Abovo
                 EnsureCalculationCurrent(report, "Idle Integrity Calculation")
             End Sub
 
-            Friend Sub RecordIdleCheckSheetResult(revision As Long, hasFailures As Boolean)
-                If revision = _calculationRevision AndAlso Not ResultsPending Then _knownCloseValidationFailure = hasFailures
-            End Sub
+            Friend Function RecordIdleCheckSheetResult(revision As Long, hasFailures As Boolean) As Boolean
+                'A correction alone does not certify the Check Sheet. Retain the
+                'hold through edits/saves until a fresh current check passes.
+                If revision <> _calculationRevision OrElse ResultsPending Then Return False
+                _knownCloseValidationFailure = hasFailures
+                Dim wasPaused = _recoveryCheckSheetFailed
+                'Set before persistence/notification so timer re-entry cannot save.
+                If hasFailures Then SetCheckSheetWarning(True)
+                SetCheckSheetWarning(If(RecoveryBackupManager.PersistCheckSheetPause(Me, hasFailures), hasFailures, True))
+                If Not hasFailures AndAlso Not _recoveryCheckSheetFailed AndAlso _openingCheckSheetHash IsNot Nothing AndAlso
+                   Not _manualSavedSinceOpen AndAlso _userChangeRevision = _openingUserRevision Then _openingCheckSheetAcceptable = True
+                'Offer an optional explicit save of the refreshed results, without
+                'inventing user edits, pending calculation or recovery eligibility.
+                If wasPaused AndAlso Not _recoveryCheckSheetFailed Then OfferSaveAfterCheckSheetClear(True)
+                Return wasPaused <> _recoveryCheckSheetFailed
+            End Function
 
             Private Sub RefreshSavedFilePresentation()
+                'Only successful manual Save/Save As paths reach here. A cancelled
+                'dialog, failed write or recovery snapshot must retain the offer.
+                OfferSaveAfterCheckSheetClear(False)
+                _manualSavedSinceOpen = True
+                RecoveryBackupManager.RestoreCheckSheetPause(Me, False)
+                If CheckSheetWarningActive Then RecoveryBackupManager.PersistCheckSheetPause(Me, True)
                 RecoverySourcePath = Nothing
                 'DocumentSaved fires before Save As updates this model's path.
                 'Refresh only after that path and the successful-save state agree.
@@ -1033,6 +1216,26 @@ Namespace Abovo
             Public Function CommitToCloseModel() As AbovoTransaction
 
                 Dim CloseTrans As New AbovoTransaction
+
+                Dim saveRequested As Boolean = False
+                If CanDiscardSessionCheckSheetWarning Then
+                    Dim discardResponse = MessageBox.Show(
+                        "This session has an unresolved Check Sheet warning. No normal Save or Save As has been completed since opening." &
+                        Environment.NewLine & Environment.NewLine & "Save changes before closing?" & Environment.NewLine &
+                        "Yes: continue through validation and saving." & Environment.NewLine &
+                        "No: discard this session. Its warning is cleared only if the original file still matches the file opened." & Environment.NewLine &
+                        "Cancel: keep the business plan open.", "Close business plan", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning,
+                        MessageBoxDefaultButton.Button3)
+                    If discardResponse = DialogResult.Cancel Then
+                        CloseTrans.StringReturn = "Cancel"
+                        Return CloseTrans
+                    End If
+                    If discardResponse = DialogResult.No Then
+                        CloseTrans.StringReturn = "Proceed"
+                        Return CloseTrans
+                    End If
+                    saveRequested = True
+                End If
 
                 Dim Validation As CloseModelValidationResult
 
@@ -1097,7 +1300,7 @@ Namespace Abovo
 
                 If IsDirty Then
 
-                    Dim response As MsgBoxResult = MsgBox("Save changes to " & FileName & "?", vbYesNoCancel)
+                    Dim response As MsgBoxResult = If(saveRequested, MsgBoxResult.Yes, MsgBox("Save changes to " & FileName & "?", vbYesNoCancel))
 
                     If response = MsgBoxResult.Cancel Then
 
@@ -1129,6 +1332,10 @@ Namespace Abovo
                 End If
                 Dim result = CalculateAndValidateChangedModel()
                 _knownCloseValidationFailure = result.HasFailures
+                If RecordIdleCheckSheetResult(CalculationRevision, result.HasFailures) Then
+                    'Close validation already presents its own warning dialog.
+                    RecoveryBackupManager.NotifyCheckSheetState(Me, result, Form.ActiveForm)
+                End If
                 Return result
             End Function
 
@@ -1240,8 +1447,7 @@ Namespace Abovo
                             Continue For
                         End If
 
-                        Result.Issues.Add(
-                            New CloseModelValidationIssue With {
+                        Dim issue = New CloseModelValidationIssue With {
                                 .CheckRow = SheetRow + 1,
                                 .Label = ValidationSheet.Cells(
                                     SheetRow,
@@ -1253,7 +1459,12 @@ Namespace Abovo
                                 .TargetWorksheet = ValidationSheet.Cells(
                                     SheetRow,
                                     FirstColumn + 7).DisplayText.Trim()
-                            })
+                            }
+                        If WorkbookIntegritySupport.HasAcceptedOverride(ValidationRange, RowOffset, StatusText) Then
+                            Result.OverriddenIssues.Add(issue)
+                        Else
+                            Result.Issues.Add(issue)
+                        End If
 
                     Next
 
@@ -1431,6 +1642,7 @@ Namespace Abovo
             Friend NotInheritable Class CloseModelValidationResult
 
                 Public ReadOnly Issues As New List(Of CloseModelValidationIssue)()
+                Public ReadOnly OverriddenIssues As New List(Of CloseModelValidationIssue)()
                 Public ValidationError As String
 
                 Public ReadOnly Property HasFailures As Boolean
@@ -1455,6 +1667,7 @@ Namespace Abovo
 
                 If IsClosing Then Return
                 IsClosing = True
+                ClearDiscardedSessionCheckSheetWarning()
                 RecoveryBackupManager.Forget(Me)
                 IdleIntegrityManager.Forget(Me)
 
@@ -1990,6 +2203,7 @@ Namespace Abovo
                 'LastAccessTime. Capture the filesystem value before LoadDocument.
                 NewModel.FileInfo.Refresh()
                 NewModel.PreviousFileAccessTime = NewModel.FileInfo.LastAccessTime
+                If OpenMode = WorkbookOpenMode.FullModel Then NewModel.CaptureCheckSheetDiskBeforeLoad()
                 If Not NewModel.ModelSpreadsheetControl.LoadDocument(FullPath) Then
                     Throw New System.IO.InvalidDataException("The spreadsheet engine could not read this workbook. No model was opened.")
                 End If
@@ -2061,6 +2275,7 @@ Namespace Abovo
                         SystemMessageManager.Publish(NewModelID, "RECOVERY COPY: use Save As to save an XLSB business plan. Suggested original: " & NewModel.RecoverySourcePath & ". The original has not been overwritten.", SystemMessageSeverity.Warning, "Recovery backup", FullPath)
                     End If
                     RecoveryBackupManager.Track(NewModel)
+                    NewModel.CaptureCheckSheetOpenState()
                     IdleIntegrityManager.Track(NewModel)
                     InternalFileState = 2
                     ApplicationConfiguration.ActiveModelID = NewModelID

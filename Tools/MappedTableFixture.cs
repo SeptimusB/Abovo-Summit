@@ -154,8 +154,23 @@ public static class MappedTableFixture
                         grid.Dock = DockStyle.Fill;
                         host.CreateControl();
                         grid.CreateControl();
+                        host.Opacity=0;host.ShowInTaskbar=false;host.Show();Application.DoEvents();
                         nativeGrid.ForceInitialize();
                         host.PerformLayout();
+                        nativeGrid.FitWorkbookColumns();
+                        int dpi=grid.DeviceDpi;
+                        foreach(int col in new[]{1,2,3,4})
+                            if(view.Columns[col].Width>100*dpi/96)throw new Exception("Check Sheet short columns remain too wide");
+                        if(view.Columns[5].Width>220*dpi/96||view.Columns[7].Width<200*dpi/96)throw new Exception("Message or Summit destination width incorrect");
+                        view.Columns[5].Width=Math.Max(123,(int)view.Columns[5].MinWidth+10);
+                        int resizedWidth=view.Columns[5].Width;
+                        nativeGrid.RefreshData();
+                        if(view.Columns[5].Width!=resizedWidth)throw new Exception("Refresh discarded user's column width");
+                        nativeGrid.FitWorkbookColumns();
+                        Console.WriteLine("PASS: compact result/message columns, readable destinations, user resize preserved on refresh.");
+                        int visibleWidth=0;foreach(dynamic column in view.Columns)visibleWidth+=(int)column.VisibleWidth;
+                        if(visibleWidth>grid.ClientSize.Width)throw new Exception("Actual columns extend beyond wide grid");
+                        Console.WriteLine("PASS: actual visible columns fit ("+visibleWidth+" / "+grid.ClientSize.Width+" pixels).");
                         if (view.Columns[0].Caption != sheet.Cells["A6"].DisplayText ||
                             view.Columns[0].Width < 200)
                             throw new Exception("Captions or best-fit widths lost on first display.");

@@ -10,14 +10,16 @@ Namespace Abovo
     Public Class PMCostFunction 'TestArrayCustomFunction
         Implements ICustomFunction
 
-        Private Const functionName As String = "PMCOST"
+        Private Const functionName As String = "PMCost"
         Private ReadOnly functionParameters() As ParameterInfo
 
         Public Sub New()
-            '(Year As Integer, AllUnits As Integer, FirstManage As Integer, LastManage As Integer, FinalYear, ApplRates As Range, ApplYears As Range)
-            ' Missing optional parameters do not result in an error message.
+            ' Match the VBA signature: Year, AllUnits, UnitCost, FirstManage,
+            ' LastManage, FinalYear, ApplRates, ApplYears. FinalYear is unused,
+            ' but its required sixth position preserves Excel/VBA compatibility.
 
             Me.functionParameters = New ParameterInfo() {
+            New ParameterInfo(ParameterType.Value, ParameterAttributes.Required),
             New ParameterInfo(ParameterType.Value, ParameterAttributes.Required),
             New ParameterInfo(ParameterType.Value, ParameterAttributes.Required),
             New ParameterInfo(ParameterType.Value, ParameterAttributes.Required),
@@ -81,7 +83,11 @@ Namespace Abovo
 
             'PMCost = TotCost
 
-            Dim Engine As FormulaEngine = context.Sheet.Workbook.FormulaEngine
+            If parameters Is Nothing OrElse parameters.Count <> 8 Then Return ParameterValue.ErrorInvalidValueInFunction
+            For Each parameter In parameters
+                If parameter.IsError Then Return parameter
+            Next
+            If Not parameters(6).IsRange OrElse Not parameters(7).IsRange Then Return ParameterValue.ErrorInvalidValueInFunction
             Dim IntYear As Integer = Convert.ToInt32(parameters(0).NumericValue)
             Dim AllUnits As Integer = Convert.ToInt32(parameters(1).NumericValue)
             Dim UnitCost As Double = Convert.ToDouble(parameters(2).NumericValue)
@@ -89,7 +95,6 @@ Namespace Abovo
             Dim LastManage As Integer = Convert.ToInt32(parameters(4).NumericValue)
             Dim FinalYear As Integer = Convert.ToInt32(parameters(5).NumericValue) ' This is unused but remains for compatibility
             Dim ApplRates As CellRange = parameters(6).RangeValue
-            Dim ApplYears As CellRange = parameters(7).RangeValue
 
             Dim AnnualUnits As Double = AllUnits / (LastManage - FirstManage + 1)
             Dim AnnualRate As Double = 0
@@ -97,14 +102,20 @@ Namespace Abovo
             Dim i As Integer = IntYear
             Dim j As Integer = 0
             Dim ValReturn As ParameterValue
-            Dim StrMatch As String
-            Dim expcontext As New ExpressionContext(context.Column, context.Row, context.Sheet, context.Culture, ReferenceStyle.R1C1, DevExpress.Spreadsheet.Formulas.ExpressionStyle.Normal)
+            'Use DevExpress's native approximate MATCH without parsing a formula
+            'and rebuilding its range address for every year. Keep references live.
+            Dim match = context.Sheet.Workbook.Functions("MATCH")
+            Dim matchArguments As ParameterValue() = {0, parameters(7), 1}
 
             Do While i >= FirstManage And j < (LastManage - FirstManage + 1)
 
                 AnnualRate = 0
-                StrMatch = "=MATCH(" & i - FirstManage + 1 & ", " & ApplYears.GetReferenceR1C1(ReferenceElement.IncludeSheetName Or ReferenceElement.RowAbsolute Or ReferenceElement.ColumnAbsolute, Nothing) & ")"
-                ValReturn = Engine.Evaluate(StrMatch, expcontext)
+                matchArguments(0) = i - FirstManage + 1
+                ValReturn = match.Evaluate(matchArguments, context)
+                If ValReturn.IsError Then Return ValReturn
+                If Not ValReturn.IsNumeric Then Return ParameterValue.ErrorInvalidValueInFunction
+                If ValReturn.NumericValue < 1 OrElse ValReturn.NumericValue > CLng(ApplRates.RowCount) * ApplRates.ColumnCount Then Return ParameterValue.ErrorReference
+                If ApplRates(ValReturn.NumericValue - 1).Value.IsError Then Return ApplRates(ValReturn.NumericValue - 1).Value
                 AnnualRate = ApplRates(ValReturn.NumericValue - 1).Value.NumericValue
                 TotCost += UnitCost * AnnualUnits * AnnualRate
                 i -= 1
@@ -113,7 +124,6 @@ Namespace Abovo
 
             Loop
 
-            expcontext = Nothing
             Return TotCost
 
         End Function

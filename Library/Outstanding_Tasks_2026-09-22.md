@@ -15,7 +15,11 @@ This is the current work list, not a claim that every historical audit item is a
 
 ## Priority work
 
-1. **Reduce save and recovery interruptions.** Native serialization still dominates normal save, and recovery took approximately 13 seconds on the high-spec development machine. Measure blocked-UI time and investigate a safe way to reduce/defer interruptions without concurrent access to the live workbook. The current recovery feature is idle-scheduled, not nonblocking background serialization.
+1. **Reduce save and recovery interruptions.** Native serialization still dominates normal save, and recovery took approximately 13 seconds on the high-spec development machine. Measure blocked-UI time and investigate a safe way to reduce/defer interruptions without concurrent access to the live workbook. Recovery is scheduled, not nonblocking background serialization.
+
+   23 September / 2.78: [timing, snooze and discarded-warning trial](Recovery_Timing_and_Discard_Warnings_2026-09-23.md) adds independent idle/maximum intervals, a pre-write snooze-until-one-minute-idle notice, exact-model recheck prompts for remembered failures, and guarded clearance when an entirely unsaved session is discarded. Maximum timing may interrupt only after safety gates; native serialization cannot be cancelled midway. Client acceptance remains open.
+
+   23 September / 2.77: [recovery packaging optimisation](Recovery_Packaging_Optimisation_2026-09-23.md) removes unnecessary worksheet recompression while retaining every metadata check. Identical-export median metadata preparation falls from 2,420 to 879 ms. A separate full AGL recovery takes 14,627 ms, dominated by 13,573 ms of native snapshot export. Detailed phase traces and preservation/failure/Excel-copy regressions are in place. This is a modest stage-level gain, not a solved UI-blocking or ordinary-XLSB-save problem; client measurements remain required.
 
 2. **Validate the performance-first integrity policy.** The 2.67 opt-in Integrity trial adds a configurable interval, two-minute session-idle requirement and staged inspection; running calculations are never interrupted. Native safety/state/history tests pass on Blank/Demo copies. Complete physical-input, multiple-model, client performance and Excel/VBA acceptance, and classify existing reported chart/menu errors. Decide publication gates, additional bespoke/3-D checks and explicit/batch check entry points separately. See `Idle_Integrity_Trial_2026-09-22.md`. Existing rollback, entry protection and save/close safeguards remain.
 

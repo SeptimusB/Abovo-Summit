@@ -48,7 +48,10 @@ public static class FileInstanceLayoutFixture
         manager.GetField("ExcelModels").SetValue(null, models);
 
         var fonts = new List<Font>();
+        using (var layoutHost = new Form())
         using (Control ui = (Control)Activator.CreateInstance(app.GetType("FileInstanceInterface"), new object[] { 0 })) {
+            layoutHost.ShowInTaskbar=false;layoutHost.Opacity=0;layoutHost.ClientSize=new Size(1600,720);
+            layoutHost.Controls.Add(ui);layoutHost.Show();Application.DoEvents();
             var top = (WindowsUIButtonPanel)Find(ui, "WindowsUIButtonPanelBPActions");
             var left = (WindowsUIButtonPanel)Find(ui, "WindowsUIButtonPanelSaveClose");
             var badge = (WindowsUIButtonPanel)Find(ui, "WindowsUIButtonPanelBPBadge");
@@ -62,6 +65,19 @@ public static class FileInstanceLayoutFixture
             Check(save.Enabled && saveAs.Enabled,"Dirty File Instance Save enabled immediately");
             modelType.GetProperty("IsDirty").SetValue(model,false,null);
             Check(!save.Enabled && saveAs.Enabled,"Clear dirty state disables File Instance Save immediately");
+            var offer=modelType.GetMethod("OfferSaveAfterCheckSheetClear",BindingFlags.Instance|BindingFlags.NonPublic);
+            using(var ditOwner=new Form())using(var ditPanel=new WindowsUIButtonPanel()) {
+                ditOwner.Controls.Add(ditPanel);var ditSave=new WindowsUIButton(){Tag="SaveBP"};ditPanel.Buttons.Add(ditSave);
+                using(var binding=(IDisposable)Activator.CreateInstance(app.GetType("Abovo.ModelSaveButtonBinding"),BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{ditOwner,model,ditPanel,true},null)) {
+                    Check(!ditSave.Enabled,"Clean DIT-style Save binding starts disabled");
+                    offer.Invoke(model,new object[]{true});
+                    Check(save.Enabled&&ditSave.Enabled&&saveAs.Enabled&&!(bool)modelType.GetProperty("IsDirty").GetValue(model,null),"Warning-clear save offer enables File Instance and DIT buttons immediately without dirtying");
+                    offer.Invoke(model,new object[]{false});
+                    Check(!save.Enabled&&!ditSave.Enabled&&saveAs.Enabled,"Successful-save reset greys both Save buttons; Save As stays available");
+                }
+            }
+            Console.WriteLine("PASS: File Instance and DIT native Save buttons follow dirty and warning-clear transitions; Save As unaffected.");
+            if(args.Length>2&&args[2]=="--save-state")return;
             Check(Tags(badge) == "BusinessPlan", "BP placeholder");
             Check(((WindowsUIButton)badge.Buttons[0]).Caption == "HA BP" &&
                 ((WindowsUIButton)badge.Buttons[0]).UseCaption, "HA BP model caption");
@@ -91,6 +107,8 @@ public static class FileInstanceLayoutFixture
                     Check(browser.Left == top.Left && browser.Top == left.Top, "Details alignment");
                     Check(top.Bottom < browser.Top, "Toolbar/details overlap");
                     Check(left.Right < browser.Left, "File actions/details overlap");
+                    ui.PerformLayout();Application.DoEvents();
+                    Console.WriteLine("CHECK: width="+width+", font="+points+", left="+left.Bounds);
                     AssertButtonsReachable(top);
                     AssertButtonsReachable(left);
                     AssertButtonsReachable(badge);
@@ -110,7 +128,7 @@ public static class FileInstanceLayoutFixture
             form.Opacity=0;form.ShowInTaskbar=false;form.Controls.Add(browser);browser.Dock=DockStyle.Fill;form.Show();
             foreach(int width in new[]{360,800,1400}) {
                 form.ClientSize=new Size(width,800);
-                string html=(string)render.Invoke(null,new object[]{"HA Business Plan","Example & Partners <Housing>","2026-04-01",@"C:\Sandbox\A deliberately long folder name for a client business plan\BP v26_0001 - New Blank.xlsb","21/09/2026 12:30:00","17/09/2026 09:33:28","Not recorded","11.68 MB",10f,15f,false,null});
+                string html=(string)render.Invoke(null,new object[]{"HA Business Plan","Example & Partners <Housing>","2026-04-01",@"C:\Sandbox\A deliberately long folder name for a client business plan\BP v26_0001 - New Blank.xlsb","21/09/2026 12:30:00","17/09/2026 09:33:28","Not recorded","11.68 MB",10f,15f,false,null,false,false});
                 Check(!html.Contains("editbpdate") && !html.Contains("<a ") && html.Contains("&amp;") && html.Contains("&lt;Housing&gt;"),"Read-only summary encodes user text, without Edit link");
                 browser.DocumentText=html;
                 var wait=System.Diagnostics.Stopwatch.StartNew();

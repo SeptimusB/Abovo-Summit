@@ -118,14 +118,17 @@ Namespace Abovo
 
 
 
-            Dim Engine As FormulaEngine = context.Sheet.Workbook.FormulaEngine '
+            If parameters Is Nothing OrElse parameters.Count <> 7 Then Return ParameterValue.ErrorInvalidValueInFunction
+            For Each parameter In parameters
+                If parameter.IsError Then Return parameter
+            Next
+            If Not parameters(5).IsRange OrElse Not parameters(6).IsRange Then Return ParameterValue.ErrorInvalidValueInFunction
             Dim IntYear As Integer = Convert.ToInt32(parameters(0).NumericValue)
             Dim AllUnits As Integer = Convert.ToInt32(parameters(1).NumericValue)
             Dim FirstManage As Integer = Convert.ToInt32(parameters(2).NumericValue)
             Dim LastManage As Integer = Convert.ToInt32(parameters(3).NumericValue)
             Dim FinalYear As Integer = Convert.ToInt32(parameters(4).NumericValue) ' This is unused but remains for compatibility
             Dim ApplRates As CellRange = parameters(5).RangeValue
-            Dim ApplYears As CellRange = parameters(6).RangeValue
 
             Dim AnnualUnits As Double = AllUnits / (LastManage - FirstManage + 1)
             Dim AnnualRate As Double = 0
@@ -133,19 +136,20 @@ Namespace Abovo
             Dim i As Integer = IntYear
             Dim j As Integer = 0
             Dim ValReturn As ParameterValue
-            Dim StrMatch As String = ""
-            Dim expcontext As New ExpressionContext(context.Column, context.Row, context.Sheet, context.Culture, ReferenceStyle.R1C1, DevExpress.Spreadsheet.Formulas.ExpressionStyle.Normal)
+            'Explicit mode 1 is the same approximate MATCH as the old formula's
+            'omitted third argument. No cached values survive this evaluation.
+            Dim match = context.Sheet.Workbook.Functions("MATCH")
+            Dim matchArguments As ParameterValue() = {0, parameters(6), 1}
             Do While i >= FirstManage And j < (LastManage - FirstManage + 1)
 
                 AnnualRate = 0
-                StrMatch = "=MATCH(" & i - FirstManage + 1 & ", " & ApplYears.GetReferenceR1C1(ReferenceElement.IncludeSheetName Or ReferenceElement.RowAbsolute Or ReferenceElement.ColumnAbsolute, Nothing) & ")"
-
-                ValReturn = Engine.Evaluate(StrMatch, expcontext)
-                'If IsNumeric(ValReturn) Then
+                matchArguments(0) = i - FirstManage + 1
+                ValReturn = match.Evaluate(matchArguments, context)
+                If ValReturn.IsError Then Return ValReturn
+                If Not ValReturn.IsNumeric Then Return ParameterValue.ErrorInvalidValueInFunction
+                If ValReturn.NumericValue < 1 OrElse ValReturn.NumericValue > CLng(ApplRates.RowCount) * ApplRates.ColumnCount Then Return ParameterValue.ErrorReference
+                If ApplRates(ValReturn.NumericValue - 1).Value.IsError Then Return ApplRates(ValReturn.NumericValue - 1).Value
                 AnnualRate = ApplRates(ValReturn.NumericValue - 1).Value.NumericValue
-                'Else
-                '    AnnualRate = 0 ' If no match, set rate to 0
-                'End If
                 TotCost += AnnualUnits * AnnualRate
                 i -= 1
                 j += 1

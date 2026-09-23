@@ -127,6 +127,7 @@ Namespace Abovo
             SaveButton = panel.Buttons.OfType(Of DevExpress.XtraBars.Docking2010.WindowsUIButton)().
                 FirstOrDefault(Function(button) Convert.ToString(button.Tag) = "SaveBP")
             AddHandler Model.DirtyStateChanged, AddressOf StateChanged
+            AddHandler Model.ManualSaveAvailabilityChanged, AddressOf StateChanged
             AddHandler Owner.Disposed, AddressOf OwnerDisposed
             If ObserveEditor Then AddHandler Application.Idle, AddressOf CheckPendingEditor
             RefreshState()
@@ -154,7 +155,7 @@ Namespace Abovo
         Private Sub RefreshState()
             If DisposedBinding OrElse Owner.IsDisposed OrElse Owner.Disposing OrElse SaveButton Is Nothing Then Return
             Dim canSave = Not Model.IsClosing AndAlso
-                (Model.IsDirty OrElse (ObserveEditor AndAlso HasPendingEditor()))
+                (Model.ManualSaveAvailable OrElse (ObserveEditor AndAlso HasPendingEditor()))
             If SaveButton.Enabled <> canSave Then SaveButton.Enabled = canSave
         End Sub
 
@@ -177,6 +178,7 @@ Namespace Abovo
             If DisposedBinding Then Return
             DisposedBinding = True
             RemoveHandler Model.DirtyStateChanged, AddressOf StateChanged
+            RemoveHandler Model.ManualSaveAvailabilityChanged, AddressOf StateChanged
             RemoveHandler Owner.Disposed, AddressOf OwnerDisposed
             If ObserveEditor Then RemoveHandler Application.Idle, AddressOf CheckPendingEditor
         End Sub

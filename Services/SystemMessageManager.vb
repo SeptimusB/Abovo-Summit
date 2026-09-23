@@ -99,7 +99,7 @@ Namespace Abovo
             output.AppendLine("Abovo Summit system messages")
             output.AppendLine("Created " & Now().ToString("g", CultureInfo.CurrentCulture))
             output.AppendLine(New String("-"c, 80))
-            For Each item As SystemMessageRecord In SnapshotItems()
+            For Each item As SystemMessageRecord In ExportSnapshot()
                 output.Append(item.TimeStamp.ToString("g", CultureInfo.CurrentCulture)).Append("  ")
                 output.Append(item.SeverityText.ToUpperInvariant()).Append("  ")
                 output.AppendLine(item.Message)
@@ -124,7 +124,7 @@ Namespace Abovo
             output.Append("<h1>Abovo Summit system messages</h1><p>Created ")
             output.Append(WebUtility.HtmlEncode(Now().ToString("g", CultureInfo.CurrentCulture)))
             output.Append("</p><table><thead><tr><th>Time</th><th>Type</th><th>Message</th><th>Source</th><th>Location</th><th>User</th></tr></thead><tbody>")
-            For Each item As SystemMessageRecord In SnapshotItems()
+            For Each item As SystemMessageRecord In ExportSnapshot()
                 output.Append("<tr class='").Append(item.SeverityText).Append("'><td>")
                 output.Append(WebUtility.HtmlEncode(item.TimeStamp.ToString("g", CultureInfo.CurrentCulture))).Append("</td><td>")
                 output.Append(WebUtility.HtmlEncode(item.SeverityText)).Append("</td><td>")
@@ -152,6 +152,17 @@ Namespace Abovo
                 End If
             End SyncLock
         End Sub
+
+        Private Function ExportSnapshot() As List(Of SystemMessageRecord)
+            'Exports are diagnostic evidence, not a copy of the UI notification
+            'cache. An earlier failing event subscriber must not omit entries.
+            Dim result As New List(Of SystemMessageRecord)()
+            For Each row As DataRow In MasterChangeLog.Snapshot().Rows
+                Dim entry = RowToEntry(row)
+                If AppliesToModel(entry) Then result.Add(ToMessage(entry))
+            Next
+            Return result
+        End Function
 
         Private Sub LoadExistingMessages()
             Dim snapshot As DataTable = MasterChangeLog.Snapshot()

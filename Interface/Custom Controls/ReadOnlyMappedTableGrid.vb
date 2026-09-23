@@ -253,6 +253,15 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
     Public Sub FitWorkbookColumns()
         If IsDisposed Then Return
         ForceInitialize()
+        If String.Equals(sourceSheet.Name, "Check Sheet", StringComparison.OrdinalIgnoreCase) AndAlso ShowDestinations Then
+            view.BeginUpdate()
+            Try
+                FitCheckSheetColumns()
+            Finally
+                view.EndUpdate()
+            End Try
+            Return
+        End If
         view.BestFitColumns()
         'Measure with the actual workbook font (BestFit may otherwise use the
         'application font). Retain room for a full error message, with scrolling.
@@ -273,6 +282,37 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
             Next
             column.Width = Math.Max(55, Math.Min(600, width))
         Next
+        Height = Math.Min(950, Math.Max(360, view.RowCount * Math.Max(22, view.RowHeight) + 50))
+    End Sub
+
+    Private Sub FitCheckSheetColumns()
+        'Check results are short; the workbook's print widths and longest error
+        'message must not push both navigation destinations off the screen.
+        Dim dpi As Single = DeviceDpi / 96.0F
+        view.OptionsView.ColumnAutoWidth = False
+        view.OptionsView.ColumnHeaderAutoHeight = DefaultBoolean.True
+        view.Appearance.HeaderPanel.TextOptions.WordWrap = WordWrap.Wrap
+        For Each column As DevExpress.XtraGrid.Columns.GridColumn In view.Columns
+            Dim logicalWidth As Integer
+            If column.FieldName = InterfaceField Then
+                logicalWidth = 250
+            ElseIf StyleColumnIndex(column) = linkColumnIndex Then
+                logicalWidth = 215
+            Else
+                Select Case StyleColumnIndex(column) - sourceRange.LeftColumnIndex
+                    Case 0 : logicalWidth = 230
+                    Case 1, 3 : logicalWidth = 55
+                    Case 2 : logicalWidth = 75
+                    Case 4 : logicalWidth = 65
+                    Case Else : logicalWidth = 185
+                End Select
+            End If
+            column.MinWidth = CInt(Math.Min(logicalWidth, If(logicalWidth >= 185, 120, 45)) * dpi)
+            column.Width = CInt(logicalWidth * dpi)
+        Next
+        view.OptionsView.ColumnAutoWidth = True
+        'Keep multiline messages/destination names intact. Only the UI column
+        'widths change; worksheet geometry, fonts and Yes/No editors are untouched.
         Height = Math.Min(950, Math.Max(360, view.RowCount * Math.Max(22, view.RowHeight) + 50))
     End Sub
 
@@ -519,6 +559,8 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
                 End If
                 If Not matches Then
                     sectionIndex = child.InterfaceSections.FindIndex(Function(section)
+                        If section.IElements.Any(Function(element) element.MappedTable IsNot Nothing AndAlso
+                            String.Equals(element.MappedTable.Worksheet, worksheetName, StringComparison.OrdinalIgnoreCase)) Then Return True
                         Return section.ISDatasources.Any(Function(data)
                             Return data.CellRangeSources.Any(Function(source)
                                 Return String.Equals(source.WSName, worksheetName, StringComparison.OrdinalIgnoreCase)

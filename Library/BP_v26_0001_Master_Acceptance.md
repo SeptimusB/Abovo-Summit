@@ -1,6 +1,16 @@
 # BP v26_0001 master acceptance
 
-Acceptance date: 11 September 2026
+Initial acceptance date: 11 September 2026
+
+## Approved Blank replacement — 23 September 2026
+
+At the user's explicit request, `Library/Blank BP v26_0001.xlsb` is now an exact byte copy of `C:/Sandbox/BP v26_0001 - New Blank.xlsb` (11,677,521 bytes, SHA-256 `E05274ACD3D4821AC38F013AC45A7B57CE335BD524938D9F21E1B640D0CC5E90`). This supersedes the Blank fingerprint in the initial acceptance below. The Demo master and Debug auto-open selection are unchanged.
+
+The source and repository copy were hash-verified after replacement. All 1,389 ZIP package entries were readable, including the XLSB workbook and embedded VBA. No engine was used to resave either master. The previous repository Blank remains recoverable in Git and in `obj/ApprovedMasterUpdates/2026-09-23-new-blank/Blank BP v26_0001 before replacement.xlsb`.
+
+The earlier Stori three-way inspection established matching worksheet formula/constant contents and complete name inventories between these two blanks, but different VBA, style and chart/object parts. The New Blank includes `MenuSheet.Calculate` before `BPMenu` reads its parameters. The user confirms that this Excel menu sheet is not used by Summit. The whole approved artifact was adopted, not just its VBA. Historical audits below describe the original September 11 artifacts; they are not new financial or macro-execution certification of this replacement.
+
+After replacement, Debug and Release builds passed (`obj/new-blank-Debug-build.log`, `obj/new-blank-Release-build.log`). `Tools/Test-IntegrityCompatibility.ps1 -Configuration Debug -Workbook 'Library/Blank BP v26_0001.xlsb' -UI` passed on a private copy: Summit load, a single linked red warning, same-plan Check Sheet tab routing, and removal of the warning on a fresh successful status. Evidence directory: `obj/IntegrityCompatibility/f41c9113959d4311bb176cbc8e211ea7`. The cached chart scan identifies 465 intentional gaps and retains the existing `OW - Covenant Calculation!AB61` lookup for review. This is not a claim of a completely error-free financial model or a full visual/client acceptance test. The master hash remained unchanged through testing.
 
 ## Authority
 
@@ -9,7 +19,7 @@ Acceptance date: 11 September 2026
 - Debug auto-load: repository `Library/Demo BP v26_0001.xlsb`
 - Preceding baseline retained for historical comparison: `Library/TestFileClean.xlsb`
 
-The repository files are exact byte copies of the user-approved files in `C:\Sandbox`.
+The repository files are exact byte copies of user-approved files in `C:\Sandbox`. The following fingerprints record the initial September 11 acceptance; the current Blank fingerprint is above.
 
 | Role | Size | SHA-256 |
 | --- | ---: | --- |

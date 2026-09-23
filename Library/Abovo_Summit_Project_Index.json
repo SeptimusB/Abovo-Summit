@@ -1,5 +1,57 @@
 {
   "schemaVersion": 3,
+  "recoveryTimingAndDiscard20260923": {
+    "documentation": "Library/Recovery_Timing_and_Discard_Warnings_2026-09-23.md",
+    "testRelease": "2.79",
+    "independentIdleAndMaximumTiming": true,
+    "maximumMayInterruptAfterSafetyGates": true,
+    "advanceNoticeSeconds": 5,
+    "snoozeUntilSessionIdleMinutes": 1,
+    "escapeCancelsPendingRecoveryToIdleSnooze": true,
+    "inFlightSerializationCancellation": false,
+    "rememberedWarningOffersExactModelCheck": true,
+    "unsavedSessionDiscardRequiresUnchangedOpeningFile": true,
+    "originalWorkbooksModified": false,
+    "physicalClientAcceptanceRequired": true
+  },
+  "recoveryPackaging20260923": {
+    "documentation": "Library/Recovery_Packaging_Optimisation_2026-09-23.md",
+    "testRelease": "2.77",
+    "testStatus": "Ready to test",
+    "readOnlyWorksheetMetadataScan": true,
+    "exclusiveFileHandleAcrossValidationAndUpdate": true,
+    "metadataStageMedianMilliseconds": { "before": 2420, "after": 879 },
+    "separateFullAglRecoveryMilliseconds": 14627,
+    "sameIntegrityChecksRetained": true,
+    "normalXlsbSaveChanged": false,
+    "backgroundLiveWorkbookAccessIntroduced": false,
+    "uiBlockingNativeSerializationRemains": true,
+    "sourceWorkbooksModified": false
+  },
+  "checkSheetRecoveryPolicy20260923": {
+    "documentation": "Library/Check_Sheet_Recovery_Policy_2026-09-23.md",
+    "testRelease": "2.76",
+    "warningClearanceOffersOptionalManualSave": true,
+    "warningClearanceCreatesUnsavedUserEdits": false,
+    "currentPlanSelectedInOptions": true,
+    "ambiguousIntegrityTargetRequiresSelection": true,
+    "ordinaryUnsavedChangesBlockWarningClearance": false,
+    "latestReportedWarningCause": "Options requested New Blank instead of the AGL model whose warning was visible",
+    "explicitCheckTargetLoggedAcrossPlans": true,
+    "messageExportsUseAuthoritativeLog": true,
+    "compactCheckSheetColumnsAndScrollableDisplayPreview": true,
+    "nonModalCompanyHeaderWarning": true,
+    "recoveryHoldPersistsPerUserAndPath": true,
+    "continueAutosaveOnCheckSheetFailureDefault": false,
+    "validatedWorkbookOverridesHonoured": true,
+    "explicitStagedCheckFromOptions": true,
+    "explicitFirstUnitDoesNotWaitForIdle": true,
+    "checkSheetRecordedBeforeYieldingAfterCalculation": true,
+    "menuCellWrapperRejectedOnXlsbRoundtrip": true,
+    "menuWorksheetUsedBySummit": false,
+    "blankMasterReconciledByApprovedExactCopy": "2026-09-23",
+    "backupGuidance": "Library/Codex_Project_Backup_Guide_2026-09-23.md"
+  },
   "idleIntegrityTrial20260922": {
     "documentation": "Library/Idle_Integrity_Trial_2026-09-22.md",
     "testRelease": "2.67",
@@ -434,10 +486,12 @@
   },
   "authority": {
     "unpopulatedMaster": {
-      "source": "C:/Sandbox/Blank BP v26_0001.xlsb",
+      "source": "C:/Sandbox/BP v26_0001 - New Blank.xlsb",
       "repositoryCopy": "Library/Blank BP v26_0001.xlsb",
-      "sizeBytes": 11643967,
-      "sha256": "0B4C06800FE998E8733A5D8EB9CDEFA04F517750275BB0CFDD532928900F5B79"
+      "sizeBytes": 11677521,
+      "sha256": "E05274ACD3D4821AC38F013AC45A7B57CE335BD524938D9F21E1B640D0CC5E90",
+      "replacementApproved": "2026-09-23",
+      "acceptanceDocumentation": "Library/BP_v26_0001_Master_Acceptance.md"
     },
     "prepopulatedMaster": {
       "source": "C:/Sandbox/Demo BP v26_0001.xlsb",

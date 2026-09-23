@@ -177,7 +177,7 @@ Namespace Abovo
                     Next
                 End If
                 verifyMs = benchmark.ElapsedMilliseconds - verifyStartMs
-                FileManager.ExcelModels(modelID).IsDirty = True
+                FileManager.ExcelModels(modelID).MarkUserChange()
                 outcome = "ok"
             Catch
                 ''A failed run must not leave a partially-populated comparison which
