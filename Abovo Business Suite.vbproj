@@ -625,6 +625,11 @@
     <Compile Include="Services\DataService\DataManager.vb" />
     <Compile Include="Services\DataService\ObjectReplicator.vb" />
     <Compile Include="Services\EngineManagement.vb" />
+    <Compile Include="Services\WorkbookEngines\WorkbookEngineContracts.vb" />
+    <Compile Include="Services\WorkbookEngines\WorkbookEngineStaHost.vb" />
+    <Compile Include="Services\WorkbookEngines\WorkbookCalculationSession.vb" />
+    <Compile Include="Services\WorkbookEngines\DevExpressCalculationBackend.vb" />
+    <Compile Include="Services\WorkbookEngines\ExcelCalculationBackend.vb" />
     <Compile Include="Services\ExcelDataExport.vb" />
     <Compile Include="Services\Calculation Engine and Custom Functions\ExcelFunctions.vb" />
     <Compile Include="Services\FileManager.vb" />

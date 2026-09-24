@@ -1,6 +1,6 @@
 # Deferred proposal: Excel-first workbook engine
 
-Status: deferred at the user's request on 23 September 2026, until their credits renew and they ask to resume. Stop work now. No production implementation is authorised by this note, and no automatic resumption or reminder has been scheduled.
+Historical status: deferred at the user's request on 23 September 2026. **Superseded by explicit staged-implementation approval on 24/25 September 2026.** Prefer compatible Excel automatically, respect existing macro security, retain configurable DevExpress fallback. Current scope, tested foundation and unimplemented release gates are in `Library/Excel_DevExpress_Engine_Stage1_2026-09-25.md`. The remainder preserves the earlier proposal, not the current authorization boundary.
 
 ## Proposal discussed
 

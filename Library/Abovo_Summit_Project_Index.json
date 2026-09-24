@@ -1,5 +1,19 @@
 {
   "schemaVersion": 3,
+  "excelFirstFoundation20260925": {
+    "documentation": "Library/Excel_DevExpress_Engine_Stage1_2026-09-25.md",
+    "source": "Services/WorkbookEngines",
+    "tests": "Tools/WorkbookEngineFoundationTests",
+    "status": "read-only foundation; no live engine switch or test release",
+    "defaultWhenIntegrated": "prefer compatible installed Excel; configurable DevExpress fallback",
+    "security": "existing Excel policy only; no Trust Center changes or forced VBA",
+    "authority": "one selected owner; opening-only fallback; no silent mid-session switch",
+    "publication": "code/tests/technical notes only; attachments retained locally",
+    "checkpointBranch": "codex/checkpoint-2.98-code-only",
+    "productionOutputsUnchanged": "2.98",
+    "sourceWorkbooksModified": false,
+    "pending": ["overall native timeout supervision", "formula/fill-preserving UI projection", "typed edits and undo ownership", "structural and save/recovery integration", "client round-trip acceptance"]
+  },
   "productionCheckSheet20260924_298": {
     "testRelease": "2.98",
     "documentation": "Library/Check_Sheet_Coherence_2.98_2026-09-24.md",
