@@ -15,13 +15,16 @@ Namespace Abovo.WorkbookEngines
         Private closing As Boolean
         Private failed As Boolean
         Private currentRevision As Long
+        Private ReadOnly timeoutMilliseconds As Integer
+        Private cleanupTask As Task
         Public ReadOnly Property SessionId As Guid = Guid.NewGuid()
         Public ReadOnly Property SourceHash As String
         Public ReadOnly Property EngineName As String
         Public ReadOnly Property EngineVersion As String
         Public ReadOnly Property FallbackReason As String
 
-        Private Sub New()
+        Private Sub New(timeoutMilliseconds As Integer)
+            Me.timeoutMilliseconds = timeoutMilliseconds
         End Sub
 
         Public ReadOnly Property Revision As Long
@@ -42,10 +45,10 @@ Namespace Abovo.WorkbookEngines
             If Not {".xlsb", ".xlsm", ".xlsx"}.Contains(extension, StringComparer.OrdinalIgnoreCase) Then
                 Throw New ArgumentException("The calculation adapter supports XLSB, XLSM and XLSX workbooks only.", NameOf(path))
             End If
-            Dim session As New WorkbookCalculationSession()
+            Dim session As New WorkbookCalculationSession(options.OperationTimeoutMilliseconds)
             Dim openError As Exception = Nothing
             Try
-                Await session.owner.InvokeAsync(Of Boolean)(Function()
+                Dim opening = session.owner.InvokeAsync(Of Boolean)(Function()
                     cancellation.ThrowIfCancellationRequested()
                     ' Retain a read-only lease: the baseline cannot change under
                     ' an open native model. Stage one never saves this document.
@@ -63,12 +66,18 @@ Namespace Abovo.WorkbookEngines
                                                        options.Preference = WorkbookEnginePreference.Automatic
                             ' Fallback is allowed only before handing ownership
                             ' to the caller, never after edits or published reads.
+                            SyncLock session.gate
+                                session.RequireAvailable()
+                            End SyncLock
                             If session.backend IsNot Nothing Then session.backend.Dispose()
                             session.backend = Nothing
                             session._FallbackReason = ex.GetType().Name & ": " & ex.Message
                         End Try
                     End If
                     cancellation.ThrowIfCancellationRequested()
+                    SyncLock session.gate
+                        session.RequireAvailable()
+                    End SyncLock
                     If session.backend Is Nothing Then
                         session.backend = createBackend(WorkbookEnginePreference.DevExpressOnly)
                         session.backend.OpenReadOnly(fullPath, options)
@@ -76,11 +85,17 @@ Namespace Abovo.WorkbookEngines
                     session._EngineName = session.backend.Name
                     session._EngineVersion = session.backend.Version
                     Return True
-                End Function, cancellation).ConfigureAwait(False)
+                End Function, cancellation)
+                Await session.AwaitOperation(opening, "opening").ConfigureAwait(False)
                 Return session
             Catch ex As Exception
                 openError = ex
             End Try
+            If TypeOf openError Is TimeoutException Then
+                ' AwaitOperation has quarantined the owner and queued cleanup.
+                ' Do not wait through a second timeout before informing the caller.
+                Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(openError).Throw()
+            End If
             ' VB does not permit Await in Catch/Finally.
             Try
                 Await session.CloseAsync().ConfigureAwait(False)
@@ -129,7 +144,7 @@ Namespace Abovo.WorkbookEngines
             SyncLock gate
                 RequireRevision(expectedRevision)
             End SyncLock
-            Return Await owner.InvokeAsync(Function()
+            Dim calculation = owner.InvokeAsync(Function()
                 SyncLock gate
                     RequireRevision(expectedRevision)
                 End SyncLock
@@ -138,6 +153,9 @@ Namespace Abovo.WorkbookEngines
                 Dim calculationMs As Long
                 Try
                     backend.Calculate(kind)
+                    SyncLock gate
+                        RequireRevision(expectedRevision)
+                    End SyncLock
                     calculationMs = timer.ElapsedMilliseconds
                     For Each area In requests
                         cancellation.ThrowIfCancellationRequested()
@@ -146,6 +164,9 @@ Namespace Abovo.WorkbookEngines
                         blocks.Add(block)
                     Next
                 Catch ex As OperationCanceledException
+                    Throw
+                Catch ex As StaleResultException
+                    ' A newer edit is not a native engine failure.
                     Throw
                 Catch
                     SyncLock gate
@@ -159,7 +180,8 @@ Namespace Abovo.WorkbookEngines
                     RequireRevision(expectedRevision)
                 End SyncLock
                 Return result
-            End Function, cancellation).ConfigureAwait(False)
+            End Function, cancellation)
+            Return Await AwaitOperation(calculation, "calculation").ConfigureAwait(False)
         End Function
 
         Private Shared Function SameArea(actual As WorkbookReadArea, requested As WorkbookReadArea) As Boolean
@@ -175,22 +197,74 @@ Namespace Abovo.WorkbookEngines
 
         Private Sub RequireRevision(expected As Long)
             RequireAvailable()
-            If expected <> currentRevision Then Throw New InvalidOperationException("The workbook changed while these results were being prepared. Request current results again.")
+            If expected <> currentRevision Then Throw New StaleResultException()
         End Sub
 
-        Public Function CloseAsync() As Task
+        Private NotInheritable Class StaleResultException
+            Inherits InvalidOperationException
+            Friend Sub New()
+                MyBase.New("The workbook changed while these results were being prepared. Request current results again.")
+            End Sub
+        End Class
+
+        Private Async Function AwaitOperation(Of T)(operation As Task(Of T), operationName As String) As Task(Of T)
+            Using deadline As New CancellationTokenSource()
+                Dim elapsed = Task.Delay(timeoutMilliseconds, deadline.Token)
+                If Await Task.WhenAny(operation, elapsed).ConfigureAwait(False) IsNot operation Then
+                    SyncLock gate
+                        failed = True
+                    End SyncLock
+                    ObserveFault(operation)
+                    Dim pendingCleanup = StartCleanup()
+                    Throw New TimeoutException("Workbook " & operationName & " exceeded its time limit. No result was accepted. The session is closed to further use; native cleanup is queued, without interrupting or switching engines.")
+                End If
+                deadline.Cancel()
+                Return Await operation.ConfigureAwait(False)
+            End Using
+        End Function
+
+        Private Shared Sub ObserveFault(task As Task)
+            task.ContinueWith(Sub(completed)
+                                  Dim observed = completed.Exception
+                              End Sub, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default)
+        End Sub
+
+        Public ReadOnly Property NativeCleanupCompletion As Task
+            Get
+                SyncLock gate
+                    Return cleanupTask
+                End SyncLock
+            End Get
+        End Property
+
+        Private Function StartCleanup() As Task
             SyncLock gate
                 closing = True
+                If cleanupTask Is Nothing Then
+                    cleanupTask = owner.StopAsync(Sub()
+                        Try
+                            If backend IsNot Nothing Then backend.Dispose()
+                        Finally
+                            backend = Nothing
+                            If sourceLease IsNot Nothing Then sourceLease.Dispose()
+                            sourceLease = Nothing
+                        End Try
+                    End Sub)
+                    ObserveFault(cleanupTask)
+                End If
+                Return cleanupTask
             End SyncLock
-            Return owner.StopAsync(Sub()
-                Try
-                    If backend IsNot Nothing Then backend.Dispose()
-                Finally
-                    backend = Nothing
-                    If sourceLease IsNot Nothing Then sourceLease.Dispose()
-                    sourceLease = Nothing
-                End Try
-            End Sub)
+        End Function
+
+        Public Async Function CloseAsync() As Task
+            Dim cleanup = StartCleanup()
+            Using deadline As New CancellationTokenSource()
+                If Await Task.WhenAny(cleanup, Task.Delay(timeoutMilliseconds, deadline.Token)).ConfigureAwait(False) IsNot cleanup Then
+                    Throw New TimeoutException("Native workbook cleanup is still waiting. No further operations or engine fallback are permitted for this session.")
+                End If
+                deadline.Cancel()
+                Await cleanup.ConfigureAwait(False)
+            End Using
         End Function
     End Class
 End Namespace

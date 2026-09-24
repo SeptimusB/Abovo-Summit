@@ -23,14 +23,18 @@ Namespace Abovo.WorkbookEngines
         Public ReadOnly Property Preference As WorkbookEnginePreference
         Public ReadOnly Property AllowTrustedVba As Boolean
         Public ReadOnly Property RequireSummitFunctions As Boolean
+        Public ReadOnly Property OperationTimeoutMilliseconds As Integer
 
         Public Sub New(Optional preference As WorkbookEnginePreference = WorkbookEnginePreference.Automatic,
                        Optional allowTrustedVba As Boolean = True,
-                       Optional requireSummitFunctions As Boolean = True)
+                       Optional requireSummitFunctions As Boolean = True,
+                       Optional operationTimeoutMilliseconds As Integer = 120000)
             If Not [Enum].IsDefined(GetType(WorkbookEnginePreference), preference) Then Throw New ArgumentOutOfRangeException(NameOf(preference))
+            If operationTimeoutMilliseconds < 50 OrElse operationTimeoutMilliseconds > 1800000 Then Throw New ArgumentOutOfRangeException(NameOf(operationTimeoutMilliseconds))
             Me.Preference = preference
             Me.AllowTrustedVba = allowTrustedVba
             Me.RequireSummitFunctions = requireSummitFunctions
+            Me.OperationTimeoutMilliseconds = operationTimeoutMilliseconds
         End Sub
     End Class
 

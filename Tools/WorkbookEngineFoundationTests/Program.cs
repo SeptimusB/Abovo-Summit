@@ -192,6 +192,7 @@ static class Program
                 var result=await session.CalculateAndReadAsync(0,WorkbookCalculationKind.Rebuild,requests);
                 Console.WriteLine("CALC engine="+session.EngineName+" ms="+result.CalculationMilliseconds+" transferMs="+result.TransferMilliseconds);
                 Check(session.IsCurrent(result),"real calculated result accepted");
+                await ResultGridTests.NativeResult(session,result);
                 if(reference==null)reference=result;
                 else
                 {
@@ -225,12 +226,13 @@ static class Program
     static async Task Run(string[] args)
     {
         var before=Hash(args[1]);
-        if(args[2]=="safety")await Safety(args[1]);else if(args[2]=="security")Security(args[1]);else await Native(args[1],args[2]=="agl");
+        if(args[2]=="safety")await Safety(args[1]);else if(args[2]=="security")Security(args[1]);else if(args[2]=="projection")ProjectionProbe.Run();else if(args[2]=="grid")await ResultGridTests.Run(args[1]);else if(args[2]=="deadline")await DeadlineTests.Run(args[1]);else await Native(args[1],args[2]=="agl");
         Check(Hash(args[1])==before,"source bytes unchanged");Console.WriteLine("ASSERTIONS="+assertions);
     }
+    [STAThread]
     static int Main(string[] args)
     {
-        if(args.Length!=3||!new[]{"safety","security","synthetic","agl"}.Contains(args[2])){Console.Error.WriteLine("APP_BIN PRIVATE_WORKBOOK safety|security|synthetic|agl");return 2;}
+        if(args.Length!=3||!new[]{"safety","security","synthetic","agl","projection","grid","deadline"}.Contains(args[2])){Console.Error.WriteLine("APP_BIN PRIVATE_WORKBOOK safety|security|synthetic|agl|projection|grid|deadline");return 2;}
         AppDomain.CurrentDomain.AssemblyResolve+=(s,e)=>{string file=Path.Combine(args[0],new AssemblyName(e.Name).Name+".dll");if(!File.Exists(file))file=Path.Combine(args[0],new AssemblyName(e.Name).Name+".exe");return File.Exists(file)?Assembly.LoadFrom(file):null;};
         try{Run(args).GetAwaiter().GetResult();return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}
     }

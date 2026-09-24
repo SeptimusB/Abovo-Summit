@@ -31,6 +31,9 @@ Handover updated: 25 September 2026. Working checkout: `C:\Repos\Abovo Summit`; 
 
 **Excel-first foundation — new active source map:**
 
+- Current checkpoint 2a: `Library/Excel_DevExpress_Engine_Stage2a_2026-09-25.md`. `WorkbookResultGridSource` binds detached, current engine results to native grids without changing formulas/fills. Scalar calculation interception is rejected for general projection because dynamic spill values become stale/missing. Open/calculate/close waits are bounded with quarantined late cleanup; process-level recovery is still pending. No live ownership switch or client release yet.
+- Stage 3 must compare **all three** explicitly approved routes: existing DevExpress .NET commands, VB.NET driving Excel, and verified workbook VBA. Use `Library/Structural_Engine_Comparison_Protocol_2026-09-25.md`, full business-command equivalence and separate stage/total timings. Attachments and workbook fixtures stay local.
+
 - `Services/WorkbookEngines`: immutable typed result boundary, one serialized STA owner, readonly baseline/hash/revision checks, Automatic/DevExpressOnly/ExcelRequired selection, opening-only fallback, existing-policy VBA and actual dynamic-array/UDF capability probes. Native failure faults the session; no silent mid-session swap. No live UI/edit/save integration yet.
 - `Tools/WorkbookEngineFoundationTests`: deterministic safety, security screening, real x86 Excel/DevExpress comparison and cleanup. Candidate builds use `bin/EngineStage1-Debug` and `bin/EngineStage1-Release`, not normal outputs. See the stage-1 report for exact evidence and next gates, notably hung-operation supervision and formula/fill-preserving UI projection.
 

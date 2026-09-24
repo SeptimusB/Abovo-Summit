@@ -1,5 +1,15 @@
 {
   "schemaVersion": 3,
+  "excelFirstDisplay20260925": {
+    "documentation": "Library/Excel_DevExpress_Engine_Stage2a_2026-09-25.md",
+    "structuralProtocol": "Library/Structural_Engine_Comparison_Protocol_2026-09-25.md",
+    "stage3ApprovedRoutes": ["DevExpress .NET", "VB.NET-driven Excel", "verified Excel VBA"],
+    "status": "tested result-grid and deadline building blocks; no live engine switch",
+    "resultSource": "Services/WorkbookEngines/WorkbookResultGridSource.vb",
+    "rejectedProjection": "scalar ICustomCalculationService leaves existing spill values stale and does not populate new spills",
+    "timeoutPolicy": "bounded open/calculate/close waits; quarantine and queued owner-thread cleanup; no force abort or silent fallback",
+    "remaining": ["process-level recovery for calls that never return", "authoritative edits, formatting and lifecycle integration", "structural comparison and save/recovery integration"]
+  },
   "excelFirstFoundation20260925": {
     "documentation": "Library/Excel_DevExpress_Engine_Stage1_2026-09-25.md",
     "source": "Services/WorkbookEngines",

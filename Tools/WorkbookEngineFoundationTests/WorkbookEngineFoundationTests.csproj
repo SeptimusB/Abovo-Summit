@@ -4,7 +4,7 @@
     <OutputType>Exe</OutputType>
     <LangVersion>7.3</LangVersion>
     <PlatformTarget Condition="'$(PlatformTarget)' == ''">x86</PlatformTarget>
-    <ApplicationBin Condition="'$(ApplicationBin)' == ''">../../bin/EngineStage1-Debug</ApplicationBin>
+    <ApplicationBin Condition="'$(ApplicationBin)' == ''">../../bin/EngineStage2-Debug</ApplicationBin>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
   </PropertyGroup>
@@ -14,5 +14,16 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="DevExpress.Docs.v25.2"><HintPath>$(ApplicationBin)/DevExpress.Docs.v25.2.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="DevExpress.Spreadsheet.v25.2.Core"><HintPath>$(ApplicationBin)/DevExpress.Spreadsheet.v25.2.Core.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="DevExpress.Data.v25.2"><HintPath>$(ApplicationBin)/DevExpress.Data.v25.2.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="DevExpress.Data.Desktop.v25.2"><HintPath>$(ApplicationBin)/DevExpress.Data.Desktop.v25.2.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="DevExpress.Office.v25.2.Core"><HintPath>$(ApplicationBin)/DevExpress.Office.v25.2.Core.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="DevExpress.Drawing.v25.2"><HintPath>$(ApplicationBin)/DevExpress.Drawing.v25.2.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="DevExpress.Printing.v25.2.Core"><HintPath>$(ApplicationBin)/DevExpress.Printing.v25.2.Core.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="DevExpress.Utils.v25.2"><HintPath>$(ApplicationBin)/DevExpress.Utils.v25.2.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="DevExpress.XtraGrid.v25.2"><HintPath>$(ApplicationBin)/DevExpress.XtraGrid.v25.2.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="DevExpress.XtraEditors.v25.2"><HintPath>$(ApplicationBin)/DevExpress.XtraEditors.v25.2.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
 </Project>
