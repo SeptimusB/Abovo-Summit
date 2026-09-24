@@ -26,7 +26,7 @@
             System.Threading.Interlocked.Increment(ActiveOperations)
             If Owner Is Nothing OrElse Owner.IsDisposed OrElse
                Not Owner.IsHandleCreated OrElse Owner.InvokeRequired Then
-                System.Diagnostics.Trace.WriteLine(
+                Abovo.SummitDiagnostics.WriteLine(
                     "[Progress Notice] Skipped: owner is not a live UI-thread form.")
                 Return
             End If
@@ -40,14 +40,14 @@
                 Manager.SetWaitFormCaption(Caption)
                 Manager.SetWaitFormDescription(Description)
             Catch ex As System.Exception
-                System.Diagnostics.Trace.WriteLine(
+                Abovo.SummitDiagnostics.WriteLine(
                     "[Progress Notice] Unable to show: " & ex.Message)
                 Close()
                 If Manager IsNot Nothing Then
                     Try
                         Manager.Dispose()
                     Catch cleanupError As System.Exception
-                        System.Diagnostics.Trace.WriteLine(
+                        Abovo.SummitDiagnostics.WriteLine(
                             "[Progress Notice] Unable to dispose: " &
                             cleanupError.Message)
                     End Try
@@ -60,7 +60,7 @@
             Try
                 Manager.SetWaitFormDescription(Description)
             Catch ex As System.Exception
-                System.Diagnostics.Trace.WriteLine(
+                Abovo.SummitDiagnostics.WriteLine(
                     "[Progress Notice] Unable to update: " & ex.Message)
             End Try
         End Sub
@@ -80,7 +80,7 @@
                 Manager.SetWaitFormDescription(Description)
                 Completed = True
             Catch ex As System.Exception
-                System.Diagnostics.Trace.WriteLine(
+                Abovo.SummitDiagnostics.WriteLine(
                     "[Progress Notice] Unable to complete: " & ex.Message)
             End Try
             Close()
@@ -92,7 +92,7 @@
             Try
                 Manager.CloseWaitForm()
             Catch ex As System.Exception
-                System.Diagnostics.Trace.WriteLine(
+                Abovo.SummitDiagnostics.WriteLine(
                     "[Progress Notice] Unable to close: " & ex.Message)
             End Try
         End Sub
@@ -107,7 +107,7 @@
                 Try
                     Manager.Dispose()
                 Catch ex As System.Exception
-                    System.Diagnostics.Trace.WriteLine(
+                    Abovo.SummitDiagnostics.WriteLine(
                         "[Progress Notice] Unable to dispose: " & ex.Message)
                 End Try
                 Return
@@ -122,7 +122,7 @@
                     Try
                         Manager.Dispose()
                     Catch ex As System.Exception
-                        System.Diagnostics.Trace.WriteLine(
+                        Abovo.SummitDiagnostics.WriteLine(
                             "[Progress Notice] Unable to dispose: " & ex.Message)
                     End Try
                 End Sub

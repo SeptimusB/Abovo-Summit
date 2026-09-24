@@ -85,6 +85,8 @@ Partial Public Class BPIncomeExpenditureAnalyserV2
             Tree.OptionsCustomization.AllowSort = False
             Tree.OptionsCustomization.AllowFilter = False
             Tree.ContextMenuStrip = Menu
+            AddHandler Tree.SizeChanged, Sub() LimitDescriptionWidth()
+            GridPresentation.SetResetLayout(Tree, Sub() Tree.RowHeight = -1)
             Menu.Items.Add("Copy", Nothing, Sub(s, e) Copy(False))
             Menu.Items.Add("Copy with headings", Nothing, Sub(s, e) Copy(True))
             AddHandler Tree.FocusedNodeChanged, Sub(s, e) ShowSource()
@@ -107,6 +109,11 @@ Partial Public Class BPIncomeExpenditureAnalyserV2
             HotNode = node
             If previous IsNot Nothing Then Tree.InvalidateNode(previous)
             If node IsNot Nothing Then Tree.InvalidateNode(node)
+        End Sub
+
+        Private Sub LimitDescriptionWidth()
+            If Tree.Columns.Count = 0 OrElse Tree.ClientSize.Width <= 0 Then Return
+            Tree.Columns(0).MaxWidth = Math.Max(Tree.Columns(0).MinWidth, CInt(Tree.ClientSize.Width * 0.4))
         End Sub
 
         Private Sub Copy(headings As Boolean)
@@ -153,6 +160,7 @@ Partial Public Class BPIncomeExpenditureAnalyserV2
                 For p = 0 To 40
                     Tree.Columns(p + 1).Caption = Document.Periods(p)
                 Next
+                LimitDescriptionWidth()
                 'The native spreadsheet formatter handles Excel formats (including
                 'zero/negative sections); no calculation or model write in paint.
                 Using formatting As New Workbook()
@@ -193,7 +201,7 @@ Partial Public Class BPIncomeExpenditureAnalyserV2
                 Tree.Nodes.Clear() : NodeMap.Clear()
                 Notice.Text = "Balance Sheet unavailable: " & ex.Message
                 Detail.Text = ex.Message
-                Diagnostics.Trace.WriteLine("[Balance Sheet view] " & ex.ToString())
+                Abovo.SummitDiagnostics.WriteLine("[Balance Sheet view] " & ex.ToString())
                 Dirty = False
                 Return Nothing
             Finally
@@ -222,6 +230,7 @@ Partial Public Class BPIncomeExpenditureAnalyserV2
             Dim index = model.Styles(e.Column.AbsoluteIndex)
             Dim style = Document.Styles(index)
             e.Appearance.Font = If(model.IsHeadline OrElse e.Node.HasChildren, HeadingFont, DataFont)
+            e.Appearance.FontSizeDelta = CInt(Math.Round(e.Appearance.Font.SizeInPoints * (GridPresentation.ZoomPercent(Tree) / 100.0 - 1.0)))
             e.Appearance.ForeColor = If(e.Column.AbsoluteIndex > 0 AndAlso model.Values(e.Column.AbsoluteIndex - 1) < 0, Color.Red, Color.Black)
             e.Appearance.BackColor = If(model.IsTotal, Color.LightSteelBlue,
                 If(e.Node.Level = 0, Color.FromArgb(235, 235, 250),

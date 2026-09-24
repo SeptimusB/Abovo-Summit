@@ -163,6 +163,15 @@ Namespace Abovo
                         Properties.MaskSettings.Set("MaskManagerType", GetType(DevExpress.Data.Mask.NumericMaskManager))
                         Properties.MaskSettings.Set("mask", "F")
 
+                    Case "R"
+
+                        Properties.DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric
+                        Properties.DisplayFormat.FormatString = "0.###############"
+                        Properties.Appearance.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
+                        Properties.MaskSettings.Set("MaskManagerType", GetType(DevExpress.Data.Mask.NumericMaskManager))
+                        Properties.MaskSettings.Set("mask", "0.###############")
+                        EditValue = TargetWorksheet.Cells(TargetCell).Value.NumericValue
+
                     Case "M"
 
                         Properties.MaskSettings.Set("AutoHideDecimalSeparator", True)
@@ -829,10 +838,10 @@ Namespace Abovo
                     If ordinal.Length = 0 Then Continue For
 
                     Dim period As String = Nothing
-                    Dim displayText As String = ordinal
+                    Dim displayText As String = "Year " & ordinal
                     If periodByOrdinal.TryGetValue(ordinal, period) AndAlso
                        Not String.IsNullOrWhiteSpace(period) Then
-                        displayText = ordinal & " - " & ShortenYearDescription(period)
+                        displayText &= " - " & ShortenYearDescription(period)
                     End If
 
                     Dim item As New OrdinalYearComboItem(ordinal, displayText)
@@ -908,6 +917,9 @@ Namespace Abovo
                 End If
 
                 Dim ordinal As String = Convert.ToString(e.Value).Trim()
+                'Some workbook headers already display a literal "Year " prefix.
+                'Map those and plain numeric headers to the same editor label.
+                If ordinal.StartsWith("Year ", StringComparison.OrdinalIgnoreCase) Then ordinal = ordinal.Substring(5).Trim()
                 If OrdinalYearItems.TryGetValue(ordinal, item) Then
                     e.DisplayText = item.DisplayText
                 End If
@@ -1097,11 +1109,11 @@ Namespace Abovo
 
                 Try
 
-                    EditValue = DateTime.FromOADate(TargetWorksheet.Range(TargetCell).Value.NumericValue)
+                    EditValue = ReadDateValue()
 
                 Catch ex As Exception
 
-                    EditValue = ""
+                    EditValue = Nothing
 
                 End Try
 
@@ -1122,11 +1134,12 @@ Namespace Abovo
 
                 Try
 
-                    EditValue = DateTime.FromOADate(TargetWorksheet.Range(TargetCell).Value.NumericValue)
+                    If IsDisposed OrElse Disposing OrElse TargetWorksheet Is Nothing Then Return
+                    EditValue = ReadDateValue()
 
                 Catch ex As Exception
 
-                    EditValue = ""
+                    EditValue = Nothing
 
                 End Try
 
@@ -1136,6 +1149,13 @@ Namespace Abovo
                 Refresh()
 
             End Sub
+
+            Private Function ReadDateValue() As Object
+                Dim value = TargetWorksheet.Range(TargetCell).Value
+                If value.IsEmpty OrElse (value.IsText AndAlso String.IsNullOrWhiteSpace(value.TextValue)) Then Return Nothing
+                If value.IsNumeric OrElse value.IsDateTime Then Return value.DateTimeValue
+                Return Nothing
+            End Function
 
             Protected Overrides Function ProcessCmdKey(
                 ByRef msg As System.Windows.Forms.Message,

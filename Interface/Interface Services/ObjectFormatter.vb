@@ -49,7 +49,7 @@ Namespace Abovo
 
             With view
                 .BorderStyle = DevExpress.XtraEditors.Controls.BorderStyles.NoBorder
-                .FixedLineWidth = 1
+                .FixedLineWidth = 3
                 .OptionsView.ShowAutoFilterRow = False
                 .OptionsView.ShowFilterPanelMode = DevExpress.XtraGrid.Views.Base.ShowFilterPanelMode.Never
                 .OptionsCustomization.AllowFilter = False
@@ -75,7 +75,7 @@ Namespace Abovo
                 .Appearance.HorzLine.Options.UseBackColor = True
                 .Appearance.VertLine.BackColor = Color.White
                 .Appearance.VertLine.Options.UseBackColor = True
-                .Appearance.FixedLine.BackColor = Color.White
+                .Appearance.FixedLine.BackColor = Color.SteelBlue
                 .Appearance.FixedLine.Options.UseBackColor = True
                 .Appearance.Empty.BackColor = Color.White
                 .Appearance.Empty.Options.UseBackColor = True
@@ -249,7 +249,7 @@ Namespace Abovo
                 .FocusRectStyle = DevExpress.XtraGrid.Views.Grid.DrawFocusRectStyle.RowFocus
 
                 'Lines
-                .FixedLineWidth = 1
+                .FixedLineWidth = 3
 
 
                 .Appearance.HorzLine.BorderColor = System.Drawing.Color.White
@@ -263,8 +263,8 @@ Namespace Abovo
                 .Appearance.VertLine.Options.UseBackColor = True
                 .Appearance.VertLine.Options.UseBorderColor = True
                 .Appearance.VertLine.Options.UseForeColor = True
-                .Appearance.FixedLine.BackColor = System.Drawing.Color.White
-                .Appearance.FixedLine.BorderColor = System.Drawing.Color.White
+                .Appearance.FixedLine.BackColor = System.Drawing.Color.SteelBlue
+                .Appearance.FixedLine.BorderColor = System.Drawing.Color.SteelBlue
                 .Appearance.FixedLine.Options.UseBackColor = True
                 .Appearance.FixedLine.Options.UseBorderColor = True
 

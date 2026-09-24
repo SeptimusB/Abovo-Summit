@@ -128,8 +128,9 @@ Namespace Abovo
             Dim GlobalAssumptions As Worksheet =
                 Workbook.Worksheets("Global Assumptions")
 
-            ModelDefinition.CompanyName =
-                GlobalAssumptions.Cells(5, 2).DisplayText.Trim()
+            Dim companyRange = GetDefinedRange(Workbook, "SelectTrust")
+            ModelDefinition.CompanyName = If(companyRange Is Nothing,
+                GlobalAssumptions.Cells(5, 2).DisplayText.Trim(), companyRange(0, 0).DisplayText.Trim())
 
             Dim StartDateValue As CellValue =
                 GlobalAssumptions.Cells(7, 2).Value

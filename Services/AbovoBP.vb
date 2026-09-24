@@ -179,11 +179,11 @@ Namespace Abovo
             Try
                 Using workbook1 As New Workbook()
                     Using workbook2 As New Workbook()
-                        Await WBCoreBP.SaveDocumentAsync(StrFileName, cancellationToken, New Progress(Of Integer)(Sub(progress) Console.WriteLine($"{progress}%")))
+                        Await WBCoreBP.SaveDocumentAsync(StrFileName, cancellationToken, New Progress(Of Integer)(Sub(progress) Abovo.SummitDiagnostics.WriteLine($"{progress}%")))
                     End Using
                 End Using
             Catch e1 As OperationCanceledException
-                Console.WriteLine("Cancelled by timeout.")
+                Abovo.SummitDiagnostics.WriteLine("Cancelled by timeout.")
                 Console.ReadLine()
             Finally
                 cancellationSource.Dispose()
@@ -192,7 +192,7 @@ Namespace Abovo
 
 
 
-            'Await WBCoreBP.SaveDocumentAsync(StrFileName, New Progress(Of Integer)(Sub(progress) Console.WriteLine($"{progress}%" & " " & Now())))
+            'Await WBCoreBP.SaveDocumentAsync(StrFileName, New Progress(Of Integer)(Sub(progress) Abovo.SummitDiagnostics.WriteLine($"{progress}%" & " " & Now())))
             InternalBIsSaving = False
             internalBPState = 2
 

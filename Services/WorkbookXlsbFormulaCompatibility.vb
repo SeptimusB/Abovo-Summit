@@ -97,11 +97,11 @@ Namespace Abovo
 
         Friend Shared Sub Save(wb As IWorkbook, saveAction As Func(Of Boolean), Optional formulasChanging As Action = Nothing,
                                Optional checkFormulas As Boolean = True)
-            Dim clock = Stopwatch.StartNew()
+            Dim clock = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
             'Only the owning model can reuse a previously verified formula state.
             'Other callers retain the conservative full preflight by default.
             Dim edits = If(checkFormulas, CollectEdits(wb), New List(Of Edit)())
-            Trace.WriteLine("[XLSB Save Benchmark] formulaPreflight=" & clock.ElapsedMilliseconds.ToString() &
+            Abovo.SummitDiagnostics.WriteLine("[XLSB Save Benchmark] formulaPreflight=" & clock.ElapsedMilliseconds.ToString() &
                             " ms, rewritten=" & edits.Count.ToString() & ", skipped=" & (Not checkFormulas).ToString())
             Dim historyEnabled = wb.History.IsEnabled
             Dim previousMode = wb.Options.CalculationMode

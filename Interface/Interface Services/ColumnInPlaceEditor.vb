@@ -20,6 +20,227 @@ Namespace Abovo
 
     Friend Module InplaceEditorFormatting
 
+        Private NotInheritable Class PendingLayout
+            Public Queued As Boolean
+        End Class
+
+        Private ReadOnly PendingLayouts As New System.Runtime.CompilerServices.ConditionalWeakTable(Of Control, PendingLayout)
+        Private ReadOnly HeaderMeasurements As New System.Runtime.CompilerServices.ConditionalWeakTable(Of Control, Dictionary(Of String, Single))
+
+        Friend Sub QueuePresentationLayout(control As Control)
+            If control Is Nothing OrElse control.IsDisposed OrElse Not control.IsHandleCreated Then Return
+            Dim pending = PendingLayouts.GetValue(control, Function(key) New PendingLayout())
+            If pending.Queued Then Return
+            pending.Queued = True
+            control.BeginInvoke(New MethodInvoker(Sub()
+                pending.Queued = False
+                If control.IsDisposed OrElse control.Disposing Then Return
+                Dim vertical = TryCast(control, DevExpress.XtraVerticalGrid.VGridControl)
+                If vertical IsNot Nothing Then
+                    vertical.LayoutChanged()
+                Else
+                    Dim grid = TryCast(control, DevExpress.XtraGrid.GridControl)
+                    If grid IsNot Nothing Then
+                        For Each view As GridView In grid.ViewCollection.OfType(Of GridView)().ToArray()
+                            view.LayoutChanged()
+                        Next
+                    End If
+                End If
+                control.Invalidate()
+            End Sub))
+        End Sub
+
+        Friend Function OwnerFontSize(owner As Control) As Single
+            Dim vertical = TryCast(owner, DevExpress.XtraVerticalGrid.VGridControl)
+            If vertical IsNot Nothing Then Return vertical.Appearance.RecordValue.GetFont().SizeInPoints
+            Dim view = TryCast(TryCast(owner, DevExpress.XtraGrid.GridControl)?.MainView, GridView)
+            Return If(view Is Nothing, owner.Font.SizeInPoints, view.Appearance.Row.GetFont().SizeInPoints)
+        End Function
+
+        Friend Sub SetEditorFontSize(item As RepositoryItem, editor As BaseEdit, size As Single)
+            If item Is Nothing OrElse item.Appearance.Font Is Nothing OrElse size <= 0.0F Then Return
+            If HasEditorFontSize(item, size) AndAlso
+               (editor Is Nothing OrElse editor.IsDisposed OrElse HasEditorFontSize(editor.Properties, size)) Then Return
+            item.BeginUpdate()
+            Try
+                For Each appearance In New AppearanceObject() {item.Appearance, item.AppearanceFocused, item.AppearanceReadOnly, item.AppearanceDisabled}
+                    If appearance IsNot item.Appearance AndAlso Not appearance.Options.UseFont Then Continue For
+                    Dim current = appearance.GetFont()
+                    If Math.Abs(current.SizeInPoints - size) < 0.01F AndAlso appearance.FontSizeDelta = 0 Then Continue For
+                    appearance.Font = New Font(current.FontFamily, Math.Max(1.0F, size), current.Style, GraphicsUnit.Point)
+                    appearance.FontSizeDelta = 0
+                    appearance.Options.UseFont = True
+                Next
+                Dim combo = TryCast(item, RepositoryItemComboBox)
+                If combo IsNot Nothing Then CopyEditorFont(item.Appearance, combo.AppearanceDropDown)
+            Finally
+                item.EndUpdate()
+            End Try
+            'A header editor is a separate control, not the grid's ActiveEditor.
+            'Resize its presentation without committing, recreating or losing its input.
+            If editor Is Nothing OrElse editor.IsDisposed Then Return
+            Dim target = editor.Properties
+            target.BeginUpdate()
+            Try
+                CopyEditorFont(item.Appearance, target.Appearance)
+                CopyEditorFont(item.AppearanceFocused, target.AppearanceFocused)
+                CopyEditorFont(item.AppearanceReadOnly, target.AppearanceReadOnly)
+                CopyEditorFont(item.AppearanceDisabled, target.AppearanceDisabled)
+                Dim combo = TryCast(target, RepositoryItemComboBox)
+                If combo IsNot Nothing Then CopyEditorFont(item.Appearance, combo.AppearanceDropDown)
+            Finally
+                target.EndUpdate()
+            End Try
+        End Sub
+
+        Private Function HasEditorFontSize(item As RepositoryItem, size As Single) As Boolean
+            For Each appearance In New AppearanceObject() {item.Appearance, item.AppearanceFocused, item.AppearanceReadOnly, item.AppearanceDisabled}
+                If appearance IsNot item.Appearance AndAlso Not appearance.Options.UseFont Then Continue For
+                If Not appearance.Options.UseFont OrElse appearance.FontSizeDelta <> 0 OrElse Math.Abs(appearance.GetFont().SizeInPoints - size) >= 0.01F Then Return False
+            Next
+            Dim combo = TryCast(item, RepositoryItemComboBox)
+            Return combo Is Nothing OrElse (combo.AppearanceDropDown.Options.UseFont AndAlso Math.Abs(combo.AppearanceDropDown.GetFont().SizeInPoints - size) < 0.01F)
+        End Function
+
+        Private Sub CopyEditorFont(source As AppearanceObject, target As AppearanceObject)
+            target.Font = source.Font
+            target.FontSizeDelta = source.FontSizeDelta
+            target.Options.UseFont = source.Options.UseFont
+        End Sub
+
+        Private Function MeasurementKey(item As RepositoryItem, graphics As Graphics, size As Single) As String
+            Dim font = item.Appearance.GetFont()
+            Return item.GetType().FullName & "/" & font.Name & "/" &
+                size.ToString("R", Globalization.CultureInfo.InvariantCulture) & "/" &
+                CInt(font.Style).ToString() & "/" & CInt(item.BorderStyle).ToString() & "/" &
+                graphics.DpiX.ToString("R", Globalization.CultureInfo.InvariantCulture) & "/" &
+                graphics.DpiY.ToString("R", Globalization.CultureInfo.InvariantCulture) & "/" & item.LookAndFeel.ActiveSkinName
+        End Function
+
+        Private Function MeasurementItem(item As RepositoryItem, font As Font) As RepositoryItem
+            'A view-info Appearance can be the repository's own Appearance.
+            'Measure a disposable clone: assigning/discarding a temporary Font
+            'through the live view-info would corrupt the real editor font.
+            Dim measured = DirectCast(item.Clone(), RepositoryItem)
+            measured.BeginUpdate()
+            Try
+                measured.AutoHeight = False
+                For Each appearance In New AppearanceObject() {measured.Appearance, measured.AppearanceFocused, measured.AppearanceReadOnly, measured.AppearanceDisabled}
+                    appearance.Font = font
+                    appearance.FontSizeDelta = 0
+                    appearance.Options.UseFont = True
+                Next
+            Finally
+                measured.EndUpdate()
+            End Try
+            Return measured
+        End Function
+
+        Friend Function DesiredEditorHeight(item As RepositoryItem, owner As Control, Optional graphics As Graphics = Nothing) As Integer
+            If graphics Is Nothing Then
+                Using ownerGraphics = owner.CreateGraphics()
+                    Return DesiredEditorHeight(item, owner, ownerGraphics)
+                End Using
+            End If
+            Dim size = OwnerFontSize(owner)
+            Dim key = MeasurementKey(item, graphics, size) & "/height"
+            Dim cache = HeaderMeasurements.GetValue(owner, Function(control) New Dictionary(Of String, Single)(StringComparer.Ordinal))
+            Dim height As Single
+            If Not cache.TryGetValue(key, height) Then
+                Using font As New Font(item.Appearance.Font.FontFamily, size, item.Appearance.GetFont().Style, GraphicsUnit.Point)
+                    Using measured = MeasurementItem(item, font)
+                        Dim info = measured.CreateViewInfo()
+                        info.PaintAppearance = measured.Appearance
+                        'Measure on the real owner's device context, not a newly
+                        'created unattached editor with a different DPI/density.
+                        height = Math.Max(info.CalcBestFit(graphics).Height, CInt(Math.Ceiling(font.GetHeight(graphics))) + 4)
+                        Dim textHeight = Math.Max(font.GetHeight(graphics), TextRenderer.MeasureText(graphics, "Ag", font, System.Drawing.Size.Empty, TextFormatFlags.NoPadding Or TextFormatFlags.SingleLine).Height)
+                        For attempt As Integer = 0 To 2
+                            info.Bounds = New Rectangle(0, 0, 500, CInt(height))
+                            info.CalcViewInfo(graphics)
+                            Dim missing = CInt(Math.Ceiling(textHeight - info.GetTextBounds().Height))
+                            If missing <= 0 Then Exit For
+                            height += missing
+                        Next
+                    End Using
+                End Using
+                cache.Add(key, height)
+            End If
+            Return CInt(height)
+        End Function
+
+        Friend Function DesiredEditorWidth(item As RepositoryItem, owner As Control, graphics As Graphics, value As Object) As Integer
+            Dim size = OwnerFontSize(owner)
+            Dim sample = If(TypeOf item Is RepositoryItemDateEdit, DirectCast(New DateTime(2051, 9, 30), Object), value)
+            Dim text = item.GetDisplayText(sample)
+            If String.IsNullOrWhiteSpace(text) Then text = "Year 999"
+            Dim key = MeasurementKey(item, graphics, size) & "/width/" & text
+            Dim cache = HeaderMeasurements.GetValue(owner, Function(control) New Dictionary(Of String, Single)(StringComparer.Ordinal))
+            Dim width As Single
+            If Not cache.TryGetValue(key, width) Then
+                Using font As New Font(item.Appearance.Font.FontFamily, size, item.Appearance.GetFont().Style, GraphicsUnit.Point)
+                    Using measured = MeasurementItem(item, font)
+                        Dim info = measured.CreateViewInfo()
+                        info.PaintAppearance = measured.Appearance
+                        info.EditValue = sample
+                        info.Bounds = New Rectangle(0, 0, 1000, DesiredEditorHeight(item, owner, graphics))
+                        info.CalcViewInfo(graphics)
+                        Dim chrome = Math.Max(0, info.Bounds.Width - info.GetTextBounds().Width)
+                        width = chrome + TextRenderer.MeasureText(graphics, text, font, System.Drawing.Size.Empty, TextFormatFlags.NoPadding Or TextFormatFlags.SingleLine).Width + 2
+                    End Using
+                End Using
+                cache.Add(key, width)
+            End If
+            Return CInt(width)
+        End Function
+
+        Friend Sub FitEditorToBounds(item As RepositoryItem, editor As BaseEdit, owner As Control,
+                                     graphics As Graphics, bounds As Rectangle)
+            If bounds.Width <= 0 OrElse bounds.Height <= 0 Then Return
+            Dim wanted = OwnerFontSize(owner)
+            Dim key = MeasurementKey(item, graphics, wanted) & "/fit/" & bounds.Width.ToString() & "/" & bounds.Height.ToString()
+            Dim cache = HeaderMeasurements.GetValue(owner, Function(control) New Dictionary(Of String, Single)(StringComparer.Ordinal))
+            Dim fitted As Single
+            If Not cache.TryGetValue(key, fitted) Then
+                fitted = wanted
+                Using font As New Font(item.Appearance.Font.FontFamily, wanted, item.Appearance.GetFont().Style, GraphicsUnit.Point)
+                    Using measured = MeasurementItem(item, font)
+                        Dim info = measured.CreateViewInfo()
+                        info.PaintAppearance = measured.Appearance
+                        info.Bounds = New Rectangle(Point.Empty, bounds.Size)
+                        info.CalcViewInfo(graphics)
+                        Dim available = Math.Max(1, Math.Min(bounds.Height - 2, info.GetTextBounds().Height))
+                        Dim textHeight = Math.Max(font.GetHeight(graphics), TextRenderer.MeasureText(graphics, "Ag", font, Size.Empty, TextFormatFlags.NoPadding Or TextFormatFlags.SingleLine).Height)
+                        'GDI text rectangles round to integer pixels; preserve
+                        'fractional point sizes when only that rounding differs.
+                        If textHeight > available + 1.0F Then fitted = Math.Max(Math.Min(8.0F, wanted), CSng(Math.Floor(wanted * available / textHeight * 20.0F) / 20.0F))
+                    End Using
+                End Using
+                cache.Add(key, fitted)
+            End If
+            'Density and local zoom are already combined in the owner's font.
+            'Never multiply the last header font: it may belong to another
+            'window size, or may have been fitted into a shorter row.
+            SetEditorFontSize(item, editor, fitted)
+        End Sub
+
+        Public Function IsPopupShortcut(keyData As Keys) As Boolean
+            Dim modifiers = keyData And Keys.Modifiers
+            Dim key = keyData And Keys.KeyCode
+            Return (key = Keys.F4 AndAlso modifiers = Keys.None) OrElse
+                (key = Keys.Down AndAlso (modifiers = Keys.Shift OrElse modifiers = Keys.Alt))
+        End Function
+
+        Public Function OpenPopupForShortcut(editor As BaseEdit, e As KeyEventArgs) As Boolean
+            If Not IsPopupShortcut(e.KeyData) Then Return False
+            Dim popup = TryCast(editor, PopupBaseEdit)
+            If popup Is Nothing OrElse popup.IsDisposed OrElse popup.Properties.ReadOnly OrElse Not popup.Enabled Then Return False
+            e.Handled = True
+            e.SuppressKeyPress = True
+            If Not popup.IsPopupOpen Then popup.ShowPopup()
+            Return True
+        End Function
+
         Public Function SameEditorValue(left As Object, right As Object) As Boolean
             Dim normalise As Func(Of Object, String) = Function(value)
                 If TypeOf value Is OrdinalYearComboItem Then value = DirectCast(value, OrdinalYearComboItem).StoredValue
@@ -82,51 +303,78 @@ Namespace Abovo
                        ByVal inplaceEditor As RepositoryItem,
                        Optional ByVal valueChangedHandler As EventHandler = Nothing,
                        Optional ByVal doubleClickHandler As EventHandler = Nothing)
+            If column Is Nothing Then Throw New ArgumentNullException(NameOf(column))
+            If inplaceEditor Is Nothing Then Throw New ArgumentNullException(NameOf(inplaceEditor))
             _Column = column
             _Item = inplaceEditor
             _ValueChangedHandler = valueChangedHandler
             _DoubleClickHandler = doubleClickHandler
             bgview = TryCast(column.View, BandedGridView)
+            If bgview Is Nothing Then Throw New ArgumentException("The header column must belong to a banded view.", NameOf(column))
 
             InplaceEditorFormatting.ApplyStandardDateFormat(_Item)
 
-            _EditorHeight = DrawEditorHelper.GetNaturalEditorHeight(_Item, Nothing)
+            'Lazy sections build their columns before attaching the view to a
+            'GridControl. Measure against the real owner on the first paint or
+            'zoom notification; construction must not assume it exists yet.
+            _EditorHeight = If(bgview.GridControl Is Nothing,
+                               Math.Max(1, _Item.Appearance.GetFont().Height + 8),
+                               InplaceEditorFormatting.DesiredEditorHeight(_Item, bgview.GridControl))
             '_ActiveEditor = New BaseEdit
             '_ActiveEditor.ForeColor = Color.Red
             AddHandler bgview.CustomDrawColumnHeader, AddressOf view_CustomDrawColumnHeader
             AddHandler bgview.MouseDown, AddressOf view_MouseDown
             AddHandler bgview.Layout, AddressOf view_Layout
             AddHandler PresentationScaleManager.ScaleChanged, AddressOf PresentationScaleChanged
+            AddHandler GridPresentation.ZoomChanged, AddressOf GridZoomChanged
+            AddHandler bgview.Disposed, Sub()
+                RemoveHandler PresentationScaleManager.ScaleChanged, AddressOf PresentationScaleChanged
+                RemoveHandler GridPresentation.ZoomChanged, AddressOf GridZoomChanged
+            End Sub
+        End Sub
+
+        Private Sub GridZoomChanged(sender As Object, e As PresentationScaleChangedEventArgs)
+            If sender Is bgview?.GridControl Then PresentationScaleChanged(sender, e)
         End Sub
 
         Private Sub PresentationScaleChanged(
             ByVal sender As Object,
             ByVal e As PresentationScaleChangedEventArgs)
 
-            If bgview Is Nothing OrElse bgview.GridControl Is Nothing OrElse bgview.GridControl.IsDisposed Then
+            'An unattached lazy view is temporary, not disposed: keep the
+            'subscription so it receives later scale changes after attachment.
+            If bgview Is Nothing OrElse bgview.GridControl Is Nothing Then Return
+            If bgview.GridControl.IsDisposed Then
                 RemoveHandler PresentationScaleManager.ScaleChanged, AddressOf PresentationScaleChanged
+                RemoveHandler GridPresentation.ZoomChanged, AddressOf GridZoomChanged
                 Return
             End If
 
-            CommitAndCloseEditor()
-            ScaleRepositoryItemFont(e.Ratio)
-            _EditorHeight = DrawEditorHelper.GetNaturalEditorHeight(_Item, Nothing)
+            Dim isGridZoom = sender Is bgview.GridControl
+            InplaceEditorFormatting.SetEditorFontSize(_Item, ActiveEditor, InplaceEditorFormatting.OwnerFontSize(bgview.GridControl))
+            _EditorHeight = InplaceEditorFormatting.DesiredEditorHeight(_Item, bgview.GridControl)
+            If bgview.ColumnPanelRowHeight > 0 AndAlso bgview.ColumnPanelRowHeight < _EditorHeight + 4 Then
+                bgview.ColumnPanelRowHeight = _EditorHeight + 4
+                GridPresentation.AcceptRenderedMetric(bgview.GridControl, bgview, "ColumnPanelRowHeight", bgview.ColumnPanelRowHeight)
+            End If
+            Using graphics = bgview.GridControl.CreateGraphics()
+                Dim probe = New Rectangle(0, 0, 1000, _EditorHeight + 4)
+                Dim reserved = probe.Width - DrawEditorHelper.GetEditorBounds(probe, GetRightIndent(), _EditorHeight).Width
+                Dim value = If(ActiveEditor IsNot Nothing AndAlso Not ActiveEditor.IsDisposed, ActiveEditor.EditValue, EditValue)
+                Dim minimumWidth = reserved + InplaceEditorFormatting.DesiredEditorWidth(_Item, bgview.GridControl, graphics, value)
+                If _Column.Width < minimumWidth Then
+                    _Column.Width = minimumWidth
+                    GridPresentation.AcceptRenderedMetric(bgview.GridControl, _Column, "Width", _Column.Width)
+                End If
+            End Using
             _LastPaintedEditorBounds = Rectangle.Empty
-            bgview.LayoutChanged()
-        End Sub
-
-        Private Sub ScaleRepositoryItemFont(ByVal Ratio As Single)
-            If _Item Is Nothing OrElse _Item.Appearance.Font Is Nothing OrElse Ratio <= 0.0F Then Return
-            _Item.Appearance.Font = New Font(
-                _Item.Appearance.Font.FontFamily,
-                Math.Max(5.0F, _Item.Appearance.Font.SizeInPoints * Ratio),
-                _Item.Appearance.Font.Style,
-                GraphicsUnit.Point)
-            _Item.Appearance.Options.UseFont = True
+            'Local zoom has one outer BeginUpdate/EndUpdate for the whole grid.
+            'Global scaling also needs only one layout, not one per header editor.
+            If Not isGridZoom Then InplaceEditorFormatting.QueuePresentationLayout(bgview.GridControl)
         End Sub
 
         Private Sub view_Layout(ByVal sender As Object, ByVal e As EventArgs)
-            CommitAndCloseEditor()
+            If Not GridPresentation.IsApplyingZoom(bgview?.GridControl) Then CommitAndCloseEditor()
 
             'The next CustomDrawColumnHeader will replace this with the new
             'authoritative painted rectangle.
@@ -191,13 +439,21 @@ Namespace Abovo
                 'headers can have several logical column rectangles at the same X
                 'position, and ColumnsInfo may not describe the custom-painted
                 'editor rectangle in the same way as CustomDrawColumnHeader.
+                _EditorHeight = InplaceEditorFormatting.DesiredEditorHeight(_Item, bgview.GridControl, e.Graphics)
                 _LastPaintedEditorBounds =
                     DrawEditorHelper.GetEditorBounds(
                         e.Bounds,
                         GetRightIndent(),
                         _EditorHeight)
 
-                DrawEditorHelper.DrawColumnInplaceEditor(e, _Item, EditValue, GetRightIndent(), _EditorHeight)
+                InplaceEditorFormatting.FitEditorToBounds(_Item, ActiveEditor, bgview.GridControl, e.Graphics, _LastPaintedEditorBounds)
+
+                If ActiveEditor IsNot Nothing AndAlso Not ActiveEditor.IsDisposed AndAlso
+                   ActiveEditor.Bounds <> _LastPaintedEditorBounds Then
+                    ActiveEditor.Bounds = _LastPaintedEditorBounds
+                End If
+
+                DrawEditorHelper.DrawColumnInplaceEditor(e, _Item, EditValue, GetRightIndent(), _EditorHeight, useRepositoryAppearance:=True)
                 e.Handled = True
 
             End If
@@ -529,6 +785,7 @@ Namespace Abovo
 
         Private Sub editor_KeyDown(ByVal sender As Object, ByVal e As KeyEventArgs)
 
+            If InplaceEditorFormatting.OpenPopupForShortcut(TryCast(sender, BaseEdit), e) Then Return
             If e.Control OrElse e.Alt Then Return
             Dim popup = TryCast(sender, PopupBaseEdit)
             If popup IsNot Nothing AndAlso popup.IsPopupOpen Then Return
@@ -659,6 +916,7 @@ End Namespace
 Namespace Abovo
 
     Public Class VGridRowInplaceEditorHelper
+        Public Property PresentationTint As Func(Of Color?)
         Public Property Navigate As Func(Of Keys, Boolean)
         Public ReadOnly Property GridControl As Control
             Get
@@ -693,13 +951,19 @@ Namespace Abovo
 
             InplaceEditorFormatting.ApplyStandardDateFormat(_Item)
 
-            _EditorHeight = DrawEditorHelper.GetNaturalEditorHeight(_Item, Nothing)
+            _EditorHeight = InplaceEditorFormatting.DesiredEditorHeight(_Item, _VGrid)
 
             AddHandler _VGrid.CustomDrawRowHeaderCell, AddressOf VGrid_CustomDrawRowHeaderCell
             AddHandler _VGrid.MouseDown, AddressOf VGrid_MouseDown
             AddHandler _VGrid.Layout, AddressOf VGrid_Layout
             AddHandler PresentationScaleManager.ScaleChanged, AddressOf PresentationScaleChanged
+            AddHandler GridPresentation.ZoomChanged, AddressOf GridZoomChanged
+            AddHandler _VGrid.Disposed, Sub() RemoveHandler GridPresentation.ZoomChanged, AddressOf GridZoomChanged
 
+        End Sub
+
+        Private Sub GridZoomChanged(sender As Object, e As PresentationScaleChangedEventArgs)
+            If sender Is _VGrid Then PresentationScaleChanged(sender, e)
         End Sub
 
         Private Sub PresentationScaleChanged(
@@ -711,19 +975,36 @@ Namespace Abovo
                 Return
             End If
 
-            CloseEditor()
-            If _Item IsNot Nothing AndAlso _Item.Appearance.Font IsNot Nothing AndAlso e.Ratio > 0.0F Then
-                _Item.Appearance.Font = New Font(
-                    _Item.Appearance.Font.FontFamily,
-                    Math.Max(5.0F, _Item.Appearance.Font.SizeInPoints * e.Ratio),
-                    _Item.Appearance.Font.Style,
-                    GraphicsUnit.Point)
-                _Item.Appearance.Options.UseFont = True
-            End If
-            _EditorHeight = DrawEditorHelper.GetNaturalEditorHeight(_Item, Nothing)
+            Dim isGridZoom = sender Is _VGrid
+            InplaceEditorFormatting.SetEditorFontSize(_Item, _ActiveEditor, InplaceEditorFormatting.OwnerFontSize(_VGrid))
+            _EditorHeight = InplaceEditorFormatting.DesiredEditorHeight(_Item, _VGrid)
+            EnsureMinimumHeaderGeometry()
             _LastHeaderBounds = Rectangle.Empty
-            _VGrid.LayoutChanged()
-            _VGrid.Invalidate()
+            If Not isGridZoom Then InplaceEditorFormatting.QueuePresentationLayout(_VGrid)
+        End Sub
+
+        Private Sub EnsureMinimumHeaderGeometry()
+            'Native tree indents and editor buttons do not shrink with a local
+            'font zoom. Keep enough room for their chrome instead of fitting
+            'the date down to an unreadable one-point font at 50%.
+            Dim minimumHeight = _EditorHeight + 2 * PresentationScaleManager.Scale(2)
+            If _Row.Height < minimumHeight Then
+                _Row.Height = minimumHeight
+                GridPresentation.AcceptRenderedMetric(_VGrid, _Row, "Height", _Row.Height)
+            End If
+            Dim header = _Row.HeaderInfo
+            Dim indent = Math.Max(0, (_Row.Level + 1) * (_VGrid.ViewInfo.RowIndentWidth + 1) - 1)
+            If header IsNot Nothing AndAlso Not header.HeaderRect.IsEmpty AndAlso Not header.HeaderCellsRect.IsEmpty Then
+                indent = Math.Max(0, header.HeaderRect.Width - header.HeaderCellsRect.Width)
+            End If
+            Using graphics = _VGrid.CreateGraphics()
+                Dim value = If(_ActiveEditor IsNot Nothing AndAlso Not _ActiveEditor.IsDisposed, _ActiveEditor.EditValue, EditValue)
+                Dim minimumWidth = indent + 2 * PresentationScaleManager.Scale(4) + InplaceEditorFormatting.DesiredEditorWidth(_Item, _VGrid, graphics, value)
+                If _VGrid.RowHeaderWidth < minimumWidth Then
+                    _VGrid.RowHeaderWidth = minimumWidth
+                    GridPresentation.AcceptRenderedMetric(_VGrid, _VGrid, "RowHeaderWidth", _VGrid.RowHeaderWidth)
+                End If
+            End Using
         End Sub
 
         Public Property EditValue As Object
@@ -769,6 +1050,8 @@ Namespace Abovo
             If e.CellIndex <> 0 Then Return
 
             _LastHeaderBounds = e.Bounds
+            _EditorHeight = InplaceEditorFormatting.DesiredEditorHeight(_Item, _VGrid, e.Graphics)
+            InplaceEditorFormatting.FitEditorToBounds(_Item, _ActiveEditor, _VGrid, e.Graphics, GetEditorBounds(e.Bounds))
             If _ActiveEditor IsNot Nothing AndAlso Not _ActiveEditor.IsDisposed AndAlso _ActiveEditor.Parent IsNot Nothing Then
                 Dim rectangle = GetEditorBounds(e.Bounds)
                 _ActiveEditor.Bounds = New Rectangle(_ActiveEditor.Parent.PointToClient(_VGrid.PointToScreen(rectangle.Location)), rectangle.Size)
@@ -783,10 +1066,19 @@ Namespace Abovo
             e.DefaultDraw()
             e.Caption = SavedCaption
 
-            DrawEditorHelper.DrawEdit(e.Graphics,
-                                      _Item,
-                                      GetEditorBounds(e.Bounds),
-                                      EditValue)
+            Dim original As New AppearanceObject()
+            original.Assign(_Item.Appearance)
+            Try
+                Dim tint As Color? = If(PresentationTint Is Nothing, Nothing, PresentationTint.Invoke())
+                If tint.HasValue Then
+                    _Item.Appearance.BackColor = tint.Value
+                    _Item.Appearance.ForeColor = AbovoBlue
+                    _Item.Appearance.Options.UseBackColor = True
+                End If
+                DrawEditorHelper.DrawEdit(e.Graphics, _Item, GetEditorBounds(e.Bounds), EditValue, useRepositoryAppearance:=True)
+            Finally
+                _Item.Appearance.Assign(original)
+            End Try
 
             e.Handled = True
 
@@ -905,7 +1197,8 @@ Namespace Abovo
         Private Sub VGrid_Layout(ByVal sender As Object, ByVal e As EventArgs)
             'A calculation can relayout the grid while an editor is committing.
             'Disposing that editor here used to interrupt entry and reset focus.
-            If _ActiveEditor IsNot Nothing AndAlso Not _ActiveEditor.IsDisposed Then
+            If Not GridPresentation.IsApplyingZoom(_VGrid) AndAlso
+               _ActiveEditor IsNot Nothing AndAlso Not _ActiveEditor.IsDisposed Then
                 _VGrid.InvalidateRow(_Row)
             End If
         End Sub
@@ -936,6 +1229,7 @@ Namespace Abovo
         End Sub
 
         Private Sub Editor_KeyDown(sender As Object, e As KeyEventArgs)
+            If InplaceEditorFormatting.OpenPopupForShortcut(TryCast(sender, BaseEdit), e) Then Return
             If e.Control OrElse e.Alt Then Return
             Dim popup = TryCast(sender, PopupBaseEdit)
             If popup IsNot Nothing AndAlso popup.IsPopupOpen Then Return
@@ -970,6 +1264,7 @@ Namespace Abovo
         Public Sub DetachForDisposal()
 
             CloseEditor()
+            RemoveHandler GridPresentation.ZoomChanged, AddressOf GridZoomChanged
 
             If _VGrid IsNot Nothing Then
                 RemoveHandler _VGrid.CustomDrawRowHeaderCell, AddressOf VGrid_CustomDrawRowHeaderCell

@@ -12,7 +12,6 @@ Namespace Abovo
         Private ReadOnly PreviewPanel As GroupControl
         Private PreviewHeadingFont As Font
         Private PreviewBodyFont As Font
-        Private ReadOnly ApplyButton As SimpleButton
         Private ReadOnly OkButton As SimpleButton
         Private ReadOnly CancelActionButton As SimpleButton
         Private ReadOnly ResetButton As SimpleButton
@@ -26,6 +25,10 @@ Namespace Abovo
         Private ReadOnly IntegrityMinutes As SpinEdit
         Private ReadOnly IntegrityPlan As ComboBoxEdit
         Private ReadOnly IntegrityPlans As New List(Of FileManager.ExcelModel)
+        Private ReadOnly WatchEnabled As CheckEdit
+        Private ReadOnly WatchMinutes As SpinEdit
+        Private ReadOnly WatchIdle As SpinEdit
+        Private ReadOnly WatchTiming As CheckEdit
 
         Public Sub New()
             Me.New(Nothing)
@@ -48,6 +51,36 @@ Namespace Abovo
             Dim backupTab As New DevExpress.XtraTab.XtraTabPage With {.Text = "Recovery backup"}
             Dim integrityTab As New DevExpress.XtraTab.XtraTabPage With {.Text = "Integrity"}
             tabs.TabPages.AddRange({displayTab, backupTab, integrityTab})
+            Dim watchTab As New DevExpress.XtraTab.XtraTabPage With {.Text = "Check Sheet trial", .AutoScroll = True}
+            tabs.TabPages.Add(watchTab)
+            CheckSheetWatch.Initialise()
+            Dim watchLayout As New FlowLayoutPanel With {.Dock = DockStyle.Top, .AutoSize = True, .FlowDirection = FlowDirection.TopDown, .WrapContents = False, .Padding = New Padding(18)}
+            watchTab.Controls.Add(watchLayout)
+            WatchEnabled = New CheckEdit With {.Text = "Automatically check the Check Sheet", .AutoSizeInLayoutControl = True, .Width = 420, .Checked = CheckSheetWatch.Enabled}
+            watchLayout.Controls.Add(WatchEnabled)
+            Dim watchInterval As New FlowLayoutPanel With {.AutoSize = True, .WrapContents = False}
+            watchInterval.Controls.Add(New LabelControl With {.Text = "Every", .Padding = New Padding(0, 5, 4, 0)})
+            WatchMinutes = New SpinEdit With {.Width = 70, .EditValue = CheckSheetWatch.Minutes}
+            WatchIdle = New SpinEdit With {.Width = 70, .EditValue = CheckSheetWatch.IdleMinutes}
+            For Each spinner In {WatchMinutes, WatchIdle}
+                spinner.Properties.IsFloatValue = False
+                spinner.Properties.MinValue = 1 : spinner.Properties.MaxValue = 120
+            Next
+            watchInterval.Controls.Add(WatchMinutes)
+            watchInterval.Controls.Add(New LabelControl With {.Text = "minutes, when idle for", .Padding = New Padding(4, 5, 4, 0)})
+            watchInterval.Controls.Add(WatchIdle)
+            watchInterval.Controls.Add(New LabelControl With {.Text = "minutes", .Padding = New Padding(4, 5, 0, 0)})
+            watchLayout.Controls.Add(watchInterval)
+            WatchTiming = New CheckEdit With {.Text = "Temporary timings for Check Sheet and edits", .Width = 480, .Checked = CheckSheetWatch.Benchmark}
+            watchLayout.Controls.Add(WatchTiming)
+            watchLayout.Controls.Add(New LabelControl With {.AutoSizeMode = LabelAutoSizeMode.Vertical, .Width = 580,
+                .Text = "Checks open plans after inputs change. Runs a full workbook calculation (CalculateFull), then updates the Check Sheet balance message. This may take several seconds. It does not rebuild dependencies or certify formula integrity." & Environment.NewLine & Environment.NewLine &
+                    "Waits for edits, saves and other operations to finish. Once a calculation starts it finishes safely. The separate Integrity tab checks formulas and references." & Environment.NewLine & Environment.NewLine &
+                    "Timings appear in debugger output. Turn off the trial timings after testing. They do not enable the other application traces."})
+            AddHandler WatchEnabled.CheckedChanged, Sub()
+                WatchMinutes.Enabled = WatchEnabled.Checked : WatchIdle.Enabled = WatchEnabled.Checked
+            End Sub
+            WatchMinutes.Enabled = WatchEnabled.Checked : WatchIdle.Enabled = WatchEnabled.Checked
             shell.Controls.Add(tabs, 0, 0)
 
             Dim Layout As New TableLayoutPanel With {
@@ -151,15 +184,12 @@ Namespace Abovo
 
             CancelActionButton = New SimpleButton With {.Text = "Cancel", .DialogResult = DialogResult.Cancel}
             OkButton = New SimpleButton With {.Text = "OK"}
-            ApplyButton = New SimpleButton With {.Text = "Apply"}
             ResetButton = New SimpleButton With {.Name = "ResetDisplayScale", .Text = "Reset to 100%", .AutoSize = True, .MinimumSize = New Size(110, 24)}
             AddHandler OkButton.Click, AddressOf OkButton_Click
-            AddHandler ApplyButton.Click, AddressOf ApplyButton_Click
             AddHandler ResetButton.Click, AddressOf ResetButton_Click
 
             Buttons.Controls.Add(CancelActionButton)
             Buttons.Controls.Add(OkButton)
-            Buttons.Controls.Add(ApplyButton)
             scaleActions.Controls.Add(ResetButton)
             shell.Controls.Add(Buttons, 0, 1)
 
@@ -222,7 +252,7 @@ Namespace Abovo
             backupLayout.Controls.Add(ContinueBackupOnError, 0, 3)
             Dim guidance As New LabelControl With {.Dock = DockStyle.Top, .AutoSizeMode = LabelAutoSizeMode.Vertical, .Margin = New Padding(3, 6, 20, 3),
                 .Text = "Recovery copies: ~<plan>_recovery.xlsm beside your plan. Unsaved user changes trigger backups; recalculation does not." & Environment.NewLine & Environment.NewLine &
-                        "By default, an unresolved Check Sheet failure pauses backups until a fresh check passes. Enabling the option above allows the recovery copy to be replaced with a file containing those errors; the red Check Sheet warning stays visible. Verified workbook overrides do not pause backups." & Environment.NewLine & Environment.NewLine &
+                        "Check Sheet figures can be incomplete while you enter a plan. Backups continue by default; clear the option above if you prefer to pause them until the figures balance. Workbook overrides are respected. Formula and reference checks are separate." & Environment.NewLine & Environment.NewLine &
                         "When idle waits for no keyboard or mouse input. Always every is a maximum interval: it may interrupt work, but waits for active edits, calculations and dialogs to finish. Select either or both; each completed backup restarts the timers. Only new unsaved user changes are backed up." & Environment.NewLine & Environment.NewLine &
                         "A five-second notice lets you snooze until idle for one minute, even when Always every is due. Once writing starts it cannot stop midway. Recovery copies do not replace normal XLSB saves. A newer recovery is offered when opening the original, even if backups are disabled." & Environment.NewLine & Environment.NewLine &
                         "After recovery, results are refreshed. Use Save As with Excel Binary Workbook (.xlsb). Choose the suggested original filename or a new name; replacing the original requires confirmation."}
@@ -350,11 +380,6 @@ Namespace Abovo
             End If
         End Sub
 
-        Private Sub ApplyButton_Click(ByVal sender As Object, ByVal e As EventArgs)
-            If Not ApplyBackupSettings() Then Return
-            PresentationScaleManager.SetInterfaceScale(SelectedPercent)
-        End Sub
-
         Private Sub OkButton_Click(ByVal sender As Object, ByVal e As EventArgs)
             If Not ApplyBackupSettings() Then Return
             PresentationScaleManager.SetInterfaceScale(SelectedPercent)
@@ -371,6 +396,7 @@ Namespace Abovo
                 RecoveryBackupManager.Configure(BackupEnabled.Checked, Convert.ToInt32(BackupMinutes.EditValue))
                 RecoveryBackupManager.ConfigureCheckSheetPolicy(ContinueBackupOnError.Checked)
                 IdleIntegrityManager.Configure(IntegrityEnabled.Checked, Convert.ToInt32(IntegrityMinutes.EditValue))
+                CheckSheetWatch.Configure(WatchEnabled.Checked, Convert.ToInt32(WatchMinutes.EditValue), Convert.ToInt32(WatchIdle.EditValue), WatchTiming.Checked)
                 Return True
             Catch ex As Exception
                 XtraMessageBox.Show(Me, "The options could not all be saved: " & ex.Message, "Options", MessageBoxButtons.OK, MessageBoxIcon.Warning)

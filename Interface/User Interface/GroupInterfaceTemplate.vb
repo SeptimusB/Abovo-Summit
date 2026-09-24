@@ -57,6 +57,7 @@ Public Class GroupInterfaceTemplate
     Private ActiveInterface As Object
     Private DataInterfaceCount As Integer
     Private MyName As String
+    Private CompanyHeadingSuffix As String
     Private MyModelID As Integer
     Private CheckSheetButton As DevExpress.XtraBars.BarButtonItem
     Private CheckSheetModel As FileManager.ExcelModel
@@ -66,12 +67,13 @@ Public Class GroupInterfaceTemplate
         CheckSheetButton = New DevExpress.XtraBars.BarButtonItem(BarManagerAssumptions, "(Check sheet)") With {
             .Name = "CheckSheetWarning", .Hint = "Open the Check Sheet to review unresolved checks. Run integrity check now in Options after correcting them."}
         For Each buttonAppearance In {CheckSheetButton.ItemAppearance.Normal, CheckSheetButton.ItemAppearance.Hovered, CheckSheetButton.ItemAppearance.Pressed}
-            buttonAppearance.ForeColor = Color.Firebrick
+            buttonAppearance.ForeColor = Color.DarkGoldenrod
             buttonAppearance.Options.UseForeColor = True
         Next
         BarTopBar.ItemLinks.Insert(0, CheckSheetButton)
         AddHandler CheckSheetButton.ItemClick, Sub(sender, e) RecoveryBackupManager.OpenCheckSheet(CheckSheetModel)
         AddHandler model.CheckSheetStatusChanged, AddressOf RefreshCheckSheetIndicator
+        AddHandler model.MetadataChanged, AddressOf RefreshCompanyHeading
         RefreshCheckSheetIndicator(Me, EventArgs.Empty)
     End Sub
 
@@ -81,7 +83,7 @@ Public Class GroupInterfaceTemplate
         CheckSheetButton.Caption = CheckSheetModel.CheckSheetWarningCaption
         CheckSheetButton.Hint = If(CheckSheetModel.CheckSheetWarningNeedsRecheck,
             "A previous session failed validation. Run integrity check now in Options to check this reopened file.",
-            "Open the Check Sheet to review unresolved checks. Run integrity check now after correcting them.")
+            "Some figures do not balance yet. Open Check Sheet to review them; you can continue entering and saving figures.")
     End Sub
     Private GITWindowState As FormWindowState
     Public ParentModelSSViewer As MainModelViewer
@@ -214,8 +216,7 @@ Public Class GroupInterfaceTemplate
 
         MyName = If(IsCombined, "Combined",
                     ExcelModels(SetModelID).WBStructure.GroupStructures(GSID).GSName)
-        Me.Text = ExcelModels(SetModelID).WBStructure.CompanyName & " / " & MyName & " Interface"
-        BarStaticItemDescription.Caption = ExcelModels(SetModelID).WBStructure.CompanyName & " • " & MyName
+        SetCompanyHeading(MyName)
         DockPanelNewNavigator.Text = " " & MyName & " Navigator"
         DockPanelNavigator.Text = " " & MyName & " Navigator"
         Dim myTag As String = MyName & " Interface"
@@ -433,7 +434,7 @@ Public Class GroupInterfaceTemplate
         AccordionControlElementFund.Visible = HasFundingSummary
         AccordionControlElementDev.Visible = HasDevelopmentSummary
 
-        Debug.WriteLine("GroupInterfaceTemplate sidebar refresh started. ModelID=" &
+        Abovo.SummitDiagnostics.WriteLine("GroupInterfaceTemplate sidebar refresh started. ModelID=" &
                         MyModelID.ToString() & ", GSID=" & GSID.ToString() &
                         ", instance=" & System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Me).ToString() &
                         ", reason=" & refreshReason)
@@ -488,6 +489,32 @@ Public Class GroupInterfaceTemplate
             "<p>Built using Microsoft&reg; Excel&reg; and DevExpress.</p>"))
 
 
+        RefreshFileDetails()
+        If SidebarMessageView IsNot Nothing Then SidebarMessageView.RefreshMessages()
+        DockPanelDetail.Text = If(ExcelModels(MyModelID).DeferredSaveResultsPending,
+            "Summary — full results pending", "Summary — updated " & Now().ToString("HH:mm:ss"))
+        Abovo.SummitDiagnostics.WriteLine("GroupInterfaceTemplate sidebar refresh completed. ModelID=" &
+                        MyModelID.ToString() & ", GSID=" & GSID.ToString() &
+                        ", instance=" & System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Me).ToString() &
+                        ", reason=" & refreshReason)
+    End Sub
+
+    Private Sub SetCompanyHeading(suffix As String)
+        CompanyHeadingSuffix = suffix
+        BarStaticItemDescription.Caption = ExcelModels(MyModelID).WBStructure.CompanyName & " • " & suffix
+        Text = BarStaticItemDescription.Caption
+    End Sub
+
+    Private Sub RefreshCompanyHeading(sender As Object, e As EventArgs)
+        If IsDisposed OrElse Disposing Then Return
+        SetCompanyHeading(If(CompanyHeadingSuffix, MyName))
+        RefreshFileDetails()
+    End Sub
+
+    Private Sub RefreshFileDetails()
+        'No calculation or dashboard rebuild is needed to refresh metadata.
+        Dim profile = ExcelModels(MyModelID).Profile
+        Dim ModelDescription = If(profile Is Nothing, "Abovo model", profile.DisplayName)
         Dim StrFileDescription As String
 
         Dim FileInformation As System.IO.FileInfo = ExcelModels(MyModelID).FileInfo
@@ -507,13 +534,6 @@ Public Class GroupInterfaceTemplate
         StrFileDescription &= "</dl>"
 
         SetSidebarDocument(WebBrowserFile, CreateSidebarHtml(StrFileDescription))
-        If SidebarMessageView IsNot Nothing Then SidebarMessageView.RefreshMessages()
-        DockPanelDetail.Text = If(ExcelModels(MyModelID).DeferredSaveResultsPending,
-            "Summary — full results pending", "Summary — updated " & Now().ToString("HH:mm:ss"))
-        Debug.WriteLine("GroupInterfaceTemplate sidebar refresh completed. ModelID=" &
-                        MyModelID.ToString() & ", GSID=" & GSID.ToString() &
-                        ", instance=" & System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Me).ToString() &
-                        ", reason=" & refreshReason)
 
     End Sub
 
@@ -537,10 +557,10 @@ Public Class GroupInterfaceTemplate
                 workbook.CalculateFull()
             End If
             Activity.Complete("Calculation complete.")
-            Debug.WriteLine("GroupInterfaceTemplate sidebar workbook calculated. ModelID=" &
+            Abovo.SummitDiagnostics.WriteLine("GroupInterfaceTemplate sidebar workbook calculated. ModelID=" &
                             MyModelID.ToString() & ", reason=" & refreshReason)
         Catch ex As Exception
-            Debug.WriteLine("GroupInterfaceTemplate sidebar workbook calculation failed. ModelID=" &
+            Abovo.SummitDiagnostics.WriteLine("GroupInterfaceTemplate sidebar workbook calculation failed. ModelID=" &
                             MyModelID.ToString() & ", error=" & ex.ToString())
             SystemMessageManager.Publish(MyModelID,
                 "The sidebar summary could not be recalculated: " & ex.Message,
@@ -785,6 +805,7 @@ Public Class GroupInterfaceTemplate
     Private Sub GroupInterfaceTemplate_Disposed(ByVal sender As Object,
                                                 ByVal e As EventArgs) Handles Me.Disposed
         If CheckSheetModel IsNot Nothing Then RemoveHandler CheckSheetModel.CheckSheetStatusChanged, AddressOf RefreshCheckSheetIndicator
+        If CheckSheetModel IsNot Nothing Then RemoveHandler CheckSheetModel.MetadataChanged, AddressOf RefreshCompanyHeading
         CheckSheetModel = Nothing
         If SidebarEventsAttached AndAlso
            ExcelModels IsNot Nothing AndAlso
@@ -1365,8 +1386,7 @@ Public Class GroupInterfaceTemplate
                 resumedAnalyser.RefreshDeferredIfNeeded()
             End If
 
-            Me.BarStaticItemDescription.Caption = " " & ExcelModels(SetModelID).WBStructure.CompanyName & " • " & If(IsCombined, MyName & " • " & groupName, MyName) & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(resolvedGSID).ResolveChildStructure(SetCSID).CSName
-            Me.Text = Me.BarStaticItemDescription.Caption
+            SetCompanyHeading(If(IsCombined, MyName & " • " & groupName, MyName) & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(resolvedGSID).ResolveChildStructure(SetCSID).CSName)
 
         Else
 
@@ -1482,8 +1502,7 @@ Public Class GroupInterfaceTemplate
 
             End If
 
-            Me.BarStaticItemDescription.Caption = " " & ExcelModels(SetModelID).WBStructure.CompanyName & " • " & If(IsCombined, MyName & " • " & groupName, MyName) & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(resolvedGSID).ResolveChildStructure(SetCSID).CSName
-            Me.Text = Me.BarStaticItemDescription.Caption
+            SetCompanyHeading(If(IsCombined, MyName & " • " & groupName, MyName) & " • " & ExcelModels(SetModelID).WBStructure.GroupStructures(resolvedGSID).ResolveChildStructure(SetCSID).CSName)
 
 
 
@@ -1518,7 +1537,7 @@ Public Class GroupInterfaceTemplate
                 showSpecial,
                 specialData)
         Catch ex As Exception
-            Debug.WriteLine("Interface history record failed: " & ex.ToString())
+            Abovo.SummitDiagnostics.WriteLine("Interface history record failed: " & ex.ToString())
         End Try
     End Sub
     Private Sub RightPanelButtonClick(sender As Object, e As ContextItemClickEventArgs) Handles AccordionControlSum.ContextButtonClick

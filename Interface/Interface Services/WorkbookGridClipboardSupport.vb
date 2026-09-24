@@ -176,6 +176,8 @@ Friend Module WorkbookGridClipboardSupport
         If grid Is Nothing Then Return
         grid.OptionsSelectionAndFocus.MultiSelect = True
         grid.OptionsSelectionAndFocus.MultiSelectMode = MultiSelectMode.CellSelect
+        grid.OptionsBehavior.EditorShowMode = EditorShowMode.MouseUp
+        grid.OptionsBehavior.RecordsMouseWheel = False
         grid.Appearance.SelectedCell.BackColor = SystemColors.Highlight
         grid.Appearance.SelectedCell.ForeColor = SystemColors.HighlightText
         grid.Appearance.SelectedCell.Options.UseBackColor = True

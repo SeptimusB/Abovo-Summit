@@ -29,6 +29,7 @@ Namespace Abovo
         Private ActiveGroup As ChangeHistoryGroupV2
         Private ActiveGroupDepth As Integer
         Private IsApplyingHistory As Boolean
+        Private writingAndCalculating As Boolean
         Private RecoveryHistory As DataTable
         Friend Sub RestoreRecoveryHistory(table As DataTable)
             RecoveryHistory = table.Copy()
@@ -41,7 +42,7 @@ Namespace Abovo
         End Property
         Friend ReadOnly Property ChangeInProgress As Boolean
             Get
-                Return IsApplyingHistory OrElse ActiveGroup IsNot Nothing
+                Return IsApplyingHistory OrElse writingAndCalculating OrElse ActiveGroup IsNot Nothing
             End Get
         End Property
 
@@ -110,8 +111,26 @@ Namespace Abovo
         'calculates once, and commits one undoable change-history group.
         Public Function ProcessChanges(ByVal changes As IEnumerable(Of DataChangeEvent),
                                        ByVal description As String) As AbovoAppCls.AbovoTransaction
+            Return ProcessValidatedChanges(changes, description, Nothing)
+        End Function
+
+        'Optional admission check runs inside the existing rollback boundary,
+        'after preceding defining-cell writes and before this cell is touched.
+        Public Function ProcessValidatedChanges(ByVal changes As IEnumerable(Of DataChangeEvent),
+                                                ByVal description As String,
+                                                ByVal validate As Action(Of Cell, DataChangeEvent)) As AbovoAppCls.AbovoTransaction
+            Return ProcessAdmittedChanges(changes, description, validate, Nothing)
+        End Function
+
+        'An explicit bulk command may omit unavailable targets. Omitted cells
+        'are never written, snapshotted or recorded as edits. Other exceptions
+        'still roll back the whole admitted batch, including its defining dates.
+        Public Function ProcessAdmittedChanges(ByVal changes As IEnumerable(Of DataChangeEvent),
+                                               ByVal description As String,
+                                               ByVal validate As Action(Of Cell, DataChangeEvent),
+                                               ByVal admit As Func(Of Cell, DataChangeEvent, Boolean)) As AbovoAppCls.AbovoTransaction
             If IsReadOnlyPreview Then Return NoAction("Structure Manager previews are read-only.")
-            If IsApplyingHistory OrElse ActiveGroup IsNot Nothing Then
+            If ChangeInProgress Then
                 Return NoAction("Paste is unavailable during another change.")
             End If
 
@@ -123,19 +142,22 @@ Namespace Abovo
             Dim targetIndex As New Dictionary(Of String, BatchChangeTargetV2)(
                 StringComparer.OrdinalIgnoreCase)
             Dim entries As New List(Of ChangeHistoryEntryV2)()
-            Dim timer As System.Diagnostics.Stopwatch =
-                System.Diagnostics.Stopwatch.StartNew()
+            Dim timer As Abovo.SummitDiagnostics.DiagnosticTimer =
+                Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
             Dim writeMs As Long = 0
             Dim calculationMs As Long = 0
             Dim outcome As String = "failed"
             Dim activeChange As DataChangeEvent = ordered(0)
 
+            writingAndCalculating = True
             Try
                 For Each change As DataChangeEvent In ordered
                     activeChange = change
                     Dim worksheetName As String = NormalizeIdentifier(change.WSName)
                     Dim address As String = NormalizeIdentifier(change.CellAddress)
                     Dim cell As Cell = WB.Worksheets(worksheetName).Cells(address)
+                    If admit IsNot Nothing AndAlso Not admit(cell, change) Then Continue For
+                    If validate IsNot Nothing Then validate(cell, change)
                     Dim key As String =
                         cell.Worksheet.Name & "!" & cell.GetReferenceA1()
                     Dim target As BatchChangeTargetV2 = Nothing
@@ -219,7 +241,8 @@ Namespace Abovo
                     activeChange, activeChange.WSName,
                     activeChange.CellAddress, ex)
             Finally
-                System.Diagnostics.Trace.WriteLine(
+                writingAndCalculating = False
+                Abovo.SummitDiagnostics.WriteLine(
                     "[Paste Benchmark] model=" & ModelID.ToString() &
                     ", requested=" & ordered.Count.ToString() &
                     ", targets=" & targets.Count.ToString() &
@@ -248,7 +271,7 @@ Namespace Abovo
                     MasterChangeLog.AddChangeLogEvent(
                         ToLogEvent(entry, 1, "Apply"))
                 Catch logError As Exception
-                    System.Diagnostics.Trace.WriteLine(
+                    Abovo.SummitDiagnostics.WriteLine(
                         "[Paste] Change-log entry failed: " &
                         logError.Message)
                 End Try
@@ -276,11 +299,12 @@ Namespace Abovo
         Private Function ProcessResolvedChange(ByVal targetCell As Cell,
                                                ByVal sentEvent As DataChangeEvent) As AbovoAppCls.AbovoTransaction
             If IsReadOnlyPreview Then Return NoAction("Structure Manager previews are read-only.")
+            If writingAndCalculating Then Return SuccessfulNoAction("A refresh-time post was ignored while an edit was being applied.")
             Dim result As New AbovoAppCls.AbovoTransaction("ModelChangeManagerV2.ProcessChange")
             If targetCell Is Nothing Then Return FailedChange(sentEvent, sentEvent.WSName, sentEvent.CellAddress, New InvalidOperationException("The target cell was not found."))
 
-            Dim benchmark As System.Diagnostics.Stopwatch =
-                System.Diagnostics.Stopwatch.StartNew()
+            Dim benchmark As Abovo.SummitDiagnostics.DiagnosticTimer =
+                Abovo.SummitDiagnostics.DiagnosticTimer.StartNew(CheckSheetWatch.Benchmark)
             Dim before As CellSnapshotV2 = CellSnapshotV2.Capture(targetCell)
             Dim automaticGroup As Boolean = ActiveGroup Is Nothing
             Dim group As ChangeHistoryGroupV2 = If(ActiveGroup, CreateGroup(sentEvent.Description))
@@ -288,6 +312,7 @@ Namespace Abovo
             Dim writeMs As Long = 0
             Dim calculationMs As Long = 0
             Dim outcome As String = "failed"
+            writingAndCalculating = True
             Try
                 If targetCell.HasFormula Then FileManager.ExcelModels(ModelID).RequireFullRebuild()
                 WriteTypedValue(targetCell, sentEvent.ChangedValue, sentEvent.DataFormat)
@@ -321,6 +346,7 @@ Namespace Abovo
                 FileManager.ExcelModels(ModelID).MarkUserChange()
                 result.BSuccess = True
                 result.StrResponseMessage = "Change applied."
+                writingAndCalculating = False
                 If automaticGroup Then RaiseHistoryChanged(False, {targetCell.Worksheet.Name})
                 outcome = "ok"
                 Return result
@@ -350,7 +376,11 @@ Namespace Abovo
                 outcome = If(rollbackFailures.Count = 0, "rolled back", "recovery required")
                 Return FailedChange(sentEvent, targetCell.Worksheet.Name, targetCell.GetReferenceA1(), ex)
             Finally
-                System.Diagnostics.Trace.WriteLine(
+                writingAndCalculating = False
+                Abovo.SummitDiagnostics.WriteTrialLine("[Edit Trial Benchmark] model=" & ModelID.ToString() &
+                    ", worksheet=" & targetCell.Worksheet.Name & ", cell=" & targetCell.GetReferenceA1() &
+                    ", total=" & benchmark.ElapsedMilliseconds.ToString() & " ms, outcome=" & outcome)
+                Abovo.SummitDiagnostics.WriteLine(
                     "[Population Benchmark] Edit: model=" & ModelID.ToString() &
                     ", worksheet=" & targetCell.Worksheet.Name &
                     ", setup=" & setupMs.ToString() & " ms" &
@@ -430,7 +460,7 @@ Namespace Abovo
                     targetSnapshot.Apply(cell)
                     applied.Add(entry)
                 Next
-                FileManager.ExcelModels(ModelID).WBCalcEngine.CalculateWSs()
+                CalculateHistoryWorksheets(ordered)
 
                 'Calculation and control refresh are capable of raising editor
                 'events. Do not report success unless the workbook still contains
@@ -458,7 +488,7 @@ Namespace Abovo
                     End Try
                 Next
                 Try
-                    FileManager.ExcelModels(ModelID).WBCalcEngine.CalculateWSs()
+                    CalculateHistoryWorksheets(applied)
                 Catch rollbackError As Exception
                     rollbackFailures.Add("Recalculate restored workbook: " & rollbackError.Message)
                 End Try
@@ -501,6 +531,32 @@ Namespace Abovo
             RaiseHistoryChanged(True, group.Entries.Select(Function(item) item.WorksheetName))
             Return result
         End Function
+
+        Private Sub CalculateHistoryWorksheets(ByVal entries As IEnumerable(Of ChangeHistoryEntryV2))
+            Dim engine As CalcEngine = FileManager.ExcelModels(ModelID).WBCalcEngine
+
+            'History can be used after its DIT was deactivated, or from a different
+            'interface. CalculateWSs only knows currently registered worksheets and
+            'can otherwise do no calculation at all. Bring restored source sheets
+            'current before the normal active-sheet calculation and UI refresh.
+            'More than one active object already takes the workbook calculation
+            'path; registered sheets are likewise calculated by CalculateWSs.
+            If engine.ActiveObjectCount <= 1 Then
+                Dim registered As New HashSet(Of String)(
+                    engine.ActiveWSs.Where(Function(sheet) sheet IsNot Nothing).
+                        Select(Function(sheet) sheet.Name),
+                    StringComparer.OrdinalIgnoreCase)
+                For Each worksheetName As String In entries.
+                    Select(Function(entry) entry.WorksheetName).
+                    Distinct(StringComparer.OrdinalIgnoreCase)
+                    If Not registered.Contains(worksheetName) Then
+                        WB.Worksheets(worksheetName).Calculate()
+                    End If
+                Next
+            End If
+
+            engine.CalculateWSs()
+        End Sub
 
         Public Function GetHistoryTable() As DataTable
             Dim table As New DataTable("ModelHistoryV2")
@@ -588,16 +644,28 @@ Namespace Abovo
             'ProcessResolvedChange after its group has already been committed and
             'cause the workbook cell to be rolled back while history stays Applied.
             Dim subscribers As EventHandler(Of ChangeHistoryChangedEventArgsV2) = HistoryChangedEvent
-            If subscribers Is Nothing Then Return
+            If subscribers IsNot Nothing Then
+                For Each subscriber As [Delegate] In subscribers.GetInvocationList()
+                    Try
+                        DirectCast(subscriber, EventHandler(Of ChangeHistoryChangedEventArgsV2)).Invoke(Me, args)
+                    Catch ex As Exception
+                        Abovo.SummitDiagnostics.WriteLine(
+                            "HistoryChanged subscriber failed: " & ex.ToString())
+                    End Try
+                Next
+            End If
 
-            For Each subscriber As [Delegate] In subscribers.GetInvocationList()
+            'Read only after successful history completion AND its presentation
+            'callbacks. Those callbacks can populate bound editors and invalidate
+            'calculation again. Coalescing onto the next UI message captures the
+            'final revision without certifying provisional or rolled-back state.
+            If args.WorksheetNames.Count > 0 Then
                 Try
-                    DirectCast(subscriber, EventHandler(Of ChangeHistoryChangedEventArgsV2)).Invoke(Me, args)
+                    CheckSheetWatch.RefreshVisibleAfterCommittedChange(FileManager.ExcelModels(ModelID))
                 Catch ex As Exception
-                    System.Diagnostics.Debug.WriteLine(
-                        "HistoryChanged subscriber failed: " & ex.ToString())
+                    Abovo.SummitDiagnostics.WriteLine("Check Sheet completion refresh failed: " & ex.ToString())
                 End Try
-            Next
+            End If
         End Sub
 
         Private Shared Function NormalizeIdentifier(ByVal value As String) As String
@@ -615,6 +683,20 @@ Namespace Abovo
             End If
             If changedValue Is Nothing OrElse Convert.IsDBNull(changedValue) Then
                 targetCell.ClearContents()
+                Return
+            End If
+            'A workbook Yes/No validation is text even when an older interface
+            'declares the editor Boolean. Never convert its Yes to the number 1.
+            If WorkbookIntegritySupport.IsYesNoInput(targetCell) Then
+                Dim choice = Convert.ToString(changedValue, CultureInfo.CurrentCulture).Trim()
+                If TypeOf changedValue Is Boolean Then choice = If(CBool(changedValue), "Yes", "No")
+                If choice.Length = 0 Then
+                    targetCell.ClearContents()
+                ElseIf choice.Equals("Yes", StringComparison.OrdinalIgnoreCase) OrElse choice.Equals("No", StringComparison.OrdinalIgnoreCase) Then
+                    targetCell.Value = If(choice.Equals("Yes", StringComparison.OrdinalIgnoreCase), "Yes", "No")
+                Else
+                    Throw New ArgumentException("Select Yes or No for this workbook input.")
+                End If
                 Return
             End If
             Select Case If(dataFormat, String.Empty).Trim().ToUpperInvariant()

@@ -213,6 +213,11 @@ Public Class FormMainScreen
         Dim benchmarkArgs As String() = Environment.GetCommandLineArgs()
         If benchmarkArgs.Length >= 4 AndAlso benchmarkArgs.Length <= 5 AndAlso
            String.Equals(benchmarkArgs(1), "--benchmark-bitness", StringComparison.OrdinalIgnoreCase) Then
+            If Not SummitDiagnostics.Enabled Then
+                MessageBox.Show("Benchmarks are temporarily disabled in this client build.", "Abovo Summit")
+                Close()
+                Return
+            End If
             BeginInvoke(New MethodInvoker(
                 Sub() RunBitnessBenchmark(benchmarkArgs(2), benchmarkArgs(3),
                     If(benchmarkArgs.Length = 5, benchmarkArgs(4), "TransRents"))))

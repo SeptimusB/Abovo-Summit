@@ -13,6 +13,15 @@ Namespace Abovo
         Private ReadOnly BitmapSources As New Runtime.CompilerServices.ConditionalWeakTable(Of WindowsUIButton, ButtonBitmap)
         Private ReadOnly CompactPanelsIcon As DevExpress.Utils.Svg.SvgImage = CreatePanelsIcon(True)
         Private ReadOnly RestorePanelsIcon As DevExpress.Utils.Svg.SvgImage = CreatePanelsIcon(False)
+        Friend ReadOnly ReturnArrowIcon As DevExpress.Utils.Svg.SvgImage = CreateReturnArrowIcon()
+
+        Private Function CreateReturnArrowIcon() As DevExpress.Utils.Svg.SvgImage
+            'Use the same vector canvas and padding as the sidebar toggle icons.
+            Dim svg = "<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><path d='M23 14H5m8-8l-8 8 8 8' fill='none' stroke='#005baa' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/></svg>"
+            Using stream As New IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(svg))
+                Return DevExpress.Utils.Svg.SvgImage.FromStream(stream)
+            End Using
+        End Function
 
         Private Class ButtonBitmap
             Public Source As Image

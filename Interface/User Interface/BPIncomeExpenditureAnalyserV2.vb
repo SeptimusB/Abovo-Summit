@@ -52,6 +52,8 @@ Public Class BPIncomeExpenditureAnalyserV2
     Private Grid1ExpandedView As Boolean
     Private CalcEngID As Integer = -1
     Private ParentGIT As GroupInterfaceTemplate
+    Private ReadOnly InitialDescriptionFits As New HashSet(Of CustomGridView)()
+    Private ReadOnly PendingDescriptionFits As New HashSet(Of CustomGridView)()
     Friend ReadOnly Property PresentationHost As GroupInterfaceTemplate
         Get
             Return ParentGIT
@@ -396,6 +398,7 @@ Public Class BPIncomeExpenditureAnalyserV2
 
         InitialiseBalanceSheet()
         InitialiseChartViews()
+        InitialiseDescriptionFitting()
 
         Exit Sub
 
@@ -405,12 +408,39 @@ Public Class BPIncomeExpenditureAnalyserV2
         PresentationLayout.ApplyButtonPanel(WindowsUIButtonPanelAnalyser, Me)
     End Sub
 
+    Private Sub InitialiseDescriptionFitting()
+        For Each view In New CustomGridView() {WrapCG_SOCI.WrappedGridView, WrapCG_CF.WrappedGridView, WrapCG_BS.WrappedGridView}
+            Dim target = view
+            'The constructor's grid is not yet docked into its final host. Fit
+            'once after the first visible layout; later manual widths are kept.
+            AddHandler target.GridControl.VisibleChanged, Sub() QueueInitialDescriptionFit(target)
+            AddHandler target.GridControl.HandleCreated, Sub() QueueInitialDescriptionFit(target)
+            AddHandler target.GridControl.SizeChanged, Sub() QueueInitialDescriptionFit(target)
+            QueueInitialDescriptionFit(target)
+        Next
+    End Sub
+
+    Private Sub QueueInitialDescriptionFit(view As CustomGridView)
+        Dim grid = view.GridControl
+        If IsDisposed OrElse Disposing OrElse grid Is Nothing OrElse grid.IsDisposed OrElse grid.Disposing OrElse
+           Not grid.IsHandleCreated OrElse Not grid.Visible OrElse InitialDescriptionFits.Contains(view) OrElse
+           PendingDescriptionFits.Contains(view) Then Return
+        PendingDescriptionFits.Add(view)
+        grid.BeginInvoke(New MethodInvoker(Sub()
+            PendingDescriptionFits.Remove(view)
+            If IsDisposed OrElse Disposing OrElse grid.IsDisposed OrElse grid.Disposing OrElse
+               Not grid.Visible OrElse grid.ClientSize.Width <= 0 Then Return
+            ApplyDescriptionColumnBestFit(view)
+            InitialDescriptionFits.Add(view)
+        End Sub))
+    End Sub
+
 #Region "Form initialisation, non-grid events and data"
 
     Sub Form_InitilisationProcess_SetDataSource(Optional ByVal calculateDependencies As Boolean = True)
 
-        Dim benchmark As System.Diagnostics.Stopwatch =
-            System.Diagnostics.Stopwatch.StartNew()
+        Dim benchmark As Abovo.SummitDiagnostics.DiagnosticTimer =
+            Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
         Dim worksheetName As String = TransactionalDBSnapshotManager.SourceWorksheetName
         Dim rangeName As String = TransactionalDBSnapshotManager.SourceRangeName
 
@@ -477,7 +507,7 @@ Public Class BPIncomeExpenditureAnalyserV2
         DSAnalDataRange = TransDBDataRange.GetDataSource(RDSOptions)
         Dim dataSourceCreationMs As Long =
             benchmark.ElapsedMilliseconds - dataSourceStartMs
-        System.Diagnostics.Trace.WriteLine(
+        Abovo.SummitDiagnostics.WriteLine(
             "[Analyser V2 DataSource Benchmark] model=" & ModelID.ToString() &
             ", mode=" & CurrentDataSourceMode.ToString() &
             ", calculateDependencies=" & calculateDependencies.ToString() &
@@ -550,7 +580,7 @@ Public Class BPIncomeExpenditureAnalyserV2
         StructuralRefreshDeferred = True
         DeferredRefreshPanel.Visible = True
         XtraTabControlAnalyser.Enabled = False
-        System.Diagnostics.Trace.WriteLine(
+        Abovo.SummitDiagnostics.WriteLine(
             "[Analyser V2 Deferred Refresh] model=" & ModelID.ToString() &
             ", state=deferred")
     End Sub
@@ -563,8 +593,8 @@ Public Class BPIncomeExpenditureAnalyserV2
         If Not StructuralRefreshDeferred Then Return True
         If IsDisposed OrElse Disposing Then Return False
 
-        Dim refreshBenchmark As System.Diagnostics.Stopwatch =
-            System.Diagnostics.Stopwatch.StartNew()
+        Dim refreshBenchmark As Abovo.SummitDiagnostics.DiagnosticTimer =
+            Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
         Dim Activity As FormSplashScreen = New FormSplashScreen(
             Me.FindForm(), "Refreshing analysis", "Calculating the analyser datasource...")
         Me.Cursor = Cursors.WaitCursor
@@ -577,7 +607,7 @@ Public Class BPIncomeExpenditureAnalyserV2
             StructuralRefreshDeferred = False
             DeferredRefreshPanel.Visible = False
             XtraTabControlAnalyser.Enabled = True
-            System.Diagnostics.Trace.WriteLine(
+            Abovo.SummitDiagnostics.WriteLine(
                 "[Analyser V2 Deferred Refresh] model=" & ModelID.ToString() &
                 ", state=current, total=" &
                 refreshBenchmark.ElapsedMilliseconds.ToString() & " ms")
@@ -595,7 +625,7 @@ Public Class BPIncomeExpenditureAnalyserV2
                 "Analysis is out of date. Refresh analysis to retry."
             DeferredRefreshPanel.Visible = True
             XtraTabControlAnalyser.Enabled = False
-            System.Diagnostics.Trace.WriteLine(
+            Abovo.SummitDiagnostics.WriteLine(
                 "[Analyser V2 Deferred Refresh] model=" & ModelID.ToString() &
                 ", state=failed, total=" &
                 refreshBenchmark.ElapsedMilliseconds.ToString() & " ms" &
@@ -642,8 +672,8 @@ Public Class BPIncomeExpenditureAnalyserV2
 
         If DSAnalDataRange Is Nothing Then
 
-            Dim benchmark As System.Diagnostics.Stopwatch =
-                System.Diagnostics.Stopwatch.StartNew()
+            Dim benchmark As Abovo.SummitDiagnostics.DiagnosticTimer =
+                Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
             If CurrentDataSourceMode <> AnalyserDataSourceMode.Live AndAlso
                Not TransactionalDBSnapshotManager.HasValidSnapshot(ModelID) Then
                 CurrentDataSourceMode = AnalyserDataSourceMode.Live
@@ -707,7 +737,7 @@ Public Class BPIncomeExpenditureAnalyserV2
                 snapshotCheckMs + setupMs + bindSOCIMs + bindCFMs + bindBSMs +
                 refreshSOCIMs + refreshCFMs + refreshBSMs + stateMs +
                 bestFitSOCIMs + bestFitCFMs + bestFitBSMs + buttonsMs
-            System.Diagnostics.Trace.WriteLine(
+            Abovo.SummitDiagnostics.WriteLine(
                 "[Analyser V2 Reconnect Benchmark] model=" & ModelID.ToString() &
                 ", mode=" & CurrentDataSourceMode.ToString() &
                 ", calculateDependencies=" & calculateDependencies.ToString() &
@@ -849,8 +879,8 @@ Public Class BPIncomeExpenditureAnalyserV2
         Me.Cursor = Cursors.WaitCursor
         Dim Activity As New FormSplashScreen(
             Me.FindForm(), "Creating snapshot", "Preparing the analyser...")
-        Dim benchmark As System.Diagnostics.Stopwatch =
-            System.Diagnostics.Stopwatch.StartNew()
+        Dim benchmark As Abovo.SummitDiagnostics.DiagnosticTimer =
+            Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
         Dim disconnectMs As Long = 0
         Dim createMs As Long = 0
         Dim validationMs As Long = 0
@@ -914,7 +944,7 @@ Public Class BPIncomeExpenditureAnalyserV2
             Activity.Dispose()
             Dim measuredMs As Long =
                 disconnectMs + createMs + validationMs + reconnectMs
-            System.Diagnostics.Trace.WriteLine(
+            Abovo.SummitDiagnostics.WriteLine(
                 "[Analyser V2 Snapshot Benchmark] model=" & ModelID.ToString() &
                 ", mode=" & CurrentDataSourceMode.ToString() &
                 ", disconnect=" & disconnectMs.ToString() & " ms" &
@@ -962,8 +992,8 @@ Public Class BPIncomeExpenditureAnalyserV2
         End If
 
         Dim previousMode As AnalyserDataSourceMode = CurrentDataSourceMode
-        Dim benchmark As System.Diagnostics.Stopwatch =
-            System.Diagnostics.Stopwatch.StartNew()
+        Dim benchmark As Abovo.SummitDiagnostics.DiagnosticTimer =
+            Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
         Dim disconnectMs As Long = 0
         Dim reconnectMs As Long = 0
         Dim fallbackMs As Long = 0
@@ -1005,7 +1035,7 @@ Public Class BPIncomeExpenditureAnalyserV2
             UpdateDataSourceButtons()
             Dim measuredMs As Long =
                 disconnectMs + reconnectMs + fallbackMs
-            System.Diagnostics.Trace.WriteLine(
+            Abovo.SummitDiagnostics.WriteLine(
                 "[Analyser V2 Mode Benchmark] model=" & ModelID.ToString() &
                 ", from=" & previousMode.ToString() &
                 ", to=" & requestedMode.ToString() &
@@ -1306,6 +1336,7 @@ Public Class BPIncomeExpenditureAnalyserV2
         AddHandler CGV.CustomColumnDisplayText, AddressOf GridView_CustomColumnDisplayText
         AddHandler CGV.GroupRowExpanding, AddressOf GridView_Event_GroupRowExpanding
         AddHandler CGV.GroupRowCollapsing, AddressOf GridView_GroupRowCollapsing
+        AddHandler CGV.CalcRowHeight, AddressOf GridView_CalcRowHeight
 
     End Sub
     Sub GridView_InitialisationProcess_AddSummaries(CGV As CustomGridView)
@@ -1468,6 +1499,7 @@ Public Class BPIncomeExpenditureAnalyserV2
         If view Is Nothing Then Return
 
         With view
+            .CompactStatementRows = True
             .OptionsSelection.MultiSelect = True
             .OptionsSelection.MultiSelectMode = GridMultiSelectMode.CellSelect
             .OptionsSelection.EnableAppearanceHotTrackedRow = True
@@ -1499,22 +1531,24 @@ Public Class BPIncomeExpenditureAnalyserV2
         If descriptionColumn Is Nothing Then Return
 
         view.GridControl.ForceInitialize()
-        Dim previousWidth As Integer = descriptionColumn.Width
         descriptionColumn.BestFit()
 
         'BestFit measures data cells, but the visible statement headings and
         'totals are custom-drawn group rows. Measure their workbook captions as
         'well so a sparse model cannot collapse the description column.
         Dim fittedWidth As Integer = CInt(Math.Ceiling(descriptionColumn.Width * 1.15R))
-        Dim rows As System.Collections.IList =
-            TryCast(view.GridControl.DataSource, System.Collections.IList)
-        If rows IsNot Nothing AndAlso view.GroupedColumns.Count > 0 Then
+        'Spreadsheet RangeDataSource supplies IListSource, not IList. Ask the
+        'native controller for its bound rows so custom group captions are
+        'included in best-fit for real workbook data as well as plain lists.
+        Dim rowCount As Integer = view.DataController.ListSourceRowCount
+        If rowCount > 0 AndAlso view.GroupedColumns.Count > 0 Then
             Dim groupFont As Font = If(view.Appearance.GroupRow.Font, view.GridControl.Font)
             Dim measuredCaptions As New HashSet(Of String)(StringComparer.Ordinal)
 
             For groupLevel As Integer = 0 To view.GroupedColumns.Count - 1
                 Dim groupColumn As GridColumn = view.GroupedColumns(groupLevel)
-                For rowIndex As Integer = 0 To rows.Count - 1
+                'Best-fit is a presentation sample, never a full-model scan.
+                For rowIndex As Integer = 0 To Math.Min(rowCount, 2000) - 1
                     Dim caption As String = Convert.ToString(
                         view.GetListSourceRowCellValue(rowIndex, groupColumn),
                         CultureInfo.CurrentCulture)
@@ -1532,7 +1566,13 @@ Public Class BPIncomeExpenditureAnalyserV2
             Next
         End If
 
-        descriptionColumn.Width = Math.Max(previousWidth, fittedWidth)
+        'A restored/wide zoom must not permanently ratchet the fixed column wider.
+        'Leave most of the viewport for the financial periods, even on sparse data.
+        If view.GridControl.ClientSize.Width > 0 Then
+            descriptionColumn.MaxWidth = Math.Max(descriptionColumn.MinWidth, CInt(Math.Ceiling(view.GridControl.ClientSize.Width * 0.4R)))
+            fittedWidth = Math.Min(fittedWidth, descriptionColumn.MaxWidth)
+        End If
+        descriptionColumn.Width = Math.Max(descriptionColumn.MinWidth, fittedWidth)
     End Sub
 
 #End Region
@@ -1994,6 +2034,11 @@ Public Class BPIncomeExpenditureAnalyserV2
     End Sub
     Private Sub GridView_CustomDraw_GroupFooterCells(ByVal sender As CustomGridView, ByVal e As FooterCellCustomDrawEventArgs)
 
+        If e.Bounds.Width <= 0 OrElse e.Bounds.Height <= 0 Then
+            e.Handled = True
+            Return
+        End If
+
         Dim RLev As Integer = sender.GetRowLevel(e.RowHandle)
         e.Appearance.ForeColor = Color.Black
         Dim penColor As Color
@@ -2034,6 +2079,9 @@ Public Class BPIncomeExpenditureAnalyserV2
         End Select
         e.Appearance.Font = sender.Appearance.GroupRow.Font
         e.Appearance.FontStyleDelta = FontStyle.Bold
+        e.Appearance.TextOptions.HAlignment = HorzAlignment.Far
+        e.Appearance.TextOptions.VAlignment = VertAlignment.Center
+        e.Appearance.TextOptions.WordWrap = WordWrap.NoWrap
         Dim DisplayText As String = e.Info.DisplayText
         If IsNumeric(DisplayText) Then
 
@@ -2065,7 +2113,20 @@ Public Class BPIncomeExpenditureAnalyserV2
         Using pen As New Pen(penColor, penWidth)
             e.Cache.DrawLine(pen, FPoint1, FPoint2)
         End Using
-        e.Appearance.DrawString(e.Cache, DisplayText, e.Bounds)
+        Dim textBounds = e.Bounds
+        Dim headerBounds = If(e.Column Is Nothing, Rectangle.Empty, GetColumnBounds(e.Column))
+        If Not headerBounds.IsEmpty Then
+            textBounds.X = headerBounds.Left + 1
+            textBounds.Width = Math.Max(0, headerBounds.Width - 2)
+        End If
+        'Clipping a partially visible period must not move its right-aligned
+        'figure away from the same position used by the ordinary data cells.
+        Dim cellClip = e.Cache.SaveAndSetClip(e.Bounds, True)
+        Try
+            e.Appearance.DrawString(e.Cache, DisplayText, textBounds)
+        Finally
+            e.Cache.RestoreClipRelease(cellClip)
+        End Try
 
         e.Handled = True
 
@@ -2219,9 +2280,23 @@ Public Class BPIncomeExpenditureAnalyserV2
         VirtualSelection.DrawSelectedCells(e.Cache, sender, e.RowHandle,
                                            AnalyserVirtualRowKind.GroupFooter, e.Bounds)
 
-        Dim FPoint As New PointF(Rect.X, Rect.Y + (DefaultGridCellPadding / 2))
-        Dim TextBrush As Brush = e.Cache.GetSolidBrush(If(IsHotTracked, Color.White, Color.Black))
-        e.Cache.DrawString(Caption, e.Appearance.GetFont(), TextBrush, FPoint)
+        Dim labelBounds = StatementDescriptionBounds(sender, e.Bounds)
+        Dim labelRight = labelBounds.Right
+        labelBounds.X = Math.Max(labelBounds.X, Rect.X)
+        labelBounds.Width = Math.Max(0, labelRight - labelBounds.X - DefaultGridCellPadding)
+        If labelBounds.Width > 0 AndAlso labelBounds.Height > 0 Then
+            Dim clip = e.Cache.SaveAndSetClip(labelBounds, True)
+            Try
+                Using format As New StringFormat With {.Alignment = StringAlignment.Near,
+                    .LineAlignment = StringAlignment.Center, .FormatFlags = StringFormatFlags.NoWrap,
+                    .Trimming = StringTrimming.EllipsisCharacter}
+                    e.Cache.DrawString(Caption, e.Appearance.GetFont(),
+                        e.Cache.GetSolidBrush(If(IsHotTracked, Color.White, Color.Black)), labelBounds, format)
+                End Using
+            Finally
+                e.Cache.RestoreClipRelease(clip)
+            End Try
+        End If
 
         e.Handled = True
         LastPaintedFooterColour = e.Appearance.BackColor
@@ -2524,7 +2599,6 @@ Public Class BPIncomeExpenditureAnalyserV2
         End If
 
 
-
         If DontDrawExpandButton Then
             info.ButtonBounds = Rectangle.Empty
             If Not DontIndentTitle Then
@@ -2539,7 +2613,19 @@ Public Class BPIncomeExpenditureAnalyserV2
         e.Appearance.BackColor = BackColor
 
         e.Appearance.DrawBackground(e.Cache, info.Bounds)
-        painter.ElementsPainter.GroupRow.DrawObject(info)
+        Dim originalBounds = info.Bounds
+        Dim labelBounds = StatementDescriptionBounds(view, e.Bounds)
+        If labelBounds.IsEmpty Then Return
+        Dim clip = e.Cache.SaveAndSetClip(labelBounds, True)
+        Try
+            'Keep native group indentation, expander, font and colour. Its
+            'caption geometry spans the row, so clip to the description column.
+            info.Bounds = labelBounds
+            painter.ElementsPainter.GroupRow.DrawObject(info)
+        Finally
+            info.Bounds = originalBounds
+            e.Cache.RestoreClipRelease(clip)
+        End Try
 
     End Sub
     Private Sub DrawSummaryValues(ByVal e As RowObjectCustomDrawEventArgs, ByVal view As CustomGridView, ByVal items As ArrayList)
@@ -2552,6 +2638,8 @@ Public Class BPIncomeExpenditureAnalyserV2
         Dim RedBrush As Brush = e.Cache.GetSolidBrush(If(IsHighlighted, Color.White, Color.Red))
         Dim BlackBrush As Brush = e.Cache.GetSolidBrush(If(IsHighlighted, Color.White, Color.Black))
 
+        Using valueFormat As New StringFormat With {.Alignment = StringAlignment.Far,
+            .LineAlignment = StringAlignment.Center, .FormatFlags = StringFormatFlags.NoWrap}
         For Each item As GridGroupSummaryItem In items
 
             Dim rect As Rectangle = GetColumnBounds(view, item)
@@ -2580,51 +2668,78 @@ Public Class BPIncomeExpenditureAnalyserV2
 
                     rect = CalcRowSummaryRect(text, e, view.Columns(item.FieldName))
 
-                    e.Appearance.DrawString(e.Cache, text, rect, RedBrush)
+                    DrawStatementSummaryValue(e, text, rect, view.Columns(item.FieldName), RedBrush, valueFormat)
 
 
                 Else
 
                     rect = CalcRowSummaryRect(text, e, view.Columns(item.FieldName))
 
-                    e.Appearance.DrawString(e.Cache, text, rect, BlackBrush)
+                    DrawStatementSummaryValue(e, text, rect, view.Columns(item.FieldName), BlackBrush, valueFormat)
 
                 End If
             Else
 
                 rect = CalcRowSummaryRect(text, e, view.Columns(item.FieldName))
 
-                e.Appearance.DrawString(e.Cache, text, rect, BlackBrush)
+                DrawStatementSummaryValue(e, text, rect, view.Columns(item.FieldName), BlackBrush, valueFormat)
 
             End If
 
         Next item
+        End Using
     End Sub
+
+    Private Sub DrawStatementSummaryValue(e As RowObjectCustomDrawEventArgs, text As String,
+                                         clipBounds As Rectangle, column As GridColumn,
+                                         brush As Brush, format As StringFormat)
+        If clipBounds.IsEmpty Then Return
+        Dim textBounds = GetColumnBounds(column)
+        textBounds.X += 1
+        textBounds.Width = Math.Max(0, textBounds.Width - 3)
+        textBounds.Y = clipBounds.Y
+        textBounds.Height = clipBounds.Height
+        Dim clip = e.Cache.SaveAndSetClip(clipBounds, True)
+        Try
+            e.Appearance.DrawString(e.Cache, text, textBounds, brush, format)
+        Finally
+            e.Cache.RestoreClipRelease(clip)
+        End Try
+    End Sub
+
     Private Function CalcRowSummaryRect(ByVal text As String, ByVal e As RowObjectCustomDrawEventArgs, ByVal column As GridColumn) As Rectangle
 
         Dim result As Rectangle = GetColumnBounds(column)
-        Dim sz As SizeF = TextUtils.GetStringSize(e.Graphics, text, e.Appearance.Font)
-        Dim width As Integer = Convert.ToInt32(sz.Width) + 1
-        If (Not gridInfo.ViewRects.FixedLeft.IsEmpty) Then
-            Dim fixedLeftRight As Integer = gridInfo.ViewRects.FixedLeft.Right
-            Dim marginLeft As Integer = result.Right - width - fixedLeftRight
-            If marginLeft < 0 AndAlso column.Fixed = FixedStyle.None Then
-                Return Rectangle.Empty
-            End If
+        If result.IsEmpty Then Return Rectangle.Empty
+        Dim leftEdge = result.Left + 1
+        Dim rightEdge = result.Right - 2
+        If column.Fixed = FixedStyle.None Then
+            If Not gridInfo.ViewRects.FixedLeft.IsEmpty Then leftEdge = Math.Max(leftEdge, gridInfo.ViewRects.FixedLeft.Right)
+            If Not gridInfo.ViewRects.FixedRight.IsEmpty Then rightEdge = Math.Min(rightEdge, gridInfo.ViewRects.FixedRight.Left)
         End If
-        If (Not gridInfo.ViewRects.FixedRight.IsEmpty) Then
-            Dim fixedRightLeft As Integer = gridInfo.ViewRects.FixedRight.Left
-            If fixedRightLeft <= result.Right AndAlso column.Fixed = FixedStyle.None Then
-                Return Rectangle.Empty
-            End If
-        End If
-        result = FixLeftEdge(width, result)
-        result.Width = result.Width
+        rightEdge = Math.Min(rightEdge, column.View.GridControl.ClientSize.Width)
+        If rightEdge <= leftEdge Then Return Rectangle.Empty
+        result.X = leftEdge
+        result.Width = rightEdge - leftEdge
         result.Y = e.Bounds.Y
         result.Height = e.Bounds.Height - 2
+        'A long caption must never suppress a financial total. Captions are
+        'clipped separately; only genuinely off-screen columns are omitted.
+        Return result
 
-        Return PreventSummaryTextOverlapping(e, result)
+    End Function
 
+    Private Shared Function StatementDescriptionBounds(view As GridView, rowBounds As Rectangle) As Rectangle
+        If view Is Nothing Then Return Rectangle.Empty
+        Dim column = view.Columns.ColumnByFieldName("ItemDesc")
+        If column Is Nothing Then Return Rectangle.Empty
+        Dim viewInfo = TryCast(view.GetViewInfo(), GridViewInfo)
+        Dim header = If(viewInfo Is Nothing, Nothing, viewInfo.ColumnsInfo(column))
+        If header Is Nothing Then Return Rectangle.Empty
+        Dim leftEdge = Math.Max(rowBounds.Left, header.Bounds.Left)
+        Dim rightEdge = Math.Min(rowBounds.Right, header.Bounds.Right)
+        If rightEdge <= leftEdge Then Return Rectangle.Empty
+        Return New Rectangle(leftEdge, rowBounds.Top, rightEdge - leftEdge, rowBounds.Height)
     End Function
     Private Function GetColumnBounds(ByVal view As GridView, ByVal item As GridGroupSummaryItem) As Rectangle
         Dim column As GridColumn = view.Columns(item.FieldName)
@@ -2639,30 +2754,6 @@ Public Class BPIncomeExpenditureAnalyserV2
         Else
             Return Rectangle.Empty
         End If
-    End Function
-    Private Function FixLeftEdge(ByVal width As Integer, ByVal result As Rectangle) As Rectangle
-        Dim delta As Integer = result.Width - width - 2
-        If delta > 0 Then
-            result.X += delta
-            result.Width -= delta
-        End If
-        Return result
-    End Function
-    Private Function PreventSummaryTextOverlapping(ByVal e As RowObjectCustomDrawEventArgs, ByVal rect As Rectangle) As Rectangle
-        Dim gInfo As GridGroupRowInfo = CType(e.Info, GridGroupRowInfo)
-        Dim groupTextLocation As Integer = gInfo.ButtonBounds.Right + 10
-        Dim groupTextWidth As Integer = TextUtils.GetStringSize(e.Graphics, gInfo.GroupText, e.Appearance.Font).Width
-        Dim fixedLeft As Integer = gInfo.ViewInfo.ViewRects.FixedLeft.Left
-        Dim r As New Rectangle(groupTextLocation, 0, groupTextWidth, e.Info.Bounds.Height)
-        If r.Right > rect.X Then
-            If r.Right > rect.Right Then
-                rect.Width = 0
-            Else
-                rect.Width -= r.Right - rect.X
-                rect.X = r.Right
-            End If
-        End If
-        Return rect
     End Function
 
 #End Region
@@ -2748,17 +2839,16 @@ Public Class BPIncomeExpenditureAnalyserV2
     End Sub
     Private Sub GridView_CalcRowHeight(ByVal sender As Object, ByVal e As RowHeightEventArgs)
 
-        If Not sender.IsGroupRow(e.RowHandle) Then Return
-
-        If sender.GetRowLevel(e.RowHandle) = 0 Then
-
-            e.RowHeight += Abovo.PresentationScaleManager.Scale(20)
-
-        ElseIf sender.GetRowLevel(e.RowHandle) = 1 Then
-
-            e.RowHeight += Abovo.PresentationScaleManager.Scale(10)
-
+        If Not sender.IsGroupRow(e.RowHandle) Then
+            e.RowHeight = CInt(Math.Ceiling(e.RowHeight * 1.1R))
+            Return
         End If
+
+        Dim view = DirectCast(sender, CustomGridView)
+        Dim dpi = view.GridControl.DeviceDpi
+        Dim zoom = GridPresentation.ZoomPercent(view.GridControl) / 100.0
+        Dim padding = Math.Max(3, CInt(If(view.GetRowLevel(e.RowHandle) = 0, 6, 3) * dpi / 96.0 * zoom))
+        e.RowHeight = CInt(Math.Ceiling(Math.Max(12, CInt(Math.Ceiling(view.Appearance.GroupRow.GetFont().GetHeight(CSng(dpi)))) + padding) * 1.1R))
 
     End Sub
 

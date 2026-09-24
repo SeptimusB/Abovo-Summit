@@ -493,6 +493,7 @@ Public Class DataInterfaceTemplate
         InitialiseSaveActions()
         InitialiseClipboardActions()
         InitialiseRefreshAction()
+        InitialiseNavigationIcons()
         OrderActionButtons()
         'Keep the toolbar outside the designer-scaled absolute table row.
         'A smaller host must give the saved interface its actual document width.
@@ -552,7 +553,7 @@ Public Class DataInterfaceTemplate
 
         End If
 
-        Dim registrationTimer As System.Diagnostics.Stopwatch = System.Diagnostics.Stopwatch.StartNew()
+        Dim registrationTimer As Abovo.SummitDiagnostics.DiagnosticTimer = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
         CalcEngID = ExcelModels(ModelID).WBCalcEngine.AddActiveObject(Me)
 
         If DataPres.DefaultWorksheet IsNot Nothing Then
@@ -566,7 +567,7 @@ Public Class DataInterfaceTemplate
         If DataPres.Sections.Any(Function(section) section IsNot Nothing AndAlso
                 section.SectionElements IsNot Nothing AndAlso section.SectionElements.Any(
                 Function(element) element.Type = "MappedTable")) Then
-            System.Diagnostics.Trace.WriteLine("[Mapped Table Benchmark] registration/calculation: model=" &
+            Abovo.SummitDiagnostics.WriteLine("[Mapped Table Benchmark] registration/calculation: model=" &
                 ModelID.ToString() & ", CSID=" & CSID.ToString() & ", total=" &
                 registrationTimer.ElapsedMilliseconds.ToString() & " ms")
         End If
@@ -639,6 +640,50 @@ Public Class DataInterfaceTemplate
 
 #Region "Public Methods / Properties"
 
+    Friend ReadOnly Property HasVisibleCheckSheet As Boolean
+        Get
+            If InterfaceResourcesReleased OrElse Not AmActivated OrElse IsDisposed OrElse Disposing OrElse Not Visible OrElse
+               XtraTabControlNewGIT Is Nothing Then Return False
+            Dim page = XtraTabControlNewGIT.SelectedTabPage
+            Return page IsNot Nothing AndAlso FindChildControls(Of ReadOnlyMappedTableGrid)(page).
+                Any(Function(grid) String.Equals(grid.WorksheetName, "Check Sheet", StringComparison.OrdinalIgnoreCase))
+        End Get
+    End Property
+
+    Private checkSheetReadQueued As Boolean
+    Friend Sub EnsureVisibleCheckSheetCurrent()
+        If Not HasVisibleCheckSheet OrElse Not IsHandleCreated OrElse checkSheetReadQueued Then Return
+        Dim model = ExcelModels(ModelID)
+        checkSheetReadQueued = True
+        Try
+            'Activation/layout may still populate bound editors and advance the
+            'model revision after VisibleChanged/SelectedPageChanged. Coalesce
+            'these read requests until that native message has finished, rather
+            'than calculating once against provisional state and again afterwards.
+            BeginInvoke(New Action(
+                Sub()
+                    checkSheetReadQueued = False
+                    If HasVisibleCheckSheet Then CheckSheetWatch.EnsureCurrent(model)
+                End Sub))
+        Catch ex As InvalidOperationException
+            checkSheetReadQueued = False
+        End Try
+    End Sub
+
+    Private Sub CheckSheetVisibilityChanged(sender As Object, e As EventArgs) Handles MyBase.VisibleChanged
+        'Warm document activation occurs after Reactivate; Shown only fires once.
+        'The revision gate makes repeated native visibility notifications cheap.
+        EnsureVisibleCheckSheetCurrent()
+    End Sub
+
+    Private Sub CheckSheetReadHandleDestroyed(sender As Object, e As EventArgs) Handles MyBase.HandleDestroyed
+        checkSheetReadQueued = False
+    End Sub
+
+    Private Sub CheckSheetReadHandleCreated(sender As Object, e As EventArgs) Handles MyBase.HandleCreated
+        EnsureVisibleCheckSheetCurrent()
+    End Sub
+
     Public Shadows Sub Deactivate()
 
         Dim engine As CalcEngine = ExcelModels(ModelID).WBCalcEngine
@@ -649,7 +694,7 @@ Public Class DataInterfaceTemplate
 
         AmActivated = False
         If wasActivated Then
-            System.Diagnostics.Trace.WriteLine(
+            Abovo.SummitDiagnostics.WriteLine(
                 "[Navigation Benchmark] DIT deactivate: model=" & ModelID.ToString() &
                 ", CSID=" & CSID.ToString() &
                 ", activeObjects=" & beforeCount.ToString() & "->" &
@@ -663,7 +708,7 @@ Public Class DataInterfaceTemplate
         If AmActivated Then Return
         Dim engine As CalcEngine = ExcelModels(ModelID).WBCalcEngine
         Dim beforeCount As Integer = engine.ActiveObjectCount
-        Dim timer As System.Diagnostics.Stopwatch = System.Diagnostics.Stopwatch.StartNew()
+        Dim timer As Abovo.SummitDiagnostics.DiagnosticTimer = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
         Dim registrationMs As Long = 0
         Dim calculationMs As Long = 0
         Dim sectionMs As Long = 0
@@ -689,7 +734,7 @@ Public Class DataInterfaceTemplate
             stage = "calculation"
             calculationSkipped = engine.NavigationCalculationCurrent AndAlso Not ExcelModels(ModelID).DeferredSaveResultsPending
             If calculationSkipped Then
-                System.Diagnostics.Trace.WriteLine(
+                Abovo.SummitDiagnostics.WriteLine(
                     "[Navigation Benchmark] CalcFile skipped: DIT model=" &
                     ModelID.ToString() & ", CSID=" & CSID.ToString() &
                     ", generation=" & engine.NavigationCalculationGeneration.ToString())
@@ -705,6 +750,7 @@ Public Class DataInterfaceTemplate
             sectionMs = timer.ElapsedMilliseconds - registrationMs - calculationMs
 
             stage = "refresh"
+            EnsureVisibleCheckSheetCurrent()
             RefreshData()
             UpdateTabPage()
             refreshMs = timer.ElapsedMilliseconds - registrationMs - calculationMs - sectionMs
@@ -715,7 +761,7 @@ Public Class DataInterfaceTemplate
             AmActivated = False
             Throw
         Finally
-            System.Diagnostics.Trace.WriteLine(
+            Abovo.SummitDiagnostics.WriteLine(
                 "[Navigation Benchmark] DIT reactivate: model=" & ModelID.ToString() &
                 ", CSID=" & CSID.ToString() &
                 ", registration=" & registrationMs.ToString() & " ms" &
@@ -822,6 +868,7 @@ Public Class DataInterfaceTemplate
                     Finally
                         vertGridControl.EndUpdate()
                     End Try
+                    RefreshFundingViewRecords(vertGridControl)
                 End If
 
             Next
@@ -974,7 +1021,7 @@ SkipRefresh:
                         dateTag.InPlaceVGridRowHelper.EditValue = dateValue
                     End If
                 Catch ex As Exception
-                    Debug.WriteLine("In-column editor refresh failed: " & ex.Message)
+                    Abovo.SummitDiagnostics.WriteLine("In-column editor refresh failed: " & ex.Message)
                 End Try
             Next
         Next
@@ -1740,9 +1787,32 @@ SkipRefresh:
 
         If RootControl Is Nothing OrElse RootControl.IsDisposed Then Return
 
+        Dim scopes As New List(Of IDisposable)
+        Try
+            For Each grid As Control In FindChildControls(Of GridControl)(RootControl).Cast(Of Control)().
+                Concat(FindChildControls(Of VGridControl)(RootControl).Cast(Of Control)())
+                Dim scope = GridPresentation.BeginBaseLayout(grid)
+                If scope IsNot Nothing Then scopes.Add(scope)
+            Next
+            ApplySectionFontAndGridLayoutCore(RootControl)
+        Finally
+            Dim firstDisposeError As Exception = Nothing
+            For index = scopes.Count - 1 To 0 Step -1
+                Try
+                    scopes(index).Dispose()
+                Catch ex As Exception
+                    If firstDisposeError Is Nothing Then firstDisposeError = ex
+                End Try
+            Next
+            If firstDisposeError IsNot Nothing Then Throw New InvalidOperationException("Unable to restore grid presentation after resizing.", firstDisposeError)
+        End Try
+    End Sub
+
+    Private Sub ApplySectionFontAndGridLayoutCore(ByVal RootControl As Control)
+
         Dim NewFont As Font = GetDisplayFont("Medium", Me)
 
-        Dim fontTimer As System.Diagnostics.Stopwatch = System.Diagnostics.Stopwatch.StartNew()
+        Dim fontTimer As Abovo.SummitDiagnostics.DiagnosticTimer = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
         Dim mappedPanel As TablePanel = TryCast(RootControl, TablePanel)
         Dim batchMappedLayout As Boolean = mappedPanel IsNot Nothing AndAlso
             Object.Equals(mappedPanel.Tag, "MappedTable")
@@ -1756,7 +1826,7 @@ SkipRefresh:
             If batchMappedLayout Then mappedPanel.ResumeLayout(True)
         End Try
         If Object.Equals(RootControl.Tag, "MappedTable") Then
-            System.Diagnostics.Trace.WriteLine("[Mapped Table Benchmark] fonts: model=" &
+            Abovo.SummitDiagnostics.WriteLine("[Mapped Table Benchmark] fonts: model=" &
                 ModelID.ToString() & ", CSID=" & CSID.ToString() & ", controls=" &
                 RootControl.Controls.Count.ToString() & ", total=" &
                 fontTimer.ElapsedMilliseconds.ToString() & " ms")
@@ -3026,6 +3096,7 @@ SkipRefresh:
                 RemoveHandler VG.MouseDown, AddressOf ClipboardTarget_MouseDown
                 If Object.ReferenceEquals(VG.ContextMenuStrip, ClipboardContextMenu) Then VG.ContextMenuStrip = Nothing
                 RemoveHandler VG.CustomDrawRowValueCell, AddressOf VGrid_CustomDrawCell
+                RemoveHandler VG.CustomRecordDisplayText, AddressOf InputVGridDisplayText
                 RemoveHandler VG.CustomDrawRowValueCell, AddressOf LiveVGrid_CustomDrawCell
                 RemoveHandler VG.ValidatingEditor, AddressOf VGrid_ValidatingEditor
                 RemoveHandler VG.ShowingEditor, AddressOf VGrid_ShowingEditor
@@ -3728,7 +3799,6 @@ SkipRefresh:
 
                             GridCombosCount += 1
                             EditControl.RetCombo.Name = "Combo_" & GridCombosCount.ToString
-                            AddHandler EditControl.RetCombo.Enter, AddressOf ComboOpen
                             GridControls(GridCount).RepositoryItems.Add(EditControl.RetCombo)
                             ComboReposClassesCount += 1
 
@@ -3843,12 +3913,12 @@ SkipRefresh:
 
                             GVcolumn.AppearanceHeader.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Center
                             GVcolumn.DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric
-                            GVcolumn.DisplayFormat.FormatString = "#,##0.00"
+                            GVcolumn.DisplayFormat.FormatString = If(ColTag.MinExclusive, "0.###############", "#,##0.00")
                             GVcolumn.AppearanceCell.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
 
                             Dim edit As New RepositoryItemTextEdit()
                             edit.Mask.MaskType = DevExpress.XtraEditors.Mask.MaskType.Numeric
-                            edit.Mask.EditMask = "n5"
+                            edit.Mask.EditMask = If(ColTag.MinExclusive, "0.###############", "n5")
                             GVcolumn.ColumnEdit = edit
                             ColTag.DefaultTextEditor = edit
 
@@ -3861,17 +3931,10 @@ SkipRefresh:
                             GVcolumn.DisplayFormat.FormatString = "p2"
 
                             ColTag.ShowDefaultmask = 3
-                            Dim SetMinVal As Object = IIf(ColTag.MinVal Is Nothing, 0, IIf(ColTag.MinVal = "NOMIN", Nothing, CDec(ColTag.MinVal)))
-                            Dim SetMaxVal As Object = IIf(ColTag.MaxVal Is Nothing, 1, IIf(ColTag.MaxVal = "NOMAX", Nothing, CDec(ColTag.MaxVal)))
-
                             If Not ColTag.IsReadOnly Then
 
                                 Dim edit As New RepositoryItemSpinEdit()
-
-                                edit.MinValue = IIf(SetMinVal = Nothing, Nothing, CDec(SetMinVal))
-                                edit.Increment = IIf(ColTag.DefIncrement Is Nothing, CDec(0.0025), CDec(ColTag.DefIncrement))
-
-                                edit.MaxValue = IIf(SetMaxVal = Nothing, Nothing, CDec(SetMaxVal))
+                                ConfigurePercentageEditor(edit, ColTag)
                                 edit.Mask.MaskType = DevExpress.XtraEditors.Mask.MaskType.Numeric
                                 edit.Mask.EditMask = "p2"
                                 edit.DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric
@@ -4488,6 +4551,7 @@ SkipRefresh:
                     'If Not DontAddCDHDef Then AddHandler UsedBANDedGridVIEWS(BandGridViewsCount).CustomDrawColumnHeader, AddressOf DefaultCustomDrawColumnHeader
                     'AddHandler UsedGridVIEWS(GridViewCount).CustomDrawColumnHeader, AddressOf DefaultCustomDrawColumnHeader
                     AddHandler UsedBANDedGridVIEWS(BandGridViewsCount).CustomDrawCell, AddressOf GridView_CustomDrawCell
+                    AddHandler UsedBANDedGridVIEWS(BandGridViewsCount).CustomColumnDisplayText, AddressOf InputGridDisplayText
                     AddHandler UsedBANDedGridVIEWS(BandGridViewsCount).ValidatingEditor, AddressOf GridView_ValidatingEditor
                     AddHandler UsedBANDedGridVIEWS(BandGridViewsCount).ShowingEditor, AddressOf GridView_ShowingEditor
                     AddHandler UsedBANDedGridVIEWS(BandGridViewsCount).ShownEditor, AddressOf GridView_ShownEditor
@@ -4520,6 +4584,7 @@ SkipRefresh:
                     'If Not DontAddCDHDef Then AddHandler UsedGridVIEWS(GridViewCount).CustomDrawColumnHeader, AddressOf DefaultCustomDrawColumnHeader
 
                     AddHandler UsedGridVIEWS(GridViewCount).CustomDrawCell, AddressOf GridView_CustomDrawCell
+                    AddHandler UsedGridVIEWS(GridViewCount).CustomColumnDisplayText, AddressOf InputGridDisplayText
                     AddHandler UsedGridVIEWS(GridViewCount).ValidatingEditor, AddressOf GridView_ValidatingEditor
                     AddHandler UsedGridVIEWS(GridViewCount).ShowingEditor, AddressOf GridView_ShowingEditor
                     AddHandler UsedGridVIEWS(GridViewCount).ShownEditor, AddressOf GridView_ShownEditor
@@ -5063,8 +5128,6 @@ SkipRefresh:
                             "JVYearCombo_" &
                             GridCombosCount.ToString
 
-                        AddHandler JVYearEditControl.RetCombo.Enter,
-                            AddressOf ComboOpen
 
                         VertGrid.RepositoryItems.Add(
                             JVYearEditControl.RetCombo)
@@ -5413,7 +5476,6 @@ SkipRefresh:
                             EditControl.RetCombo.Name =
                 "VGridCombo_" & GridCombosCount.ToString
 
-                            AddHandler EditControl.RetCombo.Enter, AddressOf ComboOpen
                             VertGrid.RepositoryItems.Add(EditControl.RetCombo)
 
                             ComboReposClassesCount += 1
@@ -5574,14 +5636,14 @@ SkipRefresh:
                             VRow.Properties.DisplayFormat.FormatType =
                 DevExpress.Utils.FormatType.Numeric
 
-                            VRow.Properties.DisplayFormat.FormatString = "#,##0.00"
+                            VRow.Properties.DisplayFormat.FormatString = If(ColTag.MinExclusive, "0.###############", "#,##0.00")
 
                             Dim edit As New RepositoryItemTextEdit()
 
                             edit.Mask.MaskType =
                 DevExpress.XtraEditors.Mask.MaskType.Numeric
 
-                            edit.Mask.EditMask = "n5"
+                            edit.Mask.EditMask = If(ColTag.MinExclusive, "0.###############", "n5")
 
                             VertGrid.RepositoryItems.Add(edit)
                             VRow.Properties.RowEdit = edit
@@ -5601,36 +5663,10 @@ SkipRefresh:
 
                             ColTag.ShowDefaultmask = 3
 
-                            Dim SetMinVal As Object =
-                If(ColTag.MinVal Is Nothing,
-                   0,
-                   If(ColTag.MinVal = "NOMIN",
-                      Nothing,
-                      CDec(ColTag.MinVal)))
-
-                            Dim SetMaxVal As Object =
-                If(ColTag.MaxVal Is Nothing,
-                   1,
-                   If(ColTag.MaxVal = "NOMAX",
-                      Nothing,
-                      CDec(ColTag.MaxVal)))
-
                             If Not ColTag.IsReadOnly Then
 
                                 Dim edit As New RepositoryItemSpinEdit()
-
-                                If SetMinVal IsNot Nothing Then
-                                    edit.MinValue = CDec(SetMinVal)
-                                End If
-
-                                edit.Increment =
-                    If(ColTag.DefIncrement Is Nothing,
-                       CDec(0.0025),
-                       CDec(ColTag.DefIncrement))
-
-                                If SetMaxVal IsNot Nothing Then
-                                    edit.MaxValue = CDec(SetMaxVal)
-                                End If
+                                ConfigurePercentageEditor(edit, ColTag)
 
                                 edit.Mask.MaskType =
                     DevExpress.XtraEditors.Mask.MaskType.Numeric
@@ -5779,6 +5815,14 @@ SkipRefresh:
                             ConfigureHeaderNavigation(Helper)
                             Helper.EditValue = ColTag.EditRepNRHereInitialValue
                             Helper.LinkedDateEdit = EditControl
+                            If GSID = 0 AndAlso (CSID = 33 OrElse CSID = 138) Then
+                                Dim scheduleRange = ColTag.RepeatingNR, scheduleOffset = ColTag.EditNRIndexPosition
+                                Helper.PresentationTint = Function()
+                                                              Dim dateRange = ExcelModels(ModelID).WB.DefinedNames.GetDefinedName(scheduleRange)?.Range
+                                                              If dateRange Is Nothing OrElse scheduleOffset < 0 OrElse scheduleOffset >= dateRange.RowCount Then Return Nothing
+                                                              Return FundingTint(dateRange(scheduleOffset, 0))
+                                                          End Function
+                            End If
 
                             InColumnEditorTag.InPlaceVGridRowHelper = Helper
                             EditControl.Tag = InColumnEditorTag
@@ -5830,7 +5874,8 @@ SkipRefresh:
                         "",
                         SetSectionID,
                         Category.Properties.Caption,
-                        If(CategoryTag Is Nothing, Nothing, CategoryTag.ActionToken))
+                        If(CategoryTag Is Nothing, Nothing, CategoryTag.ActionToken),
+                        GetFundingScheduleAction(If(CategoryTag Is Nothing, Nothing, CategoryTag.ActionNR)))
 
                     CategoryExtender.AddCustomButton()
                     VGridCategoryExtenders.Add(CategoryExtender)
@@ -6005,7 +6050,7 @@ SkipRefresh:
                 'tab-page viewport height.
                 VertGrid.Tag = New VGridLayoutTag With {
                     .TableRowIndex = TPRowCount,
-                    .UseInternalVerticalScroll = (CSID = 138)
+                    .UseInternalVerticalScroll = (GSID = 0 AndAlso (CSID = 33 OrElse CSID = 138))
                 }
 
                 VertGrid.Height = IdealGridHeight
@@ -6027,12 +6072,14 @@ SkipRefresh:
                 UnboundDataSources(UBSDataSourceCount).AttachedVertGrid = VertGrid
 
                 AddHandler VertGrid.CustomDrawRowValueCell, AddressOf VGrid_CustomDrawCell
+                AddHandler VertGrid.CustomRecordDisplayText, AddressOf InputVGridDisplayText
                 AddHandler VertGrid.ValidatingEditor, AddressOf VGrid_ValidatingEditor
                 AddHandler VertGrid.ShowingEditor, AddressOf VGrid_ShowingEditor
                 AddHandler VertGrid.ShownEditor, AddressOf VGrid_ShownEditor
                 AddHandler VertGrid.DoubleClick, AddressOf VGrid_Event_DoubleClick
                 AddHandler VertGrid.CustomRecordCellEdit, AddressOf VGrid_CustomCellEditor
                 AddHandler VertGrid.CustomRecordCellEditForEditing, AddressOf VGrid_CellEditorForEditing
+                ConfigureFundingScheduleGrid(VertGrid)
 
 
 #End Region
@@ -6077,6 +6124,7 @@ SkipRefresh:
                 .TargetWorksheet = Me.ActiveSpreadsheet,
                 .TargetCell = ActiveDataSet.DataRows(0).DataCells(0).SourceAddress,
                 .DataType = ActiveDataSet.DataColumns(0).ColumnTag.DataType,
+                .MinExclusive = ActiveDataSet.DataColumns(0).ColumnTag.MinExclusive,
                 .IsCalculated = ActiveDataSet.DataColumns(0).ColumnTag.IsCalculated,
                 .Label = ActiveDataSet.DataColumns(0).ColumnTag.ColumnHeading
             }
@@ -6196,6 +6244,7 @@ SkipRefresh:
                                     .Name = "TextBox_" & TextEditCount.ToString,
                                     .ModelID = ModelID,
                                     .Tag = SCDT,
+                                    .IsReadOnly = ActiveDataSet.RO OrElse SCDT.IsCalculated,
                                     .EnterMoveNextControl = True
                                 }
 
@@ -6215,6 +6264,11 @@ SkipRefresh:
 
                     TP.Controls.Add(TextBoxes(TextEditCount))
                     TP.SetCell(TextBoxes(TextEditCount), TPRowCount, 1)
+                    If ActiveDataSet.Name.IndexOf("Setup Company Name", StringComparison.OrdinalIgnoreCase) >= 0 Then
+                        TP.SetColumnSpan(TextBoxes(TextEditCount), 2)
+                        TextBoxes(TextEditCount).MaximumSize = New Size(PresentationScaleManager.Scale(700), 0)
+                        TextBoxes(TextEditCount).Anchor = AnchorStyles.Left Or AnchorStyles.Right
+                    End If
 
                     SectionControlsCumlHeight += TextBoxes(TextEditCount).Height + (DefaultTablePanelPadding.Top + DefaultTablePanelPadding.Bottom)
 
@@ -6317,7 +6371,6 @@ SkipRefresh:
 
                         End If
 
-                        AddHandler Combos(CombosCount).Enter, AddressOf ComboOpen
                         AddHandler Combos(CombosCount).EditValueChanged, AddressOf SingleCell_Value_Push
                         RegisterSingleCellHistoryRefresh(Combos(CombosCount), SCDT.TargetWorksheet)
 
@@ -6445,6 +6498,9 @@ SkipRefresh:
                         AddHandler NewButton.Click, AddressOf Link_ButtonClick
                         TP.Controls.Add(NewButton)
                         TP.SetCell(NewButton, TPRowCount, 0)
+                        TP.SetColumnSpan(NewButton, 3)
+                        NewButton.AutoSize = True
+                        NewButton.Anchor = AnchorStyles.Left
                         SectionControlsCumlHeight += NewButton.Height + (DefaultTablePanelPadding.Top + DefaultTablePanelPadding.Bottom)
 
                         TPRowCount += 1
@@ -6471,9 +6527,10 @@ SkipRefresh:
                 NewRTF.AutoSizeMode = DevExpress.XtraEditors.LabelAutoSizeMode.Vertical
                 'NewRTF.HyperlinkClick += LabelControl1_HyperlinkClick
 
-                NewRTF.Text = SectionElement.Description
+                NewRTF.Text = If(SectionElement.Description, String.Empty).Trim()
                 TP.Controls.Add(NewRTF)
                 TP.SetCell(NewRTF, TPRowCount, 0)
+                TP.SetColumnSpan(NewRTF, 3)
                 SectionControlsCumlHeight += NewRTF.Height + (DefaultTablePanelPadding.Top + DefaultTablePanelPadding.Bottom)
 
 #End Region
@@ -6637,7 +6694,7 @@ SkipRefresh:
 
                 Dim MTab As MappedTable = SectionElement.MappedTableSection
                 TP.Tag = "MappedTable"
-                Dim mappedTimer As System.Diagnostics.Stopwatch = System.Diagnostics.Stopwatch.StartNew()
+                Dim mappedTimer As Abovo.SummitDiagnostics.DiagnosticTimer = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
                 If Not String.IsNullOrWhiteSpace(MTab.ReadOnlyRange) Then
                     Dim mappedSheet As DevExpress.Spreadsheet.Worksheet = ExcelModels(ModelID).WB.Worksheets(MTab.Worksheet.Trim())
                     Dim engine As CalcEngine = ExcelModels(ModelID).WBCalcEngine
@@ -6654,7 +6711,7 @@ SkipRefresh:
                     TP.SetCell(mappedGrid, TPRowCount, 0)
                     TP.SetColumnSpan(mappedGrid, TP.Columns.Count)
                     mappedGrid.FitWorkbookColumns()
-                    System.Diagnostics.Trace.WriteLine("[Mapped Table Benchmark] read-only range: model=" &
+                    Abovo.SummitDiagnostics.WriteLine("[Mapped Table Benchmark] read-only range: model=" &
                         ModelID.ToString() & ", sheet=" & mappedSheet.Name & ", total=" &
                         mappedTimer.ElapsedMilliseconds.ToString() & " ms")
                     Continue For
@@ -7111,7 +7168,7 @@ NextCell:
 
                 Next
 
-                System.Diagnostics.Trace.WriteLine("[Mapped Table Benchmark] controls: model=" &
+                Abovo.SummitDiagnostics.WriteLine("[Mapped Table Benchmark] controls: model=" &
                     ModelID.ToString() & ", CSID=" & CSID.ToString() & ", rows=" &
                     MTab.MappedTableRows.Count.ToString() & ", controls=" & TP.Controls.Count.ToString() &
                     ", total=" & mappedTimer.ElapsedMilliseconds.ToString() & " ms")
@@ -7495,6 +7552,7 @@ NextCell:
                 RemoveHandler vg.MouseDown, AddressOf ClipboardTarget_MouseDown
                 If Object.ReferenceEquals(vg.ContextMenuStrip, ClipboardContextMenu) Then vg.ContextMenuStrip = Nothing
                 RemoveHandler vg.CustomDrawRowValueCell, AddressOf VGrid_CustomDrawCell
+                RemoveHandler vg.CustomRecordDisplayText, AddressOf InputVGridDisplayText
                 RemoveHandler vg.CustomDrawRowValueCell, AddressOf LiveVGrid_CustomDrawCell
                 RemoveHandler vg.ValidatingEditor, AddressOf VGrid_ValidatingEditor
                 RemoveHandler vg.ShowingEditor, AddressOf VGrid_ShowingEditor
@@ -7643,11 +7701,21 @@ NextCell:
 #End Region
 
 #Region "Menu Button Actions"
+    Private ReturnSeparator As WindowsUISeparator
+
+    Private Sub InitialiseNavigationIcons()
+        Dim buttons = WindowsUIButtonPanelActions.Buttons.OfType(Of WindowsUIButton)().ToList()
+        Dim history = buttons.FirstOrDefault(Function(button) CStr(button.Tag) = "History")
+        Dim back = buttons.FirstOrDefault(Function(button) CStr(button.Tag) = "Return")
+        If history IsNot Nothing Then history.ImageOptions.SvgImage = My.Resources.gridresetcolumnwidths
+        If back IsNot Nothing Then back.ImageOptions.SvgImage = PresentationLayout.ReturnArrowIcon
+    End Sub
+
     Private Sub OrderActionButtons()
         'Retain the actual buttons, artwork, enabled state and handler identities.
-        'Return is normally hidden; linked interfaces keep it beside Home.
+        'Return is conditional and belongs after every ordinary command.
         Dim buttons = WindowsUIButtonPanelActions.Buttons.OfType(Of WindowsUIButton)().ToList()
-        Dim groups = {New String() {"MainMenu", "Return"},
+        Dim groups = {New String() {"MainMenu"},
                       New String() {"SaveBP", "SaveBPAs"},
                       New String() {"Copy", "Paste"},
                       New String() {"ExportExcel", "ExportPdf"},
@@ -7670,9 +7738,16 @@ NextCell:
                 Next
             Next
             'Do not silently discard a future model-specific command.
+            Dim returnButton = buttons.FirstOrDefault(Function(button) CStr(button.Tag) = "Return")
+            If returnButton IsNot Nothing Then buttons.Remove(returnButton)
             For Each button In buttons
                 WindowsUIButtonPanelActions.Buttons.Add(button)
             Next
+            If returnButton IsNot Nothing Then
+                ReturnSeparator = New WindowsUISeparator() With {.Visible = returnButton.Visible}
+                WindowsUIButtonPanelActions.Buttons.Add(ReturnSeparator)
+                WindowsUIButtonPanelActions.Buttons.Add(returnButton)
+            End If
             'Designer buttons used the reverse-packed IsLeft group; runtime
             'buttons did not. Use one ordered flow, aligned by the panel itself.
             For index As Integer = 0 To WindowsUIButtonPanelActions.Buttons.Count - 1
@@ -7849,6 +7924,7 @@ NextCell:
 
                     ValidButton.ToolTip = "Return to " & ActiveLinkElement.LinkReturnName
                     ValidButton.Visible = True
+                    If ReturnSeparator IsNot Nothing Then ReturnSeparator.Visible = True
 
                     GoTo SectionSelect
 
@@ -7887,6 +7963,7 @@ SectionSelect:
 
                     ValidButton.ToolTip = ""
                     ValidButton.Visible = False
+                    If ReturnSeparator IsNot Nothing Then ReturnSeparator.Visible = False
                     Exit Sub
 
                 End If
@@ -8017,12 +8094,6 @@ SectionSelect:
 #End Region
 
 #Region "Interface Handlers"
-    Private Sub ComboOpen(sender, e)
-
-        Dim CB As ComboBoxEdit = sender
-        CB.ShowPopup()
-
-    End Sub
     Sub GVPasting(ByVal sender As Object, ByVal e As DevExpress.XtraGrid.Views.Grid.ClipboardRowPastingEventArgs)
 
         Dim okays = e.GetValidValues
@@ -8060,7 +8131,7 @@ SectionSelect:
 
         Dim Trans As AbovoTransaction = Nothing
         Dim Activity As FormSplashScreen = Nothing
-        Dim ActionClock As System.Diagnostics.Stopwatch = Nothing
+        Dim ActionClock As Abovo.SummitDiagnostics.DiagnosticTimer = Nothing
         Dim MutationMs As Long = 0
         Dim RebuildMs As Long = 0
         Dim Outcome As String = "failed"
@@ -8080,7 +8151,7 @@ SectionSelect:
                     Activity = Nothing
                     Return
                 End If
-                If ActionClock Is Nothing Then ActionClock = System.Diagnostics.Stopwatch.StartNew()
+                If ActionClock Is Nothing Then ActionClock = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
                 If Activity Is Nothing Then
                     Activity = New FormSplashScreen(Me.FindForm(), "Adding records", Description)
                 Else
@@ -8128,7 +8199,7 @@ SectionSelect:
             Cursor.Current = Cursors.WaitCursor
 
             If Activity IsNot Nothing Then Activity.Update("Rebuilding the interface...")
-            Dim RebuildClock = System.Diagnostics.Stopwatch.StartNew()
+            Dim RebuildClock = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
             Try
                 RebuildAllSections()
             Finally
@@ -8140,8 +8211,7 @@ SectionSelect:
             If Activity IsNot Nothing Then Activity.Complete("Records added.")
             If ActionClock IsNot Nothing AndAlso Not Trans.BSuccess Then
                 SystemMessageManager.Publish(ModelID,
-                    Trans.StringReturn & " Interface refreshed. Completed in " &
-                    ActionClock.Elapsed.TotalSeconds.ToString("0.0") & " seconds.",
+                    Trans.StringReturn & " Interface refreshed.",
                     SystemMessageSeverity.Success, "Data Interface", GridTag.CommandData)
             End If
 
@@ -8150,7 +8220,7 @@ SectionSelect:
             GridTag.StructuralProgress = PreviousProgress
             If Activity IsNot Nothing Then Activity.Dispose()
             If ActionClock IsNot Nothing Then
-                System.Diagnostics.Trace.WriteLine(
+                Abovo.SummitDiagnostics.WriteLine(
                     "[Population Benchmark] DIT grid-insert: model=" & ModelID.ToString() &
                     ", command=" & GridTag.CommandData &
                     ", structuralAction=" & MutationMs.ToString() & " ms" &
@@ -8355,17 +8425,11 @@ SectionSelect:
         If GC Is Nothing Then Return
         Dim view As GridView = TryCast(GC.FocusedView, GridView)
         If view IsNot Nothing AndAlso view.ActiveEditor Is Nothing AndAlso
-           Not e.Control AndAlso Not e.Shift AndAlso
-           (e.KeyCode = Keys.F4 OrElse (e.Alt AndAlso e.KeyCode = Keys.Down)) AndAlso
+           InplaceEditorFormatting.IsPopupShortcut(e.KeyData) AndAlso
            view.FocusedColumn IsNot Nothing AndAlso
-           TypeOf view.FocusedColumn.ColumnEdit Is RepositoryItemComboBox Then
+           TypeOf view.FocusedColumn.ColumnEdit Is RepositoryItemPopupBase Then
             view.ShowEditor()
-            Dim combo As ComboBoxEdit = TryCast(view.ActiveEditor, ComboBoxEdit)
-            If combo IsNot Nothing Then
-                e.Handled = True
-                e.SuppressKeyPress = True
-                combo.ShowPopup()
-            End If
+            InplaceEditorFormatting.OpenPopupForShortcut(view.ActiveEditor, e)
             Return
         End If
 
@@ -8393,21 +8457,13 @@ SectionSelect:
         Dim VG As VGridControl = TryCast(sender, VGridControl)
         If VG Is Nothing Then Return
 
-        If Not e.Handled AndAlso NavigateGrid(VG, e.KeyData) Then
-            e.Handled = True : e.SuppressKeyPress = True
+        If InplaceEditorFormatting.IsPopupShortcut(e.KeyData) Then
+            If VG.ActiveEditor Is Nothing Then VG.ShowEditor()
+            InplaceEditorFormatting.OpenPopupForShortcut(VG.ActiveEditor, e)
             Return
         End If
-        If VG.ActiveEditor Is Nothing AndAlso Not e.Control AndAlso Not e.Shift AndAlso
-           (e.KeyCode = Keys.F4 OrElse (e.Alt AndAlso e.KeyCode = Keys.Down)) AndAlso
-           VG.FocusedRow IsNot Nothing AndAlso
-           TypeOf VG.FocusedRow.Properties.RowEdit Is RepositoryItemComboBox Then
-            VG.ShowEditor()
-            Dim combo As ComboBoxEdit = TryCast(VG.ActiveEditor, ComboBoxEdit)
-            If combo IsNot Nothing Then
-                e.Handled = True
-                e.SuppressKeyPress = True
-                combo.ShowPopup()
-            End If
+        If Not e.Handled AndAlso NavigateGrid(VG, e.KeyData) Then
+            e.Handled = True : e.SuppressKeyPress = True
             Return
         End If
 
@@ -8645,7 +8701,7 @@ SectionSelect:
             GetSelectedClipboardDataCells(VertGrid)
         If VertGrid.ActiveEditor IsNot Nothing Then VertGrid.HideEditor()
         ApplyPasteMatrix(DSIndex, TargetDataSet, PasteMatrix, StartDataRow, StartDataColumn, True,
-                         selectedTargets)
+                         selectedTargets, Enumerable.Range(0, VertGrid.RecordCount).Select(Function(i) VertGrid.GetDataSourceRecordIndex(i)).ToList())
 
     End Sub
 
@@ -8655,12 +8711,13 @@ SectionSelect:
                                  ByVal StartDataRow As Integer,
                                  ByVal StartDataColumn As Integer,
                                  ByVal TransposeForVGrid As Boolean,
-                                 ByVal SelectedTargets As List(Of ClipboardDataCellTarget))
+                                 ByVal SelectedTargets As List(Of ClipboardDataCellTarget),
+                                 Optional ByVal VerticalRecordMap As IList(Of Integer) = Nothing)
 
         If TargetDataSet Is Nothing OrElse PasteMatrix Is Nothing OrElse PasteMatrix.Count = 0 Then Return
 
-        Dim timer As System.Diagnostics.Stopwatch =
-            System.Diagnostics.Stopwatch.StartNew()
+        Dim timer As Abovo.SummitDiagnostics.DiagnosticTimer =
+            Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
         Dim changes As New List(Of DataChangeEvent)()
         Dim invalid As New List(Of String)()
         Dim invalidCount As Integer = 0
@@ -8683,7 +8740,8 @@ SectionSelect:
                         destinationCells.Add(New ClipboardDataCellTarget(
                             DSIndex,
                             If(TransposeForVGrid,
-                               StartDataRow + ClipboardColumnIndex,
+                               If(VerticalRecordMap Is Nothing, StartDataRow + ClipboardColumnIndex,
+                                  If(StartDataRow + ClipboardColumnIndex < VerticalRecordMap.Count, VerticalRecordMap(StartDataRow + ClipboardColumnIndex), -1)),
                                StartDataRow + ClipboardRowIndex),
                             If(TransposeForVGrid,
                                StartDataColumn + ClipboardRowIndex,
@@ -8698,7 +8756,7 @@ SectionSelect:
                     TargetRowIndex = destination.DataRowIndex
                     TargetColumnIndex = destination.DataColumnIndex
 
-                    If TargetRowIndex >= TargetDataSet.DataRows.Count OrElse
+                    If TargetRowIndex < 0 OrElse TargetColumnIndex < 0 OrElse TargetRowIndex >= TargetDataSet.DataRows.Count OrElse
                        TargetColumnIndex >= TargetDataSet.DataColumns.Count Then Continue For
 
                     If Not CanPasteToDataPoint(TargetDataSet, TargetRowIndex, TargetColumnIndex) Then Continue For
@@ -8720,6 +8778,15 @@ SectionSelect:
 
                     Dim SourceDataPoint As CellDataPoint =
                         TargetDataSet.DataRows(TargetRowIndex).DataCells(TargetColumnIndex)
+
+                    Dim numericError = NumericInputError(
+                        ExcelModels(ModelID).WB.Worksheets(SourceDataPoint.SourceSheet).Cells(SourceDataPoint.SourceAddress),
+                        ColTag, ConvertedValue)
+                    If Not String.IsNullOrEmpty(numericError) Then
+                        invalidCount += 1
+                        If invalid.Count < 6 Then invalid.Add(SourceDataPoint.SourceAddress & ": " & numericError)
+                        Continue For
+                    End If
 
                     If Not String.IsNullOrWhiteSpace(ColTag.RepositaryID) Then
                         Dim allowed As Dictionary(Of String, String) = Nothing
@@ -8837,7 +8904,7 @@ SectionSelect:
                 Return
             End If
 
-            System.Diagnostics.Trace.WriteLine(
+            Abovo.SummitDiagnostics.WriteLine(
                 "[Paste Benchmark] DIT model=" & ModelID.ToString() &
                 ", interface=" & DITName &
                 ", cells=" & changes.Count.ToString() &
@@ -9846,11 +9913,12 @@ SectionSelect:
 
         If DSIndex < 0 OrElse DSIndex >= DataPres.DataSets.Count Then Return
 
-        If e.RecordIndex >= DataPres.DataSets(DSIndex).DataRows.Count Then Return
+        Dim sourceRecord = VG.GetDataSourceRecordIndex(e.RecordIndex)
+        If sourceRecord < 0 OrElse sourceRecord >= DataPres.DataSets(DSIndex).DataRows.Count Then Return
         If ColIndex >= DataPres.DataSets(DSIndex).DataColumns.Count Then Return
 
         Dim CellHandle As CellDataPoint =
-        DataPres.DataSets(DSIndex).DataRows(e.RecordIndex).DataCells(ColIndex)
+        DataPres.DataSets(DSIndex).DataRows(sourceRecord).DataCells(ColIndex)
 
         If CellHandle Is Nothing Then Return
 
@@ -9899,6 +9967,20 @@ SectionSelect:
         '----------------------------------------------------------
         e.Appearance.BackColor = CellHandle.BGColor
         e.Appearance.ForeColor = CellHandle.FoColor
+
+        'A schedule tint is only a presentation overlay on an editable cell.
+        'The workbook fill/rule checks above remain authoritative.
+        Dim scheduleTint As Color? = If(FundingTints.Count = 0, Nothing, FundingTint(InputSourceCell(UBS, sourceRecord, ColIndex)))
+        If scheduleTint.HasValue AndAlso Not CellHandle.IsLocked Then
+            e.Appearance.BackColor = scheduleTint.Value
+            e.Appearance.ForeColor = AbovoBlue
+            e.Appearance.Options.UseBackColor = True
+            e.Appearance.Options.UseForeColor = True
+        End If
+
+        'Money display comes from Excel; do not add a different sign convention
+        'or a currency hint to cells whose workbook format hides zero/blank.
+        If IsMoneyField(ColTag) Then Return
 
 
         '----------------------------------------------------------
@@ -9966,6 +10048,7 @@ SectionSelect:
         'paint the cell normally.
         Finally
             ApplyVGridSelectedCellAppearance(e)
+            DrawFundingScheduleMarker(VG, e)
         End Try
 
     End Sub
@@ -10061,46 +10144,9 @@ SectionSelect:
                 End If
 
 
-                Dim NewValue As Double = CDbl(e.Value)
-
-
-                If ColTag.MaxVal IsNot Nothing Then
-
-                    If NewValue > CDbl(ColTag.MaxVal) Then
-
-                        e.ErrorText =
-                        ColTag.ColumnHeading &
-                        " cannot exceed " &
-                        ColTag.MaxVal.ToString &
-                        "."
-
-                        e.Valid = False
-                        Return
-
-                    End If
-
-                End If
-
-
-                If ColTag.MinVal IsNot Nothing Then
-
-                    If NewValue < CDbl(ColTag.MinVal) Then
-
-                        e.ErrorText =
-                        ColTag.ColumnHeading &
-                        " must be " &
-                        ColTag.MinVal.ToString &
-                        " or greater."
-
-                        e.Valid = False
-                        Return
-
-                    End If
-
-                End If
-
-
-                e.Valid = True
+                Dim cell = InputSourceCell(TryCast(VG.DataSource, AbovoUnboundSource), VG.GetDataSourceRecordIndex(VG.FocusedRecord), GetVGridColumnIndex(VG.FocusedRow, FocusedCellIndex))
+                e.ErrorText = NumericInputError(cell, ColTag, e.Value)
+                e.Valid = String.IsNullOrEmpty(e.ErrorText)
 
         End Select
 
@@ -10158,7 +10204,7 @@ SectionSelect:
             Return
         End If
 
-        Dim RowIndex As Integer = VG.FocusedRecord
+        Dim RowIndex As Integer = VG.GetDataSourceRecordIndex(VG.FocusedRecord)
 
         Dim ColIndex As Integer =
         GetVGridColumnIndex(VG.FocusedRow)
@@ -10276,6 +10322,7 @@ SectionSelect:
                 ClipboardClearContentsMenuItem
             })
         AddHandler ClipboardContextMenu.Opening, AddressOf ClipboardContextMenu_Opening
+        InitialiseFundingScheduleMenu()
         AddHandler Me.Disposed, AddressOf DisposeClipboardActions
 
         For Each button As Object In WindowsUIButtonPanelActions.Buttons
@@ -10291,6 +10338,12 @@ SectionSelect:
 
     Private Sub ConfigureClipboardTarget(ByVal target As Control)
         If target Is Nothing Then Return
+        ConfigureGridPreferenceKey(target)
+        If TypeOf target Is VGridControl Then
+            AddHandler DirectCast(target, VGridControl).DataSourceChanged, Sub() ConfigureGridPreferenceKey(target)
+        ElseIf TypeOf target Is GridControl Then
+            AddHandler DirectCast(target, GridControl).DataSourceChanged, Sub() ConfigureGridPreferenceKey(target)
+        End If
         Dim verticalGrid As VGridControl = TryCast(target, VGridControl)
         If verticalGrid IsNot Nothing Then ConfigureVGridCellMultiSelect(verticalGrid)
         RemoveHandler target.Enter, AddressOf ClipboardTarget_Enter
@@ -10299,6 +10352,22 @@ SectionSelect:
         AddHandler target.MouseDown, AddressOf ClipboardTarget_MouseDown
         target.ContextMenuStrip = ClipboardContextMenu
     End Sub
+
+    Private Sub ConfigureGridPreferenceKey(target As Control)
+        GridPresentation.Configure(target, "DIT/" & GSID.ToString() & "/" & CSID.ToString() & "/" & GridPreferenceIdentity(target))
+    End Sub
+
+    Private Function GridPreferenceIdentity(target As Control) As String
+        Dim source = If(TypeOf target Is VGridControl, TryCast(DirectCast(target, VGridControl).DataSource, AbovoUnboundSource),
+                        TryCast(TryCast(target, GridControl)?.DataSource, AbovoUnboundSource))
+        'Both control and dataset counters change on rebuild. The dataset name
+        'is derived from the XML input-source name, not those sequence numbers.
+        If source?.UBSTag IsNot Nothing AndAlso DataPres IsNot Nothing AndAlso source.UBSTag.DSIndex >= 0 AndAlso source.UBSTag.DSIndex < DataPres.DataSets.Count Then
+            Dim data = DataPres.DataSets(source.UBSTag.DSIndex)
+            Return "Source/" & data.SourceWorksheet & "/" & data.Name & "/" & data.DefaultDataNR
+        End If
+        Return target.Name
+    End Function
 
     Private Sub ClipboardTarget_Enter(ByVal sender As Object, ByVal e As EventArgs)
         SetClipboardTarget(TryCast(sender, Control))
@@ -10326,14 +10395,25 @@ SectionSelect:
         Dim verticalGrid As VGridControl = TryCast(target, VGridControl)
         If verticalGrid Is Nothing Then Return
         Dim verticalHit As VGridHitInfo = verticalGrid.CalcHitInfo(e.Location)
+        If verticalHit IsNot Nothing AndAlso verticalHit.RecordIndex >= 0 Then
+            FundingContextGrid = verticalGrid
+            FundingContextRecord = verticalHit.RecordIndex
+            FundingContextRow = If(verticalHit.Row, verticalGrid.FocusedRow)
+        End If
+        If verticalHit IsNot Nothing AndAlso verticalHit.RecordIndex >= 0 AndAlso verticalHit.Row Is Nothing Then verticalGrid.FocusedRecord = verticalHit.RecordIndex
         If verticalHit IsNot Nothing AndAlso verticalHit.Row IsNot Nothing AndAlso verticalHit.RecordIndex >= 0 Then
-            verticalGrid.FocusedRow = verticalHit.Row
-            verticalGrid.FocusedRecord = verticalHit.RecordIndex
+            'Right-click inside the selection must not replace that selection.
+            If Not verticalGrid.GetSelectedCells().Any(Function(c) c.Row Is verticalHit.Row AndAlso c.RecordIndex = verticalHit.RecordIndex) Then
+                verticalGrid.FocusedRow = verticalHit.Row
+                verticalGrid.FocusedRecord = verticalHit.RecordIndex
+            End If
         End If
     End Sub
 
     Private Sub SetClipboardTarget(ByVal target As Control)
         If target Is Nothing OrElse target.IsDisposed Then Return
+        FundingContextGrid = Nothing
+        GridPresentation.SetMenuTarget(ClipboardContextMenu, target)
         LastClipboardTarget = target
         UpdateClipboardActionState()
     End Sub
@@ -10440,7 +10520,7 @@ SectionSelect:
                     result,
                     seen,
                     dataSetIndex,
-                    selectedCell.RecordIndex,
+                    verticalGrid.GetDataSourceRecordIndex(selectedCell.RecordIndex),
                     GetVGridColumnIndex(selectedCell.Row, selectedCell.RowCellIndex))
             Next
         End If
@@ -10450,7 +10530,7 @@ SectionSelect:
                 result,
                 seen,
                 dataSetIndex,
-                verticalGrid.FocusedRecord,
+                verticalGrid.GetDataSourceRecordIndex(verticalGrid.FocusedRecord),
                 GetVGridColumnIndex(verticalGrid.FocusedRow))
         End If
 
@@ -10521,7 +10601,11 @@ SectionSelect:
             Dim verticalGrid As VGridControl = TryCast(LastClipboardTarget, VGridControl)
             If verticalGrid Is Nothing Then Return False
             If includeHeadings Then
-                CopyVGridWithHeaders(verticalGrid)
+                If FundingViews.ContainsKey(verticalGrid) Then
+                    CopyFundingWithTitles(verticalGrid)
+                Else
+                    CopyVGridWithHeaders(verticalGrid)
+                End If
             Else
                 verticalGrid.CopyToClipboard()
             End If
@@ -10628,6 +10712,7 @@ SectionSelect:
 
     Private Sub ClipboardContextMenu_Opening(ByVal sender As Object, ByVal e As CancelEventArgs)
         UpdateClipboardActionState()
+        UpdateFundingScheduleMenu()
         e.Cancel = LastClipboardTarget Is Nothing OrElse LastClipboardTarget.IsDisposed
     End Sub
 
@@ -10728,7 +10813,7 @@ SectionSelect:
 
         If DSIndex < 0 OrElse DSIndex >= DataPres.DataSets.Count Then Return
 
-        Dim DataRowIndex As Integer = e.RecordIndex
+        Dim DataRowIndex As Integer = VG.GetDataSourceRecordIndex(e.RecordIndex)
 
 
         If DataRowIndex < 0 Then Return
@@ -10793,14 +10878,15 @@ SectionSelect:
 
         If DSIndex < 0 OrElse DSIndex >= DataPres.DataSets.Count Then Return
 
-        If e.RecordIndex < 0 OrElse
-           e.RecordIndex >= DataPres.DataSets(DSIndex).DataRows.Count Then
+        Dim sourceRecord = VG.GetDataSourceRecordIndex(e.RecordIndex)
+        If sourceRecord < 0 OrElse
+           sourceRecord >= DataPres.DataSets(DSIndex).DataRows.Count Then
 
             Return
 
         End If
 
-        Dim SourceRow = DataPres.DataSets(DSIndex).DataRows(e.RecordIndex)
+        Dim SourceRow = DataPres.DataSets(DSIndex).DataRows(sourceRecord)
 
         If SourceRow.IsSpacerRow OrElse SourceRow.IsControlRow Then
 
@@ -10988,9 +11074,12 @@ SectionSelect:
 
             If CellHandle.IsLocked Then
 
-                Dim pen As Pen = New Pen(Color.Red, 2)
-                e.Cache.FillRectangle(Brushes.Lavender, PadRect)
-                e.Appearance.ForeColor = Color.White
+                'Summit's unavailable-input cue is driven by the XLSB fill
+                'pattern. Do not paint the ordinary base fill over that cue.
+                'Match the vertical grid and retain readable text.
+                e.Appearance.BackColor = Color.Lavender
+                e.Appearance.ForeColor = AbovoBlue
+                e.Appearance.DrawBackground(e.Cache, PadRect)
                 e.Appearance.DrawString(e.Cache, e.DisplayText, e.Bounds)
 
                 e.Handled = True
@@ -11040,6 +11129,13 @@ SectionSelect:
         e.Appearance.BackColor = CellHandle.BGColor
         e.Appearance.DrawBackground(e.Cache, PadRect)
         e.Appearance.ForeColor = CellHandle.FoColor
+
+        If IsMoneyField(ColTag) Then
+            DrawCellBorder(e, CellHandle.BGColor)
+            e.Appearance.DrawString(e.Cache, e.DisplayText, e.Bounds)
+            e.Handled = True
+            Return
+        End If
 
         If e.DisplayText = "" Then
             If ColTag.ShowDefaultmask = 0 Then
@@ -11683,13 +11779,19 @@ SectionSelect:
     End Sub
     Sub SingleCellControlValidatingEditor(sender As Object, e As DevExpress.XtraEditors.Controls.BaseEditValidatingEventArgs)
 
-        If sender.editValue = Nothing Then
+        If sender.editValue Is Nothing OrElse Convert.IsDBNull(sender.editValue) Then
 
             Return
 
         End If
 
         Dim DataTag As SingleCellDataTag = sender.tag
+
+        If DataTag.MinExclusive Then
+            e.ErrorText = ExclusiveMinimumInputError(DataTag, sender.editValue)
+            e.Cancel = Not String.IsNullOrEmpty(e.ErrorText)
+            Return
+        End If
 
         Select Case DataTag.DataType
 
@@ -12092,6 +12194,16 @@ SectionSelect:
         Me.Cursor = Cursors.WaitCursor
 
         Dim DataTag As SingleCellDataTag = sender.tag
+        'Leave can precede Validating. Explicit exclusive-minimum fields must
+        'pass the same gate before any workbook/history write as well.
+        If DataTag.MinExclusive Then
+            Dim inputError = ExclusiveMinimumInputError(DataTag, sender.editvalue)
+            If Not String.IsNullOrEmpty(inputError) Then
+                sender.ErrorText = inputError
+                Me.Cursor = Cursors.Default
+                Return
+            End If
+        End If
         Dim OldValue As DevExpress.Spreadsheet.CellValue = DataTag.TargetWorksheet.Cells(DataTag.TargetCell).Value
         Dim OldValueString As String = OldValue.ToString
 
@@ -12162,7 +12274,7 @@ SectionSelect:
                     Case "S"
                         sender.editvalue = OldValue.TextValue
                     Case "D"
-                        sender.editvalue = DateTime.FromOADate(OldValue.NumericValue)
+                        sender.editvalue = If(OldValue.IsEmpty, Nothing, CType(OldValue.DateTimeValue, Object))
                     Case Else
                         sender.editvalue = OldValue.NumericValue
                 End Select
@@ -12186,7 +12298,7 @@ SectionSelect:
 #Region "GridEvents"
     Private Sub GridView_ValidatingEditor(sender As Object, e As DevExpress.XtraEditors.Controls.BaseContainerValidateEditorEventArgs)
 
-        If e.Value = Nothing Then
+        If e.Value Is Nothing OrElse Convert.IsDBNull(e.Value) Then
 
             e.Valid = True
             Return
@@ -12235,30 +12347,10 @@ SectionSelect:
 
                 End If
 
-                If Not ColTag.MaxVal Is Nothing Then
-
-                    If e.Value > CDbl(ColTag.MaxVal) Then
-
-                        e.ErrorText = ColTag.ColumnHeading & " cannot exceed " & ColTag.MaxVal.ToString & "."
-                        e.Valid = False
-                        Return
-                    End If
-
-                End If
-
-                If ColTag.MinVal IsNot Nothing Then
-
-                    If e.Value < CDbl(ColTag.MinVal) Then
-
-                        e.ErrorText = ColTag.ColumnHeading & " must  be " & ColTag.MinVal.ToString & " or greater."
-                        e.Valid = False
-                        Return
-
-                    End If
-
-                End If
-
-                e.Valid = True
+                Dim grid = TryCast(view, GridView)
+                Dim cell = InputSourceCell(TryCast(grid.GridControl.DataSource, AbovoUnboundSource), grid.GetDataSourceRowIndex(grid.FocusedRowHandle), GetGridColumnIndex(column))
+                e.ErrorText = NumericInputError(cell, ColTag, e.Value)
+                e.Valid = String.IsNullOrEmpty(e.ErrorText)
 
         End Select
 
@@ -12302,13 +12394,14 @@ SectionSelect:
 
         Dim ViewTag As GridViewTag = GV.Tag
 
+        Dim zoom As Double = GridPresentation.ZoomPercent(DirectCast(sender, GridView).GridControl) / 100.0
         If ViewTag.DataSet.DataRows(e.RowHandle).IsControlRow Then
 
-            e.RowHeight = CInt(1.5 * IdealGridRowHeight)
+            e.RowHeight = Math.Max(12, CInt(1.5 * IdealGridRowHeight * zoom))
 
         Else
 
-            e.RowHeight = IdealGridRowHeight
+            e.RowHeight = Math.Max(12, CInt(IdealGridRowHeight * zoom))
 
         End If
 
@@ -12844,8 +12937,8 @@ SectionSelect:
                     End If
 
                     Dim StructureResult As AbovoTransaction = Nothing
-                    Dim actionBenchmark As System.Diagnostics.Stopwatch =
-                        System.Diagnostics.Stopwatch.StartNew()
+                    Dim actionBenchmark As Abovo.SummitDiagnostics.DiagnosticTimer =
+                        Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
                     Dim mutationMs As Long = 0
                     Dim sectionMs As Long = 0
                     Dim rulesMs As Long = 0
@@ -12999,7 +13092,7 @@ SectionSelect:
                     Finally
 
                         If Activity IsNot Nothing Then Activity.Dispose()
-                        System.Diagnostics.Trace.WriteLine(
+                        Abovo.SummitDiagnostics.WriteLine(
                             "[Population Benchmark] DIT add-lines: model=" &
                             ModelID.ToString() &
                             ", rule=" & StructuralRuleID &
@@ -13214,6 +13307,18 @@ SectionSelect:
                 Return False
             End If
 
+            'This filter is application-wide. A dialog can cover the page's
+            'screen rectangle: never steal its wheel messages (or popup input).
+            If OwnerInterface Is Nothing OrElse OwnerInterface.IsDisposed OrElse Not OwnerInterface.Enabled Then Return False
+            'DIT is itself a non-top-level XtraForm embedded in the group form.
+            'FindForm returns DIT, not the actual active top-level window.
+            Dim ownerForm = TryCast(OwnerInterface.TopLevelControl, Form)
+            If ownerForm Is Nothing Then ownerForm = OwnerInterface.FindForm()
+            If ownerForm Is Nothing OrElse Not ownerForm.Enabled OrElse
+               (Form.ActiveForm IsNot Nothing AndAlso Form.ActiveForm IsNot ownerForm) Then Return False
+            Dim wheelTarget = Control.FromChildHandle(m.HWnd)
+            If Not IsOwnedControl(wheelTarget) Then Return False
+
             If OwnerTabControl Is Nothing OrElse
                OwnerTabControl.IsDisposed OrElse
                Not OwnerTabControl.Visible Then
@@ -13272,10 +13377,20 @@ SectionSelect:
             Dim InternalScrollVGrid As VGridControl =
                 TryCast(GridScrollOwner, VGridControl)
 
+            If InternalScrollVGrid IsNot Nothing Then InternalScrollVGrid.OptionsBehavior.RecordsMouseWheel = False
+            Dim delta = CInt((m.WParam.ToInt64() >> 16) And &HFFFF)
+            If delta >= &H8000 Then delta -= &H10000
+            If GridPresentation.ModifiedWheel(GridScrollOwner, delta, CInt(m.WParam.ToInt64() And &HFFFF)) Then Return True
+
             Dim InternalScrollLayout As VGridLayoutTag =
                 If(InternalScrollVGrid Is Nothing,
                    Nothing,
                    TryCast(InternalScrollVGrid.Tag, VGridLayoutTag))
+
+            If InternalScrollLayout IsNot Nothing AndAlso InternalScrollLayout.UseInternalVerticalScroll Then
+                GridPresentation.ScrollVerticalRows(InternalScrollVGrid, delta)
+                Return True
+            End If
 
             If GridScrollOwner IsNot Nothing AndAlso
                (TypeOf GridScrollOwner Is GridControl OrElse
@@ -14255,6 +14370,14 @@ TPans:
                 .Options.UseFont = True
             End With
 
+            For Each header In {VerticalGrid.Appearance.RecordHeader,
+                                VerticalGrid.Appearance.FocusedRecordHeader,
+                                VerticalGrid.Appearance.SelectedRecordHeader,
+                                VerticalGrid.Appearance.HideSelectionRecordHeader}
+                header.Font = DisplayFont
+                header.Options.UseFont = True
+            Next
+
             For Each Row As BaseRow In VerticalGrid.Rows
                 ApplyVGridRowCaptionMetrics(Row, DisplayFont, BoldDisplayFont)
             Next
@@ -14729,6 +14852,7 @@ TPans:
         EndLazyTabTransitionUpdate()
         ResumeLazyTabTransitionRedraw()
         RefreshGridActionExtenders(SectionIndex)
+        EnsureVisibleCheckSheetCurrent()
 
 #If DEBUG Then
 #End If
@@ -14762,7 +14886,7 @@ TPans:
     End Sub
 
     Private Sub DataInterfaceTemplate_Shown(sender As Object, e As EventArgs) Handles MyBase.Shown
-
+        EnsureVisibleCheckSheetCurrent()
 
         'The FIRST/initially-selected tab does not necessarily raise
         'SelectedPageChanged during constructor-driven population.  The full

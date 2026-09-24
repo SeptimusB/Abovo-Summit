@@ -1,5 +1,9 @@
 # Client review and unattended validation checkpoints
 
+## 23 September: remaining input and presentation review, application 2.80
+
+[Current evidence and proposed repair batches](Client_Input_Review_2026-09-23.md) distinguish confirmed input rounding, negative-percentage clamping, Covenant source/RO defects, Funding fee setup/year typing and blank-date/conditional-format failures from retested paste/amount fixes and unanswered layout questions. Tests used private Demo/Blank/AGL copies and read-only Excel. No new production fix or release is implied; the client's 2.80 structural acceptance is separate.
+
 ## Authority and review rules
 
 The client report is `D:/Downloads/Summit v2.51 comments.docx`, SHA-256 `955D44B6C714ED9BA6D5F9B4560C983764B38B83161A71B88C2BF400211BD9ED`. The complete document body was read: 137 paragraphs including five trailing blanks (last content at P132), no embedded images, comments, footnotes or tracked changes. The user confirmed green `196B24` means "agreed", but errors may remain. Their subsequent correction on 22 September supersedes the earlier orange interpretation: orange `E97132` means the user believes it is fixed, with verification still required. All six orange stakeholder entries and the generator/legend now use that meaning; engineering findings are not automatically closed. Inherited/default text is unclassified. Neither colour is engineering verification. Paragraph references below are extraction locators, not printed page numbers. The original document is not edited.
@@ -104,6 +108,8 @@ Evidence: `obj/enter-build-debug.log`, `obj/enter-build-release.log`, `obj/enter
 Repository Blank/Demo hashes remain the recorded baseline. Both executable folders contain the unchanged XML 1754/hash recorded under CP3b. No user workbook, source report, original master or live settings were modified. Native injected-key/editor tests do not certify physical keyboard routing on every client display or workbook; that acceptance remains open. No new Excel/VBA execution or financial sign-off is claimed.
 
 ## Remaining investigations and ambiguity gates
+
+23 September update: [2.81 checkpoint 1](Client_Input_Repairs_2026-09-23.md) implements approved precision, percentage, source-mapping and blank-date repairs. Conditional formatting/dependent editors, AGL's older Other Fees coordinates and unresolved layout/wording questions remain open. The linked report distinguishes native test results from client and financial acceptance.
 
 1. **Input precision, negative percentages and locks:** reproduce through the actual editor, clipboard parser and source cell protection. Do not change every `I` XML type to decimal: counts/years must remain integers. P022 needs the exact disagreeing Check Sheet message and workbook; P085's unspecified conditional formatting needs a field/rule example; P099/P100's "ghost" needs a defined desired date/blank appearance.
 2. **Column widths / scrolling / layouts:** shared post-edit width repair is covered above; verify P029/P042/P048 on the client's specific screens. Physical monitor/DPI reports require client acceptance. Housing Asset Grant/Remaining Useful Life sections contain overlapping grant/depreciation sources, so P122/P123 is not simply two labels to swap; decide the intended separation before rewriting sections. Three concise questions about report workbook/Check Sheet, asset-tab separation and date "ghost" meaning have been sent; no replies are assumed.

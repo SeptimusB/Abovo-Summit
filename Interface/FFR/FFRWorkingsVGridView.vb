@@ -173,7 +173,7 @@ Public Class FFRWorkingsVGridView
         ResizeGridViewport()
         ResizeWorkspaceToHost()
 #If DEBUG Then
-        Debug.WriteLine("FFR Workings VGrid: " & SourceRows.Count.ToString(CultureInfo.InvariantCulture) & " mapped rows; " & categories.Count.ToString(CultureInfo.InvariantCulture) & " categories; final mapped=[" & finalMappedCaption & "]; grid height=" & Grid.Height.ToString(CultureInfo.InvariantCulture) & ".")
+        Abovo.SummitDiagnostics.WriteLine("FFR Workings VGrid: " & SourceRows.Count.ToString(CultureInfo.InvariantCulture) & " mapped rows; " & categories.Count.ToString(CultureInfo.InvariantCulture) & " categories; final mapped=[" & finalMappedCaption & "]; grid height=" & Grid.Height.ToString(CultureInfo.InvariantCulture) & ".")
 #End If
     End Sub
 
@@ -347,7 +347,7 @@ Public Class FFRWorkingsVGridView
         Dim changedValue As Object = NormalizeEditValue(e.Value)
         LastChangedAddress = cell.GetReferenceA1()
 #If DEBUG Then
-        Debug.WriteLine("FFR Workings VGrid edit: " & SheetName & "!" & LastChangedAddress & " old=[" & cell.DisplayText & "] new=[" & Convert.ToString(changedValue, CultureInfo.CurrentCulture) & "]")
+        Abovo.SummitDiagnostics.WriteLine("FFR Workings VGrid edit: " & SheetName & "!" & LastChangedAddress & " old=[" & cell.DisplayText & "] new=[" & Convert.ToString(changedValue, CultureInfo.CurrentCulture) & "]")
 #End If
         Dim change As New DataChangeEvent With {.ModelID = ModelID, .Description = "FFR workings input updated", .WSName = SheetName, .CellAddress = cell.GetReferenceA1(), .OriginalValue = CellValue(cell), .ChangedValue = changedValue, .DataFormat = DataFormatForCell(cell, changedValue), .TimeStamp = Now(), .UserName = Environment.UserName}
         If ChangeManager.ProcessChange(change).BError Then RefreshFromWorkbook() : Return
@@ -441,7 +441,7 @@ Public Class FFRWorkingsVGridView
         Grid.Refresh()
 #If DEBUG Then
         If LastChangedAddress.Length > 0 Then
-            Debug.WriteLine("FFR Workings VGrid refreshed: " & SheetName & "!" & LastChangedAddress & " now=[" & Workbook.Worksheets(SheetName).Cells(LastChangedAddress).DisplayText & "]")
+            Abovo.SummitDiagnostics.WriteLine("FFR Workings VGrid refreshed: " & SheetName & "!" & LastChangedAddress & " now=[" & Workbook.Worksheets(SheetName).Cells(LastChangedAddress).DisplayText & "]")
         End If
 #End If
     End Sub

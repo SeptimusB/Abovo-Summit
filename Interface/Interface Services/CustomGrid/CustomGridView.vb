@@ -13,6 +13,7 @@ Namespace Abovo.CustomGrid
     Public Class CustomGridView
 
         Inherits GridView
+        Public Property CompactStatementRows As Boolean
         Public Sub New(ByVal ownerGrid As GridControl)
 
             MyBase.New(ownerGrid)

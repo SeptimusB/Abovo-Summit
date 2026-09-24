@@ -6,6 +6,15 @@ Imports DevExpress.Spreadsheet.Formulas
 
 Namespace Abovo
     Friend NotInheritable Class WorkbookIntegritySupport
+        Friend Shared Function IsYesNoInput(cell As Cell) As Boolean
+            If cell Is Nothing OrElse cell.HasFormula OrElse cell.Protection.Locked Then Return False
+            Dim validation = cell.Worksheet.DataValidations.GetDataValidation(cell)
+            If validation Is Nothing OrElse validation.ValidationType <> DataValidationType.List OrElse
+                validation.Criteria Is Nothing OrElse Not validation.Criteria.IsText Then Return False
+            Dim choices = validation.Criteria.TextValue.Split({","c, ";"c}, StringSplitOptions.RemoveEmptyEntries).
+                Select(Function(v) v.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
+            Return choices.Length = 2 AndAlso choices.Contains("Yes", StringComparer.OrdinalIgnoreCase) AndAlso choices.Contains("No", StringComparer.OrdinalIgnoreCase)
+        End Function
         Friend Shared Function HasAcceptedOverride(range As CellRange, row As Integer, status As String) As Boolean
             'The visible E status deliberately remains Check. D is the workbook's
             'effective count after its unlocked Yes/No override in C is applied.

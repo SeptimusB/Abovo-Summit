@@ -31,9 +31,22 @@ Public Class FFRForm
         Text = "Financial Forecast Return for " & ExcelModels(ModelID).WBStructure.CompanyName
         WindowState = FormWindowState.Maximized
         SheetCaption.Text = Text
+        AddHandler ExcelModels(ModelID).MetadataChanged, AddressOf RefreshCompanyHeading
         BuildSheetTabs()
         EnsureSelectedSheetBuilt()
         HistoryBinding = New ModelFormHistoryBinding(Me, ModelID, AddressOf EnsureSelectedSheetBuilt)
+    End Sub
+
+    Private Sub RefreshCompanyHeading(sender As Object, e As EventArgs)
+        If IsDisposed OrElse Disposing Then Return
+        Text = "Financial Forecast Return for " & ExcelModels(ModelID).WBStructure.CompanyName
+        'SheetCaption identifies the selected FFR sheet, not the company.
+    End Sub
+
+    Private Sub ReleaseMetadataBinding(sender As Object, e As EventArgs) Handles Me.Disposed
+        If ExcelModels IsNot Nothing AndAlso ModelID >= 0 AndAlso ModelID < ExcelModels.Length AndAlso ExcelModels(ModelID) IsNot Nothing Then
+            RemoveHandler ExcelModels(ModelID).MetadataChanged, AddressOf RefreshCompanyHeading
+        End If
     End Sub
 
     'Retained for callers compiled against the former form API.

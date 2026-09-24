@@ -307,7 +307,7 @@ Partial Public Class BPIncomeExpenditureAnalyserV2
                Not Connected OrElse Owner.AmInactiveState OrElse Owner.IsDisposed OrElse
                (Not IsBalanceSheet AndAlso View.GridControl.DataSource Is Nothing) Then Return
             Updating = True
-            Dim watch As System.Diagnostics.Stopwatch = System.Diagnostics.Stopwatch.StartNew()
+            Dim watch As Abovo.SummitDiagnostics.DiagnosticTimer = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
             Try
                 Dim periods As List(Of GridColumn) = Owner.GetPeriodColumns(View)
                 If IsBalanceSheet Then
@@ -396,7 +396,7 @@ Partial Public Class BPIncomeExpenditureAnalyserV2
                 End If
                 Dirty = False
                 UpdateCommands()
-                System.Diagnostics.Trace.WriteLine("[Analyser Chart] statement=" & Page.Text &
+                Abovo.SummitDiagnostics.WriteLine("[Analyser Chart] statement=" & Page.Text &
                     ", mode=" & Owner.CurrentDataSourceMode.ToString() & ", depth=" & Navigation.Count.ToString() &
                     ", series=" & Nodes.Count.ToString() & ", total=" & watch.ElapsedMilliseconds.ToString() & " ms")
             Catch ex As Exception
@@ -405,7 +405,7 @@ Partial Public Class BPIncomeExpenditureAnalyserV2
                 Choices.Properties.Items.Clear()
                 Status.Text = "Chart unavailable. Figures remain available. " & ex.Message
                 UpdateCommands()
-                System.Diagnostics.Trace.WriteLine("[Analyser Chart] " & ex.ToString())
+                Abovo.SummitDiagnostics.WriteLine("[Analyser Chart] " & ex.ToString())
             Finally
                 Updating = False
             End Try

@@ -37,6 +37,21 @@ Imports Microsoft.VisualBasic
 Namespace Abovo
     Public Class DataManager
 
+        Friend Shared Function RepeatingHeaderCaption(fieldName As String, repository As String, cell As DevExpress.Spreadsheet.Cell) As String
+            Dim ordinalYears = String.Equals(repository, "Rep_OrdinalYears", StringComparison.OrdinalIgnoreCase) OrElse
+                String.Equals(repository, "Rep_OrdinalYearsLess1", StringComparison.OrdinalIgnoreCase)
+            If ordinalYears AndAlso (String.IsNullOrWhiteSpace(fieldName) OrElse
+                String.Equals(fieldName, "Year", StringComparison.OrdinalIgnoreCase) OrElse
+                String.Equals(fieldName, "Yr", StringComparison.OrdinalIgnoreCase)) Then
+                'Year headers have numeric stored values even when their workbook
+                'format is "Year "0. Do not duplicate that literal prefix.
+                Dim year = If(cell.Value.IsNumeric, cell.Value.NumericValue.ToString(Globalization.CultureInfo.InvariantCulture), cell.DisplayText.Trim())
+                If year.StartsWith("Year ", StringComparison.OrdinalIgnoreCase) Then year = year.Substring(5).Trim()
+                Return If(year.Length = 0, "Year", "Year " & year)
+            End If
+            Return fieldName & " " & cell.DisplayText
+        End Function
+
         Public ModelID As Integer
         Public DataSetIndex As Integer
         Public DataSets() As DataCellRange
@@ -789,7 +804,7 @@ Namespace Abovo
 
                 If CRSource.NRDSName = "CR" Then
 
-                    DataRange = CurrWS.Range(CRSource.DataRange)
+                    DataRange = ResolveAnchoredInputRange(CurrWS, CRSource)
 
                 Else
 
@@ -831,7 +846,7 @@ Namespace Abovo
 
                         If CellRangeSource.OffSetNR = "CR" Then
 
-                            DataRange = CurrWS.Range(CellRangeSource.DataRange)
+                            DataRange = ResolveAnchoredInputRange(CurrWS, CellRangeSource)
 
                         Else
 
@@ -863,7 +878,7 @@ Namespace Abovo
 
                         If CellRangeSource.NRDSName = "CR" Then
 
-                            DataRange = CurrWS.Range(CellRangeSource.DataRange)
+                            DataRange = ResolveAnchoredInputRange(CurrWS, CellRangeSource)
 
                         Else
 
@@ -983,7 +998,7 @@ Namespace Abovo
 
                                 End If
 
-                                ColHead = DataFieldDefinition.FieldName & " " & CellExamineNRD.DisplayText
+                                ColHead = RepeatingHeaderCaption(DataFieldDefinition.FieldName, DataFieldDefinition.EditRepNRHereComboRepository, CellExamineNRD)
 
                                 'If Not IsNothing(DataFieldDefinition.RepeatingHeaderText) Then ColHead = DataFieldDefinition.RepeatingHeaderText & " " & ColHead
 
@@ -1043,6 +1058,7 @@ Namespace Abovo
                                 .ShowSummary = DataFieldDefinition.ShowSummary,
                                 .BandEditDescription = DataFieldDefinition.BandEditDescription,
                                 .MinVal = DataFieldDefinition.MinVal,
+                                .MinExclusive = DataFieldDefinition.MinExclusive,
                                 .MaxVal = DataFieldDefinition.MaxVal,
                                 .BandID = CellRangeSource.BandID,
                                 .BandTipText = CellRangeSource.BandTipText,
@@ -1219,12 +1235,14 @@ Nextnrds:
                             .ColumnTag = New DataColumnTag With {
                             .ColumnHeading = Replace(DataFieldDefinition.FieldName, "vblf", vbLf),
                             .DataType = CurrDataType,
+                            .MinimumWidthChars = ParseMinimumWidthChars(DataFieldDefinition.MinWidthChars),
                             .IsReadOnly = IIf(DataFieldDefinition.RO = "TRUE", True, False),
                             .IsCalculated = CalcCol,
                             .HasRules = ApplyRule,
                             .ShowSummary = DataFieldDefinition.ShowSummary,
                             .BandEditDescription = DataFieldDefinition.BandEditDescription,
                             .MinVal = DataFieldDefinition.MinVal,
+                            .MinExclusive = DataFieldDefinition.MinExclusive,
                             .Units = DataFieldDefinition.Units,
                             .MaxVal = DataFieldDefinition.MaxVal,
                             .IsFixed = IIf(DataFieldDefinition.Fixed = "TRUE", True, False),
@@ -1392,6 +1410,7 @@ NextDFD:
                                     .IsReadOnly = IIf(CellDF.RO = "TRUE", True, False),
                                     .IsCalculated = IIf(CRSource.IsCalculated = "TRUE", True, False),
                                     .MinVal = CellDF.MinVal,
+                                    .MinExclusive = CellDF.MinExclusive,
                                     .MaxVal = CellDF.MaxVal,
                                     .RepositaryID = CellDF.RepositaryItemID
                                     },
@@ -1759,7 +1778,7 @@ NextDFD:
 
                                 End If
 
-                                ColHead = DataFieldDefinition.FieldName & " " & CellExamineNRD.DisplayText
+                                ColHead = RepeatingHeaderCaption(DataFieldDefinition.FieldName, DataFieldDefinition.EditRepNRHereComboRepository, CellExamineNRD)
                                 If Not DataFieldDefinition.Units Is Nothing Then ColHead += vbLf & DataFieldDefinition.Units
 
                                 'CurrColHeading = If(Microsoft.VisualBasic.Right(DataFieldDefinition.FieldName, 4) = "NONE", "", DataFieldDefinition.FieldName & " ") & HeaderText
@@ -1784,6 +1803,7 @@ NextDFD:
                                     .ShowSummary = DataFieldDefinition.ShowSummary,
                                     .BandEditDescription = DataFieldDefinition.BandEditDescription,
                                     .MinVal = DataFieldDefinition.MinVal,
+                                    .MinExclusive = DataFieldDefinition.MinExclusive,
                                     .MaxVal = DataFieldDefinition.MaxVal,
                                     .BandID = CellRangeSource.BandID,
                                     .BandTipText = CellRangeSource.BandTipText,
@@ -1939,6 +1959,7 @@ Nextnrds2:
                                     .HasActions = IIf(DataFieldDefinition.EditRepNRHere = "TRUE", True, False),
                                     .IsCalculated = IIf(CellRangeSource.IsCalculated = "TRUE", True, False),
                                     .MinVal = DataFieldDefinition.MinVal,
+                                    .MinExclusive = DataFieldDefinition.MinExclusive,
                                     .MaxVal = DataFieldDefinition.MaxVal,
                                     .BandID = CellRangeSource.BandID,
                                     .BandTipText = CellRangeSource.BandTipText,
@@ -2071,6 +2092,17 @@ NextDFD2:
 
             Return DataSets(DataSetIndex)
 
+        End Function
+
+        Public Shared Function ResolveAnchoredInputRange(sheet As DevExpress.Spreadsheet.Worksheet, source As CellRangeDataSource) As DevExpress.Spreadsheet.CellRange
+            If String.IsNullOrWhiteSpace(source.DataRangeAnchorNR) Then Return sheet.Range(source.DataRange)
+            Dim anchor = sheet.Workbook.DefinedNames.GetDefinedName(source.DataRangeAnchorNR)?.Range
+            If anchor Is Nothing OrElse anchor.Worksheet IsNot sheet Then Throw New InvalidOperationException("Missing worksheet anchor '" & source.DataRangeAnchorNR & "'.")
+            Dim rows = If(source.DataRangeRowCount > 0, source.DataRangeRowCount, anchor.RowCount)
+            Dim columns = If(source.DataRangeColumnCount > 0, source.DataRangeColumnCount, anchor.ColumnCount)
+            Dim top = anchor.TopRowIndex + source.DataRangeRowOffset
+            Dim left = anchor.LeftColumnIndex + source.DataRangeColumnOffset
+            Return sheet.Range.FromLTRB(left, top, left + columns - 1, top + rows - 1)
         End Function
 
         Private Shared Sub EnsureArrayCapacity(Of T)(ByRef Items() As T,
@@ -4214,6 +4246,7 @@ ErrorHandler:
             Public IsCalculated As Boolean
             Public ShowSummary As String
             Public MinVal As String
+            Public MinExclusive As Boolean
             Public MaxVal As String
             Public RepositaryID As String
             Public TipText As String
@@ -4275,6 +4308,7 @@ ErrorHandler:
         Class SingleCellDataTag
 
             Public MinVal As Double
+            Public MinExclusive As Boolean
             Public MaxVal As Double
             Public MinValSet As Boolean
             Public MaxValSet As Boolean
@@ -4443,6 +4477,9 @@ ErrorHandler:
                             SourceCell = GetCachedWorksheet(WB, WorksheetCache, DP.SourceSheet).Cells(DP.SourceAddress)
                             SheetDataRow.DataCells(SheetDataColumn.Index).IsLocked =
                                 SourceCell.Fill.PatternType <> PatternType.Solid
+                            DP.BGColor = SourceCell.Fill.BackgroundColor
+                            DP.FoColor = SourceCell.Font.Color
+                            DP.FontBold = SourceCell.Font.Bold
 nextDP:
                         Next
 

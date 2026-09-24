@@ -67,7 +67,7 @@ Namespace Abovo
         Private Shared ReadOnly SectionEnds As Integer() = {11, 20, 29, 46, 54}
 
         Public Shared Function Read(workbook As IWorkbook) As BalanceSheetDocument
-            Dim timer = Diagnostics.Stopwatch.StartNew()
+            Dim timer = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
             Dim result As New BalanceSheetDocument
             Dim range = workbook.DefinedNames.GetDefinedName(TransactionalDBSnapshotManager.SourceRangeName)?.Range
             If range Is Nothing OrElse range.Worksheet.Name <> "Transactional DB" Then Throw New InvalidOperationException("Transactional_Records is unavailable.")
@@ -150,7 +150,7 @@ Namespace Abovo
             Next
             result.Diagnostic = String.Join(Environment.NewLine, result.Nodes.Where(Function(n) n.Diagnostic.Length > 0).Select(Function(n) n.Caption & ": " & n.Diagnostic))
             result.Fingerprint = Digest(contract.ToString())
-            Diagnostics.Trace.WriteLine("[Balance Sheet] nodes=" & result.Nodes.Count.ToString() & ", total=" & timer.ElapsedMilliseconds.ToString() & " ms")
+            Abovo.SummitDiagnostics.WriteLine("[Balance Sheet] nodes=" & result.Nodes.Count.ToString() & ", total=" & timer.ElapsedMilliseconds.ToString() & " ms")
             Return result
         End Function
 

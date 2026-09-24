@@ -320,18 +320,19 @@ Namespace Abovo
             '-----------------------------------------------------------------
             ' Other Fixed Assets
             '-----------------------------------------------------------------
-            'Rep_OFA_010 includes one trailing record which the interface
-            'already excludes with <SkipLastRecords>1</SkipLastRecords>.
-            'Keep structural record counting aligned with the interface.
+            'Rep_OFA_010 includes both the hidden template and the end column.
+            'Neither is an editable/deletable record (VBA deletes LastOFACol - 2).
             Dim OFARule As New WorkbookStructureRule With {
                 .RuleID = RuleOFARecords,
                 .Description = "Other Fixed Asset records",
                 .Axis = WorkbookStructureAxis.Columns,
                 .InsertAnchorNamedRange = "LastOFACol",
+                .InsertIndexOffset = -1,
                 .DeleteAnchorNamedRange = "Rep_OFA_030",
                 .RecordCountNamedRange = "Rep_OFA_010",
-                .RecordCountAdjustment = -1,
+                .RecordCountAdjustment = -2,
                 .MinimumRecordCount = 3,
+                .ProtectedLeadingRecordCount = 3,
                 .TransactionDBSyncNamedRange = "Rep_OFA_010"
             }
 
@@ -340,14 +341,14 @@ Namespace Abovo
             'the physical width from the preceding visible logical record.
             OFARule.Targets.Add(New WorkbookStructureTarget With {
                 .WorksheetName = "Other Fixed Asset Assumptions",
-                .CopyMode = WorkbookStructureCopyMode.FormatsAndColumnWidth,
-                .TemplateOffset = -1,
-                .ColumnWidthTemplateOffset = -2
+                .CopyMode = WorkbookStructureCopyMode.AllAndColumnWidth,
+                .TemplateOffset = 0,
+                .ColumnWidthTemplateOffset = -1
             })
             OFARule.Targets.Add(New WorkbookStructureTarget With {
                 .WorksheetName = "OFA Workings",
                 .CopyMode = WorkbookStructureCopyMode.AllAndColumnWidth,
-                .TemplateOffset = -1
+                .TemplateOffset = 0
             })
             RetRules.Add(OFARule.RuleID, OFARule)
 
@@ -355,10 +356,8 @@ Namespace Abovo
             ' Capital Expenditure
             ' VBA: Capital Expenditure Assumptions + OFA Additions
             '-----------------------------------------------------------------
-            'Rep_CapExpend_010 includes one trailing blank/template column.
-            'This mirrors <SkipLastRecords>1</SkipLastRecords> in the Capital
-            'Expenditure interface definition. Structural operations therefore
-            'count/select only genuine logical records.
+            'The input range includes the hidden template AND the end column.
+            'VBA retains E:F and deletes only through LastCapExpendCol - 2.
             Dim CapExRule As New WorkbookStructureRule With {
                 .RuleID = RuleCapExRecords,
                 .Description = "Capital Expenditure records",
@@ -367,8 +366,9 @@ Namespace Abovo
                 .InsertIndexOffset = -1,
                 .DeleteAnchorNamedRange = "Rep_CapExpend_010",
                 .RecordCountNamedRange = "Rep_CapExpend_010",
-                .RecordCountAdjustment = -1,
-                .MinimumRecordCount = 3,
+                .RecordCountAdjustment = -2,
+                .MinimumRecordCount = 2,
+                .ProtectedLeadingRecordCount = 2,
                 .TransactionDBSyncNamedRange = "Rep_CapExpend_010"
             }
             'Insert before the immediate zero-width template column. This keeps
@@ -407,6 +407,7 @@ Namespace Abovo
                 .RecordCountNamedRange = "CapGrantInclusion",
                 .RecordCountAdjustment = -1,
                 .MinimumRecordCount = 3,
+                .ProtectedLeadingRecordCount = 3,
                 .TransactionDBSyncNamedRange = "CapGrantInclusion"
             }
 
@@ -442,20 +443,25 @@ Namespace Abovo
                 .Description = "Repairs and Maintenance categories",
                 .Axis = WorkbookStructureAxis.Columns,
                 .InsertAnchorNamedRange = "LastStockCol",
+                .InsertIndexOffset = -1,
                 .DeleteAnchorNamedRange = "StockCondCats",
                 .RecordCountNamedRange = "StockCondCats",
-                .MinimumRecordCount = 5,
+                .RecordCountAdjustment = -1,
+                .MinimumRecordCount = 6,
+                .ProtectedLeadingRecordCount = 6,
                 .TransactionDBSyncNamedRange = "StockCondCats"
             }
             'StockCondCats ends with a zero-width template column immediately
-            'before the Q calculation-total column. Keep that column as the
+            'before LastStockCol. Insert inside the dependent ranges, not after
+            'their final column; otherwise totals/names omit the new categories.
+            'VBA retains D:I (six genuine categories). Keep the template as the
             'formula/format template, but use the preceding visible category for
             'the width of newly-added assumption columns.
             RepairsRule.Targets.Add(New WorkbookStructureTarget With {
                 .WorksheetName = "Repairs & Maint. Assumptions",
                 .CopyMode = WorkbookStructureCopyMode.AllAndColumnWidth,
-                .TemplateOffset = -1,
-                .ColumnWidthTemplateOffset = -2
+                .TemplateOffset = 0,
+                .ColumnWidthTemplateOffset = -1
             })
             AddColumnTargets(RepairsRule,
                              "Stock Condition Inputs",
@@ -465,6 +471,13 @@ Namespace Abovo
                              "Repairs & Maintenance Costs",
                              "Repairs & Maintenance Depn",
                              "Cost & Depn on Replacement")
+            For Each Target In RepairsRule.Targets
+                Target.TemplateOffset = 0
+                If Target.WorksheetName = "Stock Condition Inputs" OrElse
+                   Target.WorksheetName = "Repairs & Maint. Rates" Then
+                    Target.ColumnWidthTemplateOffset = -1
+                End If
+            Next
             RetRules.Add(RepairsRule.RuleID, RepairsRule)
 
             '-----------------------------------------------------------------
@@ -483,6 +496,7 @@ Namespace Abovo
                 .RecordCountNamedRange = "DepnType",
                 .RecordCountAdjustment = -1,
                 .MinimumRecordCount = 3,
+                .ProtectedLeadingRecordCount = 3,
                 .TransactionDBSyncNamedRange = "DepnType"
             }
             AddColumnTargets(ComponentsRule,
@@ -642,7 +656,7 @@ Namespace Abovo
                 .DeleteAnchorNamedRange = "Rep_Jour_01",
                 .RecordCountNamedRange = "Rep_Jour_01",
                 .RecordCountAdjustment = -1,
-                .MinimumRecordCount = 1,
+                .MinimumRecordCount = 3,
                 .TransactionDBSyncNamedRange = "IR_Journals"
             }
 
@@ -674,7 +688,7 @@ Namespace Abovo
                 .InsertAfterAnchorEnd = True,
                 .DeleteAnchorNamedRange = "IR_StockDispAss_01",
                 .RecordCountNamedRange = "IR_StockDispAss_01",
-                .MinimumRecordCount = 1,
+                .MinimumRecordCount = 3,
                 .TransactionDBSyncNamedRange = "IR_StockDispAss_01"
             }
 
@@ -1115,7 +1129,7 @@ Namespace Abovo
                 .InsertAfterAnchorEnd = True,
                 .DeleteAnchorNamedRange = NamedRange,
                 .RecordCountNamedRange = NamedRange,
-                .MinimumRecordCount = 1,
+                .MinimumRecordCount = If(Axis = WorkbookStructureAxis.Rows, 3, 1),
                 .TransactionDBSyncNamedRange = NamedRange
             }
 
@@ -1286,8 +1300,8 @@ Namespace Abovo
             Dim BulkMutationGuardStarted As Boolean = False
             Dim PreviousCalculationMode As WorkbookCalculationMode = WB.Options.CalculationMode
             Dim PreviousCalculationEngine As CalculationEngineType = WB.Options.CalculationEngineType
-            Dim benchmark As System.Diagnostics.Stopwatch =
-                System.Diagnostics.Stopwatch.StartNew()
+            Dim benchmark As Abovo.SummitDiagnostics.DiagnosticTimer =
+                Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
             Dim mutationMs As Long = 0
             Dim DeferredColumnCopies As List(Of Action) =
                 If(Rule.InsertAllColumnsBeforeCopy, New List(Of Action)(), Nothing)
@@ -1303,9 +1317,9 @@ Namespace Abovo
             'Detailed tracing is limited to the three insertion families under review.
             'These scopes only measure existing work; they do not read formula values.
             Using Timing As StructuralInsertBenchmark =
-                If(Rule.RuleID = RuleFundingRecords OrElse
+                If(SummitDiagnostics.Enabled AndAlso (Rule.RuleID = RuleFundingRecords OrElse
                    Rule.RuleID = RuleDevelopmentIdentifiedRecords OrElse
-                   Rule.RuleID = RuleDevelopmentMultiYearRecords,
+                   Rule.RuleID = RuleDevelopmentMultiYearRecords),
                    New StructuralInsertBenchmark(ModelID, Rule.RuleID, RecordCount,
                        "sheets=" & Rule.Targets.Count.ToString() &
                        ", insertColumn=" & (InsertIndex + 1).ToString() &
@@ -1314,6 +1328,7 @@ Namespace Abovo
                 Try
 
                     JournalInputSnapshot = SnapshotJournalInputRange(WB, Rule, RecordRangeSnapshot)
+                    ValidateRepairsInputRange(WB, Rule)
 
                     Dim AdditionalSnapshots = Rule.AdditionalRecordRanges.Select(Function(n) SnapshotNamedRange(WB, n)).ToList()
                     If RecordRangeSnapshot Is Nothing OrElse AdditionalSnapshots.Any(Function(s) s Is Nothing) Then Throw New InvalidOperationException("A required input/display range is missing. No workbook ranges were changed.")
@@ -1459,6 +1474,7 @@ Namespace Abovo
                         For Each Snapshot In AdditionalSnapshots
                             ResizeNamedRangeFromSnapshot(WB, Snapshot, Rule.Axis, RecordCount)
                         Next
+                        AlignRepairsInputRange(WB, Rule)
                         If Rule.FillRelativeHeaderRowOffset >= 0 Then
                             Dim CurrentRange = WB.DefinedNames.GetDefinedName(Rule.RecordCountNamedRange).Range
                             Dim WS = CurrentRange.Worksheet, WasProtected = WS.IsProtected
@@ -1508,7 +1524,7 @@ Namespace Abovo
                     Result.BError = True
                     Result.StringReturn = ex.Message
                     Result.StrResponseMessage = ex.Message
-                    System.Diagnostics.Trace.WriteLine("[Structure failure] " & Rule.RuleID & ": " & ex.ToString())
+                    Abovo.SummitDiagnostics.WriteLine("[Structure failure] " & Rule.RuleID & ": " & ex.ToString())
                     If MutationStarted Then
                         ModelSafetyManager.MarkRecoveryRequired(
                             ModelID, "Insert " & Rule.Description, ex.Message,
@@ -1584,7 +1600,7 @@ Namespace Abovo
                     ExcelModels(ModelID).IsDirty = True
                     If Not Result.BError Then ExcelModels(ModelID).MarkUserChange()
                 End If
-                System.Diagnostics.Trace.WriteLine(
+                Abovo.SummitDiagnostics.WriteLine(
                     "[Population Benchmark] Structure insert: model=" & ModelID.ToString() &
                     ", rule=" & Rule.RuleID &
                     ", records=" & RecordCount.ToString() &
@@ -1719,6 +1735,7 @@ Namespace Abovo
             Try
 
                 JournalInputSnapshot = SnapshotJournalInputRange(WB, Rule, RecordRangeSnapshot)
+                ValidateRepairsInputRange(WB, Rule)
 
                 Dim AdditionalSnapshots = Rule.AdditionalRecordRanges.Select(Function(n) SnapshotNamedRange(WB, n)).ToList()
                 If RecordRangeSnapshot Is Nothing OrElse AdditionalSnapshots.Any(Function(s) s Is Nothing) Then Throw New InvalidOperationException("A required input/display range is missing. No workbook ranges were changed.")
@@ -1796,6 +1813,7 @@ Namespace Abovo
                 For Each Snapshot In AdditionalSnapshots
                     ResizeNamedRangeFromSnapshot(WB, Snapshot, Rule.Axis, -RecordIndexes.Count)
                 Next
+                AlignRepairsInputRange(WB, Rule)
                 If Rule.LinkedColumns IsNot Nothing Then
                     DeleteLinkedColumns(WB, Rule.LinkedColumns, LinkedFirst, DeleteBlocks, ChangedWorksheets)
                 End If
@@ -1808,7 +1826,7 @@ Namespace Abovo
                 Result.BError = True
                 Result.StringReturn = ex.Message
                 Result.StrResponseMessage = ex.Message
-                System.Diagnostics.Trace.WriteLine("[Structure failure] " & Rule.RuleID & ": " & ex.ToString())
+                Abovo.SummitDiagnostics.WriteLine("[Structure failure] " & Rule.RuleID & ": " & ex.ToString())
                 If MutationStarted Then
                     ModelSafetyManager.MarkRecoveryRequired(
                         ModelID, "Delete " & Rule.Description, ex.Message,
@@ -1949,8 +1967,9 @@ Namespace Abovo
                                            Optional Timing As StructuralInsertBenchmark = Nothing,
                                            Optional BatchNumber As Integer = 1)
 
-            Dim TimingContext As String = "batch=" & BatchNumber.ToString() & ", sheet=" & WS.Name &
-                ", column=" & (InsertIndex + 1).ToString() & ", count=" & RecordCount.ToString()
+            Dim TimingContext As String = If(Timing Is Nothing, Nothing,
+                "batch=" & BatchNumber.ToString() & ", sheet=" & WS.Name &
+                ", column=" & (InsertIndex + 1).ToString() & ", count=" & RecordCount.ToString())
 
             Dim TemplateColumnIndexBeforeInsert As Integer =
                 InsertIndex + Target.TemplateOffset
@@ -2133,8 +2152,8 @@ Namespace Abovo
                                         Optional ByVal PreSyncedResult As AbovoTransaction = Nothing,
                                         Optional ByVal PreSyncMs As Long = 0) As AbovoTransaction
 
-            Dim benchmark As System.Diagnostics.Stopwatch =
-                System.Diagnostics.Stopwatch.StartNew()
+            Dim benchmark As Abovo.SummitDiagnostics.DiagnosticTimer =
+                Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
             Dim Result As AbovoTransaction =
                 If(PreSyncedResult, SynchroniseTransactionDB(Rule))
             Dim syncMs As Long = PreSyncMs + benchmark.ElapsedMilliseconds
@@ -2152,7 +2171,7 @@ Namespace Abovo
 
             End If
 
-            System.Diagnostics.Trace.WriteLine(
+            Abovo.SummitDiagnostics.WriteLine(
                 "[Population Benchmark] Structure post-actions: model=" &
                 ModelID.ToString() &
                 ", rule=" & Rule.RuleID &
@@ -2202,6 +2221,35 @@ Namespace Abovo
             Return Result
 
         End Function
+
+        Private Shared Sub ValidateRepairsInputRange(WB As IWorkbook, Rule As WorkbookStructureRule)
+            If Rule.RuleID <> RuleRepairsRecords Then Return
+            Dim Categories = WB.DefinedNames.GetDefinedName("StockCondCats")?.Range
+            Dim Include = WB.DefinedNames.GetDefinedName("RepIncStkCat")?.Range
+            Dim LastColumn = WB.DefinedNames.GetDefinedName("LastStockCol")?.Range
+            If Categories Is Nothing OrElse Include Is Nothing OrElse LastColumn Is Nothing OrElse
+               Categories.Worksheet IsNot Include.Worksheet OrElse
+               Categories.Worksheet IsNot LastColumn.Worksheet OrElse
+               Categories.RowCount <> 1 OrElse Include.RowCount <> 1 OrElse
+               Include.TopRowIndex <> Categories.TopRowIndex - 1 OrElse
+               Include.LeftColumnIndex <> Categories.LeftColumnIndex OrElse
+               Include.RightColumnIndex > Categories.RightColumnIndex - 1 OrElse
+               LastColumn.LeftColumnIndex <> Categories.RightColumnIndex + 1 Then
+                Throw New InvalidOperationException("Repairs range geometry is inconsistent. RepIncStkCat must be the Include row above the genuine StockCondCats categories, excluding the hidden template. No columns have been changed.")
+            End If
+        End Sub
+
+        Private Shared Sub AlignRepairsInputRange(WB As IWorkbook, Rule As WorkbookStructureRule)
+            If Rule.RuleID <> RuleRepairsRecords Then Return
+            'Unlike StockCondCats, Include excludes the template: insertion at
+            'that boundary does not extend it in Excel or DevExpress. Old files
+            'can already have a short name. Repair only this verified companion
+            'during an explicit structural command, never at load or on save.
+            Dim Categories = WB.DefinedNames.GetDefinedName("StockCondCats").Range
+            Dim Include = WB.DefinedNames.GetDefinedName("RepIncStkCat")
+            Include.Range = Categories.Worksheet.Range.FromLTRB(Categories.LeftColumnIndex,
+                Categories.TopRowIndex - 1, Categories.RightColumnIndex - 1, Categories.TopRowIndex - 1)
+        End Sub
 
         Private Function SnapshotJournalInputRange(WB As IWorkbook, rule As WorkbookStructureRule,
                                                   records As StructuralNamedRangeSnapshot) As StructuralNamedRangeSnapshot

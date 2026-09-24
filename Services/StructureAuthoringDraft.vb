@@ -203,7 +203,7 @@ Namespace Abovo
                 If scratchFile IsNot Nothing AndAlso File.Exists(scratchFile) Then File.Delete(scratchFile)
                 If scratchDirectory IsNot Nothing AndAlso Directory.Exists(scratchDirectory) Then Directory.Delete(scratchDirectory, False)
             Catch ex As IOException
-                Diagnostics.Trace.WriteLine("Structure preview cleanup deferred: " & ex.Message)
+                Abovo.SummitDiagnostics.WriteLine("Structure preview cleanup deferred: " & ex.Message)
             End Try
         End Sub
     End Class

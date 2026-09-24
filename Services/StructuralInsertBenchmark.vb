@@ -6,7 +6,7 @@ Namespace Abovo
     Friend NotInheritable Class StructuralInsertBenchmark
         Implements IDisposable
 
-        Private ReadOnly Clock As Stopwatch = Stopwatch.StartNew()
+        Private ReadOnly Clock As Abovo.SummitDiagnostics.DiagnosticTimer = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
         Private ReadOnly Prefix As String
         Private ReadOnly Totals As New SortedDictionary(Of String, Long)(StringComparer.Ordinal)
         Private Outcome As String = "interrupted"
@@ -31,7 +31,7 @@ Namespace Abovo
         Private Sub Write(Message As String)
             'A diagnostic listener must never turn a successful workbook edit into a failure.
             Try
-                Trace.WriteLine(Prefix & ", " & Message)
+                Abovo.SummitDiagnostics.WriteLine(Prefix & ", " & Message)
             Catch
             End Try
         End Sub
@@ -56,7 +56,7 @@ Namespace Abovo
             Private ReadOnly Owner As StructuralInsertBenchmark
             Private ReadOnly Name As String
             Private ReadOnly Context As String
-            Private ReadOnly Clock As Stopwatch
+            Private ReadOnly Clock As Abovo.SummitDiagnostics.DiagnosticTimer
             Private Disposed As Boolean
 
             Public Sub New(Owner As StructuralInsertBenchmark, Name As String, Context As String)
@@ -64,7 +64,7 @@ Namespace Abovo
                 Me.Name = Name
                 Me.Context = If(Context = "", "", ", " & Context)
                 Owner.Write("stage=" & Name & Me.Context & ", state=started")
-                Clock = Stopwatch.StartNew()
+                Clock = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
             End Sub
 
             Public Sub Dispose() Implements IDisposable.Dispose

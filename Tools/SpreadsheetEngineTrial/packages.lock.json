@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "dependencies": {
+    ".NETFramework,Version=v4.8": {
+      "Aspose.Cells": {
+        "type": "Direct",
+        "requested": "[26.9.0, 26.9.0]",
+        "resolved": "26.9.0",
+        "contentHash": "a+qGbpDqcKFTZ+/aJtAdJOVQhKM/YJlandut80KreqGysHbJQygDqS0OohaZ8Rpwl9SC6LHNbbqjucHsXqMTGw=="
+      },
+      "SpreadsheetGear": {
+        "type": "Direct",
+        "requested": "[9.3.85, 9.3.85]",
+        "resolved": "9.3.85",
+        "contentHash": "xmtXAn564jwllJbGHyc7VPloca2DiBGCdQfcTAtdH64kS12XILe3GMDib8fkSL1A7yFDvA4cNKQFi9PEoBma/Q==",
+        "dependencies": {
+          "System.Numerics.Vectors": "4.5.0"
+        }
+      },
+      "System.Numerics.Vectors": {
+        "type": "Transitive",
+        "resolved": "4.5.0",
+        "contentHash": "QQTlPTl06J/iiDbJCiepZ4H//BVraReU4O4EoRw1U02H5TLUIT7xn3GnDp9AXPSlJUDyFs4uWjWafNX6WrAojQ=="
+      }
+    },
+    ".NETFramework,Version=v4.8/win-x64": {},
+    ".NETFramework,Version=v4.8/win-x86": {}
+  }
+}

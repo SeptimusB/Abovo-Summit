@@ -1163,6 +1163,7 @@ DefaultDraw:
 
 
             If ColTag.IsDummyColumn Then
+                e.Cache.FillRectangle(Brushes.White, e.Bounds)
                 e.Handled = True
                 Return
             End If
@@ -1187,6 +1188,14 @@ DefaultDraw:
             End If
 
             e.DefaultDraw()
+
+            'A spacer is an intentional blank, not a bordered data column.
+            Dim nextColumn = e.Column.View.VisibleColumns.Cast(Of GridColumn)().
+                FirstOrDefault(Function(c) c.VisibleIndex = e.Column.VisibleIndex + 1)
+            Dim nextTag = TryCast(nextColumn?.Tag, DataColumnTag)
+            If nextTag IsNot Nothing AndAlso nextTag.IsDummyColumn Then
+                e.Cache.FillRectangle(Brushes.White, New Rectangle(e.Bounds.Right - 1, e.Bounds.Top, 1, e.Bounds.Height))
+            End If
 
             e.Handled = True
 

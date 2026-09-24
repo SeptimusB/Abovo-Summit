@@ -63,6 +63,7 @@ Public Class FileInstanceInterface
         WebBrowserBPInfo.Tag = PresentationLayout.BrowserOwnsScale
         CheckSheetModel = ExcelModels(BPModelID)
         AddHandler CheckSheetModel.CheckSheetStatusChanged, AddressOf CheckSheetStatusChanged
+        AddHandler CheckSheetModel.MetadataChanged, AddressOf CheckSheetStatusChanged
         SetScale()
         LayoutFileActionControls()
 
@@ -74,6 +75,7 @@ Public Class FileInstanceInterface
 
     Private Sub ReleaseCheckSheetBinding(sender As Object, e As EventArgs) Handles Me.Disposed
         If CheckSheetModel IsNot Nothing Then RemoveHandler CheckSheetModel.CheckSheetStatusChanged, AddressOf CheckSheetStatusChanged
+        If CheckSheetModel IsNot Nothing Then RemoveHandler CheckSheetModel.MetadataChanged, AddressOf CheckSheetStatusChanged
         CheckSheetModel = Nothing
     End Sub
 
@@ -332,6 +334,13 @@ Public Class FileInstanceInterface
 
         MyFilePath = ExcelModels(BPModelID).FileName
         MyCompanyName = ExcelModels(BPModelID).WBStructure.CompanyName
+        Dim modelPage = TryCast(Parent, DevExpress.XtraTab.XtraTabPage)
+        If modelPage IsNot Nothing Then
+            Dim modelPrefix = If(ExcelModels(BPModelID).Profile IsNot Nothing AndAlso
+                ExcelModels(BPModelID).Profile.ModelType = "AbovoDSA", "DSA", "HABP")
+            modelPage.Text = "(" & (BPModelID + 1).ToString() & ") " & modelPrefix & " " & MyCompanyName
+            modelPage.Tooltip = MyFilePath
+        End If
 
         Dim ModelDescription As String =
             If(ExcelModels(BPModelID).Profile Is Nothing,

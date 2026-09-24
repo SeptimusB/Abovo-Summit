@@ -24,3 +24,7 @@ packages/
 # Signing keys must remain local
 *.pfx
 
+# Local agent settings and Python compilation caches
+.codex/
+__pycache__/
+*.py[cod]

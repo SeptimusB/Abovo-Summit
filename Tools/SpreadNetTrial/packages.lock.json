@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "dependencies": {
+    ".NETFramework,Version=v4.8": {
+      "Aspose.Cells": {
+        "type": "Direct",
+        "requested": "[26.9.0, 26.9.0]",
+        "resolved": "26.9.0",
+        "contentHash": "a+qGbpDqcKFTZ+/aJtAdJOVQhKM/YJlandut80KreqGysHbJQygDqS0OohaZ8Rpwl9SC6LHNbbqjucHsXqMTGw=="
+      },
+      "GrapeCity.Spread.WinForms": {
+        "type": "Direct",
+        "requested": "[19.2.0, 19.2.0]",
+        "resolved": "19.2.0",
+        "contentHash": "b3nob8HR3M2XcasTU7DGai/E0HUSUaZmIeMyRRGzWsmUYFPXKV4z/yAEkgbQ6s8iKBgZLUmovOEx1V/owuQrSw==",
+        "dependencies": {
+          "Mescius.Spreadsheet.Core": "19.2.0"
+        }
+      },
+      "Mescius.Spreadsheet.Core": {
+        "type": "Direct",
+        "requested": "[19.2.0, 19.2.0]",
+        "resolved": "19.2.0",
+        "contentHash": "KC68mm5ABXimIN9ZWEukFTpHKrxWwBjGjkgKmA2iwn3zqK3dXFJ/LxGsS+9QcnLL/Wbn1+kpe1uqYqbZ74+akQ==",
+        "dependencies": {
+          "BouncyCastle.Cryptography": "2.4.0",
+          "System.Buffers": "4.6.0",
+          "System.Drawing.Common": "8.0.8",
+          "System.IO.Compression": "4.3.0",
+          "System.Memory": "4.6.0",
+          "System.Numerics.Vectors": "4.6.0",
+          "System.Runtime.CompilerServices.Unsafe": "6.1.0",
+          "System.ValueTuple": "4.5.0"
+        }
+      },
+      "SpreadsheetGear": {
+        "type": "Direct",
+        "requested": "[9.3.85, 9.3.85]",
+        "resolved": "9.3.85",
+        "contentHash": "xmtXAn564jwllJbGHyc7VPloca2DiBGCdQfcTAtdH64kS12XILe3GMDib8fkSL1A7yFDvA4cNKQFi9PEoBma/Q==",
+        "dependencies": {
+          "System.Numerics.Vectors": "4.5.0"
+        }
+      },
+      "BouncyCastle.Cryptography": {
+        "type": "Transitive",
+        "resolved": "2.4.0",
+        "contentHash": "SwXsAV3sMvAU/Nn31pbjhWurYSjJ+/giI/0n6tCrYoupEK34iIHCuk3STAd9fx8yudM85KkLSVdn951vTng/vQ=="
+      },
+      "System.Buffers": {
+        "type": "Transitive",
+        "resolved": "4.6.0",
+        "contentHash": "lN6tZi7Q46zFzAbRYXTIvfXcyvQQgxnY7Xm6C6xQ9784dEL1amjM6S6Iw4ZpsvesAKnRVsM4scrDQaDqSClkjA=="
+      },
+      "System.Drawing.Common": {
+        "type": "Transitive",
+        "resolved": "8.0.8",
+        "contentHash": "4ZM1wvLjz9nVVExsfPAaSl/qOvU+QNedJL5rQ+2Wbow+iGeyO0e7XN07707rMBgaffEeeLrCZBwC0oHUuvRdPw=="
+      },
+      "System.IO.Compression": {
+        "type": "Transitive",
+        "resolved": "4.3.0",
+        "contentHash": "YHndyoiV90iu4iKG115ibkhrG+S3jBm8Ap9OwoUAzO5oPDAWcr0SFwQFm0HjM8WkEZWo0zvLTyLmbvTkW1bXgg=="
+      },
+      "System.Memory": {
+        "type": "Transitive",
+        "resolved": "4.6.0",
+        "contentHash": "OEkbBQoklHngJ8UD8ez2AERSk2g+/qpAaSWWCBFbpH727HxDq5ydVkuncBaKcKfwRqXGWx64dS6G1SUScMsitg==",
+        "dependencies": {
+          "System.Buffers": "4.6.0",
+          "System.Numerics.Vectors": "4.6.0",
+          "System.Runtime.CompilerServices.Unsafe": "6.1.0"
+        }
+      },
+      "System.Numerics.Vectors": {
+        "type": "Transitive",
+        "resolved": "4.6.0",
+        "contentHash": "t+SoieZsRuEyiw/J+qXUbolyO219tKQQI0+2/YI+Qv7YdGValA6WiuokrNKqjrTNsy5ABWU11bdKOzUdheteXg=="
+      },
+      "System.Runtime.CompilerServices.Unsafe": {
+        "type": "Transitive",
+        "resolved": "6.1.0",
+        "contentHash": "5o/HZxx6RVqYlhKSq8/zronDkALJZUT2Vz0hx43f0gwe8mwlM0y2nYlqdBwLMzr262Bwvpikeb/yEwkAa5PADg=="
+      },
+      "System.ValueTuple": {
+        "type": "Transitive",
+        "resolved": "4.5.0",
+        "contentHash": "okurQJO6NRE/apDIP23ajJ0hpiNmJ+f0BwOlB/cSqTLQlw5upkf+5+96+iG2Jw40G1fCVCyPz/FhIABUjMR+RQ=="
+      }
+    },
+    ".NETFramework,Version=v4.8/win-x64": {
+      "System.IO.Compression": {
+        "type": "Transitive",
+        "resolved": "4.3.0",
+        "contentHash": "YHndyoiV90iu4iKG115ibkhrG+S3jBm8Ap9OwoUAzO5oPDAWcr0SFwQFm0HjM8WkEZWo0zvLTyLmbvTkW1bXgg=="
+      }
+    }
+  }
+}

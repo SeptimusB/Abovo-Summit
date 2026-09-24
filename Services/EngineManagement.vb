@@ -69,6 +69,25 @@ Namespace Abovo
             End Get
         End Property
 
+        Friend ReadOnly Property HasVisibleCheckSheet As Boolean
+            Get
+                For Each entry In ActiveObjects
+                    If entry Is Nothing Then Continue For
+                    Dim dit = TryCast(entry.Obj, DataInterfaceTemplate)
+                    If dit IsNot Nothing AndAlso dit.HasVisibleCheckSheet Then Return True
+                Next
+                Return False
+            End Get
+        End Property
+
+        Friend Sub QueueVisibleCheckSheetRead()
+            For Each entry In ActiveObjects
+                If entry Is Nothing Then Continue For
+                Dim dit = TryCast(entry.Obj, DataInterfaceTemplate)
+                If dit IsNot Nothing AndAlso dit.HasVisibleCheckSheet Then dit.EnsureVisibleCheckSheetCurrent()
+            Next
+        End Sub
+
 #Region "Calclulation and engine"
         Public ModelID As Integer
         Sub New(SetModelID As Integer)
@@ -197,9 +216,9 @@ Namespace Abovo
             'worksheet pass does not certify cross-sheet/deferred results.
             'Interface registration also calls this method to populate its
             'initial worksheet, but registration is not a workbook mutation.
-            Dim timer As System.Diagnostics.Stopwatch =
+            Dim timer As Abovo.SummitDiagnostics.DiagnosticTimer =
                 If(String.IsNullOrEmpty(MetricContext), Nothing,
-                   System.Diagnostics.Stopwatch.StartNew())
+                   Abovo.SummitDiagnostics.DiagnosticTimer.StartNew())
             If InvalidateNavigation Then MarkPotentialWorkbookChange()
             If ActiveObjectCount > 1 Then
 
@@ -252,7 +271,7 @@ NextWS:
             RefreshObjsData()
             RaiseEvent CalculationCompleted(Me, EventArgs.Empty)
             If timer IsNot Nothing Then
-                System.Diagnostics.Trace.WriteLine(
+                Abovo.SummitDiagnostics.WriteLine(
                     "[Population Benchmark] CalculateWSs: " & MetricContext &
                     ", worksheetCalc=" & worksheetMs.ToString() & " ms" &
                     ", refreshAndEvents=" &
@@ -398,9 +417,9 @@ NextWS:
 
             Dim Workbook As IWorkbook = ExcelModels(ModelID).WB
             Dim saveRevision = ExcelModels(ModelID).CalculationRevision
-            Dim timer As System.Diagnostics.Stopwatch =
+            Dim timer As Abovo.SummitDiagnostics.DiagnosticTimer =
                 If(String.IsNullOrEmpty(MetricContext), Nothing,
-                   System.Diagnostics.Stopwatch.StartNew())
+                   Abovo.SummitDiagnostics.DiagnosticTimer.StartNew())
             Dim ordinaryMs As Long = 0
             Dim deferredMs As Long = 0
             Dim refreshMs As Long = 0
@@ -449,7 +468,7 @@ NextWS:
                     Dim benchmarkPrefix As String =
                         If(MetricContext.StartsWith("DIT ", StringComparison.Ordinal),
                            "[Navigation Benchmark]", "[Population Benchmark]")
-                    System.Diagnostics.Trace.WriteLine(
+                    Abovo.SummitDiagnostics.WriteLine(
                         benchmarkPrefix & " CalcFile: " & MetricContext &
                         ", ordinary=" & ordinaryMs.ToString() & " ms" &
                         ", deferred=" & deferredMs.ToString() & " ms" &

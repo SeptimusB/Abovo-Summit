@@ -34,8 +34,8 @@ Namespace Abovo
     ''' do not receive a footer row. The footer contains the + button and "Add rows" text.
     '''
     ''' The category header itself retains its normal DevExpress painting and
-    ''' only receives the Abovo highlight line; the action button is deliberately
-    ''' in the footer rather than the category header.
+    ''' receives the Abovo highlight line. The ordinary Add Rows action stays
+    ''' in the footer; supported Funding sections have a separate schedule plus.
     ''' </summary>
     Public Class VGridCategoryButtonExtender
 
@@ -52,6 +52,10 @@ Namespace Abovo
 
         Private CurrentFooterButtonRect As Rectangle = Rectangle.Empty
         Private EventsSubscribed As Boolean = False
+        Private ReadOnly ScheduleAction As Action
+        Private ScheduleButtonRect As Rectangle
+        Private ScheduleButtonArgs As EditorButtonObjectInfoArgs
+        Private ScheduleState As ObjectState = ObjectState.Normal
 
 
         Public Sub New(ByVal view As VGridControl,
@@ -60,11 +64,16 @@ Namespace Abovo
                        ByVal DefaultAction As String,
                        ByVal SetSectionID As Integer,
                        ByVal SetTitle As String,
-                       ByVal ActTok As ActionToken)
+                       ByVal ActTok As ActionToken,
+                       Optional ByVal AddSchedule As Action = Nothing)
 
             Me.view = view
             Me.ActiveCategoryRow = Category
             Me.MyOwner = Opener
+            ScheduleAction = AddSchedule
+            If ScheduleAction IsNot Nothing Then
+                ScheduleButtonArgs = New EditorButtonObjectInfoArgs(New EditorButton(ButtonPredefines.Plus) With {.ToolTip = "Add schedule"}, New AppearanceObject())
+            End If
 
             'Retain compatibility with the first VGrid implementation.  The
             'BandTag remains the single source of truth for the action.
@@ -239,6 +248,12 @@ Namespace Abovo
                                 ByVal e As MouseEventArgs)
 
             If e.Button <> MouseButtons.Left Then Return
+            If ScheduleAction IsNot Nothing AndAlso view.CalcHitInfo(e.Location).Row Is ActiveCategoryRow AndAlso ScheduleButtonRect.Contains(e.Location) Then
+                ScheduleState = ObjectState.Pressed
+                view.InvalidateRow(ActiveCategoryRow)
+                DXMouseEventArgs.GetMouseArgs(e).Handled = True
+                Return
+            End If
             If Not CategoryHasAction() Then Return
             If FooterRow Is Nothing Then Return
 
@@ -260,6 +275,19 @@ Namespace Abovo
                               ByVal e As MouseEventArgs)
 
             If e.Button <> MouseButtons.Left Then Return
+            If ScheduleAction IsNot Nothing AndAlso ScheduleState = ObjectState.Pressed Then
+                ScheduleState = ObjectState.Normal
+                view.InvalidateRow(ActiveCategoryRow)
+                If view.CalcHitInfo(e.Location).Row Is ActiveCategoryRow AndAlso ScheduleButtonRect.Contains(e.Location) AndAlso MyOwner IsNot Nothing AndAlso MyOwner.IsHandleCreated Then
+                    Dim owner = MyOwner
+                    Dim action = ScheduleAction
+                    owner.BeginInvoke(New MethodInvoker(Sub()
+                                                           If Not owner.IsDisposed Then action()
+                                                       End Sub))
+                End If
+                DXMouseEventArgs.GetMouseArgs(e).Handled = True
+                Return
+            End If
 
             Dim WasPressed As Boolean =
                 (GetButtonState() = ObjectState.Pressed)
@@ -332,6 +360,21 @@ Namespace Abovo
         Private Sub OnMouseMove(ByVal sender As Object,
                                 ByVal e As MouseEventArgs)
 
+            If ScheduleAction IsNot Nothing AndAlso view IsNot Nothing Then
+                Dim hot = view.CalcHitInfo(e.Location).Row Is ActiveCategoryRow AndAlso ScheduleButtonRect.Contains(e.Location)
+                If ScheduleState <> ObjectState.Pressed Then
+                    Dim nextState = If(hot, ObjectState.Hot, ObjectState.Normal)
+                    If ScheduleState <> nextState Then
+                        ScheduleState = nextState
+                        view.InvalidateRow(ActiveCategoryRow)
+                        If hot Then
+                            ToolTipController.DefaultController.ShowHint("Add schedule — " & ActiveCategoryRow.Properties.Caption.Trim(), view.PointToScreen(e.Location))
+                        Else
+                            ToolTipController.DefaultController.HideHint()
+                        End If
+                    End If
+                End If
+            End If
             If FooterRow Is Nothing OrElse view Is Nothing Then Return
 
             If Not CategoryHasAction() Then
@@ -367,6 +410,11 @@ Namespace Abovo
         Private Sub OnMouseLeave(ByVal sender As Object,
                                  ByVal e As EventArgs)
 
+            If ScheduleState <> ObjectState.Normal Then
+                ScheduleState = ObjectState.Normal
+                If view IsNot Nothing Then view.InvalidateRow(ActiveCategoryRow)
+                ToolTipController.DefaultController.HideHint()
+            End If
             If GetButtonState() <> ObjectState.Normal Then
                 SetButtonState(ObjectState.Normal)
             End If
@@ -470,7 +518,27 @@ Namespace Abovo
             If RowTag Is Nothing Then Return
 
             'Retain the native category skin/caption/tree glyph.
-            e.DefaultDraw()
+            If ScheduleAction Is Nothing Then
+                e.DefaultDraw()
+            Else
+                'Keep the native expand glyph/skin. Reserve caption space for a
+                'small skin-painted plus; never change the row model while painting.
+                Dim caption = e.Caption
+                Dim captionBounds = e.CaptionRect
+                e.Caption = String.Empty
+                e.DefaultDraw()
+                e.Caption = caption
+                Dim side = Math.Min(Math.Max(16, CInt(20 * view.DeviceDpi / 96.0F)), Math.Max(1, captionBounds.Height - 2))
+                ScheduleButtonRect = New Rectangle(captionBounds.Left, captionBounds.Top + (captionBounds.Height - side) \ 2, side, side)
+                ScheduleButtonArgs.Cache = e.Cache
+                ScheduleButtonArgs.Bounds = ScheduleButtonRect
+                ScheduleButtonArgs.State = ScheduleState
+                If customButtonPainter Is Nothing Then CreateButtonPainter()
+                customButtonPainter.DrawObject(ScheduleButtonArgs)
+                captionBounds.X += side + 5
+                captionBounds.Width = Math.Max(0, captionBounds.Width - side - 5)
+                e.Appearance.DrawString(e.Cache, caption, captionBounds)
+            End If
 
             If RowTag.DoBorder Then
                 DrawCategoryHighlight(e, RowTag.HighLightColour)

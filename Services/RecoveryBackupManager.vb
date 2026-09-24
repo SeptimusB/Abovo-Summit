@@ -12,7 +12,7 @@ Namespace Abovo
     Friend NotInheritable Class RecoveryBackupSettings
         Inherits ApplicationSettingsBase
         Friend Shared ReadOnly Instance As New RecoveryBackupSettings()
-        <UserScopedSetting(), DefaultSettingValue("False")>
+        <UserScopedSetting(), DefaultSettingValue("True")>
         Public Property ContinueOnCheckSheetError As Boolean
             Get
                 Return CBool(Me(NameOf(ContinueOnCheckSheetError)))
@@ -121,8 +121,8 @@ Namespace Abovo
                 If source IsNot Nothing AndAlso
                    (String.Equals(RecoveryPath(source), Path.GetFullPath(file), StringComparison.OrdinalIgnoreCase) OrElse
                     String.Equals(LegacyRecoveryPath(source), Path.GetFullPath(file), StringComparison.OrdinalIgnoreCase)) Then Return source
-            Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse TypeOf ex Is System.Xml.XmlException OrElse TypeOf ex Is ArgumentException
-                Trace.WriteLine("[Recovery] Cannot read recovery metadata: " & ex.Message)
+            Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is InvalidDataException OrElse TypeOf ex Is UnauthorizedAccessException OrElse TypeOf ex Is System.Xml.XmlException OrElse TypeOf ex Is ArgumentException
+                Abovo.SummitDiagnostics.WriteLine("[Recovery] Cannot read recovery metadata: " & ex.Message)
             End Try
             Return Nothing
         End Function
@@ -147,25 +147,71 @@ Namespace Abovo
 
         Friend Shared Function SelectOpenPath(owner As IWin32Window, source As String) As String
             Try
+              Do
                 Dim candidate = NewerRecovery(source)
                 If candidate Is Nothing Then Return source
-                Dim answer = XtraMessageBox.Show(owner,
-                    "A newer recovery copy is available." & Environment.NewLine & Environment.NewLine &
-                    "Original: " & source & Environment.NewLine & "Saved: " & File.GetLastWriteTime(source).ToString("dd/MM/yyyy HH:mm:ss") &
-                    Environment.NewLine & Environment.NewLine & "Recovery: " & candidate & Environment.NewLine &
-                    "Saved: " & File.GetLastWriteTime(candidate).ToString("dd/MM/yyyy HH:mm:ss") & Environment.NewLine & Environment.NewLine &
-                    "Open the recovery copy?" & Environment.NewLine &
-                    "Yes: recover committed inputs, then use Save As to save an XLSB business plan. The original folder and filename will be suggested; replacing it requires confirmation." & Environment.NewLine &
-                    "No: open the original. Cancel: do not open either file.",
-                    "Newer recovery copy", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question)
-                If answer = DialogResult.Cancel Then Return Nothing
-                Return If(answer = DialogResult.Yes, candidate, source)
+                Dim shown = New FileInfo(candidate)
+                Dim shownLength = shown.Length, shownTime = shown.LastWriteTimeUtc
+                Dim answer As DialogResult
+                Using prompt As New RecoveryOpenPrompt(source, candidate)
+                    answer = prompt.ShowDialog(owner)
+                End Using
+                Select Case answer
+                    Case DialogResult.Yes : Return candidate
+                    Case DialogResult.No : Return source
+                    Case DialogResult.Retry
+                        If XtraMessageBox.Show(owner,
+                            "Delete this recovery copy and open the original?" & Environment.NewLine & Environment.NewLine & candidate &
+                            Environment.NewLine & Environment.NewLine & "The original business plan will not be changed." & Environment.NewLine &
+                            "Windows will use the Recycle Bin where available. On network drives or locations without a Recycle Bin, deletion may be permanent." & Environment.NewLine &
+                            "This does not turn off future recovery saves.",
+                            "Delete recovery copy", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) <> DialogResult.Yes Then Continue Do
+                        Try
+                            DeleteRecovery(source, candidate, shownLength, shownTime)
+                            SystemMessageManager.Publish(-1, "Recovery copy deleted. Opening the original business plan.",
+                                SystemMessageSeverity.Information, "Recovery backup", candidate)
+                            Return source
+                        Catch ex As OperationCanceledException
+                            'Windows cancellation returns to the recovery choice.
+                        Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException OrElse TypeOf ex Is InvalidOperationException
+                            XtraMessageBox.Show(owner, "The recovery copy was not deleted." & Environment.NewLine & ex.Message,
+                                "Recovery copy", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                        End Try
+                    Case Else : Return Nothing
+                End Select
+              Loop
             Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException
                 XtraMessageBox.Show(owner, "The recovery copy could not be checked. The original will be opened." & Environment.NewLine & ex.Message,
                                     "Recovery copy", MessageBoxButtons.OK, MessageBoxIcon.Warning)
                 Return source
             End Try
         End Function
+
+        Friend Shared Sub DeleteRecovery(source As String, candidate As String, shownLength As Long, shownTime As DateTime)
+            Dim original = Path.GetFullPath(source), recovery = Path.GetFullPath(candidate)
+            If String.Equals(original, recovery, StringComparison.OrdinalIgnoreCase) OrElse
+               Not (String.Equals(recovery, RecoveryPath(original), StringComparison.OrdinalIgnoreCase) OrElse
+                    String.Equals(recovery, LegacyRecoveryPath(original), StringComparison.OrdinalIgnoreCase)) Then
+                Throw New InvalidOperationException("Only the displayed recovery copy can be deleted.")
+            End If
+            If FileManager.IsFileOpen(recovery) Then Throw New IOException("Close this recovery copy in Summit before deleting it.")
+            If Not File.Exists(original) Then Throw New IOException("The original business plan is no longer available. Keep the recovery copy until it has been located.")
+            If Not String.Equals(RecoveryOrigin(recovery), original, StringComparison.OrdinalIgnoreCase) Then
+                Throw New InvalidOperationException("This file is no longer a verified recovery copy for the original plan.")
+            End If
+            Dim current As New FileInfo(recovery)
+            If (current.Attributes And FileAttributes.ReparsePoint) <> 0 OrElse current.Length <> shownLength OrElse current.LastWriteTimeUtc <> shownTime Then
+                Throw New IOException("The recovery file changed while the prompt was open. Review the current copy before trying again.")
+            End If
+            'Reject another application's open file before calling the Windows shell.
+            Using guard As New FileStream(recovery, FileMode.Open, FileAccess.Read, FileShare.None)
+            End Using
+            Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(recovery,
+                Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin,
+                Microsoft.VisualBasic.FileIO.UICancelOption.ThrowException)
+            If File.Exists(recovery) Then Throw New IOException("Windows did not remove the recovery copy.")
+        End Sub
 
         Friend Shared Function Write(model As FileManager.ExcelModel) As String
             If model IsNot Nothing AndAlso model.RecoveryAutosaveSuspended Then
@@ -185,7 +231,7 @@ Namespace Abovo
                 Throw New IOException("A file already uses the recovery filename but is not this plan's Summit recovery copy. It has not been overwritten.")
             End If
             Dim temporary = Path.Combine(Path.GetDirectoryName(destination), ".summit-recovery-" & Guid.NewGuid().ToString("N") & ".xlsm")
-            Dim timer = Stopwatch.StartNew(), phaseTimer = Stopwatch.StartNew()
+            Dim timer = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew(), phaseTimer = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
             Dim snapshotMs As Long, flushMs As Long, metadataMs As Long, historyMs As Long, verifyMs As Long, replaceMs As Long
             Dim phase As String = "snapshotExport", saved As Boolean = False
             Try
@@ -217,10 +263,10 @@ Namespace Abovo
                 saved = True
                 'An explicitly permitted backup of known errors must retain its
                 'own hold even if the unsaved original session is later discarded.
-                If model.CheckSheetWarningActive Then RecoveryBackupManager.PersistCheckSheetPausePath(destination, True)
+                RecoveryBackupManager.PersistCheckSheetPausePath(destination, model.CheckSheetWarningActive)
                 Return destination
             Finally
-                Trace.WriteLine("[Recovery Packaging Benchmark] model=" & model.ModelID.ToString() &
+                Abovo.SummitDiagnostics.WriteLine("[Recovery Packaging Benchmark] model=" & model.ModelID.ToString() &
                     ", snapshotExport=" & snapshotMs.ToString() & " ms, flush=" & flushMs.ToString() &
                     " ms, metadata=" & metadataMs.ToString() & " ms, history=" & historyMs.ToString() &
                     " ms, verify=" & verifyMs.ToString() & " ms, replace=" & replaceMs.ToString() &
@@ -229,6 +275,54 @@ Namespace Abovo
                 If File.Exists(temporary) Then File.Delete(temporary) 'Only this invocation's private, incomplete output.
             End Try
         End Function
+    End Class
+
+    Friend NotInheritable Class RecoveryOpenPrompt
+        Inherits XtraForm
+
+        Friend Sub New(source As String, recovery As String)
+            Text = "Newer recovery copy"
+            Font = FontManager.DefaultFont
+            StartPosition = FormStartPosition.CenterParent
+            ShowIcon = False : ShowInTaskbar = False : MinimizeBox = False : MaximizeBox = False
+            ClientSize = New System.Drawing.Size(820, 360)
+            MinimumSize = New System.Drawing.Size(700, 340)
+            Dim layout As New TableLayoutPanel With {.Dock = DockStyle.Fill, .ColumnCount = 1, .RowCount = 4, .Padding = New Padding(18)}
+            layout.RowStyles.Add(New RowStyle(SizeType.AutoSize))
+            layout.RowStyles.Add(New RowStyle(SizeType.Percent, 100))
+            layout.RowStyles.Add(New RowStyle(SizeType.AutoSize))
+            layout.RowStyles.Add(New RowStyle(SizeType.AutoSize))
+            Dim heading As New LabelControl With {.Text = "A newer recovery copy is available. Which file would you like to open?",
+                .Dock = DockStyle.Fill, .AutoSizeMode = LabelAutoSizeMode.Vertical, .Margin = New Padding(0, 0, 0, 12)}
+            heading.Appearance.ForeColor = GeneralFunctions.AbovoBlue
+            layout.Controls.Add(heading, 0, 0)
+            Dim details As New MemoEdit With {.Dock = DockStyle.Fill, .Text =
+                "Original business plan" & Environment.NewLine & source & Environment.NewLine &
+                "Saved: " & File.GetLastWriteTime(source).ToString("dd/MM/yyyy HH:mm:ss") & Environment.NewLine & Environment.NewLine &
+                "Recovery copy" & Environment.NewLine & recovery & Environment.NewLine &
+                "Saved: " & File.GetLastWriteTime(recovery).ToString("dd/MM/yyyy HH:mm:ss")}
+            details.Properties.ReadOnly = True : details.Properties.WordWrap = True
+            layout.Controls.Add(details, 0, 1)
+            layout.Controls.Add(New LabelControl With {.Dock = DockStyle.Fill, .AutoSizeMode = LabelAutoSizeMode.Vertical,
+                .Margin = New Padding(0, 12, 0, 12), .Text =
+                "After opening a recovery copy, use Save As to save an XLSB business plan. Summit will suggest the original folder and filename; replacing the original requires confirmation."}, 0, 2)
+            Dim buttons As New FlowLayoutPanel With {.Dock = DockStyle.Fill, .AutoSize = True, .FlowDirection = FlowDirection.RightToLeft}
+            Dim labels = {"Cancel", "Delete recovery…", "Open original", "Open recovery"}
+            Dim results = {DialogResult.Cancel, DialogResult.Retry, DialogResult.No, DialogResult.Yes}
+            For i = 0 To labels.Length - 1
+                Dim button As New SimpleButton With {.Text = labels(i), .DialogResult = results(i), .AutoSize = True,
+                    .MinimumSize = New System.Drawing.Size(135, 34)}
+                buttons.Controls.Add(button)
+                If i = 0 Then CancelButton = button
+                If i = 3 Then AcceptButton = button
+            Next
+            layout.Controls.Add(buttons, 0, 3)
+            Controls.Add(layout)
+            AddHandler Shown, Sub()
+                                  details.SelectionStart = 0 : details.SelectionLength = 0
+                                  DirectCast(AcceptButton, SimpleButton).Focus()
+                              End Sub
+        End Sub
     End Class
 
     'This is deliberately separate from the threaded, non-interactive wait form.
@@ -347,7 +441,7 @@ Namespace Abovo
         Friend Shared Property WhenIdle As Boolean = True
         Friend Shared Property IdleMinutes As Integer = 2
         Friend Shared Property AlwaysEvery As Boolean
-        Friend Shared Property ContinueOnCheckSheetError As Boolean
+        Friend Shared Property ContinueOnCheckSheetError As Boolean = True
         Friend Shared ReadOnly Property AdvanceNoticeVisible As Boolean
             Get
                 Return PendingNotice IsNot Nothing AndAlso Not PendingNotice.IsDisposed AndAlso PendingNotice.Visible
@@ -365,7 +459,7 @@ Namespace Abovo
                 IdleMinutes = Math.Max(1, Math.Min(120, RecoveryBackupSettings.Instance.IdleMinutes))
                 AlwaysEvery = RecoveryBackupSettings.Instance.AlwaysEvery
             Catch ex As ConfigurationErrorsException
-                Trace.WriteLine("[Recovery] Settings unavailable: " & ex.Message)
+                Abovo.SummitDiagnostics.WriteLine("[Recovery] Settings unavailable: " & ex.Message)
             End Try
             AddHandler Clock.Tick, AddressOf Tick
             AddHandler Application.ApplicationExit, Sub()
@@ -474,15 +568,11 @@ Namespace Abovo
                 Dim paths = ReadCheckSheetPauses()
                 Dim originalHeld = Not String.IsNullOrWhiteSpace(model.RecoverySourcePath) AndAlso paths.Contains(IO.Path.GetFullPath(model.RecoverySourcePath))
                 model.RestoreRecoveryAutosaveHold(PausePersistencePending OrElse originalHeld OrElse paths.Contains(IO.Path.GetFullPath(model.FileName)))
-                If reportHold AndAlso model.CheckSheetWarningActive Then
-                    SystemMessageManager.Publish(model.ModelID,
-                        "This file has an unresolved previous Check Sheet validation. " & CheckSheetPolicyDescription(model) & " Click the red (Check sheet) indicator beside the company name to review it. A fresh successful check clears the warning.",
-                        SystemMessageSeverity.Warning, "Recovery backup", model.FileName)
-                End If
+                'A saved historical result is not a fresh failure. Recheck quietly after open.
             Catch ex As Exception
                 model.RestoreRecoveryAutosaveHold(True)
                 SystemMessageManager.Publish(model.ModelID,
-                    "Recovery autosaves are paused because saved Check Sheet pause settings could not be read: " & ex.Message,
+                    "Previous Check Sheet results could not be read. Summit will check this plan again. " & ex.Message,
                     SystemMessageSeverity.Warning, "Recovery backup", model.FileName)
             End Try
         End Sub
@@ -523,22 +613,19 @@ Namespace Abovo
                         Select(Function(issue) "Row " & issue.CheckRow.ToString() & ": " & issue.Label & " - " & issue.Status & " " & issue.Message))
                     If result.Issues.Count > 5 Then details &= Environment.NewLine & "More findings are listed in the integrity report."
                 End If
-                Dim message = "Check Sheet needs attention for " & IO.Path.GetFileName(model.FileName) & ". " & CheckSheetPolicyDescription(model) &
-                    Environment.NewLine & Environment.NewLine & details & Environment.NewLine & Environment.NewLine &
-                    "Click the red (Check sheet) indicator beside the company name to review the Check Sheet. After correction, run a fresh integrity check to clear the warning." &
-                    Environment.NewLine & "Normal Save and Save As remain available; they do not clear the warning."
-                SystemMessageManager.Publish(model.ModelID, message, SystemMessageSeverity.Warning, "Recovery backup", model.FileName)
+                Dim message = "Some figures do not balance yet. You can continue entering figures and save normally. " & CheckSheetPolicyDescription(model) &
+                    Environment.NewLine & "Open Check Sheet to review the figures." & Environment.NewLine & details
+                SystemMessageManager.Publish(model.ModelID, message, SystemMessageSeverity.Information, "Check Sheet", model.FileName)
             Else
                 SystemMessageManager.Publish(model.ModelID,
-                    "Check Sheet validation now passes. Recovery autosaves are permitted again when enabled and new unsaved user changes are due.",
-                    SystemMessageSeverity.Success, "Recovery backup", model.FileName)
+                    "Check Sheet now balances.", SystemMessageSeverity.Success, "Check Sheet", model.FileName)
             End If
         End Sub
 
         Friend Shared Function CheckSheetPolicyDescription(model As FileManager.ExcelModel) As String
             If model.RecoveryAutosaveSuspended Then Return "Recovery autosaves are PAUSED; the last completed recovery copy is retained."
-            If model.CheckSheetWarningActive Then Return "Recovery autosaves may continue with these errors because 'Continue autosave if Check Sheet error?' is enabled."
-            Return "Recovery autosaves are not paused by Check Sheet validation."
+            If model.CheckSheetWarningActive Then Return "Recovery backups can continue."
+            Return "Check Sheet does not pause recovery backups."
         End Function
 
         Friend Shared Sub OpenCheckSheet(model As FileManager.ExcelModel)
@@ -596,7 +683,7 @@ Namespace Abovo
             Try
                 idle = IntegrityInputClock.IdleDuration()
             Catch ex As Exception
-                Trace.WriteLine("[Recovery] Idle clock unavailable: " & ex.Message)
+                Abovo.SummitDiagnostics.WriteLine("[Recovery] Idle clock unavailable: " & ex.Message)
             End Try
             ProcessRecovery(DateTime.UtcNow, idle)
         End Sub
@@ -630,23 +717,8 @@ Namespace Abovo
                     If Not model.CheckSheetWarningNeedsRecheck Then
                         state.PromptPreviousCheck = False
                     Else
-                        Dim promptOwner = NoticeOwner(model)
-                        If promptOwner Is Nothing Then Continue For
-                        CancelPendingNotice()
-                        state.PromptPreviousCheck = False 'Once per opening, before modal message pumping.
-                        Busy = True
-                        Try
-                            Dim answer = XtraMessageBox.Show(promptOwner,
-                                "A previous session's Check Sheet validation failed for:" & Environment.NewLine & model.FileName &
-                                Environment.NewLine & Environment.NewLine & "This is a remembered warning, not a new failure found in the reopened file." &
-                                Environment.NewLine & CheckSheetPolicyDescription(model) & Environment.NewLine & Environment.NewLine &
-                                "Would you like to run an integrity check now?" & Environment.NewLine &
-                                "No leaves the warning in place; you can run the check later from Options.",
-                                "Previous Check Sheet warning", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2)
-                            If answer = DialogResult.Yes Then IdleIntegrityManager.RequestNow(model)
-                        Finally
-                            Busy = False
-                        End Try
+                        state.PromptPreviousCheck = False
+                        IdleIntegrityManager.RequestOnOpen(model)
                         Return
                     End If
                 End If
@@ -693,7 +765,7 @@ Namespace Abovo
                 Dim afterSnooze = state.Snoozed
                 CancelPendingNotice()
                 Busy = True
-                Dim timer = Stopwatch.StartNew()
+                Dim timer = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
                 Try
                     Using notice As New FormSplashScreen(owner, "Saving recovery copy",
                                                         IO.Path.GetFileName(model.FileName) & Environment.NewLine &
@@ -719,7 +791,7 @@ Namespace Abovo
                     state.IdleDueUtc = DateTime.UtcNow.AddMinutes(IdleMinutes)
                     state.Snoozed = False
                     Busy = False
-                    Trace.WriteLine("[Recovery Save Benchmark] model=" & model.ModelID.ToString() & ", total=" & timer.ElapsedMilliseconds.ToString() & " ms")
+                    Abovo.SummitDiagnostics.WriteLine("[Recovery Save Benchmark] model=" & model.ModelID.ToString() & ", total=" & timer.ElapsedMilliseconds.ToString() & " ms")
                 End Try
                 Exit For 'Never serialise several large plans in one timer tick.
             Next

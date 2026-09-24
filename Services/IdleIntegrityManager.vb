@@ -82,6 +82,7 @@ Namespace Abovo
             Friend ManualRequested As Boolean
             Friend ManualStartPending As Boolean
             Friend RequestedInputStamp As UInteger?
+            Friend Quiet As Boolean
         End Class
         Private Shared ReadOnly Plans As New Dictionary(Of FileManager.ExcelModel, Schedule)()
         Private Shared ReadOnly Clock As New Windows.Forms.Timer With {.Interval = 150}
@@ -103,7 +104,7 @@ Namespace Abovo
                 Enabled = IdleIntegritySettings.Instance.Enabled
                 Minutes = Math.Max(1, Math.Min(120, IdleIntegritySettings.Instance.Minutes))
             Catch ex As ConfigurationErrorsException
-                Trace.WriteLine("[Idle Integrity] Settings unavailable: " & ex.Message)
+                Abovo.SummitDiagnostics.WriteLine("[Idle Integrity] Settings unavailable: " & ex.Message)
             End Try
             AddHandler Clock.Tick, AddressOf Tick
             AddHandler Application.ApplicationExit, Sub()
@@ -137,12 +138,14 @@ Namespace Abovo
             Initialise()
             Forget(model)
             Plans(model) = New Schedule With {.DueUtc = DateTime.UtcNow.AddMinutes(Minutes)}
+            CheckSheetWatch.Track(model)
         End Sub
 
         Friend Shared Sub Forget(model As FileManager.ExcelModel)
             Dim state As Schedule = Nothing
             If Plans.TryGetValue(model, state) Then DiscardPass(state)
             Plans.Remove(model)
+            CheckSheetWatch.Forget(model)
         End Sub
 
         Friend Shared Sub RequestNow(model As FileManager.ExcelModel)
@@ -152,14 +155,26 @@ Namespace Abovo
             Dim state = Plans(model)
             DiscardPass(state)
             state.ManualRequested = True
+            state.Quiet = False
             state.ManualStartPending = True
             state.RequestedInputStamp = IntegrityInputClock.InputStamp()
             state.DueUtc = DateTime.UtcNow
             'The command can be launched while another plan's messages are on
             'screen. Record the selected target in every plan's command log.
             SystemMessageManager.Publish(-1, "Integrity check requested for " & IO.Path.GetFileName(model.FileName) &
-                " (model " & model.ModelID.ToString() & "). It starts after the dialog closes and the workbook is available, even when scheduled checking is disabled. New input pauses subsequent stages until two minutes idle.",
+                ". The check will start when the workbook is available.",
                 SystemMessageSeverity.Information, "Integrity", model.FileName)
+        End Sub
+
+        Friend Shared Sub RequestOnOpen(model As FileManager.ExcelModel)
+            Initialise()
+            If Not Plans.ContainsKey(model) Then Track(model)
+            Dim state = Plans(model)
+            DiscardPass(state)
+            state.Quiet = True
+            state.ManualRequested = True
+            state.ManualStartPending = True
+            state.DueUtc = DateTime.UtcNow
         End Sub
 
         Private Shared Sub DiscardPass(state As Schedule)
@@ -168,12 +183,13 @@ Namespace Abovo
         End Sub
 
         Private Shared Sub Tick(sender As Object, e As EventArgs)
-            If Plans.Count = 0 OrElse (Not Enabled AndAlso Not Plans.Values.Any(Function(s) s.ManualRequested)) Then Return
             'An input clock/API failure must never permit speculative idle work.
             Try
+                If CheckSheetWatch.ProcessIdle(DateTime.UtcNow, IntegrityInputClock.IdleDuration()) Then Return
+                If Plans.Count = 0 OrElse (Not Enabled AndAlso Not Plans.Values.Any(Function(s) s.ManualRequested)) Then Return
                 ProcessIdle(DateTime.UtcNow, IntegrityInputClock.IdleDuration())
             Catch ex As Exception
-                Trace.WriteLine("[Idle Integrity] Scheduler deferred: " & ex.Message)
+                Abovo.SummitDiagnostics.WriteLine("[Idle Integrity] Scheduler deferred: " & ex.Message)
             End Try
         End Sub
 
@@ -213,13 +229,13 @@ Namespace Abovo
                     Publish(model, "Workbook changed: the incomplete integrity pass will restart.")
                 End If
                 Busy = True
-                Dim timer = Stopwatch.StartNew()
+                Dim timer = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
                 Dim stage As String = "Start"
                 Try
                     state.ManualStartPending = False
                     If state.Work Is Nothing Then
-                        state.Work = New IntegrityPass(model)
-                        Publish(model, If(state.ManualRequested, "Requested", "Scheduled") & " integrity check started. Calculations finish safely; input pauses subsequent stages. No automatic repair or save.")
+                        state.Work = New IntegrityPass(model, state.Quiet)
+                        If Not state.Quiet Then Publish(model, "Checking workbook formulas and references.")
                     End If
                     stage = state.Work.Stage.ToString()
                     state.Work.Advance(owner)
@@ -230,9 +246,11 @@ Namespace Abovo
                         state.LastRevision = state.Work.Revision
                         state.LastCompletedUtc = now
                         Publish(model, state.LastReport, If(state.Work.IssueCount = 0, SystemMessageSeverity.Success, SystemMessageSeverity.Warning))
+                        If Not state.Quiet Then
                         Using notice As New FormSplashScreen(owner, "Integrity check complete", IO.Path.GetFileName(model.FileName))
                             notice.Complete(If(state.Work.IssueCount = 0, "No issues found by the implemented checks.", state.Work.IssueCount.ToString() & " issue(s) found. See System Messages for details."))
                         End Using
+                        End If
                         DiscardPass(state)
                         state.ManualRequested = False
                         state.DueUtc = now.AddMinutes(Minutes)
@@ -245,7 +263,7 @@ Namespace Abovo
                 Finally
                     Busy = False
                     NextModel = (index + 1) Mod entries.Length
-                    Trace.WriteLine("[Idle Integrity Benchmark] model=" & model.ModelID.ToString() & ", stage=" & stage & ", total=" & timer.ElapsedMilliseconds.ToString() & " ms")
+                    Abovo.SummitDiagnostics.WriteLine("[Idle Integrity Benchmark] model=" & model.ModelID.ToString() & ", stage=" & stage & ", total=" & timer.ElapsedMilliseconds.ToString() & " ms")
                 End Try
                 Return True 'One safe unit only; return to the UI message loop.
             Next
@@ -287,6 +305,7 @@ Namespace Abovo
             Private ReadOnly ChartGaps As New ExpectedChartGapClassifier()
             Private ReadOnly Notices As New List(Of String)()
             Private Calculated As Boolean
+            Private ReadOnly Quiet As Boolean
             Private ReadOnly Started As DateTime = DateTime.UtcNow
             Friend ReadOnly Property Finished As Boolean
                 Get
@@ -294,8 +313,9 @@ Namespace Abovo
                 End Get
             End Property
 
-            Friend Sub New(model As FileManager.ExcelModel)
+            Friend Sub New(model As FileManager.ExcelModel, Optional quiet As Boolean = False)
                 Me.Model = model
+                Me.Quiet = quiet
                 Revision = model.CalculationRevision
             End Sub
 
@@ -314,7 +334,12 @@ Namespace Abovo
                 Select Case Stage
                     Case CheckStage.Calculation
                         Calculated = Model.ResultsPending
-                        If Calculated Then
+                        If Calculated AndAlso Quiet Then
+                            Model.CalculateForIdleIntegrity(Nothing)
+                            If Model.WBCalcEngine IsNot Nothing Then Model.WBCalcEngine.RefreshAfterDeferredCalculation()
+                            Stage = CheckStage.CheckSheet
+                            ValidateCheckSheet(owner)
+                        ElseIf Calculated Then
                             Using notice As New FormSplashScreen(owner, "Integrity: updating calculations", IO.Path.GetFileName(Model.FileName) & Environment.NewLine & "Please wait. This calculation cannot be interrupted safely.")
                                 If Not notice.IsShowing Then Throw New InvalidOperationException("Progress notice unavailable; calculation deferred")
                                 Model.CalculateForIdleIntegrity(AddressOf notice.Update)
@@ -345,6 +370,13 @@ Namespace Abovo
                                 Return
                             End If
                             Dim name = Names.Current
+                            'A deleted schedule anchor is inactive optional UI metadata,
+                            'not a broken financial formula. Require explicit XML ownership.
+                            If name.RefersTo.IndexOf("#REF!", StringComparison.OrdinalIgnoreCase) >= 0 AndAlso FundingScheduleGroups.IsPresentationAnchor(Model.WB, name) Then
+                                count += 1
+                                NamesChecked += 1
+                                Continue While
+                            End If
                             Dim expression = Regex.Replace(name.RefersTo, """(?:""""|[^""])*""", "")
                             If expression.IndexOf("#REF!", StringComparison.OrdinalIgnoreCase) >= 0 Then AddIssue("Broken name", name.Name & " refers to " & name.RefersTo)
                             InspectExportFormula(name.RefersTo, "Name " & name.Name)
@@ -364,7 +396,7 @@ Namespace Abovo
             End Sub
 
             Private Sub ValidateCheckSheet(owner As Form)
-                Dim timer = Stopwatch.StartNew()
+                Dim timer = Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
                 Try
                     'Never certify caches from an interrupted or superseded calculation.
                     If Model.ResultsPending OrElse Revision <> Model.CalculationRevision Then
@@ -372,18 +404,17 @@ Namespace Abovo
                     End If
                     Dim result = Model.ReadCheckSheetValidation()
                     CheckSheetFailed = result.HasFailures
-                    If Model.RecordIdleCheckSheetResult(Revision, result.HasFailures) Then
-                        RecoveryBackupManager.NotifyCheckSheetState(Model, result, owner)
+                    If String.IsNullOrWhiteSpace(result.ValidationError) Then
+                        If Model.RecordIdleCheckSheetResult(Revision, result.HasFailures) Then
+                            RecoveryBackupManager.NotifyCheckSheetState(Model, result, owner)
+                        End If
+                        If Not Quiet Then Publish(Model, "Check Sheet: " & If(result.HasFailures, "some figures do not balance yet.", "balanced."), SystemMessageSeverity.Information)
+                    Else
+                        Publish(Model, result.ValidationError, SystemMessageSeverity.Warning)
                     End If
-                    Publish(Model, "Check Sheet stage finished for " & IO.Path.GetFileName(Model.FileName) &
-                        ": " & If(result.HasFailures, "needs attention", "passed") &
-                        "; revision=" & Revision.ToString() & "; warning=" & Model.CheckSheetWarningActive.ToString() &
-                        "; recoveryPaused=" & Model.RecoveryAutosaveSuspended.ToString() &
-                        ". Remaining integrity checks continue separately.",
-                        If(result.HasFailures OrElse Model.CheckSheetWarningActive, SystemMessageSeverity.Warning, SystemMessageSeverity.Success))
                     If Not String.IsNullOrWhiteSpace(result.ValidationError) Then AddIssue("Check Sheet", result.ValidationError)
                     For Each issue In result.Issues
-                        AddIssue("Check Sheet", "row " & issue.CheckRow.ToString() & ", " & issue.Label & ": " & issue.Status & " " & issue.Message & " [" & issue.TargetWorksheet & "]")
+                        Notices.Add("Check Sheet (balance only): row " & issue.CheckRow.ToString() & ", " & issue.Label & ": " & issue.Status)
                     Next
                     OverridesAccepted = result.OverriddenIssues.Count
                     For Each issue In result.OverriddenIssues.Take(10)
@@ -392,7 +423,7 @@ Namespace Abovo
                     Names = Model.WB.DefinedNames.Concat(Model.WB.Worksheets.SelectMany(Function(s) s.DefinedNames)).Distinct().GetEnumerator()
                     Stage = CheckStage.Names
                 Finally
-                    Trace.WriteLine("[Idle Integrity Benchmark] model=" & Model.ModelID.ToString() & ", stage=CheckSheet, total=" & timer.ElapsedMilliseconds.ToString() & " ms")
+                    Abovo.SummitDiagnostics.WriteLine("[Idle Integrity Benchmark] model=" & Model.ModelID.ToString() & ", stage=CheckSheet, total=" & timer.ElapsedMilliseconds.ToString() & " ms")
                 End Try
             End Sub
 

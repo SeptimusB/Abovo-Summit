@@ -130,7 +130,7 @@ Namespace Abovo
             Try
                 RaiseEvent HistoryChanged(Me, EventArgs.Empty)
             Catch ex As Exception
-                System.Diagnostics.Debug.WriteLine(
+                Abovo.SummitDiagnostics.WriteLine(
                     "Interface history notification failed: " & ex.ToString())
             End Try
             InterfaceHistoryCoordinator.NotifyChanged()
@@ -203,7 +203,7 @@ Namespace Abovo
                 InterfaceHistorySettings.Default.ShowAllModels = value
                 InterfaceHistorySettings.Default.Save()
             Catch ex As Exception
-                System.Diagnostics.Debug.WriteLine(
+                Abovo.SummitDiagnostics.WriteLine(
                     "Unable to save interface history scope: " & ex.Message)
             End Try
             NotifyChanged()
@@ -239,7 +239,7 @@ Namespace Abovo
             Try
                 RaiseEvent Changed(Nothing, EventArgs.Empty)
             Catch ex As Exception
-                System.Diagnostics.Debug.WriteLine(
+                Abovo.SummitDiagnostics.WriteLine(
                     "Interface history view notification failed: " & ex.ToString())
             End Try
         End Sub

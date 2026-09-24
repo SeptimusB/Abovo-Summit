@@ -92,6 +92,22 @@ Namespace Abovo
             AddHandler view.MouseLeave, AddressOf View_MouseLeave
 
             If view.GridControl IsNot Nothing Then
+                AddHandler view.GridControl.SizeChanged, Sub()
+                    Dim description = view.Columns.ColumnByFieldName("ItemDesc")
+                    If description IsNot Nothing AndAlso view.GridControl.ClientSize.Width > 0 Then
+                        description.MaxWidth = Math.Max(description.MinWidth, CInt(view.GridControl.ClientSize.Width * 0.4))
+                    End If
+                End Sub
+                GridPresentation.SetResetLayout(view.GridControl, Sub()
+                    view.BeginUpdate()
+                    Try
+                        'Undo an accidental row-edge drag as well as restoring text zoom.
+                        view.RowHeight = -1
+                        view.GroupRowHeight = -1
+                    Finally
+                        view.EndUpdate()
+                    End Try
+                End Sub)
                 Dim analyserMenu As New ContextMenuStrip()
                 ContextMenus(view) = analyserMenu
                 view.GridControl.ContextMenuStrip = analyserMenu
@@ -641,6 +657,10 @@ Namespace Abovo
                     End If
                 End If
             End If
+            'This menu is rebuilt on every open; restore shared presentation actions
+            'after clearing/recreating the analyser's selection/branch commands.
+            GridPresentation.SetMenuTarget(analyserMenu, view.GridControl)
+            GridPresentation.AddMenu(view.GridControl)
             e.Cancel = analyserMenu.Items.Count = 0
         End Sub
 

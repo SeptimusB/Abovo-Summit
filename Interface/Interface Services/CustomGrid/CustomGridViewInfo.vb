@@ -12,6 +12,26 @@ Namespace Abovo.CustomGrid
                 MyBase.New(gridView)
             End Sub
 
+            Protected Overrides Function CalcGroupFooterHeight() As Integer
+                Dim statement = TryCast(View, CustomGridView)
+                If statement Is Nothing OrElse Not statement.CompactStatementRows Then Return MyBase.CalcGroupFooterHeight()
+                Dim font = View.Appearance.GroupFooter.GetFont()
+                Dim dpi = If(View.GridControl Is Nothing, 96, View.GridControl.DeviceDpi)
+                Dim zoom = Abovo.GridPresentation.ZoomPercent(View.GridControl) / 100.0
+                Dim padding = Math.Max(3, CInt(4 * dpi / 96.0 * zoom))
+                Return CInt(Math.Ceiling(Math.Max(12, CInt(Math.Ceiling(font.GetHeight(CSng(dpi)))) + padding) * 1.1R))
+            End Function
+
+            Public Overrides ReadOnly Property GroupFooterCellHeight As Integer
+                Get
+                    Dim statement = TryCast(View, CustomGridView)
+                    If statement Is Nothing OrElse Not statement.CompactStatementRows Then Return MyBase.GroupFooterCellHeight
+                    'The native summary-cell bounds must shrink with their row;
+                    'otherwise bottom-aligned figures are clipped by the next row.
+                    Return Math.Max(10, CalcGroupFooterHeight() - 2)
+                End Get
+            End Property
+
             Protected Overrides Sub CalcRowFooterInfo(ByVal ri As GridRowInfo, ByVal row As GridRow, ByVal nextRow As GridRow)
                 Dim height As Integer = ri.RowFooters.RowFootersHeight
                 If height = 0 Then
@@ -76,6 +96,29 @@ Namespace Abovo.CustomGrid
                     End If
 
                     CalcRowCellsFooterInfo(fi, ri)
+                    If DirectCast(View, CustomGridView).CompactStatementRows Then
+                        For Each cell As DevExpress.XtraGrid.Drawing.GridFooterCellInfoArgs In fi.Cells
+                            Dim bounds = cell.Bounds
+                            bounds.Y = fi.Bounds.Y + 1
+                            bounds.Height = Math.Max(1, fi.Bounds.Height - 2)
+                            Dim columnInfo = If(cell.Column Is Nothing, Nothing, ColumnsInfo(cell.Column))
+                            If columnInfo IsNot Nothing Then
+                                'Use the same physical geometry as the header.
+                                'Scrolled period footers must not paint beneath
+                                'the fixed description column.
+                                Dim leftEdge = columnInfo.Bounds.Left + 1
+                                Dim rightEdge = columnInfo.Bounds.Right - 1
+                                If cell.Column.Fixed = DevExpress.XtraGrid.Columns.FixedStyle.None Then
+                                    If Not ViewRects.FixedLeft.IsEmpty Then leftEdge = Math.Max(leftEdge, ViewRects.FixedLeft.Right)
+                                    If Not ViewRects.FixedRight.IsEmpty Then rightEdge = Math.Min(rightEdge, ViewRects.FixedRight.Left)
+                                End If
+                                If View.GridControl IsNot Nothing Then rightEdge = Math.Min(rightEdge, View.GridControl.ClientSize.Width)
+                                bounds.X = leftEdge
+                                bounds.Width = Math.Max(0, rightEdge - leftEdge)
+                            End If
+                            cell.Bounds = bounds
+                        Next
+                    End If
                     footerRowHandle = View.GetParentRowHandle(footerRowHandle)
                     startLevel -= 1
                     left -= LevelIndent

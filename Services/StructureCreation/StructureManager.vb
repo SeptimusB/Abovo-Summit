@@ -306,6 +306,11 @@ Namespace Abovo
         <XmlElement("RowsDescription")> Public RowsDescription As String
         <XmlElement("MergeRowHeadingFormat")> Public MergeRowHeadingFormat As String
         <XmlElement("DataRange")> Public DataRange As String
+        <XmlElement("DataRangeAnchorNR")> Public DataRangeAnchorNR As String
+        <XmlElement("DataRangeRowOffset")> Public DataRangeRowOffset As Integer
+        <XmlElement("DataRangeColumnOffset")> Public DataRangeColumnOffset As Integer
+        <XmlElement("DataRangeRowCount")> Public DataRangeRowCount As Integer
+        <XmlElement("DataRangeColumnCount")> Public DataRangeColumnCount As Integer
         <XmlElement("DataRangeExtensionData")> Public DataRangeExtensionData As String
         <XmlElement("LiveGridSourceName")> Public LiveGridSourceName As String
         <XmlElement("LiveGridSourceRanges")> Public LiveGridSourceRanges As String
@@ -363,6 +368,7 @@ Namespace Abovo
         <XmlElement("RO")> Public RO As String
         <XmlElement("ShowSummary")> Public ShowSummary As String
         <XmlElement("MinVal")> Public MinVal As String
+        <XmlElement("MinExclusive")> Public MinExclusive As Boolean
         <XmlElement("MaxVal")> Public MaxVal As String
         <XmlElement("Fixed")> Public Fixed As String
 

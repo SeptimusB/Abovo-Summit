@@ -148,8 +148,14 @@ Namespace Abovo
         Public Const DefaultPercent As Integer = 100
 
         Private Shared Initialised As Boolean
+        Private Shared IdleThreadID As Integer
         Private Shared CurrentPercent As Integer = DefaultPercent
-        Private Shared ReadOnly InitialisedForms As New ConditionalWeakTable(Of Form, Object)()
+        Private NotInheritable Class FormScaleState
+            Public AppliedScale As Single
+            Public Applying As Boolean
+        End Class
+
+        Private Shared ReadOnly InitialisedForms As New ConditionalWeakTable(Of Form, FormScaleState)()
         Private Shared ReadOnly InitialisedControls As New ConditionalWeakTable(Of Control, Object)()
 
         Public Shared Event ScaleChanged As EventHandler(Of PresentationScaleChangedEventArgs)
@@ -168,6 +174,7 @@ Namespace Abovo
             End Try
 
             CurrentPercent = ClampPercent(StoredPercent)
+            IdleThreadID = Threading.Thread.CurrentThread.ManagedThreadId
             AddHandler Application.Idle, AddressOf ApplyScaleToNewForms
             Initialised = True
         End Sub
@@ -201,14 +208,14 @@ Namespace Abovo
                     PresentationScaleSettings.Default.InterfaceScalePercent = NewPercent
                     PresentationScaleSettings.Default.Save()
                 Catch ex As Exception
-                    Debug.WriteLine("Unable to save interface scale: " & ex.Message)
+                    Abovo.SummitDiagnostics.WriteLine("Unable to save interface scale: " & ex.Message)
                 End Try
             End If
 
             Dim Arguments As New PresentationScaleChangedEventArgs(OldScale, UserScale)
             FontManager.ApplyUserScaleDefaults()
             RaiseEvent ScaleChanged(Nothing, Arguments)
-            ApplyToOpenForms(Arguments)
+            ApplyToOpenForms()
         End Sub
 
         Public Shared Function Scale(ByVal Value As Integer) As Integer
@@ -229,46 +236,69 @@ Namespace Abovo
             Return Math.Max(MinimumPercent, Math.Min(MaximumPercent, Value))
         End Function
 
-        Private Shared Sub ApplyToOpenForms(ByVal Arguments As PresentationScaleChangedEventArgs)
-            Dim OpenForms As New List(Of Form)()
-            For Each OpenForm As Form In Application.OpenForms
-                OpenForms.Add(OpenForm)
+        Private Shared Function SnapshotOpenForms(ByVal Forms As System.Collections.IEnumerable) As List(Of Form)
+            'OpenForms includes windows on other UI threads (for example a splash).
+            'Even copying it with For Each can race with an open/close. Never use
+            'a partial copy, or hold a collection lock while calling form code.
+            For Attempt As Integer = 1 To 3
+                Try
+                    Dim Snapshot As New List(Of Form)()
+                    For Each OpenForm As Form In Forms
+                        If OpenForm IsNot Nothing Then Snapshot.Add(OpenForm)
+                    Next
+                    Return Snapshot
+                Catch ex As InvalidOperationException
+                    'Only the live collection enumeration is retried here.
+                End Try
             Next
 
-            For Each OpenForm As Form In OpenForms
+            'A later idle pass retries. AppliedScale retains any outstanding
+            'user scale change, so deferring never silently drops that change.
+            Return New List(Of Form)()
+        End Function
+
+        Private Shared Sub ApplyToOpenForms()
+            For Each OpenForm As Form In SnapshotOpenForms(Application.OpenForms)
                 Dim TargetForm As Form = OpenForm
+                Dim State As FormScaleState = Nothing
+                If InitialisedForms.TryGetValue(TargetForm, State) AndAlso
+                   Threading.Volatile.Read(State.AppliedScale) = UserScale Then Continue For
                 RunOnFormThread(
                     TargetForm,
-                    Sub()
-                        ScaleControlTree(TargetForm, Arguments.Ratio, True)
-                        InvokeScaleHook(TargetForm)
-                        TargetForm.PerformLayout()
-                        TargetForm.Invalidate(True)
-                    End Sub)
+                    Sub() ApplyCurrentScaleToForm(TargetForm))
             Next
         End Sub
 
         Private Shared Sub ApplyScaleToNewForms(ByVal Sender As Object, ByVal e As EventArgs)
-            Dim OpenForms As New List(Of Form)()
-            For Each OpenForm As Form In Application.OpenForms
-                OpenForms.Add(OpenForm)
-            Next
+            'Application.Idle is raised by each UI thread. A single coordinator
+            'avoids splash/main threads continuously queuing work to each other.
+            If Threading.Thread.CurrentThread.ManagedThreadId <> IdleThreadID Then Return
+            ApplyToOpenForms()
+        End Sub
 
-            For Each OpenForm As Form In OpenForms
-                Dim TargetForm As Form = OpenForm
-                RunOnFormThread(
-                    TargetForm,
-                    Sub()
-                        Dim Marker As Object = Nothing
-                        If InitialisedForms.TryGetValue(TargetForm, Marker) Then Return
-                        InitialisedForms.Add(TargetForm, New Object())
+        Private Shared Sub ApplyCurrentScaleToForm(ByVal TargetForm As Form)
+            If TargetForm Is Nothing OrElse TargetForm.IsDisposed OrElse TargetForm.Disposing Then Return
 
-                        ApplyInitialScaleToControlTree(TargetForm)
-                        InvokeScaleHook(TargetForm)
-                        TargetForm.PerformLayout()
-                        TargetForm.Invalidate(True)
-                    End Sub)
-            Next
+            Dim State As FormScaleState = InitialisedForms.GetValue(TargetForm, Function(Form) New FormScaleState())
+            Dim DesiredScale As Single = UserScale
+            If State.Applying OrElse State.AppliedScale = DesiredScale Then Return
+
+            Dim PreviousScale As Single = State.AppliedScale
+            State.Applying = True
+            Try
+                If PreviousScale <= 0.0F Then
+                    ApplyInitialScaleToControlTree(TargetForm)
+                Else
+                    ScaleControlTree(TargetForm, DesiredScale / PreviousScale, True)
+                End If
+                Threading.Volatile.Write(State.AppliedScale, DesiredScale)
+                InvokeScaleHook(TargetForm)
+                If TargetForm.IsDisposed OrElse TargetForm.Disposing Then Return
+                TargetForm.PerformLayout()
+                TargetForm.Invalidate(True)
+            Finally
+                State.Applying = False
+            End Try
         End Sub
 
         Private Shared Sub RunOnFormThread(ByVal TargetForm As Form,
@@ -276,17 +306,23 @@ Namespace Abovo
             If TargetForm Is Nothing OrElse Action Is Nothing Then Return
 
             Try
-                If TargetForm.IsDisposed Then Return
+                If TargetForm.IsDisposed OrElse TargetForm.Disposing Then Return
+                Dim SafeAction As MethodInvoker =
+                    Sub()
+                        'BeginInvoke may run after the target has started closing.
+                        If TargetForm.IsDisposed OrElse TargetForm.Disposing Then Return
+                        Action.Invoke()
+                    End Sub
                 If TargetForm.InvokeRequired Then
                     If Not TargetForm.IsHandleCreated Then Return
-                    TargetForm.BeginInvoke(Action)
+                    TargetForm.BeginInvoke(SafeAction)
                 Else
-                    Action.Invoke()
+                    SafeAction.Invoke()
                 End If
             Catch ex As ObjectDisposedException
                 'The form closed while a scale refresh was being queued.
             Catch ex As InvalidOperationException
-                Debug.WriteLine(
+                Abovo.SummitDiagnostics.WriteLine(
                     "Unable to marshal interface scale to " & TargetForm.GetType().Name &
                     ": " & ex.Message)
             End Try
@@ -294,6 +330,7 @@ Namespace Abovo
 
         Private Shared Sub ApplyInitialScaleToControlTree(ByVal Target As Control)
             If Target Is Nothing OrElse Target.IsDisposed Then Return
+            GridPresentation.Configure(Target)
 
             Dim Marker As Object = Nothing
             If Not InitialisedControls.TryGetValue(Target, Marker) Then
@@ -509,7 +546,7 @@ Namespace Abovo
                 Hook.Invoke(Target, Nothing)
                 Return True
             Catch ex As Exception
-                Debug.WriteLine("Unable to apply interface scale to " & TargetType.Name & ": " & ex.Message)
+                Abovo.SummitDiagnostics.WriteLine("Unable to apply interface scale to " & TargetType.Name & ": " & ex.Message)
                 Return False
             End Try
         End Function

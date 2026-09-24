@@ -18,8 +18,8 @@ Namespace Abovo
         Public Shared Sub CreateSnapshotAndComparison(ByVal modelID As Integer)
             Dim snapshotSheet As Worksheet = Nothing
             Dim comparisonSheet As Worksheet = Nothing
-            Dim benchmark As System.Diagnostics.Stopwatch =
-                System.Diagnostics.Stopwatch.StartNew()
+            Dim benchmark As Abovo.SummitDiagnostics.DiagnosticTimer =
+                Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
             Dim rangeRows As Integer = 0
             Dim rangeColumns As Integer = 0
             Dim comparisonFormulaCount As Integer = 0
@@ -33,6 +33,9 @@ Namespace Abovo
             Dim verifyMs As Long = 0
             Dim outcome As String = "failed"
             Dim mutationStarted As Boolean = False
+            Dim workbook As IWorkbook = Nothing
+            Dim originalSheetOrder As Worksheet() = Nothing
+            Dim createdSheets As New List(Of Worksheet)
             Dim protectedSheets As New Dictionary(Of Worksheet, WorksheetProtectionPermissions)
 
             Try
@@ -44,11 +47,11 @@ Namespace Abovo
                     Throw New InvalidOperationException("The active business-plan workbook is not available.")
                 End If
 
-                Dim workbook As IWorkbook = FileManager.ExcelModels(modelID).WB
+                workbook = FileManager.ExcelModels(modelID).WB
                 FileManager.ExcelModels(modelID).EnsureDeferredSaveResultsCurrent("Preparing snapshot results...")
                 Dim sourceSheet As Worksheet = RequireWorksheet(workbook, SourceWorksheetName)
-                snapshotSheet = RequireWorksheet(workbook, SnapshotWorksheetName)
-                comparisonSheet = RequireWorksheet(workbook, ComparisonWorksheetName)
+                snapshotSheet = FindWorksheet(workbook, SnapshotWorksheetName)
+                comparisonSheet = FindWorksheet(workbook, ComparisonWorksheetName)
 
                 Dim sourceName As DefinedName = sourceSheet.DefinedNames.GetDefinedName(SourceRangeName)
                 If sourceName Is Nothing Then sourceName = workbook.DefinedNames.GetDefinedName(SourceRangeName)
@@ -70,24 +73,30 @@ Namespace Abovo
                         SourceWorksheetName & "'' worksheet.")
                 End If
 
-                Dim snapshotRange As CellRange =
-                    CreateMatchingLocalRange(snapshotSheet, sourceRange)
-                Dim comparisonRange As CellRange =
-                    CreateMatchingLocalRange(comparisonSheet, sourceRange)
+                Dim snapshotRange As CellRange = Nothing
+                Dim comparisonRange As CellRange = Nothing
 
                 Dim comparisonColumns As Boolean() =
                     GetComparisonValueColumns(sourceRange)
-                BalanceSheetSnapshot.ValidateDestination(snapshotSheet, SnapshotRangeName)
-                BalanceSheetSnapshot.ValidateDestination(comparisonSheet, ComparisonRangeName)
+                'Validate all existing destinations before creating, moving or clearing anything.
+                If snapshotSheet IsNot Nothing Then BalanceSheetSnapshot.ValidateDestination(snapshotSheet, SnapshotRangeName)
+                If comparisonSheet IsNot Nothing Then BalanceSheetSnapshot.ValidateDestination(comparisonSheet, ComparisonRangeName)
+                If workbook.IsProtected AndAlso
+                   (snapshotSheet Is Nothing OrElse comparisonSheet Is Nothing OrElse
+                    snapshotSheet.Index <> sourceSheet.Index + 1 OrElse
+                    comparisonSheet.Index <> sourceSheet.Index + 2) Then
+                    Throw New InvalidOperationException("The workbook structure is protected. Unlock it before creating or positioning snapshot worksheets.")
+                End If
                 Dim balanceSheet As BalanceSheetDocument = Nothing
                 Try
                     balanceSheet = BalanceSheetStatement.Read(workbook)
                 Catch ex As InvalidOperationException
                     'Unsupported/bespoke layouts must not disable existing SOCI/CF
                     'snapshots. Their BS page reports the unsupported mapping.
-                    Diagnostics.Trace.WriteLine("[Balance Sheet snapshot] Not captured: " & ex.Message)
+                    Abovo.SummitDiagnostics.WriteLine("[Balance Sheet snapshot] Not captured: " & ex.Message)
                 End Try
                 For Each sheet In {snapshotSheet, comparisonSheet}
+                    If sheet Is Nothing Then Continue For
                     If sheet.IsProtected Then
                         protectedSheets.Add(sheet, sheet.GetProtectionPermissions())
                         WSSecurity.UNProtectWS(modelID, sheet.Name)
@@ -99,8 +108,13 @@ Namespace Abovo
                 workbook.BeginUpdate()
                 Try
                     Dim phaseStartMs As Long = benchmark.ElapsedMilliseconds
-                    mutationStarted = True
                     FileManager.ExcelModels(modelID).RequireFullRebuild()
+                    originalSheetOrder = workbook.Worksheets.Cast(Of Worksheet)().ToArray()
+                    snapshotSheet = EnsureWorksheetAfter(workbook, snapshotSheet, SnapshotWorksheetName, sourceSheet, createdSheets)
+                    comparisonSheet = EnsureWorksheetAfter(workbook, comparisonSheet, ComparisonWorksheetName, snapshotSheet, createdSheets)
+                    snapshotRange = CreateMatchingLocalRange(snapshotSheet, sourceRange)
+                    comparisonRange = CreateMatchingLocalRange(comparisonSheet, sourceRange)
+                    mutationStarted = True
                     snapshotSheet.GetUsedRange().ClearContents()
                     comparisonSheet.GetUsedRange().ClearContents()
                     clearMs = benchmark.ElapsedMilliseconds - phaseStartMs
@@ -187,6 +201,21 @@ Namespace Abovo
                     ClearPartialOutput(snapshotSheet, comparisonSheet)
                     FileManager.ExcelModels(modelID).IsDirty = True
                 End If
+                'Only sheets created by this command may be removed on failure.
+                'Existing dedicated outputs retain the established invalidation policy.
+                If originalSheetOrder IsNot Nothing Then
+                    Try
+                        For Each sheet In createdSheets.AsEnumerable().Reverse()
+                            workbook.Worksheets.Remove(sheet)
+                        Next
+                        For index As Integer = 0 To originalSheetOrder.Length - 1
+                            If originalSheetOrder(index).Index <> index Then originalSheetOrder(index).Move(index)
+                        Next
+                    Catch
+                        FileManager.ExcelModels(modelID).IsDirty = True
+                        'Do not hide the original snapshot failure with cleanup errors.
+                    End Try
+                End If
                 Throw
             Finally
                 For Each entry In protectedSheets
@@ -195,7 +224,7 @@ Namespace Abovo
                 Dim measuredMs As Long =
                     setupMs + clearMs + nameMs + copyMs + formulaMs +
                     endUpdateMs + calculateMs + verifyMs
-                System.Diagnostics.Trace.WriteLine(
+                Abovo.SummitDiagnostics.WriteLine(
                     "[Snapshot Benchmark] model=" & modelID.ToString() &
                     ", rows=" & rangeRows.ToString() &
                     ", columns=" & rangeColumns.ToString() &
@@ -406,6 +435,15 @@ Namespace Abovo
 
         Private Shared Function RequireWorksheet(ByVal workbook As IWorkbook,
                                                  ByVal worksheetName As String) As Worksheet
+            Dim worksheet As Worksheet = FindWorksheet(workbook, worksheetName)
+            If worksheet IsNot Nothing Then Return worksheet
+
+            Throw New InvalidOperationException(
+                "The worksheet ''" & worksheetName & "'' was not found.")
+        End Function
+
+        Private Shared Function FindWorksheet(ByVal workbook As IWorkbook,
+                                              ByVal worksheetName As String) As Worksheet
             For Each worksheet As Worksheet In workbook.Worksheets
                 If String.Equals(
                     worksheet.Name,
@@ -413,8 +451,23 @@ Namespace Abovo
                     StringComparison.OrdinalIgnoreCase) Then Return worksheet
             Next
 
-            Throw New InvalidOperationException(
-                "The worksheet ''" & worksheetName & "'' was not found.")
+            Return Nothing
+        End Function
+
+        'Called only by explicit Create Snapshot, never by load/validity probes.
+        Private Shared Function EnsureWorksheetAfter(workbook As IWorkbook,
+                                                      sheet As Worksheet,
+                                                      worksheetName As String,
+                                                      predecessor As Worksheet,
+                                                      createdSheets As List(Of Worksheet)) As Worksheet
+            If sheet Is Nothing Then
+                sheet = workbook.Worksheets.Insert(predecessor.Index + 1, worksheetName)
+                createdSheets.Add(sheet)
+            Else
+                Dim destination As Integer = predecessor.Index + If(sheet.Index < predecessor.Index, 0, 1)
+                If sheet.Index <> destination Then sheet.Move(destination)
+            End If
+            Return sheet
         End Function
 
         Private Shared Function CreateMatchingLocalRange(ByVal targetSheet As Worksheet,

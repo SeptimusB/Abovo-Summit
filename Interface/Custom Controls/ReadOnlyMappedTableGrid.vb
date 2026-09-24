@@ -46,8 +46,16 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
     Private Const InterfaceField As String = "SummitInterface"
     Private ReadOnly choiceEditors As New Dictionary(Of String, RepositoryItemComboBox)()
     Private ReadOnly changeManager As ModelChangeManagerV2
+    Private ReadOnly checkSheetModel As ExcelModel
+    Private ReadOnly checkSheetRefreshTimer As New System.Windows.Forms.Timer With {.Interval = 250}
+    Private checkSheetRefreshPending As Boolean
+    Private checkSheetRefreshQueued As Boolean
+    Private checkSheetRefreshRevision As Long = -1
     Private refreshing As Boolean
     Private posting As Boolean
+    Private linkMouseDownRow As Integer = -1
+    Private linkMouseDownColumn As DevExpress.XtraGrid.Columns.GridColumn
+    Private linkMouseDownPoint As Point
 
     Private ReadOnly Property ShowDestinations As Boolean
         Get
@@ -163,7 +171,10 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
                 e.Appearance.Options.UseForeColor = True
                 e.Appearance.Options.UseBackColor = True
             End Sub
-        AddHandler view.RowCellClick, AddressOf ClickCell
+        'RowCellClick can be suppressed by native editor activation. Use the
+        'actual mouse release for links, without changing Yes/No editor timing.
+        AddHandler view.MouseDown, AddressOf LinkMouseDown
+        AddHandler view.MouseUp, AddressOf LinkMouseUp
         AddHandler view.KeyDown, AddressOf GridKeyDown
         AddHandler view.CustomRowCellEdit, AddressOf ChooseCellEditor
         AddHandler view.ShowingEditor, AddressOf ShowingCellEditor
@@ -172,6 +183,127 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
         AddHandler view.PopupMenuShowing, Sub(sender, e) e.Allow = False
         WorkbookGridClipboardSupport.AddCopyWithHeadersMenu(Me)
         RefreshData()
+        If String.Equals(sheet.Name, "Check Sheet", StringComparison.OrdinalIgnoreCase) Then
+            checkSheetModel = ExcelModels(modelID)
+            AddHandler checkSheetModel.CheckSheetValuesRefreshed, AddressOf CheckSheetValuesRefreshed
+            AddHandler view.HiddenEditor, AddressOf CheckSheetEditorHidden
+            AddHandler checkSheetRefreshTimer.Tick, AddressOf CheckSheetRefreshTick
+        End If
+    End Sub
+
+    Private Sub CheckSheetValuesRefreshed(sender As Object, e As EventArgs)
+        If IsDisposed OrElse Disposing OrElse checkSheetModel Is Nothing Then Return
+        If InvokeRequired Then
+            If IsHandleCreated Then
+                Try
+                    BeginInvoke(New Action(Sub() CheckSheetValuesRefreshed(sender, e)))
+                Catch ex As InvalidOperationException
+                    'The model may close while its UI notification is queued.
+                End Try
+            End If
+            Return
+        End If
+        checkSheetRefreshRevision = checkSheetModel.LastAcceptedCheckSheetRevision
+        checkSheetRefreshPending = True
+        QueueCheckSheetRefresh()
+    End Sub
+
+    Private Sub CheckSheetEditorHidden(sender As Object, e As EventArgs)
+        QueueCheckSheetRefresh()
+    End Sub
+
+    Private Sub QueueCheckSheetRefresh()
+        If Not checkSheetRefreshPending OrElse checkSheetRefreshQueued OrElse
+            IsDisposed OrElse Disposing OrElse Not IsHandleCreated Then Return
+        checkSheetRefreshQueued = True
+        Try
+            'Leave the editor's current post/close message before touching its table.
+            BeginInvoke(New Action(
+                Sub()
+                    checkSheetRefreshQueued = False
+                    TryRefreshCheckSheetValues()
+                End Sub))
+        Catch ex As InvalidOperationException
+            checkSheetRefreshQueued = False
+        End Try
+    End Sub
+
+    Private Sub CheckSheetRefreshTick(sender As Object, e As EventArgs)
+        TryRefreshCheckSheetValues()
+    End Sub
+
+    Private Sub TryRefreshCheckSheetValues()
+        If IsDisposed OrElse Disposing Then Return
+        If Not checkSheetRefreshPending OrElse checkSheetModel Is Nothing OrElse
+            checkSheetModel.IsClosing OrElse checkSheetModel.WB Is Nothing Then
+            checkSheetRefreshPending = False
+            checkSheetRefreshTimer.Stop()
+            Return
+        End If
+        'An intervening committed edit supersedes the result we were waiting to
+        'display. A later accepted result will queue a new refresh for that revision.
+        If checkSheetRefreshRevision <> checkSheetModel.CalculationRevision OrElse
+            checkSheetRefreshRevision <> checkSheetModel.LastAcceptedCheckSheetRevision Then
+            checkSheetRefreshPending = False
+            checkSheetRefreshTimer.Stop()
+            Return
+        End If
+        If Not IsHandleCreated Then
+            checkSheetRefreshTimer.Stop()
+            Return
+        End If
+        If posting OrElse refreshing OrElse view.ActiveEditor IsNot Nothing OrElse
+            (changeManager IsNot Nothing AndAlso changeManager.ChangeInProgress) OrElse
+            ModelSafetyManager.IsBulkWorkbookMutationInProgress(ownerModelID) OrElse
+            FileManager.BIsSaving OrElse IdleIntegrityManager.OperationInProgress OrElse
+            FormSplashScreen.OperationInProgress OrElse RecoveryBackupManager.PendingEditor() Then
+            checkSheetRefreshTimer.Start()
+            Return
+        End If
+
+        checkSheetRefreshPending = False
+        checkSheetRefreshTimer.Stop()
+        Dim topRow = view.TopRowIndex
+        Dim left = view.LeftCoord
+        Dim focusedRow = view.FocusedRowHandle
+        Dim focusedColumn = view.FocusedColumn
+        Dim selectedCells = view.GetSelectedCells()
+        Dim widths = view.Columns.Cast(Of DevExpress.XtraGrid.Columns.GridColumn)().
+            ToDictionary(Function(column) column, Function(column) column.Width)
+        view.BeginUpdate()
+        Try
+            'Only reread cached worksheet values. Do not calculate, fit columns,
+            'post/cancel an editor, or alter any workbook/integrity state here.
+            RefreshData()
+        Catch ex As Exception
+            SystemMessageManager.Publish(ownerModelID,
+                "Check Sheet values could not be refreshed. " & ex.Message,
+                SystemMessageSeverity.Warning, "Check Sheet", checkSheetModel.FileName)
+        Finally
+            For Each pair In widths
+                If pair.Key.Width <> pair.Value Then pair.Key.Width = pair.Value
+            Next
+            view.FocusedRowHandle = focusedRow
+            view.FocusedColumn = focusedColumn
+            view.ClearSelection()
+            For Each selected In selectedCells
+                view.SelectCell(selected.RowHandle, selected.Column)
+            Next
+            view.TopRowIndex = topRow
+            view.LeftCoord = left
+            view.EndUpdate()
+        End Try
+    End Sub
+
+    Protected Overrides Sub OnHandleCreated(e As EventArgs)
+        MyBase.OnHandleCreated(e)
+        QueueCheckSheetRefresh()
+    End Sub
+
+    Protected Overrides Sub OnHandleDestroyed(e As EventArgs)
+        If checkSheetRefreshTimer IsNot Nothing Then checkSheetRefreshTimer.Stop()
+        checkSheetRefreshQueued = False
+        MyBase.OnHandleDestroyed(e)
     End Sub
 
     Public Sub RefreshData()
@@ -330,8 +462,10 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
     End Function
 
     Private Function LinkTarget(row As Integer) As String
-        If linkColumnIndex < 0 OrElse targetColumnIndex < 0 OrElse
-            String.IsNullOrWhiteSpace(sourceSheet.Cells(row, linkColumnIndex).DisplayText) Then Return String.Empty
+        'The target column is the navigation contract. The adjacent Excel
+        'HYPERLINK caption is presentation only and can be blank/stale after a
+        'calculation or an Excel edit; it must not hide a valid Summit route.
+        If linkColumnIndex < 0 OrElse targetColumnIndex < 0 Then Return String.Empty
         Return sourceSheet.Cells(row, targetColumnIndex).DisplayText.Trim()
     End Function
 
@@ -476,8 +610,35 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
         End If
     End Sub
 
+    Private Sub LinkMouseDown(sender As Object, e As MouseEventArgs)
+        linkMouseDownRow = -1
+        linkMouseDownColumn = Nothing
+        If e.Button <> MouseButtons.Left OrElse IsAuthoringPreview Then Return
+        Dim hit = view.CalcHitInfo(e.Location)
+        If Not hit.InRowCell OrElse hit.Column Is Nothing OrElse
+            StyleColumnIndex(hit.Column) <> linkColumnIndex Then Return
+        linkMouseDownRow = hit.RowHandle
+        linkMouseDownColumn = hit.Column
+        linkMouseDownPoint = e.Location
+    End Sub
+
+    Private Sub LinkMouseUp(sender As Object, e As MouseEventArgs)
+        Dim pressedRow = linkMouseDownRow
+        Dim pressedColumn = linkMouseDownColumn
+        linkMouseDownRow = -1
+        linkMouseDownColumn = Nothing
+        If pressedColumn Is Nothing OrElse e.Button <> MouseButtons.Left Then Return
+        'Dragging away from the pressed link is not a link click. Keep the
+        'native selection and editor behaviours.
+        If Math.Abs(e.X - linkMouseDownPoint.X) > SystemInformation.DragSize.Width \ 2 OrElse
+            Math.Abs(e.Y - linkMouseDownPoint.Y) > SystemInformation.DragSize.Height \ 2 Then Return
+        Dim hit = view.CalcHitInfo(e.Location)
+        If Not hit.InRowCell OrElse hit.RowHandle <> pressedRow OrElse hit.Column IsNot pressedColumn Then Return
+        ClickCell(sender, New RowCellClickEventArgs(DXMouseEventArgs.GetMouseArgs(e), hit.RowHandle, hit.Column))
+    End Sub
+
     Private Sub ClickCell(sender As Object, e As RowCellClickEventArgs)
-        If IsAuthoringPreview Then Return
+        If IsAuthoringPreview OrElse e.Column Is Nothing Then Return
         'Finishing a copy rectangle on G is selection, not navigation.
         If e.Button = MouseButtons.Left AndAlso e.Clicks = 1 AndAlso
             ModifierKeys = Keys.None AndAlso view.GetSelectedCells().Length <= 1 Then
@@ -502,7 +663,7 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
 
     Private Sub ShowLinkChoices(cell As Cell, Optional summitOnly As Boolean = False)
         If cell Is Nothing OrElse cell.ColumnIndex <> linkColumnIndex OrElse
-            String.IsNullOrWhiteSpace(cell.DisplayText) OrElse targetColumnIndex < 0 Then Return
+            targetColumnIndex < 0 Then Return
         Dim targetName As String = LinkTarget(cell.RowIndex)
         If targetName.Length = 0 Then Return
         Dim model As ExcelModel = ExcelModels(ownerModelID)
@@ -520,13 +681,18 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
             navigationMenu.Items.Add("Worksheet not found: " & targetName).Enabled = False
         Else
             Dim matches = FindInterfaces(model.WBStructure, targetSheet.Name, mapping.InterfaceLinks)
+            'A named Summit destination is a single-click link. Only genuinely
+            'ambiguous destinations need the choice menu; worksheet navigation
+            'and rectangular clipboard selection retain their existing behaviour.
+            If summitOnly AndAlso matches.Count = 1 Then
+                navigationMenu.Close()
+                OpenSummitDestination(model, matches(0))
+                Return
+            End If
             For Each match As ElementInterfaceLinkTag In matches
                 Dim destination As ElementInterfaceLinkTag = match
-                destination.LinkReturnGroup = returnGroup
-                destination.LinkReturnID = returnInterface
-                destination.LinkReturnName = returnName
                 navigationMenu.Items.Add("Open in Summit: " & match.LinkTip, Nothing,
-                    Sub() model.EventCoordinator.TriggerEvent("Link", destination, host))
+                    Sub() OpenSummitDestination(model, destination))
             Next
             If matches.Count = 0 Then
                 navigationMenu.Items.Add("No Summit interface for this worksheet").Enabled = False
@@ -538,6 +704,13 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
             End If
         End If
         navigationMenu.Show(Me, PointToClient(Cursor.Position))
+    End Sub
+
+    Private Sub OpenSummitDestination(model As ExcelModel, destination As ElementInterfaceLinkTag)
+        destination.LinkReturnGroup = returnGroup
+        destination.LinkReturnID = returnInterface
+        destination.LinkReturnName = returnName
+        model.EventCoordinator.TriggerEvent("Link", destination, host)
     End Sub
 
     Public Shared Function FindInterfaces(modelStructure As Abovo_Model_Def,
@@ -585,6 +758,12 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
 
     Protected Overrides Sub Dispose(disposing As Boolean)
         If disposing Then
+            If checkSheetModel IsNot Nothing Then RemoveHandler checkSheetModel.CheckSheetValuesRefreshed, AddressOf CheckSheetValuesRefreshed
+            If view IsNot Nothing Then RemoveHandler view.HiddenEditor, AddressOf CheckSheetEditorHidden
+            checkSheetRefreshPending = False
+            checkSheetRefreshTimer.Stop()
+            RemoveHandler checkSheetRefreshTimer.Tick, AddressOf CheckSheetRefreshTick
+            checkSheetRefreshTimer.Dispose()
             If changeManager IsNot Nothing Then RemoveHandler changeManager.HistoryChanged, AddressOf HistoryChanged
             navigationMenu.Dispose()
             If ContextMenuStrip IsNot Nothing Then ContextMenuStrip.Dispose()

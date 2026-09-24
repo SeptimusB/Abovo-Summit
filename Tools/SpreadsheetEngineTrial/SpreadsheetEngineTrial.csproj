@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <PlatformTarget Condition="'$(PlatformTarget)' == ''">x86</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <RuntimeIdentifiers>win-x86;win-x64</RuntimeIdentifiers>
+    <OutputPath>bin/$(PlatformTarget)/$(Configuration)/</OutputPath>
+    <IntermediateOutputPath>obj/$(PlatformTarget)/$(Configuration)/</IntermediateOutputPath>
+    <DefineConstants Condition="'$(PlatformTarget)' == 'x64'">$(DefineConstants);TRIAL_X64</DefineConstants>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestorePackagesPath>$(MSBuildThisFileDirectory)../../packages/engine-trial</RestorePackagesPath>
+    <NuGetAudit>true</NuGetAudit>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Aspose.Cells" Version="[26.9.0]" />
+    <PackageReference Include="SpreadsheetGear" Version="[9.3.85]" />
+    <Reference Include="System.Security" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="DevExpress.Docs.v25.2"><HintPath>../../bin/Release/DevExpress.Docs.v25.2.dll</HintPath></Reference>
+    <Reference Include="DevExpress.Spreadsheet.v25.2.Core"><HintPath>../../bin/Release/DevExpress.Spreadsheet.v25.2.Core.dll</HintPath></Reference>
+    <Reference Include="DevExpress.Data.v25.2"><HintPath>../../bin/Release/DevExpress.Data.v25.2.dll</HintPath></Reference>
+    <Reference Include="DevExpress.Office.v25.2.Core"><HintPath>../../bin/Release/DevExpress.Office.v25.2.Core.dll</HintPath></Reference>
+    <Reference Include="DevExpress.Drawing.v25.2"><HintPath>../../bin/Release/DevExpress.Drawing.v25.2.dll</HintPath></Reference>
+    <Reference Include="DevExpress.Printing.v25.2.Core"><HintPath>../../bin/Release/DevExpress.Printing.v25.2.Core.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

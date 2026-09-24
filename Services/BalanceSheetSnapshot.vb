@@ -82,7 +82,7 @@ Namespace Abovo
         End Sub
 
         Public Shared Function Read(workbook As IWorkbook, live As BalanceSheetDocument) As BalanceSheetDocument
-            If Not workbook.Worksheets.Contains(TransactionalDBSnapshotManager.SnapshotWorksheetName) OrElse Not workbook.Worksheets.Contains(TransactionalDBSnapshotManager.ComparisonWorksheetName) Then Throw New InvalidOperationException("This workbook has no dedicated snapshot worksheets. Use a compatible upgraded template to capture a snapshot.")
+            If Not workbook.Worksheets.Contains(TransactionalDBSnapshotManager.SnapshotWorksheetName) OrElse Not workbook.Worksheets.Contains(TransactionalDBSnapshotManager.ComparisonWorksheetName) Then Throw New InvalidOperationException("This workbook has no snapshot yet. Use Create Snapshot to capture one.")
             Dim snapshot = workbook.Worksheets(TransactionalDBSnapshotManager.SnapshotWorksheetName)
             Dim comparison = workbook.Worksheets(TransactionalDBSnapshotManager.ComparisonWorksheetName)
             Dim bundle = snapshot.DefinedNames.GetDefinedName(BundleName)?.Range

@@ -29,7 +29,7 @@ Namespace Abovo
             Catch ex As Exception When TypeOf ex Is IOException OrElse TypeOf ex Is UnauthorizedAccessException
                 'Legacy/encrypted formats need not be ZIP packages. Reading an
                 'optional recovery capability must not prevent ordinary open.
-                Diagnostics.Trace.WriteLine("[Recovery] Optional binary metadata capability unavailable: " & ex.Message)
+                Abovo.SummitDiagnostics.WriteLine("[Recovery] Optional binary metadata capability unavailable: " & ex.Message)
                 Return False
             End Try
         End Function
@@ -110,7 +110,7 @@ Namespace Abovo
                     Put(package, "xl/_rels/workbook.xml.rels", relations)
                     Put(package, "[Content_Types].xml", types)
                 End Using
-                Diagnostics.Trace.WriteLine("[Recovery] Preserved verified XLSB dynamic-array metadata in XLSM.")
+                Abovo.SummitDiagnostics.WriteLine("[Recovery] Preserved verified XLSB dynamic-array metadata in XLSM.")
             End Using
         End Sub
     End Class

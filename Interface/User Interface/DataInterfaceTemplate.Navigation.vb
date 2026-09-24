@@ -25,6 +25,10 @@ Partial Public Class DataInterfaceTemplate
     End Sub
 
     Private Sub NavigationEditorPreviewKeyDown(sender As Object, e As PreviewKeyDownEventArgs)
+        If InplaceEditorFormatting.IsPopupShortcut(e.KeyData) Then
+            e.IsInputKey = True
+            Return
+        End If
         Dim editor = TryCast(sender, BaseEdit)
         If editor IsNot Nothing AndAlso StandaloneNavigationEditors.Contains(editor) AndAlso e.KeyCode <> Keys.Enter Then
             Dim popup = TryCast(editor, PopupBaseEdit)
@@ -37,6 +41,7 @@ Partial Public Class DataInterfaceTemplate
 
     Private Sub NavigationEditorKeyDown(sender As Object, e As KeyEventArgs)
         If e.Handled Then Return
+        If InplaceEditorFormatting.OpenPopupForShortcut(TryCast(sender, BaseEdit), e) Then Return
         Dim standalone = TryCast(sender, BaseEdit)
         If standalone IsNot Nothing AndAlso StandaloneNavigationEditors.Contains(standalone) Then
             If NavigateStandalone(standalone, e.KeyData) Then
@@ -61,7 +66,7 @@ Partial Public Class DataInterfaceTemplate
             Return True
         Catch ex As Exception
             sender.EditValue = previous
-            Diagnostics.Trace.WriteLine("[Header editor] " & ex.ToString())
+            Abovo.SummitDiagnostics.WriteLine("[Header editor] " & ex.ToString())
             XtraMessageBox.Show(Me, "The value could not be accepted. " & ex.Message, "Funding / assumptions entry", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return False
         Finally
@@ -322,7 +327,7 @@ Partial Public Class DataInterfaceTemplate
                     If tag IsNot Nothing AndAlso tag.HasIncolumnEditor Then helper = If(TryCast(tag.InColumnEditorCombo?.Tag, InColumnEditorTagCombo)?.InPlaceVGridRowHelper, TryCast(tag.InColumnEditorDate?.Tag, InColumnEditorTagDateEdit)?.InPlaceVGridRowHelper)
                     If helper IsNot Nothing Then result.Add(New EditorPosition With {.Host = grid, .VHeader = helper, .VRow = row, .Record = -1, .X = -1, .Y = y})
                     For record = 0 To grid.RecordCount - 1
-                        If Not CanPasteToDataPoint(DataPres.DataSets(index), record, GetVGridColumnIndex(row)) Then Continue For
+                        If Not CanPasteToDataPoint(DataPres.DataSets(index), grid.GetDataSourceRecordIndex(record), GetVGridColumnIndex(row)) Then Continue For
                         result.Add(New EditorPosition With {.Host = grid, .VRow = row, .Record = record, .X = record, .Y = y})
                     Next
                 Next

@@ -772,8 +772,8 @@ Namespace Abovo
 
             Dim Result As New AbovoTransaction With {.BError = False}
             If IsSynchronising Then Return Result
-            Dim benchmark As System.Diagnostics.Stopwatch =
-                System.Diagnostics.Stopwatch.StartNew()
+            Dim benchmark As Abovo.SummitDiagnostics.DiagnosticTimer =
+                Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
 
             Dim WB As IWorkbook = GetWorkbook()
 
@@ -1140,7 +1140,7 @@ Namespace Abovo
             Dim measuredMs As Long =
                 setupMs + disconnectMs + resizeMs + endUpdateMs +
                 snapshotMs + restoreMs + reconnectV1Ms + reconnectV2Ms
-            System.Diagnostics.Trace.WriteLine(
+            Abovo.SummitDiagnostics.WriteLine(
                 "[TDB Sync Benchmark] model=" & ModelID.ToString() &
                 ", mirrors=" & WorkItems.Count.ToString() &
                 ", analyserV2Present=" & analyserV2Present.ToString() &
@@ -1194,16 +1194,11 @@ Namespace Abovo
             'Legacy row mirrors use source rows plus the footer, including Journals.
             For Each target In wb.DefinedNames
                 If Not target.Name.StartsWith("TransCopy_", StringComparison.OrdinalIgnoreCase) OrElse covered.Contains(target.Name) Then Continue For
-                Dim sourceName = target.Name.Substring("TransCopy_".Length)
-                Dim source = wb.DefinedNames.GetDefinedName(sourceName)
-                If source Is Nothing AndAlso System.Text.RegularExpressions.Regex.IsMatch(sourceName, "_0[1-6]$") Then
-                    sourceName = sourceName.Substring(0, sourceName.Length - 3)
-                    source = wb.DefinedNames.GetDefinedName(sourceName)
-                End If
+                Dim source = ResolveLegacyMirrorSource(wb, target.Name)
                 If source Is Nothing OrElse source.Range Is Nothing OrElse target.Range Is Nothing Then Continue For
                 Dim required = source.Range.RowCount + 1
                 If target.Range.RowCount <> required Then
-                    Yield target.Name & ": " & target.Range.RowCount.ToString() & " rows; expected " & required.ToString() & " from " & sourceName
+                    Yield target.Name & ": " & target.Range.RowCount.ToString() & " rows; expected " & required.ToString() & " from " & source.Name
                 End If
             Next
         End Function
@@ -1243,8 +1238,8 @@ Namespace Abovo
                                                    ByVal CachedShiftRight As Integer) As AbovoTransaction
 
             Dim Result As New AbovoTransaction With {.BError = False}
-            Dim benchmark As System.Diagnostics.Stopwatch =
-                System.Diagnostics.Stopwatch.StartNew()
+            Dim benchmark As Abovo.SummitDiagnostics.DiagnosticTimer =
+                Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
             Dim changed As Boolean = False
             Dim operation As String = String.Empty
             Dim fastPath As Boolean = False
@@ -1416,7 +1411,7 @@ Namespace Abovo
             Finally
                 If changed Then
                     Dim totalMs As Long = benchmark.ElapsedMilliseconds
-                    System.Diagnostics.Trace.WriteLine(
+                    Abovo.SummitDiagnostics.WriteLine(
                         "[TDB Mirror Benchmark] model=" & ModelID.ToString() &
                         ", range=" & TargetNamedRange &
                         ", operation=" & operation &
@@ -1470,19 +1465,26 @@ Namespace Abovo
             Dim RequiredRows As Integer = WorkbookManager.GetRangeRows(ModelID, ChangedNamedRange) + 1
             Dim BaseMirrorName As String = "TransCopy_" & ChangedNamedRange
 
-            AddLegacyMirrorRequest(BaseMirrorName, RequiredRows, Requests)
+            AddLegacyMirrorRequest(BaseMirrorName, ChangedNamedRange, RequiredRows, Requests)
 
             For Suffix As Integer = 1 To 6
-                AddLegacyMirrorRequest(BaseMirrorName & "_" & Suffix.ToString("00"), RequiredRows, Requests)
+                AddLegacyMirrorRequest(BaseMirrorName & "_" & Suffix.ToString("00"), ChangedNamedRange, RequiredRows, Requests)
             Next
 
         End Sub
 
         Private Sub AddLegacyMirrorRequest(ByVal TargetNamedRange As String,
+                                           ByVal ChangedNamedRange As String,
                                            ByVal RequiredRows As Integer,
                                            ByVal Requests As Dictionary(Of String, MirrorResizeRequest))
 
             If Not WorkbookManager.DoesNRExist(ModelID, TargetNamedRange) Then Return
+            'Exact source names take precedence over numbered mirror aliases:
+            'IR_ServChg_01 belongs to Service Charge, not Economic IR_ServChg.
+            'Never override one of the explicit column-family contracts either.
+            If SyncRules.Any(Function(r) r.TargetNamedRanges.Contains(TargetNamedRange, StringComparer.OrdinalIgnoreCase)) Then Return
+            Dim Source = ResolveLegacyMirrorSource(GetWorkbook(), TargetNamedRange)
+            If Source Is Nothing OrElse Not String.Equals(Source.Name, ChangedNamedRange, StringComparison.OrdinalIgnoreCase) Then Return
 
             Requests(TargetNamedRange) = New MirrorResizeRequest With {
                 .TargetNamedRange = TargetNamedRange,
@@ -1490,6 +1492,16 @@ Namespace Abovo
             }
 
         End Sub
+
+        Private Shared Function ResolveLegacyMirrorSource(WB As IWorkbook, TargetName As String) As DefinedName
+            If WB Is Nothing OrElse Not TargetName.StartsWith("TransCopy_", StringComparison.OrdinalIgnoreCase) Then Return Nothing
+            Dim SourceName = TargetName.Substring("TransCopy_".Length)
+            Dim Source = WB.DefinedNames.GetDefinedName(SourceName)
+            If Source Is Nothing AndAlso System.Text.RegularExpressions.Regex.IsMatch(SourceName, "_0[1-6]$") Then
+                Source = WB.DefinedNames.GetDefinedName(SourceName.Substring(0, SourceName.Length - 3))
+            End If
+            Return Source
+        End Function
 
         Private Function GetNamedRangeWorksheetName(ByVal NamedRange As String) As String
 

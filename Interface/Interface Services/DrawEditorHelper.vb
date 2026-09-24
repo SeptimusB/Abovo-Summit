@@ -14,9 +14,17 @@ Namespace Abovo
 		Private Sub New()
 		End Sub
 		Public Shared Sub DrawEdit(ByVal g As Graphics, ByVal edit As RepositoryItem, ByVal r As Rectangle, ByVal value As Object,
-								   Optional ByVal forceItemAppearance As Boolean = False)
+								   Optional ByVal forceItemAppearance As Boolean = False,
+								   Optional ByVal useRepositoryAppearance As Boolean = False)
 
 			Dim info As BaseEditViewInfo = edit.CreateViewInfo()
+			If useRepositoryAppearance Then
+				'CalcViewInfo can reset PaintAppearance while resolving an owned
+				'editor. Never alias its live repository appearance into that pass.
+				Dim paintAppearance As New DevExpress.Utils.AppearanceObject()
+				paintAppearance.Assign(edit.Appearance)
+				info.PaintAppearance = paintAppearance
+			End If
 			If forceItemAppearance Then
 				info.Appearance.Assign(edit.Appearance)
 				info.AppearanceDisabled = edit.Appearance
@@ -135,10 +143,11 @@ Namespace Abovo
 														ByVal item As RepositoryItem,
 														ByVal value As Object,
 														ByVal rightIndent As Integer,
-														Optional ByVal preferredHeight As Integer = -1)
+														Optional ByVal preferredHeight As Integer = -1,
+														Optional ByVal useRepositoryAppearance As Boolean = False)
 
 			Dim targetRect As Rectangle = GetEditorBounds(e.Bounds, rightIndent, preferredHeight)
-			DrawEdit(e.Graphics, item, targetRect, value)
+			DrawEdit(e.Graphics, item, targetRect, value, useRepositoryAppearance:=useRepositoryAppearance)
 
 		End Sub
 	End Class
