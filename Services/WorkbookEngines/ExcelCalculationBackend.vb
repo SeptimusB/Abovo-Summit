@@ -11,7 +11,7 @@ Imports Microsoft.Win32.SafeHandles
 Namespace Abovo.WorkbookEngines
     ' Late-bound out-of-process COM supports either installed Office bitness
     ' without adding an Office PIA/package or taking ownership of user windows.
-    Friend NotInheritable Class ExcelCalculationBackend
+    Partial Friend NotInheritable Class ExcelCalculationBackend
         Implements IWorkbookCalculationBackend
 
         Private ReadOnly threadId As Integer = Thread.CurrentThread.ManagedThreadId

@@ -1,5 +1,7 @@
 # Excel-first integration checkpoint 2a: result grids and deadlines
 
+Continuation: `Excel_DevExpress_Engine_Stage2b_2026-09-25.md` adds explicitly opted-in, compensated in-memory value edits. Live model/history/save integration remains gated; the 2a evidence below is unchanged.
+
 Continuation of `Excel_DevExpress_Engine_Stage1_2026-09-25.md`. User has also approved all three Stage 3 structural routes; the experiment is specified in `Structural_Engine_Comparison_Protocol_2026-09-25.md`.
 
 **No live engine switch or new client test release.** Normal 2.98 Debug/Release, customer originals, masters and workbook fill/locking rules remain untouched. This checkpoint implements and tests the display/supervision building blocks. Options, live edits/history, structural commands and save ownership are not yet connected.

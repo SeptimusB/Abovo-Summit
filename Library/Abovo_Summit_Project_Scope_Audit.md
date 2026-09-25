@@ -454,6 +454,8 @@ Third prototype checkpoint: a small workbook reproduces stale dynamic-array regi
 
 ## Spread.NET primary-engine evaluation — 24 September 2026
 
+25 September continuation 2b: explicitly opted-in in-memory value editing now provides expected-before snapshots, native full calculation/read-back at a single revision, typed receipts and compensated failure/cancellation. The source stays read-only and no Save API or live change-manager/UI integration is enabled. Existing fill-based locking is unchanged. Current evidence and remaining gates: `Library/Excel_DevExpress_Engine_Stage2b_2026-09-25.md`.
+
 25 September continuation: checkpoint 2a adds a detached read-only native-grid result source and bounded owner-thread cleanup waits. The scalar custom-calculation callback is not a safe general projection for existing/new dynamic spills. Production 2.98 remains unchanged. The user explicitly approved three-way Stage 3 structural comparisons (DevExpress .NET, managed Excel object model, Excel/VBA). Current evidence and protocol: `Library/Excel_DevExpress_Engine_Stage2a_2026-09-25.md`, `Library/Structural_Engine_Comparison_Protocol_2026-09-25.md`.
 
 Current implementation direction was subsequently changed by explicit user approval: prefer compatible installed Excel automatically, with configurable DevExpress fallback and existing macro security respected. `Services/WorkbookEngines` now provides a separately tested read-only STA session foundation; it does not switch production 2.98 or yet own live edits/saves. See `Library/Excel_DevExpress_Engine_Stage1_2026-09-25.md` for authority, code-only checkpoint publishing, tests and staged release gates. The Spread/Gear evaluations remain historical compatibility evidence.

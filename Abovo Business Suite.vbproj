@@ -629,6 +629,9 @@
     <Compile Include="Services\WorkbookEngines\WorkbookEngineStaHost.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookCalculationSession.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookResultGridSource.vb" />
+    <Compile Include="Services\WorkbookEngines\WorkbookValueEdits.vb" />
+    <Compile Include="Services\WorkbookEngines\DevExpressValueEdits.vb" />
+    <Compile Include="Services\WorkbookEngines\ExcelValueEdits.vb" />
     <Compile Include="Services\WorkbookEngines\DevExpressCalculationBackend.vb" />
     <Compile Include="Services\WorkbookEngines\ExcelCalculationBackend.vb" />
     <Compile Include="Services\ExcelDataExport.vb" />

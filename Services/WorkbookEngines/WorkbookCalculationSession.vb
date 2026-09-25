@@ -7,7 +7,7 @@ Imports System.Threading
 Imports System.Threading.Tasks
 
 Namespace Abovo.WorkbookEngines
-    Public NotInheritable Class WorkbookCalculationSession
+    Partial Public NotInheritable Class WorkbookCalculationSession
         Private ReadOnly owner As New WorkbookEngineStaHost()
         Private ReadOnly gate As New Object()
         Private backend As IWorkbookCalculationBackend
@@ -17,14 +17,17 @@ Namespace Abovo.WorkbookEngines
         Private currentRevision As Long
         Private ReadOnly timeoutMilliseconds As Integer
         Private cleanupTask As Task
+        Private ReadOnly valueEditTrial As Boolean
+        Private editPending As Boolean
         Public ReadOnly Property SessionId As Guid = Guid.NewGuid()
         Public ReadOnly Property SourceHash As String
         Public ReadOnly Property EngineName As String
         Public ReadOnly Property EngineVersion As String
         Public ReadOnly Property FallbackReason As String
 
-        Private Sub New(timeoutMilliseconds As Integer)
+        Private Sub New(timeoutMilliseconds As Integer, valueEditTrial As Boolean)
             Me.timeoutMilliseconds = timeoutMilliseconds
+            Me.valueEditTrial = valueEditTrial
         End Sub
 
         Public ReadOnly Property Revision As Long
@@ -45,7 +48,7 @@ Namespace Abovo.WorkbookEngines
             If Not {".xlsb", ".xlsm", ".xlsx"}.Contains(extension, StringComparer.OrdinalIgnoreCase) Then
                 Throw New ArgumentException("The calculation adapter supports XLSB, XLSM and XLSX workbooks only.", NameOf(path))
             End If
-            Dim session As New WorkbookCalculationSession(options.OperationTimeoutMilliseconds)
+            Dim session As New WorkbookCalculationSession(options.OperationTimeoutMilliseconds, options.EnableValueEditTrial)
             Dim openError As Exception = Nothing
             Try
                 Dim opening = session.owner.InvokeAsync(Of Boolean)(Function()
@@ -114,6 +117,7 @@ Namespace Abovo.WorkbookEngines
         Public Function InvalidateResults() As Long
             SyncLock gate
                 RequireAvailable()
+                If editPending Then Throw New InvalidOperationException("An authoritative value edit is still in progress.")
                 currentRevision += 1
                 Return currentRevision
             End SyncLock

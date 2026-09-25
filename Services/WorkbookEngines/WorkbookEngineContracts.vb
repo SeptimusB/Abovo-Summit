@@ -5,8 +5,8 @@ Imports System.Collections.ObjectModel
 Imports System.Threading
 
 Namespace Abovo.WorkbookEngines
-    ' Stage one is a read-only calculation boundary. No Save or edit API is
-    ' exposed until model ownership, history and UI projection are integrated.
+    ' Production callers remain read-only. Isolated value-edit trials require
+    ' explicit opt-in; no Save API or live model integration is enabled here.
     Public Enum WorkbookEnginePreference
         Automatic = 0
         DevExpressOnly = 1
@@ -24,17 +24,20 @@ Namespace Abovo.WorkbookEngines
         Public ReadOnly Property AllowTrustedVba As Boolean
         Public ReadOnly Property RequireSummitFunctions As Boolean
         Public ReadOnly Property OperationTimeoutMilliseconds As Integer
+        Public ReadOnly Property EnableValueEditTrial As Boolean
 
         Public Sub New(Optional preference As WorkbookEnginePreference = WorkbookEnginePreference.Automatic,
                        Optional allowTrustedVba As Boolean = True,
                        Optional requireSummitFunctions As Boolean = True,
-                       Optional operationTimeoutMilliseconds As Integer = 120000)
+                       Optional operationTimeoutMilliseconds As Integer = 120000,
+                       Optional enableValueEditTrial As Boolean = False)
             If Not [Enum].IsDefined(GetType(WorkbookEnginePreference), preference) Then Throw New ArgumentOutOfRangeException(NameOf(preference))
             If operationTimeoutMilliseconds < 50 OrElse operationTimeoutMilliseconds > 1800000 Then Throw New ArgumentOutOfRangeException(NameOf(operationTimeoutMilliseconds))
             Me.Preference = preference
             Me.AllowTrustedVba = allowTrustedVba
             Me.RequireSummitFunctions = requireSummitFunctions
             Me.OperationTimeoutMilliseconds = operationTimeoutMilliseconds
+            Me.EnableValueEditTrial = enableValueEditTrial
         End Sub
     End Class
 

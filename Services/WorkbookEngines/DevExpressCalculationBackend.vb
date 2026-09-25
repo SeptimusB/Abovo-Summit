@@ -5,7 +5,7 @@ Imports System.Threading
 Imports DevExpress.Spreadsheet
 
 Namespace Abovo.WorkbookEngines
-    Friend NotInheritable Class DevExpressCalculationBackend
+    Partial Friend NotInheritable Class DevExpressCalculationBackend
         Implements IWorkbookCalculationBackend
 
         Private ReadOnly threadId As Integer = Thread.CurrentThread.ManagedThreadId
