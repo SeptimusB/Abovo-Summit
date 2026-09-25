@@ -10,7 +10,7 @@ Namespace Abovo
     'Display-only evidence. No cell snapshots, executable commands or undo stack
     'are deserialised from a previous process. Stored in standard custom XML.
     Friend NotInheritable Class RecoveryHistoryStore
-        Private Const HistoryNamespace As String = "urn:abovo:summit:recovery-history:1"
+        Friend Const HistoryNamespace As String = "urn:abovo:summit:recovery-history:1"
         Private Shared ReadOnly Ns As XNamespace = HistoryNamespace
         Private Shared ReadOnly Rel As XNamespace = "http://schemas.openxmlformats.org/package/2006/relationships"
         Private Shared ReadOnly Types As XNamespace = "http://schemas.openxmlformats.org/package/2006/content-types"
@@ -41,12 +41,15 @@ Namespace Abovo
             Dim old = package.GetEntry(name)
             If old IsNot Nothing Then old.Delete()
             Using content = package.CreateEntry(name, CompressionLevel.Optimal).Open()
-                xml.Save(content)
+                xml.Save(content, SaveOptions.DisableFormatting)
             End Using
         End Sub
 
         Friend Shared Sub Write(filePath As String, manager As ModelChangeManagerV2)
-            Dim table = manager.GetHistoryTable()
+            WriteDocument(filePath, ToDocument(manager.GetHistoryTable()))
+        End Sub
+
+        Friend Shared Function ToDocument(table As DataTable) As XDocument
             Dim document As New XDocument(New XElement(Ns + "RecoveryHistory", New XAttribute("version", "1"), New XAttribute("limit", MaximumRows)))
             For Each row As DataRow In table.Rows.Cast(Of DataRow)().OrderByDescending(Function(r) CDate(r("TimeStamp"))).Take(MaximumRows)
                 Dim item As New XElement(Ns + "Edit")
@@ -58,13 +61,30 @@ Namespace Abovo
                 Next
                 document.Root.Add(item)
             Next
+            Return document
+        End Function
+
+        ' Only private save candidates/recovery files call this writer. Return
+        ' the exact permitted package delta for independent preservation checks.
+        Friend Shared Function WriteDocument(filePath As String, document As XDocument) As HashSet(Of String)
+            If document Is Nothing OrElse document.Root Is Nothing OrElse document.Root.Name <> Ns + "RecoveryHistory" OrElse
+                CStr(document.Root.Attribute("version")) <> "1" Then Throw New InvalidDataException("Unsupported history document.")
+            Dim changed As New HashSet(Of String)(StringComparer.Ordinal)
             Using package = ZipFile.Open(filePath, ZipArchiveMode.Update)
                 If package.Entries.Any(Function(e) e.FullName.StartsWith("_xmlsignatures/", StringComparison.OrdinalIgnoreCase)) Then Throw New InvalidDataException("Signed package recovery history requires a separate signing workflow.")
                 Dim existing = Find(package)
                 If existing IsNot Nothing Then
+                    Using content = existing.Open()
+                        If CStr(ReadXml(content).Root.Attribute("version")) <> "1" Then Throw New InvalidDataException("Unsupported existing history version.")
+                    End Using
                     Put(package, existing.FullName, document)
-                    Return
+                    changed.Add(existing.FullName)
+                    Return changed
                 End If
+                Dim binary = package.GetEntry("xl/workbook.bin") IsNot Nothing
+                If binary = (package.GetEntry("xl/workbook.xml") IsNot Nothing) Then Throw New InvalidDataException("Ambiguous or missing workbook part.")
+                Dim relPath = If(binary, "xl/_rels/workbook.bin.rels", "xl/_rels/workbook.xml.rels")
+                If package.GetEntry(relPath) Is Nothing Then Throw New InvalidDataException("Workbook relationships are missing.")
                 Dim suffix = Guid.NewGuid().ToString("N")
                 Dim part = "customXml/summitRecovery-" & suffix & ".xml"
                 Dim props = "customXml/summitRecoveryProps-" & suffix & ".xml"
@@ -72,22 +92,25 @@ Namespace Abovo
                 Dim ds As XNamespace = "http://schemas.openxmlformats.org/officeDocument/2006/customXml"
                 Put(package, props, New XDocument(New XElement(ds + "datastoreItem", New XAttribute(ds + "itemID", "{" & Guid.NewGuid().ToString().ToUpperInvariant() & "}"),
                     New XElement(ds + "schemaRefs", New XElement(ds + "schemaRef", New XAttribute(ds + "uri", HistoryNamespace))))))
-                Put(package, "customXml/_rels/" & Path.GetFileName(part) & ".rels", New XDocument(New XElement(Rel + "Relationships", New XElement(Rel + "Relationship",
+                Dim partRels = "customXml/_rels/" & Path.GetFileName(part) & ".rels"
+                Put(package, partRels, New XDocument(New XElement(Rel + "Relationships", New XElement(Rel + "Relationship",
                     New XAttribute("Id", "rId1"), New XAttribute("Type", OfficeRel & "customXmlProps"), New XAttribute("Target", Path.GetFileName(props))))))
                 Dim relationships As XDocument, contentTypes As XDocument
-                Using content = package.GetEntry("xl/_rels/workbook.xml.rels").Open()
+                Using content = package.GetEntry(relPath).Open()
                     relationships = ReadXml(content)
                 End Using
                 relationships.Root.Add(New XElement(Rel + "Relationship", New XAttribute("Id", "rIdRecovery" & suffix), New XAttribute("Type", OfficeRel & "customXml"), New XAttribute("Target", "../" & part)))
-                Put(package, "xl/_rels/workbook.xml.rels", relationships)
+                Put(package, relPath, relationships)
                 Using content = package.GetEntry("[Content_Types].xml").Open()
                     contentTypes = ReadXml(content)
                 End Using
                 contentTypes.Root.Add(New XElement(Types + "Override", New XAttribute("PartName", "/" & part), New XAttribute("ContentType", "application/xml")))
                 contentTypes.Root.Add(New XElement(Types + "Override", New XAttribute("PartName", "/" & props), New XAttribute("ContentType", "application/vnd.openxmlformats-officedocument.customXmlProperties+xml")))
                 Put(package, "[Content_Types].xml", contentTypes)
+                changed.UnionWith({part, props, partRels, relPath, "[Content_Types].xml"})
             End Using
-        End Sub
+            Return changed
+        End Function
 
         Friend Shared Function Read(filePath As String, schema As DataTable) As DataTable
             Dim result = schema.Clone()

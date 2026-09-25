@@ -22,12 +22,15 @@ Namespace Abovo.WorkbookEngines
         Public ReadOnly Property BackupPath As String
         Public ReadOnly Property JournalPath As String
         Public ReadOnly Property MarkerHash As String
+        Public ReadOnly Property HistorySnapshotId As Guid
+        Public ReadOnly Property HistoryHash As String
         Friend ReadOnly Property OpeningOptions As WorkbookEngineOptions
         Friend Sub New(candidate As WorkbookSaveCandidate, path As String, backup As String, journal As String,
                        markerHash As String, options As WorkbookEngineOptions)
             SessionId = candidate.SessionId : Revision = candidate.Revision : Hash = candidate.Hash
             Me.Path = path : BackupPath = backup : JournalPath = journal
             Me.MarkerHash = markerHash : OpeningOptions = options
+            HistorySnapshotId = candidate.HistorySnapshotId : HistoryHash = candidate.HistoryHash
         End Sub
 
         ' A new owner/baseline, not continuation of the old revision counter and

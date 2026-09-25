@@ -637,7 +637,9 @@
     <Compile Include="Services\WorkbookEngines\WorkbookPublicationFiles.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookPublicationRecovery.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookPublicationReopen.vb" />
+    <Compile Include="Services\DataService\ModelHistorySnapshot.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookCandidatePackage.vb" />
+    <Compile Include="Services\WorkbookEngines\WorkbookHistoryPackage.vb" />
     <Compile Include="Services\WorkbookEngines\DevExpressSaveCandidates.vb" />
     <Compile Include="Services\WorkbookEngines\ExcelSaveCandidates.vb" />
     <Compile Include="Services\WorkbookEngines\DevExpressCalculationBackend.vb" />

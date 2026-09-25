@@ -9,7 +9,7 @@ Imports System.Threading.Tasks
 
 Namespace Abovo.WorkbookEngines
     ' A receipt for verified bytes, NOT a successful user Save. Publication,
-    ' source conflict handling, history XML and dirty acknowledgement come later.
+    ' source conflict handling and dirty acknowledgement are separate boundaries.
     Public NotInheritable Class WorkbookSaveCandidate
         Public ReadOnly Property SessionId As Guid
         Public ReadOnly Property Revision As Long
@@ -18,9 +18,14 @@ Namespace Abovo.WorkbookEngines
         Public ReadOnly Property Hash As String
         Public ReadOnly Property ExportMilliseconds As Long
         Public ReadOnly Property VerificationMilliseconds As Long
-        Friend Sub New(session As WorkbookCalculationSession, path As String, hash As String, exportMs As Long, verificationMs As Long)
+        Public ReadOnly Property HistorySnapshotId As Guid
+        Public ReadOnly Property HistoryHash As String
+        Friend Sub New(session As WorkbookCalculationSession, path As String, hash As String, exportMs As Long, verificationMs As Long,
+                       Optional history As ModelHistorySnapshot = Nothing)
             SessionId = session.SessionId : Revision = session.Revision : SourceHash = session.SourceHash
             Me.Path = path : Me.Hash = hash : ExportMilliseconds = exportMs : VerificationMilliseconds = verificationMs
+            HistorySnapshotId = If(history Is Nothing, Guid.Empty, history.Id)
+            HistoryHash = If(history Is Nothing, Nothing, history.Hash)
         End Sub
     End Class
 
@@ -49,11 +54,30 @@ Namespace Abovo.WorkbookEngines
             End SyncLock
         End Function
 
-        Public Async Function CreateSaveCandidateAsync(expected As WorkbookCalculationResult, directory As String,
+        Public Function CreateSaveCandidateAsync(expected As WorkbookCalculationResult, directory As String,
                                                        checkpoints As IEnumerable(Of WorkbookCellSnapshot),
                                                        Optional cancellation As CancellationToken = Nothing) As Task(Of WorkbookSaveCandidate)
+            Return CreateSaveCandidateCoreAsync(expected, directory, checkpoints, Nothing, cancellation)
+        End Function
+
+        ' Explicit opt-in per candidate, using the existing change manager's
+        ' immutable history. No draft definition/schedule XML is inferred here.
+        Public Function CreateSaveCandidateWithHistoryAsync(expected As WorkbookCalculationResult, directory As String,
+                                                            checkpoints As IEnumerable(Of WorkbookCellSnapshot), history As ModelHistorySnapshot,
+                                                            Optional cancellation As CancellationToken = Nothing) As Task(Of WorkbookSaveCandidate)
+            If history Is Nothing Then Throw New ArgumentNullException(NameOf(history))
+            Return CreateSaveCandidateCoreAsync(expected, directory, checkpoints, history, cancellation)
+        End Function
+
+        Private Async Function CreateSaveCandidateCoreAsync(expected As WorkbookCalculationResult, directory As String,
+                                                            checkpoints As IEnumerable(Of WorkbookCellSnapshot), history As ModelHistorySnapshot,
+                                                            cancellation As CancellationToken) As Task(Of WorkbookSaveCandidate)
             If Not candidateSaveTrial Then Throw New InvalidOperationException("Candidate save trials were not enabled for this session.")
             If expected Is Nothing OrElse Not IsCurrent(expected) Then Throw New InvalidOperationException("Current calculated results are required for a candidate export.")
+            If history IsNot Nothing AndAlso (history.SessionId <> SessionId OrElse history.EngineRevision <> expected.Revision OrElse
+                history.SourceHash <> SourceHash OrElse Not String.Equals(history.SourcePath, sourcePath, StringComparison.OrdinalIgnoreCase)) Then
+                Throw New InvalidOperationException("History belongs to a different opening workbook, session or revision.")
+            End If
             If String.IsNullOrWhiteSpace(directory) OrElse Not IO.Path.IsPathRooted(directory) OrElse Not IO.Directory.Exists(directory) Then
                 Throw New ArgumentException("An existing absolute private trial directory is required.", NameOf(directory))
             End If
@@ -74,7 +98,7 @@ Namespace Abovo.WorkbookEngines
             Try
                 ' Owner handles cancellation so a completed receipt cannot be
                 ' discarded by the read-only dispatcher's post-action check.
-                Dim saving = owner.InvokeAsync(Function() CreateCandidateOnOwner(expected, directory, probes, cancellation), CancellationToken.None)
+                Dim saving = owner.InvokeAsync(Function() CreateCandidateOnOwner(expected, directory, probes, history, cancellation), CancellationToken.None)
                 Return Await AwaitOperation(saving, "candidate export").ConfigureAwait(False)
             Finally
                 SyncLock gate
@@ -84,7 +108,7 @@ Namespace Abovo.WorkbookEngines
         End Function
 
         Private Function CreateCandidateOnOwner(expected As WorkbookCalculationResult, directory As String,
-                                                probes As List(Of WorkbookCellSnapshot), cancellation As CancellationToken) As WorkbookSaveCandidate
+                                                probes As List(Of WorkbookCellSnapshot), history As ModelHistorySnapshot, cancellation As CancellationToken) As WorkbookSaveCandidate
             cancellation.ThrowIfCancellationRequested()
             SyncLock gate
                 RequireRevision(expected.Revision)
@@ -119,6 +143,10 @@ Namespace Abovo.WorkbookEngines
                     RequireRevision(expected.Revision)
                 End SyncLock
                 package.PrepareValueOnlyCandidate(path)
+                If history IsNot Nothing Then
+                    package.Verify(path)
+                    package = WorkbookHistoryPackage.Apply(path, history)
+                End If
                 ExcelCalculationBackend.CopyInternetZone(path, sourceZone)
                 Using lease As New FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read)
                     package.Verify(path)
@@ -147,7 +175,7 @@ Namespace Abovo.WorkbookEngines
                     SyncLock gate
                         RequireRevision(expected.Revision)
                         accepted = True
-                        Return New WorkbookSaveCandidate(Me, path, hash, exportMs, clock.ElapsedMilliseconds - exportMs)
+                        Return New WorkbookSaveCandidate(Me, path, hash, exportMs, clock.ElapsedMilliseconds - exportMs, history)
                     End SyncLock
                 End Using
             Catch

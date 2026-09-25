@@ -1,5 +1,14 @@
 {
   "schemaVersion": 3,
+  "excelFirstHistorySave20260925": {
+    "documentation": "Library/Excel_DevExpress_Engine_Stage2f_2026-09-25.md",
+    "status": "isolated current-history candidate saves; production 2.98 unchanged",
+    "source": ["Services/DataService/ModelHistorySnapshot.vb", "Services/WorkbookEngines/WorkbookHistoryPackage.vb"],
+    "ownership": "existing change manager captures bounded immutable display history; exact manager/user/calculation and engine/source revision evidence; no dirty clearing",
+    "persistence": "explicit history candidate API; create/replace only the owned recovery-history XML; entire package delta verified; all other XML/VBA/array metadata preserved",
+    "validation": "Debug/Release 39 history assertions plus prior regression suites; two-cycle XLSB/XLSM native saves; AGL XLSB Debug/XLSM Release 45586-position cross-engine parity; originals/working builds unchanged",
+    "remaining": ["authoritative live edits and exact-revision dirty acknowledgement", "current structural/model XML transaction coupling", "frequent-save owner lifecycle", "live formatting/settings", "storage/recovery/hung-call qualification", "three-route structural benchmark", "client acceptance"]
+  },
   "excelFirstRecoveryReopen20260925": {
     "documentation": "Library/Excel_DevExpress_Engine_Stage2e_2026-09-25.md",
     "status": "isolated recovery inspection and verified reopen; production 2.98 unchanged",

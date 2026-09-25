@@ -2,15 +2,19 @@
 
 Standalone .NET Framework 4.8 harness for the production-source engine boundary. It does not enable Excel in the live Summit application. Sessions are read-only by default; isolated value-edit tests explicitly opt in to in-memory changes with compensation. Candidate exports are a separate opt-in and never replace the source or mark it saved. Use private copied workbooks, never a user's active editing file: the tested source is leased read-only for the session.
 
-Build the main VB project using VS2022 MSBuild with `/p:Configuration=Debug /p:OutputPath=bin/EngineStage2e-Debug/`, and similarly Release to `bin/EngineStage2e-Release/`. Then `dotnet build Tools/WorkbookEngineFoundationTests/WorkbookEngineFoundationTests.csproj -c Debug`. For Release, also set `/p:ApplicationBin="C:/Repos/Abovo Summit/bin/EngineStage2e-Release"`. Default test process is x86, matching current Summit; override PlatformTarget and use a separate OutputPath for x64 tests.
+Build the main VB project using VS2022 MSBuild with `/p:Configuration=Debug /p:OutputPath=bin/EngineStage2f-Debug/`, and similarly Release to `bin/EngineStage2f-Release/`. Then `dotnet build Tools/WorkbookEngineFoundationTests/WorkbookEngineFoundationTests.csproj -c Debug`. For Release, also set `/p:ApplicationBin="C:/Repos/Abovo Summit/bin/EngineStage2f-Release"`. Default test process is x86, matching current Summit; override PlatformTarget and use a separate OutputPath for x64 tests.
 
 Run from the repository root:
 
 ```powershell
-& 'Tools/WorkbookEngineFoundationTests/bin/Debug/net48/WorkbookEngineFoundationTests.exe' 'C:/Repos/Abovo Summit/bin/EngineStage2e-Debug' 'ABSOLUTE_PRIVATE_WORKBOOK_PATH.xlsm' safety
+& 'Tools/WorkbookEngineFoundationTests/bin/Debug/net48/WorkbookEngineFoundationTests.exe' 'C:/Repos/Abovo Summit/bin/EngineStage2f-Debug' 'ABSOLUTE_PRIVATE_WORKBOOK_PATH.xlsm' safety
 ```
 
 Modes:
+
+- `history`: real STA-owned change-manager typed edits/dirty/history, immutable revision-bound snapshots, explicit candidate/publication receipts, stale/mismatched model/source/engine checks, bounded read-only recovery history, malformed-history rejection and failure cleanup. Controlled engine backend, real private package/file operations. Passing history evidence deliberately does not clear live dirty state.
+- `history-native`: generated XLSM/XLSB fixtures, both engines, two successive value edits and history saves, receipt-based same-engine reopen and full-calculation comparison in the other engine. Verifies one current history part and the actual edited-cell address.
+- `history-agl`: reviewed private AGL baseline, Funding G82 +100 twice, current history, new-name publication/reopen, and four other-engine comparisons over 45,586 output positions. Minimal real change-manager fixture is not live DIT integration. Original supplied workbook is never saved. Run native modes serially.
 
 - `recovery`: bounded journal parsing, state classification, vacant-name original restoration, stale/collision/marker/cancellation failures, receipt-based reopen identity/policy and failed reopen. Includes three hidden owned child test processes which exit abruptly at publication boundaries, using a controlled backend and disposable files, not Excel. Internal `crash-*` modes are child-fixture entry points only.
 - `reopen-native`: generated XLSX/XLSM/XLSB in both engines, terminal publication, verified same-engine reopen, another edit/save and other-engine full-calculation comparison.
@@ -34,4 +38,4 @@ Modes:
 
 Native tests require installed compatible desktop Excel and the licensed production DevExpress assemblies. No Office PIA, optional spreadsheet package, customer workbook, licence or result payload is included here. Fake tests need the main assembly/dependencies but do not open a native workbook. Any exception or mismatch returns a nonzero exit code. Original source SHA256 must be unchanged. The test never kills pre-existing Excel processes.
 
-Evidence/limitations: `Library/Excel_DevExpress_Engine_Stage1_2026-09-25.md` and continuations `Stage2a` through `Stage2e` under the same Library naming/date convention. Earlier native comparison modes also bind results to real grids. Candidate receipts alone are not publication transactions. Publication is a local NTFS terminal hand-off with a brief missing-name window between guarded renames, not an uninterrupted atomic swap. Explicit journal recovery and verified reopen are available in the isolated trial; native hang supervision, startup UX, current history XML, frequent Save lifecycle and live edit/save integration remain release gates. Retained generated folders are evidence, not production backup-retention behavior.
+Evidence/limitations: `Library/Excel_DevExpress_Engine_Stage1_2026-09-25.md` and continuations `Stage2a` through `Stage2f` under the same Library naming/date convention. Earlier native comparison modes also bind results to real grids. Candidate receipts alone are not publication transactions. Publication is a local NTFS terminal hand-off with a brief missing-name window between guarded renames, not an uninterrupted atomic swap. Explicit journal recovery, verified reopen and current display-history XML are available in the isolated trial; native hang supervision, startup UX, structural/model XML coupling, frequent Save lifecycle and authoritative live edit/dirty integration remain release gates. Retained generated folders are evidence, not production backup-retention behavior.

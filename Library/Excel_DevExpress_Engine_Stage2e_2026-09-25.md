@@ -1,5 +1,7 @@
 # Excel / DevExpress checkpoint 2e: recovery inspection and verified reopen
 
+Continuation: `Library/Excel_DevExpress_Engine_Stage2f_2026-09-25.md` adds explicit current-history candidate serialization and revision-bound history evidence, without connecting live dirty acknowledgement or ordinary Save.
+
 ## Scope
 
 This continues the isolated, default-off publication trial. Normal Debug and Release **2.98 remain unchanged**. No live Save, startup scan, history/dirty acknowledgement, UI engine preference or workbook schema is switched on. This is not a client test release.

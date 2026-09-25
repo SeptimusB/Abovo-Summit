@@ -20,7 +20,7 @@ Namespace Abovo
         End Sub
     End Class
 
-    Public NotInheritable Class ModelChangeManagerV2
+    Partial Public NotInheritable Class ModelChangeManagerV2
         Private ReadOnly WB As IWorkbook
         Private ReadOnly UndoStack As New List(Of ChangeHistoryGroupV2)()
         Private ReadOnly RedoStack As New List(Of ChangeHistoryGroupV2)()
