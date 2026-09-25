@@ -91,7 +91,7 @@ Public Class BPIncomeExpenditureAnalyserV2
     Private GridViewCount As Integer = -1
     Private Formatter As ObjectFormatter
     Private CurrChartWS As DevExpress.Spreadsheet.Worksheet
-    Private DSAnalDataRange As RangeDataSource
+    Private DSAnalDataRange As ModelRangeDataSource
     Private HasSnapshots As Boolean = False
     Private ComparisonWorksheetRegistered As Boolean = False
     Private CurrentDataSourceMode As AnalyserDataSourceMode = AnalyserDataSourceMode.Live
@@ -161,9 +161,9 @@ Public Class BPIncomeExpenditureAnalyserV2
         'UnC for menus
         'GridLocalizer.Active = New GroupRowContextMenuLocalizerV2()
 
-        Dim DSAnalDataRangeA As RangeDataSource = DSAnalDataRange
-        Dim DSAnalDataRangeB As RangeDataSource = DSAnalDataRange
-        Dim DSAnalDataRangeC As RangeDataSource = DSAnalDataRange
+        Dim DSAnalDataRangeA As ModelRangeDataSource = DSAnalDataRange
+        Dim DSAnalDataRangeB As ModelRangeDataSource = DSAnalDataRange
+        Dim DSAnalDataRangeC As ModelRangeDataSource = DSAnalDataRange
 
         Dim FilterString1 As String = "[UseInSOCI] > 0"
         Dim FilterString2 As String = "[UseInCF] > 0"
@@ -504,7 +504,7 @@ Public Class BPIncomeExpenditureAnalyserV2
             .EditingOptions = DataSourceEditingOptions.ReadOnly
         }
 
-        DSAnalDataRange = TransDBDataRange.GetDataSource(RDSOptions)
+        DSAnalDataRange = ModelRangeDataSource.Create(TransDBDataRange, RDSOptions)
         Dim dataSourceCreationMs As Long =
             benchmark.ElapsedMilliseconds - dataSourceStartMs
         Abovo.SummitDiagnostics.WriteLine(
@@ -772,7 +772,7 @@ Public Class BPIncomeExpenditureAnalyserV2
 
         If StructuralRefreshDeferred OrElse DSAnalDataRange Is Nothing OrElse
            AmInactiveState OrElse
-           CurrentDataSourceMode = AnalyserDataSourceMode.Snapshot Then Return
+           (CurrentDataSourceMode = AnalyserDataSourceMode.Snapshot AndAlso DSAnalDataRange.HasCurrentValues) Then Return
 
         'The calculation chain was rebuilt before the initial datasource bind.
         'Ordinary edits now update its dependents incrementally; only the
@@ -3101,7 +3101,7 @@ Public Class BPIncomeExpenditureAnalyserV2
 
             For sourceColumnIndex As Integer = 0 To sourceColumnCount - 1
                 If IsPeriodHeading(
-                    TransDBDataRange(0, sourceColumnIndex).DisplayText) Then
+                    TransDBDataRange(0, sourceColumnIndex).ModelDisplayText()) Then
 
                     result.Add(view.Columns(sourceColumnIndex))
                 End If
@@ -3314,7 +3314,7 @@ Class BPIEAColumnDetectorV2
     End Sub
     Public Function GetColumnName(ByVal index As Integer, ByVal offset As Integer, ByVal range As DevExpress.Spreadsheet.CellRange) As String Implements IDataSourceColumnTypeDetector.GetColumnName
 
-        Return range(-1, offset).DisplayText
+        Return range(-1, offset).ModelDisplayText()
 
     End Function
 
@@ -3326,9 +3326,9 @@ Class BPIEAColumnDetectorV2
 
         For rowOffset As Integer = 0 To sampleCount - 1
             Dim cell As DevExpress.Spreadsheet.Cell = range(rowOffset, offset)
-            If cell.Value.IsEmpty Then Continue For
+            If cell.ModelValue().IsEmpty Then Continue For
 
-            If cell.Value.IsNumeric Then
+            If cell.ModelValue().IsNumeric Then
                 sawNumeric = True
             Else
                 sawText = True

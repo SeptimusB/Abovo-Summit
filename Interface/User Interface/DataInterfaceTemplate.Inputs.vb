@@ -52,9 +52,9 @@ Partial Public Class DataInterfaceTemplate
     Private Sub InputGridDisplayText(sender As Object, e As CustomColumnDisplayTextEventArgs)
         Dim view = TryCast(sender, GridView)
         Dim tag = TryCast(e.Column?.Tag, DataColumnTag)
-        If view Is Nothing OrElse Not IsMoneyField(tag) OrElse e.ListSourceRowIndex < 0 Then Return
+        If view Is Nothing OrElse e.ListSourceRowIndex < 0 Then Return
         Dim cell = InputSourceCell(TryCast(view.GridControl.DataSource, AbovoUnboundSource), e.ListSourceRowIndex, GetGridColumnIndex(e.Column))
-        If cell IsNot Nothing Then e.DisplayText = cell.DisplayText
+        If cell IsNot Nothing AndAlso (IsMoneyField(tag) OrElse Not cell.ModelResultsAvailable()) Then e.DisplayText = cell.ModelPaintText()
     End Sub
 
     Private Sub InputVGridDisplayText(sender As Object, e As DevExpress.XtraVerticalGrid.Events.CustomRecordDisplayTextEventArgs)
@@ -64,9 +64,8 @@ Partial Public Class DataInterfaceTemplate
         Dim multi = TryCast(row, MultiEditorRow)
         Dim item As Integer = If(multi Is Nothing, 0, multi.PropertiesCollection.IndexOf(e.Properties))
         Dim tag = GetVGridColumnTag(row, item)
-        If Not IsMoneyField(tag) Then Return
         Dim cell = InputSourceCell(TryCast(grid.DataSource, AbovoUnboundSource), grid.GetDataSourceRecordIndex(e.Record), GetVGridColumnIndex(row, item))
-        If cell IsNot Nothing Then e.DisplayText = cell.DisplayText
+        If cell IsNot Nothing AndAlso (IsMoneyField(tag) OrElse Not cell.ModelResultsAvailable()) Then e.DisplayText = cell.ModelPaintText()
     End Sub
 
     Private Shared Function IsMoneyField(tag As DataColumnTag) As Boolean
@@ -132,8 +131,7 @@ Partial Public Class DataInterfaceTemplate
         Dim origin As New ExpressionContext(rule.Range.LeftColumnIndex, rule.Range.TopRowIndex, cell.Worksheet)
         Dim expression = engine.Parse(value.FormulaInvariant, origin)
         origin.ReferenceStyle = ReferenceStyle.R1C1
-        Dim target As New ExpressionContext(cell.ColumnIndex, cell.RowIndex, cell.Worksheet) With {.ReferenceStyle = ReferenceStyle.R1C1}
-        Dim result = engine.Evaluate(expression.ToString(origin), target)
+        Dim result = cell.ModelEvaluate(expression.ToString(origin), ReferenceStyle.R1C1)
         If Not result.IsNumeric Then Throw New FormatException("The workbook validation limit is not numeric.")
         Return result.NumericValue
     End Function

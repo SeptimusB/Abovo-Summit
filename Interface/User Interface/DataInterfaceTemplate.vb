@@ -11645,7 +11645,7 @@ SectionSelect:
         Dim RowHandle As Integer = View.GetRowHandle(e.ListSourceRowIndex)
 
         If TryGetLiveGridSourceCell(View, RowHandle, e.Column, SourceCell) Then
-            e.DisplayText = SourceCell.ModelDisplayText()
+            e.DisplayText = SourceCell.ModelPaintText()
         End If
 
     End Sub
@@ -11657,8 +11657,9 @@ SectionSelect:
         Dim SourceCell As DevExpress.Spreadsheet.Cell = Nothing
 
         If Not TryGetLiveGridSourceCell(View, e.RowHandle, e.Column, SourceCell) Then Return
+        If Not SourceCell.ModelResultsAvailable() Then Return
 
-        Dim Background As Color = SourceCell.FillColor
+        Dim Background As Color = SourceCell.ModelFill().BackgroundColor
         If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
 
         Dim Foreground As Color = SourceCell.ModelFont().Color
@@ -11674,7 +11675,7 @@ SectionSelect:
         e.Appearance.Options.UseTextOptions = True
         e.Appearance.TextOptions.WordWrap = WordWrap.Wrap
 
-        Select Case SourceCell.Alignment.Horizontal
+        Select Case SourceCell.ModelHorizontalAlignment()
             Case SpreadsheetHorizontalAlignment.Center
                 e.Appearance.TextOptions.HAlignment = HorzAlignment.Center
             Case SpreadsheetHorizontalAlignment.Right
@@ -11686,7 +11687,7 @@ SectionSelect:
                 e.Appearance.TextOptions.HAlignment = HorzAlignment.Near
         End Select
 
-        Select Case SourceCell.Alignment.Vertical
+        Select Case SourceCell.ModelVerticalAlignment()
             Case SpreadsheetVerticalAlignment.Top
                 e.Appearance.TextOptions.VAlignment = VertAlignment.Top
             Case SpreadsheetVerticalAlignment.Center
@@ -11737,8 +11738,12 @@ SectionSelect:
         Dim SourceCell As DevExpress.Spreadsheet.Cell = Worksheet.Cells(
             LiveTag.LiveGridSourceRows(e.RecordIndex),
             ValueTag.SourceColumnIndex)
+        If Not SourceCell.ModelResultsAvailable() Then
+            e.CellText = "…"
+            Return
+        End If
 
-        Dim Background As Color = SourceCell.FillColor
+        Dim Background As Color = SourceCell.ModelFill().BackgroundColor
         If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
 
         Dim Foreground As Color = SourceCell.ModelFont().Color
@@ -11754,7 +11759,7 @@ SectionSelect:
         e.Appearance.Options.UseTextOptions = True
         e.Appearance.TextOptions.WordWrap = WordWrap.Wrap
 
-        Select Case SourceCell.Alignment.Horizontal
+        Select Case SourceCell.ModelHorizontalAlignment()
             Case SpreadsheetHorizontalAlignment.Center
                 e.Appearance.TextOptions.HAlignment = HorzAlignment.Center
             Case SpreadsheetHorizontalAlignment.Right
@@ -11766,7 +11771,7 @@ SectionSelect:
                 e.Appearance.TextOptions.HAlignment = HorzAlignment.Near
         End Select
 
-        Select Case SourceCell.Alignment.Vertical
+        Select Case SourceCell.ModelVerticalAlignment()
             Case SpreadsheetVerticalAlignment.Top
                 e.Appearance.TextOptions.VAlignment = VertAlignment.Top
             Case SpreadsheetVerticalAlignment.Center

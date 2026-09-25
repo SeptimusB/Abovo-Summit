@@ -2,16 +2,20 @@
 
 Standalone .NET Framework 4.8 harness for the production-source engine boundary. It does not enable Excel in the live Summit application. Sessions are read-only by default; isolated value-edit tests explicitly opt in to in-memory changes with compensation. Candidate exports are a separate opt-in and never replace the source or mark it saved. Use private copied workbooks, never a user's active editing file: the tested source is leased read-only for the session.
 
-Build the main VB project using VS2022 MSBuild with `/p:Configuration=Debug /p:OutputPath=bin/EngineStage2h-Debug/`, and similarly Release to `bin/EngineStage2h-Release/`. Then `dotnet build Tools/WorkbookEngineFoundationTests/WorkbookEngineFoundationTests.csproj -c Debug`. For Release, also set `/p:ApplicationBin="C:/Repos/Abovo Summit/bin/EngineStage2h-Release"`. Default test process is x86, matching current Summit; override PlatformTarget and use a separate OutputPath for x64 tests.
+Build the main VB project using VS2022 MSBuild with `/p:Configuration=Debug /p:OutputPath=bin/EngineStage2i-Debug/`, and similarly Release to `bin/EngineStage2i-Release/`. Then `dotnet build Tools/WorkbookEngineFoundationTests/WorkbookEngineFoundationTests.csproj -c Debug`. For Release, also set `/p:ApplicationBin="C:/Repos/Abovo Summit/bin/EngineStage2i-Release"`. Default test process is x86, matching current Summit; override PlatformTarget and use a separate OutputPath for x64 tests.
 
 Run from the repository root:
 
 ```powershell
-& 'Tools/WorkbookEngineFoundationTests/bin/Debug/net48/WorkbookEngineFoundationTests.exe' 'C:/Repos/Abovo Summit/bin/EngineStage2h-Debug' 'ABSOLUTE_PRIVATE_WORKBOOK_PATH.xlsm' safety
+& 'Tools/WorkbookEngineFoundationTests/bin/Debug/net48/WorkbookEngineFoundationTests.exe' 'C:/Repos/Abovo Summit/bin/EngineStage2i-Debug' 'ABSOLUTE_PRIVATE_WORKBOOK_PATH.xlsm' safety
 ```
 
 Modes:
 
+- `dit-dx`, `dit-excel`: actual private Demo model and GroupInterfaceTemplate; Covenant and Funding mapped editor posts, unchanged presentation inputs, and existing Undo/history/dirty behavior. The fixture rejects unexpected modal dialogs. Use an AnyCPU/prefer-32-bit (LAA) test build for the whole model; copy the application's config to the fixture exe config and `Structure.xml` beside the fixture executable. The normal production binaries and input workbook remain unchanged. Run native modes serially.
+- `range`: detached analyser schema/value adapter with real GridView binding, filter/summary, hidden rows/columns, literal text, errors, read-only and pending/stale/disposal safeguards; both native engines.
+- `range-agl`: actual V2 analyser detector and Transactional_Records range in a reviewed private AGL copy; compares all bounded values between the engines. Timing is binding/read only, not calculation or whole UI time.
+- `expression`: native scalar validation/predicate evaluation, relative validation formulas, changed precedents, array/external/stale rejection and unchanged presentation cells. Both engines; no temporary worksheet writes.
 - `batch`: atomic multi-value preflight, prerequisite/final calculation, explicit skips, compensation and quarantine; includes the native DevExpress conditional-fill semantic probe.
 - `bridge`: generated native models, real change-manager and standalone editor, one-use/revision-bound admission, atomic command, dirty/journal/Undo/Redo, current facade reads, common calculation, Check Sheet/company warning and defining-date locks, both engines/date systems. Not whole-model live DIT acceptance.
 - `presentation`: generated native workbook formatting, conditional fills/fonts, dates, errors, current calculation-generation checks and native cleanup. Source workbooks never modified.

@@ -159,11 +159,16 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
                 column.Caption)
         Next
         AddHandler view.RowCellStyle, AddressOf StyleCell
+        AddHandler view.CustomColumnDisplayText,
+            Sub(sender, e)
+                If Not sourceSheet.Cells(0, 0).ModelResultsAvailable() Then e.DisplayText = "…"
+            End Sub
         AddHandler view.CustomDrawColumnHeader,
             Sub(sender, e)
                 If e.Column Is Nothing OrElse mapping.HeaderRow < 1 Then Return
                 Dim cell As Cell = sourceSheet.Cells(mapping.HeaderRow - 1,
                     StyleColumnIndex(e.Column))
+                If Not cell.ModelResultsAvailable() Then Return
                 e.Appearance.Font = GetWorkbookFont(cell)
                 e.Appearance.ForeColor = cell.ModelFont().Color
                 e.Appearance.BackColor = If(cell.ModelFill().BackgroundColor.IsEmpty, Color.White, cell.ModelFill().BackgroundColor)
@@ -597,7 +602,7 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
 
     Private Sub StyleCell(sender As Object, e As RowCellStyleEventArgs)
         Dim cell As Cell = SourceCell(e.RowHandle, e.Column)
-        If cell Is Nothing Then Return
+        If cell Is Nothing OrElse Not cell.ModelResultsAvailable() Then Return
         e.Appearance.BackColor = If(cell.ModelFill().BackgroundColor.IsEmpty, Color.White, cell.ModelFill().BackgroundColor)
         e.Appearance.ForeColor = cell.ModelFont().Color
         Dim conditionalColour As Color

@@ -21,7 +21,7 @@ static class EngineChangeManagerTests
     static void Succeeded(AbovoAppCls.AbovoTransaction result){if(!result.BSuccess||result.BError)throw new Exception(result.StrResponseMessage);}
     static async Task Reject(Func<Task> work,string label)
     {try{await work();}catch(Exception e)when(e is InvalidOperationException||e is ArgumentException){Check(true,label);return;}throw new Exception("Expected rejection: "+label);}
-    sealed class Model:IDisposable
+    internal sealed class Model:IDisposable
     {
         readonly BlockingCollection<Action> queue=new BlockingCollection<Action>();readonly Thread owner;
         Workbook book;FileManager.ExcelModel[] previous;

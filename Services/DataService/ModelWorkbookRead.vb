@@ -4,6 +4,8 @@ Imports System.Drawing
 Imports System.Runtime.CompilerServices
 Imports Abovo.WorkbookEngines
 Imports DevExpress.Spreadsheet
+Imports DevExpress.Spreadsheet.Formulas
+Imports DevExpress.Spreadsheet.Functions
 
 Namespace Abovo
     ' Read facade for existing worksheet-backed controls. Without a selected
@@ -80,6 +82,9 @@ Namespace Abovo
             Dim result = ResultFor(cell, False)
             Dim block = result.Blocks.First(Function(item) Contains(item.Area, cell))
             Dim raw = block.ValueAt(cell.RowIndex - block.Area.Row, cell.ColumnIndex - block.Area.Column)
+            Return ToCellValue(raw)
+        End Function
+        Friend Shared Function ToCellValue(raw As Object) As CellValue
             If raw Is Nothing Then Return CellValue.Empty
             If TypeOf raw Is WorkbookCellError Then
                 Select Case DirectCast(raw, WorkbookCellError).Text
@@ -99,9 +104,66 @@ Namespace Abovo
             Dim block = result.Presentation.First(Function(item) Contains(item.Area, cell))
             Return block.CellAt(cell.RowIndex - block.Area.Row, cell.ColumnIndex - block.Area.Column)
         End Function
+        Friend Function CaptureRange(range As CellRange) As WorkbookCalculationResult
+            RequireOwner()
+            If Not session.IsCurrent(anchor) Then Throw New InvalidOperationException("Model results are pending. Refresh before binding a range.")
+            If CLng(range.RowCount) * range.ColumnCount > 500000 Then Throw New ArgumentException("The display range exceeds the bounded transfer limit.", NameOf(range))
+            Dim areas As New List(Of WorkbookReadArea)()
+            Dim stepRows = Math.Max(1, 100000 \ range.ColumnCount)
+            For offset = 0 To range.RowCount - 1 Step stepRows
+                areas.Add(New WorkbookReadArea(range.Worksheet.Name, range.TopRowIndex + offset,
+                    range.LeftColumnIndex, Math.Min(stepRows, range.RowCount - offset), range.ColumnCount))
+            Next
+            Dim result = session.ReadCurrentAsync(anchor, areas).GetAwaiter().GetResult()
+            If Not session.IsCurrent(result) Then Throw New InvalidOperationException("The display range was superseded during transfer.")
+            If blocks.Count >= 2048 Then blocks.RemoveAt(0)
+            blocks.Add(result)
+            Return result
+        End Function
+        Friend Function IsCurrent(result As WorkbookCalculationResult) As Boolean
+            RequireOwner()
+            Return HasCurrentValues AndAlso session.IsCurrent(result)
+        End Function
+        Friend ReadOnly Property HasCurrentValues As Boolean
+            Get
+                RequireOwner()
+                Return session.IsCurrent(anchor)
+            End Get
+        End Property
+        Friend Function Evaluate(cell As Cell, formula As String) As CellValue
+            RequireOwner()
+            Dim raw = session.EvaluateCurrentAsync(anchor, New WorkbookReadArea(cell.Worksheet.Name,
+                cell.RowIndex, cell.ColumnIndex, 1, 1), formula).GetAwaiter().GetResult()
+            Return ToCellValue(raw)
+        End Function
     End Class
 
     Public Module ModelWorkbookRead
+        <Extension()> Public Function ModelResultsAvailable(cell As Cell) As Boolean
+            Dim view = ModelEngineView.Find(cell)
+            Return view Is Nothing OrElse view.HasCurrentValues
+        End Function
+        ' Painting may re-enter while an STA wait pumps WM_PAINT. Strict model
+        ' reads still fail closed; display callbacks alone show a pending marker.
+        <Extension()> Public Function ModelPaintText(cell As Cell) As String
+            If Not cell.ModelResultsAvailable() Then Return "…"
+            Return cell.ModelDisplayText()
+        End Function
+        <Extension()> Public Function ModelEvaluate(cell As Cell, formula As String,
+                                                   Optional style As ReferenceStyle = ReferenceStyle.A1) As ParameterValue
+            Dim context As New ExpressionContext(cell.ColumnIndex, cell.RowIndex, cell.Worksheet,
+                Globalization.CultureInfo.InvariantCulture, style, ExpressionStyle.Normal)
+            Dim engine = cell.Worksheet.Workbook.FormulaEngine
+            Dim view = ModelEngineView.Find(cell)
+            If view Is Nothing Then Return engine.Evaluate(formula, context)
+            ' Parsing/rebasing is symbolic only; evaluate against the selected
+            ' owner, never the presentation document's old cached precedents.
+            Dim parsed = engine.Parse(formula, context)
+            context.ReferenceStyle = ReferenceStyle.A1
+            Dim absoluteFormula = parsed.ToString(context)
+            If Not absoluteFormula.StartsWith("=", StringComparison.Ordinal) Then absoluteFormula = "=" & absoluteFormula
+            Return view.Evaluate(cell, absoluteFormula)
+        End Function
         <Extension()> Public Function HasModelEngineView(cell As Cell) As Boolean
             Return ModelEngineView.Find(cell) IsNot Nothing
         End Function
@@ -135,6 +197,10 @@ Namespace Abovo
         <Extension()> Public Function ModelHorizontalAlignment(cell As Cell) As SpreadsheetHorizontalAlignment
             Dim view = ModelEngineView.Find(cell)
             Return If(view Is Nothing, cell.Alignment.Horizontal, view.Presentation(cell).Appearance.Horizontal)
+        End Function
+        <Extension()> Public Function ModelVerticalAlignment(cell As Cell) As SpreadsheetVerticalAlignment
+            Dim view = ModelEngineView.Find(cell)
+            Return If(view Is Nothing, cell.Alignment.Vertical, view.Presentation(cell).Appearance.Vertical)
         End Function
     End Module
 

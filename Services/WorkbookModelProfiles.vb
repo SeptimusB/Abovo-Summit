@@ -58,7 +58,7 @@ Namespace Abovo
             ByVal Address As String) As String
 
             If Worksheet Is Nothing Then Return String.Empty
-            Return Worksheet.Cells(Address).DisplayText.Trim()
+            Return Worksheet.Cells(Address).ModelDisplayText().Trim()
 
         End Function
 
@@ -105,7 +105,7 @@ Namespace Abovo
             End If
 
             If Not String.Equals(
-                Workbook.Worksheets("Global Assumptions").Cells("A8").DisplayText,
+                Workbook.Worksheets("Global Assumptions").Cells("A8").ModelDisplayText(),
                 "Business Plan Start Date",
                 StringComparison.Ordinal) Then
 
@@ -130,17 +130,17 @@ Namespace Abovo
 
             Dim companyRange = GetDefinedRange(Workbook, "SelectTrust")
             ModelDefinition.CompanyName = If(companyRange Is Nothing,
-                GlobalAssumptions.Cells(5, 2).DisplayText.Trim(), companyRange(0, 0).DisplayText.Trim())
+                GlobalAssumptions.Cells(5, 2).ModelDisplayText().Trim(), companyRange(0, 0).ModelDisplayText().Trim())
 
-            Dim StartDateValue As CellValue =
-                GlobalAssumptions.Cells(7, 2).Value
+            Dim startDateCell = GlobalAssumptions.Cells(7, 2)
+            Dim StartDateValue As CellValue = startDateCell.ModelValue()
 
-            If StartDateValue.IsDateTime Then
+            If StartDateValue.IsDateTime OrElse (startDateCell.HasModelEngineView() AndAlso StartDateValue.IsNumeric) Then
                 ModelDefinition.StartDate =
-                    StartDateValue.DateTimeValue.ToString("yyyy-MM-dd")
+                    startDateCell.ModelDateValue().ToString("yyyy-MM-dd")
             Else
                 ModelDefinition.StartDate =
-                    GlobalAssumptions.Cells(7, 2).DisplayText.Trim()
+                    startDateCell.ModelDisplayText().Trim()
             End If
 
         End Sub
@@ -254,12 +254,13 @@ Namespace Abovo
                 GetDefinedRange(Workbook, "SchStDate")
 
             If StartDateRange IsNot Nothing AndAlso
-               StartDateRange(0, 0).Value.IsDateTime Then
+               (StartDateRange(0, 0).ModelValue().IsDateTime OrElse
+                (StartDateRange(0, 0).HasModelEngineView() AndAlso StartDateRange(0, 0).ModelValue().IsNumeric)) Then
 
                 ModelDefinition.StartDate =
-                    StartDateRange(0, 0).Value.DateTimeValue.ToString("yyyy-MM-dd")
+                    StartDateRange(0, 0).ModelDateValue().ToString("yyyy-MM-dd")
             ElseIf StartDateRange IsNot Nothing Then
-                ModelDefinition.StartDate = StartDateRange(0, 0).DisplayText.Trim()
+                ModelDefinition.StartDate = StartDateRange(0, 0).ModelDisplayText().Trim()
             Else
                 ModelDefinition.StartDate = CellDisplayText(GlobalAssumptions, "C16")
             End If

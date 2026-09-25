@@ -77,7 +77,7 @@ Public Class BPIncomeExpenditureAnalyser
     Private GridViewCount As Integer = -1
     Private Formatter As ObjectFormatter
     Private CurrChartWS As DevExpress.Spreadsheet.Worksheet
-    Private DSAnalDataRange As RangeDataSource
+    Private DSAnalDataRange As ModelRangeDataSource
     Private HasSnapshots As Boolean = False
     Private gridInfo As GridViewInfo = Nothing
     Private ActiveGridView As CustomGridView
@@ -118,9 +118,9 @@ Public Class BPIncomeExpenditureAnalyser
         'UnC for menus
         'GridLocalizer.Active = New GroupRowContextMenuLocalizer()
 
-        Dim DSAnalDataRangeA As RangeDataSource = DSAnalDataRange
-        Dim DSAnalDataRangeB As RangeDataSource = DSAnalDataRange
-        Dim DSAnalDataRangeC As RangeDataSource = DSAnalDataRange
+        Dim DSAnalDataRangeA As ModelRangeDataSource = DSAnalDataRange
+        Dim DSAnalDataRangeB As ModelRangeDataSource = DSAnalDataRange
+        Dim DSAnalDataRangeC As ModelRangeDataSource = DSAnalDataRange
 
         Dim FilterString1 As String = "[UseInSOCI] > 0"
         Dim FilterString2 As String = "[UseInCF] > 0"
@@ -379,7 +379,7 @@ Public Class BPIncomeExpenditureAnalyser
             .EditingOptions = DataSourceEditingOptions.ReadOnly
         }
 
-        DSAnalDataRange = TransDBDataRange.GetDataSource(RDSOptions)
+        DSAnalDataRange = ModelRangeDataSource.Create(TransDBDataRange, RDSOptions)
 
         AddHandler DSAnalDataRange.ListChanged, AddressOf DataSourceListChangedDelegate
 
@@ -2249,7 +2249,7 @@ Class BPIEAColumnDetector
     End Sub
     Public Function GetColumnName(ByVal index As Integer, ByVal offset As Integer, ByVal range As DevExpress.Spreadsheet.CellRange) As String Implements IDataSourceColumnTypeDetector.GetColumnName
 
-        Return range(-1, offset).DisplayText
+        Return range(-1, offset).ModelDisplayText()
 
     End Function
 

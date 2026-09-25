@@ -48,7 +48,7 @@ Namespace Abovo
             Return IsExpected(cell, 0)
         End Function
         Private Function IsExpected(cell As Cell, depth As Integer) As Boolean
-            If cell Is Nothing OrElse depth > 16 OrElse Not cell.Value.IsError OrElse cell.Value.ToString() <> "#N/A" OrElse Not cell.HasFormula Then Return False
+            If cell Is Nothing OrElse depth > 16 OrElse Not cell.ModelValue().IsError OrElse cell.ModelValue().ToString() <> "#N/A" OrElse Not cell.HasFormula Then Return False
             If String.Equals(cell.FormulaInvariant.Replace(" ", ""), "=NA()", StringComparison.OrdinalIgnoreCase) Then Return True
             If Not ChartSheet(cell.Worksheet.Name) Then Return False
             Dim known As Boolean
@@ -90,7 +90,7 @@ Namespace Abovo
                             'Do not certify an error swallowed inside a predicate.
                             Dim check = Text(args(0), cell)
                             If Regex.IsMatch(check, "\b(?:ISNA|ISERR|ISERROR|IFERROR|IFNA)\s*\(", RegexOptions.IgnoreCase) Then Return False
-                            Dim value = cell.Worksheet.Workbook.FormulaEngine.Evaluate(check, Context(cell))
+                            Dim value = cell.ModelEvaluate(check)
                             If value.IsBoolean Then
                                 chooseFirst = value.BooleanValue
                             ElseIf value.IsNumeric Then
@@ -130,7 +130,7 @@ Namespace Abovo
             Return ranges(0)
         End Function
         Private Shared Function PositiveIndex(expression As IExpression, cell As Cell) As Integer
-            Dim value = cell.Worksheet.Workbook.FormulaEngine.Evaluate(Text(expression, cell), Context(cell))
+            Dim value = cell.ModelEvaluate(Text(expression, cell))
             If Not value.IsNumeric OrElse value.NumericValue < 1 OrElse value.NumericValue > Integer.MaxValue OrElse value.NumericValue <> Math.Truncate(value.NumericValue) Then Return 0
             Return CInt(value.NumericValue)
         End Function
