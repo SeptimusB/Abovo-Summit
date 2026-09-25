@@ -22,6 +22,7 @@ Namespace Abovo.WorkbookEngines
         Private owned As Boolean
         Private versionText As String
         Private filter As ExcelBusyCallFilter
+        Friend ReadOnly Property NativeProcess As WorkbookNativeProcessIdentity
 
         <DllImport("user32.dll")>
         Private Shared Function GetWindowThreadProcessId(window As IntPtr, ByRef processId As UInteger) As UInteger
@@ -105,6 +106,9 @@ Namespace Abovo.WorkbookEngines
             GetWindowThreadProcessId(New IntPtr(CInt(app.Hwnd)), processId)
             If processId = 0 OrElse existing.Contains(CInt(processId)) Then Throw New InvalidOperationException("Refusing to use a pre-existing Excel process.")
             owned = True
+            Using process = Diagnostics.Process.GetProcessById(CInt(processId))
+                _NativeProcess = New WorkbookNativeProcessIdentity(process.Id, process.StartTime.ToUniversalTime())
+            End Using
             app.AutomationSecurity = 3 ' ForceDisable until the explicit ByUI open below.
             app.EnableEvents = False : app.Visible = False : app.DisplayAlerts = False
             app.AskToUpdateLinks = False : app.ScreenUpdating = False

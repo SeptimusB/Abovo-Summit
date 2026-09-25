@@ -31,6 +31,7 @@ Namespace Abovo.WorkbookEngines
         Public ReadOnly Property EngineName As String
         Public ReadOnly Property EngineVersion As String
         Public ReadOnly Property FallbackReason As String
+        Public ReadOnly Property NativeProcess As WorkbookNativeProcessIdentity
 
         Private Sub New(timeoutMilliseconds As Integer, valueEditTrial As Boolean)
             Me.timeoutMilliseconds = timeoutMilliseconds
@@ -74,6 +75,7 @@ Namespace Abovo.WorkbookEngines
                         session.sourceLease.Position = 0
                     End Using
                     Dim createBackend As Func(Of WorkbookEnginePreference, IWorkbookCalculationBackend) = If(factory, AddressOf CreateNativeBackend)
+                    Dim selectedPreference = WorkbookEnginePreference.ExcelRequired
                     If options.Preference <> WorkbookEnginePreference.DevExpressOnly Then
                         Try
                             session.backend = createBackend(WorkbookEnginePreference.ExcelRequired)
@@ -95,11 +97,20 @@ Namespace Abovo.WorkbookEngines
                         session.RequireAvailable()
                     End SyncLock
                     If session.backend Is Nothing Then
+                        selectedPreference = WorkbookEnginePreference.DevExpressOnly
                         session.backend = createBackend(WorkbookEnginePreference.DevExpressOnly)
                         session.backend.OpenReadOnly(fullPath, options)
                     End If
                     session._EngineName = session.backend.Name
                     session._EngineVersion = session.backend.Version
+                    session._NativeProcess = TryCast(session.backend, ExcelCalculationBackend)?.NativeProcess
+                    'A Save/reopen continues this model, not a new opportunity
+                    'to choose a different engine if availability has changed.
+                    If options.Preference = WorkbookEnginePreference.Automatic Then
+                        session.openingOptions = New WorkbookEngineOptions(selectedPreference, options.AllowTrustedVba,
+                            options.RequireSummitFunctions, options.OperationTimeoutMilliseconds,
+                            options.EnableValueEditTrial, options.EnableCandidateSaveTrial, options.EnablePublicationTrial)
+                    End If
                     Return True
                 End Function, cancellation)
                 Await session.AwaitOperation(opening, "opening").ConfigureAwait(False)

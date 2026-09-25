@@ -643,6 +643,7 @@
     <Compile Include="Services\WorkbookEngines\WorkbookPublicationReopen.vb" />
     <Compile Include="Services\DataService\ModelHistorySnapshot.vb" />
     <Compile Include="Services\DataService\ModelEngineChanges.vb" />
+    <Compile Include="Services\DataService\ModelEngineSave.vb" />
     <Compile Include="Services\DataService\ModelWorkbookRead.vb" />
     <Compile Include="Services\DataService\ModelRangeDataSource.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookCandidatePackage.vb" />

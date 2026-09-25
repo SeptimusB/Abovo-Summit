@@ -27,16 +27,17 @@ static class NativeDitTests
     static void Check(bool ok,string message){if(!ok)throw new Exception(message);Console.WriteLine("DIT_NATIVE PASS "+(++checks)+" "+message);Console.Out.Flush();}
     static void Pump(){Application.DoEvents();Application.RaiseIdle(EventArgs.Empty);Application.DoEvents();}
     static IEnumerable<Control> Children(Control parent){foreach(Control child in parent.Controls){yield return child;foreach(var nested in Children(child))yield return nested;}}
-    internal static Task Run(string source,bool excel)
+    internal static Task Run(string source,bool excel,bool saveLifecycle=false)
     {
         var completion=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var thread=new Thread(()=>{try{RunOnOwner(source,excel);completion.SetResult(true);}catch(Exception e){completion.SetException(e);}}){IsBackground=true};
+        var thread=new Thread(()=>{try{RunOnOwner(source,excel,saveLifecycle);completion.SetResult(true);}catch(Exception e){completion.SetException(e);}}){IsBackground=true};
         thread.SetApartmentState(ApartmentState.STA);thread.Start();return completion.Task;
     }
-    static void RunOnOwner(string source,bool excel)
+    static void RunOnOwner(string source,bool excel,bool saveLifecycle)
     {
         Thread.CurrentThread.CurrentCulture=CultureInfo.GetCultureInfo("en-GB");
         var before=NativeProcessChecks.ExcelIds();
+        var owners=new List<WorkbookCalculationSession>();
         var app=typeof(ModelChangeManagerV2).Assembly;
         app.GetType("Abovo.AbovoAppCls").GetMethod("Initialise").Invoke(null,null);
         var files=app.GetType("Abovo.FileManager");files.GetMethod("Initialise").Invoke(null,new object[]{null});
@@ -48,7 +49,8 @@ static class NativeDitTests
         var model=FileManager.ExcelModels[opened.IntegerReturn];var book=model.WB;WorkbookCalculationSession session=null;
         try
         {
-            session=WorkbookCalculationSession.OpenAsync(copy,new WorkbookEngineOptions(excel?WorkbookEnginePreference.ExcelRequired:WorkbookEnginePreference.DevExpressOnly,true,true,120000,true)).GetAwaiter().GetResult();
+            session=WorkbookCalculationSession.OpenAsync(copy,new WorkbookEngineOptions(excel?WorkbookEnginePreference.ExcelRequired:WorkbookEnginePreference.DevExpressOnly,true,true,120000,true,saveLifecycle,saveLifecycle)).GetAwaiter().GetResult();
+            owners.Add(session);
             var initial=session.CalculateAndReadAsync(0,WorkbookCalculationKind.Rebuild,new[]{new WorkbookReadArea("Check Sheet",0,0,1,1)}).GetAwaiter().GetResult();
             Call(model.ChangeManager,"BindEngineEditingTrial",session,initial);
             Check(model.ChangeManager.HasEngineEditingTrial,"normal application model bound to "+session.EngineName);
@@ -104,15 +106,38 @@ static class NativeDitTests
                 }
             }
             Check(model.IsDirty&&model.ChangeManager.GetHistoryTable().Rows.Count>=2,"real model history and dirty state retained");
+            if(saveLifecycle){
+                var cell=book.Worksheets["Covenant Assumptions"].Cells["D8"];double old=cell.ModelValue().NumericValue;
+                var posted=model.ChangeManager.ProcessEngineCommand(new[]{new DataChangeEvent{ModelID=model.ModelID,WSName=cell.Worksheet.Name,CellAddress="D8",DataFormat="N",ChangedValue=old+0.125,Description="Real model save lifecycle"}},new[]{WorkbookValuePermission.UnlockedCell},"Real model save lifecycle");
+                Check(posted.BSuccess,"real model lifecycle edit admitted");
+                // Invoke the shared application save operation directly here
+                // so a failure escapes with its stack instead of blocking this
+                // unattended fixture on the public wrapper's error MessageBox.
+                Check((bool)Call(model,"SaveNativeWorkbookTo",copy),"normal application Save operation routes to the native owner");
+                owners.Add((WorkbookCalculationSession)Field(model.ChangeManager,"engineTrial"));
+                Check(!model.IsDirty&&cell.ModelValue().NumericValue==old+0.125&&model.ChangeManager.CanUndo,"real Demo Save retains current values and Undo");
+                Check(model.ChangeManager.Undo().BSuccess&&model.IsDirty&&cell.ModelValue().NumericValue==old,"real Demo Undo after Save restores native input");
+                string another=Path.Combine(folder,"native-save-as"+Path.GetExtension(copy));
+                Check(model.SaveFileAsTo(another),"normal application Save As routes to the native owner");
+                owners.Add((WorkbookCalculationSession)Field(model.ChangeManager,"engineTrial"));
+                Check(!model.IsDirty&&model.FileName==another&&model.ChangeManager.CanRedo,"real Demo Save As adopts verified filename and keeps Redo");
+                Check(model.ChangeManager.Redo().BSuccess&&model.IsDirty&&cell.ModelValue().NumericValue==old+0.125,"real Demo Redo after Save As updates current owner");
+                using(var verify=new Workbook()){verify.Options.CalculationMode=WorkbookCalculationMode.Manual;verify.LoadDocument(copy);
+                    Check(verify.Worksheets[cell.Worksheet.Name].Cells["D8"].Value.NumericValue==old+0.125,"independent real Demo saved source retains committed input");
+                    verify.LoadDocument(another);Check(verify.Worksheets[cell.Worksheet.Name].Cells["D8"].Value.NumericValue==old,"independent real Demo Save As retains its committed input, not unsaved Redo");}
+            }
         }
         finally
         {
-            // Explicit test discard: nothing is saved; normal production close
-            // ownership is a separate gate, not simulated by clearing IsDirty.
-            FileManager.CloseModel(opened.IntegerReturn);
-            if(session!=null)session.CloseAsync().GetAwaiter().GetResult();
+            // Explicit test discard: normal model close must own native cleanup.
+            // The final close is only an idempotent/failure safety net for the test.
+            var active=model.ChangeManager!=null?(WorkbookCalculationSession)Field(model.ChangeManager,"engineTrial"):session;
+            try{
+                FileManager.CloseModel(opened.IntegerReturn);
+                if(active!=null)Check(active.NativeCleanupCompletion!=null&&active.NativeCleanupCompletion.Status==TaskStatus.RanToCompletion,"normal model close completes native owner cleanup");
+            }finally{if(active!=null)active.CloseAsync().GetAwaiter().GetResult();if(session!=null)session.CloseAsync().GetAwaiter().GetResult();}
         }
-        NativeProcessChecks.RequireOriginalProcesses(before).GetAwaiter().GetResult();
+        NativeProcessChecks.RequireOwnedProcesses(owners).GetAwaiter().GetResult();
         Console.WriteLine("DIT_NATIVE ASSERTIONS="+checks);
     }
 }

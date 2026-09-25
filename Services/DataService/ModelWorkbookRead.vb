@@ -15,7 +15,7 @@ Namespace Abovo
     Friend NotInheritable Class ModelEngineView
         Private Shared ReadOnly views As New ConditionalWeakTable(Of IWorkbook, ModelEngineView)()
         Private ReadOnly ownerThread As Integer = Threading.Thread.CurrentThread.ManagedThreadId
-        Private ReadOnly session As WorkbookCalculationSession
+        Private session As WorkbookCalculationSession
         Private anchor As WorkbookCalculationResult
         Private ReadOnly blocks As New List(Of WorkbookCalculationResult)()
         Private Sub New(session As WorkbookCalculationSession, initial As WorkbookCalculationResult)
@@ -45,6 +45,20 @@ Namespace Abovo
         Friend Shared Sub Publish(book As IWorkbook, result As WorkbookCalculationResult)
             Dim view As ModelEngineView = Nothing
             If views.TryGetValue(book, view) Then view.Publish(result)
+        End Sub
+        Friend Shared Sub ReplaceOwner(book As IWorkbook, previous As WorkbookCalculationSession,
+                                       replacement As WorkbookCalculationSession, result As WorkbookCalculationResult)
+            Dim view As ModelEngineView = Nothing
+            If Not views.TryGetValue(book, view) Then Throw New InvalidOperationException("The model has no bound result owner.")
+            view.RequireOwner()
+            If view.session IsNot previous OrElse replacement Is Nothing OrElse Not replacement.IsCurrent(result) Then
+                Throw New InvalidOperationException("The saved model cannot adopt this calculation owner.")
+            End If
+            If previous.NativeCleanupCompletion Is Nothing OrElse previous.NativeCleanupCompletion.Status <> Threading.Tasks.TaskStatus.RanToCompletion Then
+                Throw New InvalidOperationException("The previous calculation owner has not closed successfully.")
+            End If
+            view.session = replacement
+            view.Publish(result)
         End Sub
         Private Sub RequireOwner()
             If Threading.Thread.CurrentThread.ManagedThreadId <> ownerThread Then Throw New InvalidOperationException("Model display accessed outside its owner thread.")

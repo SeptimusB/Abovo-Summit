@@ -75,6 +75,11 @@ Namespace Abovo
         ' XML still need integration before a caller may mark the model clean.
         Public Function IsSavedHistoryCurrent(snapshot As ModelHistorySnapshot, receipt As WorkbookPublicationReceipt) As Boolean
             Dim model = RequireSaveHistoryOwner()
+            Return IsSavedHistoryCurrentCore(model, snapshot, receipt)
+        End Function
+
+        Private Function IsSavedHistoryCurrentCore(model As FileManager.ExcelModel, snapshot As ModelHistorySnapshot,
+                                                   receipt As WorkbookPublicationReceipt) As Boolean
             Return snapshot IsNot Nothing AndAlso receipt IsNot Nothing AndAlso snapshot.ManagerId = saveHistoryIdentity AndAlso
                 receipt.HistorySnapshotId = snapshot.Id AndAlso receipt.HistoryHash = snapshot.Hash AndAlso
                 receipt.SessionId = snapshot.SessionId AndAlso receipt.Revision = snapshot.EngineRevision AndAlso

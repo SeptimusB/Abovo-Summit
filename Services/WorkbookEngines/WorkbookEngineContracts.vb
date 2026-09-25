@@ -5,6 +5,16 @@ Imports System.Collections.ObjectModel
 Imports System.Threading
 
 Namespace Abovo.WorkbookEngines
+    'Diagnostic identity only, never permission to terminate a process. Start
+    'time prevents a recycled Windows PID being mistaken for our former owner.
+    Public NotInheritable Class WorkbookNativeProcessIdentity
+        Public ReadOnly Property ProcessId As Integer
+        Public ReadOnly Property StartedUtc As DateTime
+        Friend Sub New(processId As Integer, startedUtc As DateTime)
+            Me.ProcessId = processId : Me.StartedUtc = startedUtc
+        End Sub
+    End Class
+
     ' Production callers remain read-only. Isolated value-edit trials require
     ' explicit opt-in. Candidate exports never replace a source or mark it saved.
     Public Enum WorkbookEnginePreference

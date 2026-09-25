@@ -843,6 +843,10 @@ Namespace Abovo
 
                 Try
 
+                    If ChangeManager IsNot Nothing AndAlso ChangeManager.HasEngineEditingTrial Then
+                        Return SaveNativeWorkbookAs(RequireDifferentPath)
+                    End If
+
                     If RequireDifferentPath Then
 
                         Using SaveDialog As New SaveFileDialog()
@@ -953,6 +957,12 @@ Namespace Abovo
                 Try
                     If String.IsNullOrWhiteSpace(SelectedPath) Then Return False
                     Dim FullPath As String = System.IO.Path.GetFullPath(SelectedPath)
+                    If ChangeManager IsNot Nothing AndAlso ChangeManager.HasEngineEditingTrial Then
+                        If RequireDifferentPath AndAlso String.Equals(FullPath, System.IO.Path.GetFullPath(OriginalPath), StringComparison.OrdinalIgnoreCase) Then
+                            Throw New InvalidOperationException("The model must be saved to a different file.")
+                        End If
+                        Return SaveNativeWorkbookTo(FullPath)
+                    End If
                     If Not String.Equals(System.IO.Path.GetExtension(FullPath), ".xlsb", StringComparison.OrdinalIgnoreCase) Then
                         FullPath = System.IO.Path.ChangeExtension(FullPath, ".xlsb")
                     End If
@@ -1007,6 +1017,7 @@ Namespace Abovo
                 If Not ManualSaveAvailable Then Return True
 
                 Try
+                    If ChangeManager IsNot Nothing AndAlso ChangeManager.HasEngineEditingTrial Then Return SaveNativeWorkbookTo(FileName)
                     If Not SavePreparedWorkbook(Sub() ModelSpreadsheetControl.SaveDocument()) Then Return False
                     IsDirty = False
                     RefreshSavedFilePresentation()
@@ -1035,6 +1046,47 @@ Namespace Abovo
                 End Try
 
             End Function
+            Private Function SaveNativeWorkbookAs(requireDifferentPath As Boolean) As Boolean
+                If Not String.IsNullOrWhiteSpace(RecoverySourcePath) Then
+                    Throw New NotSupportedException("Recovered native models require the verified format-conversion save route.")
+                End If
+                Dim extension = System.IO.Path.GetExtension(FileName)
+                Using dialog As New SaveFileDialog With {
+                    .Title = "Save business plan as", .Filter = "Excel workbook (*" & extension & ")|*" & extension,
+                    .DefaultExt = extension.TrimStart("."c), .AddExtension = True, .CheckPathExists = True,
+                    .RestoreDirectory = True, .OverwritePrompt = True,
+                    .InitialDirectory = System.IO.Path.GetDirectoryName(FileName),
+                    .FileName = System.IO.Path.GetFileNameWithoutExtension(FileName) & " - copy" & extension}
+                    If dialog.ShowDialog() <> DialogResult.OK Then Return False
+                    Dim target = System.IO.Path.GetFullPath(dialog.FileName)
+                    If requireDifferentPath AndAlso String.Equals(target, System.IO.Path.GetFullPath(FileName), StringComparison.OrdinalIgnoreCase) Then
+                        Throw New InvalidOperationException("Choose a different filename for this copy.")
+                    End If
+                    Return SaveNativeWorkbookTo(target)
+                End Using
+            End Function
+
+            Private Function SaveNativeWorkbookTo(target As String) As Boolean
+                If _writingPreparedWorkbook OrElse _writingRecoveryWorkbook OrElse ChangeManager.ChangeInProgress OrElse
+                   ModelSafetyManager.IsBulkWorkbookMutationInProgress(ModelID) Then Throw New InvalidOperationException("Another workbook operation is still in progress.")
+                'Use the destination's access policy/volume, not a separate
+                'profile cache which the native owner may be unable to write.
+                Dim folder = System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(target))
+                If Not System.IO.Directory.Exists(folder) Then Throw New System.IO.DirectoryNotFoundException("The save folder does not exist.")
+                _writingPreparedWorkbook = True
+                Try
+                    Using activity As New FormSplashScreen(Form.ActiveForm, "Saving business plan", "Saving and verifying workbook results...")
+                        ChangeManager.SaveEngineEditingModel(target, folder)
+                        activity.Complete("Business plan saved.")
+                    End Using
+                    SystemMessageManager.Publish(ModelID, "Model saved as '" & System.IO.Path.GetFileName(FileName) & "'.",
+                        SystemMessageSeverity.Success, "File Manager", FileName)
+                    Return True
+                Finally
+                    _writingPreparedWorkbook = False
+                End Try
+            End Function
+
             'A stream export must not become the document's Save point or filename.
             'XLSM retains the unmodified formulas; the normal XLSB preflight remains
             'mandatory when the recovered plan is explicitly saved as XLSB.
@@ -1291,9 +1343,36 @@ Namespace Abovo
                 Next
             End Sub
 
+            'Only the manager's verified publication/reopen path calls this.
+            'Dirty acknowledgement and filename identity change together; a view
+            'subscriber cannot turn a completed save into a false failed write.
+            Friend Sub AcknowledgeEngineSave(path As String, userRevision As Long, calculationRevision As Long)
+                If IsClosing OrElse _userChangeRevision <> userRevision OrElse _calculationRevision <> calculationRevision Then
+                    Throw New InvalidOperationException("The model changed before save acknowledgement.")
+                End If
+                FileName = System.IO.Path.GetFullPath(path)
+                FileInfo = New System.IO.FileInfo(FileName)
+                _isDirty = False
+                _savedUserChangeRevision = _userChangeRevision
+                RecoverySaveAsRequired = False
+                MarkFullCalculationCurrent(_calculationRevision, True)
+                Try
+                    If ModelSpreadsheetControl IsNot Nothing Then ModelSpreadsheetControl.Modified = False
+                    RefreshSavedFilePresentation()
+                    RaiseEvent DirtyStateChanged(Me, EventArgs.Empty)
+                Catch ex As Exception
+                    SystemMessageManager.Publish(ModelID, "The model was saved, but a view could not refresh. " & ex.Message,
+                        SystemMessageSeverity.Warning, "Save refresh", FileName)
+                End Try
+            End Sub
+
             Public Function CommitToCloseModel() As AbovoTransaction
 
                 Dim CloseTrans As New AbovoTransaction
+
+                If ChangeManager IsNot Nothing AndAlso ChangeManager.HasEngineEditingTrial AndAlso ChangeManager.ChangeInProgress Then
+                    Return New AbovoTransaction With {.StringReturn = "Cancel", .StrResponseMessage = "Wait for the current model operation before closing."}
+                End If
 
                 Dim saveRequested As Boolean = False
                 If IsDirty AndAlso Not RecoverySaveAsRequired AndAlso IntegrityState = ModelIntegrityState.Healthy Then
@@ -1752,6 +1831,9 @@ Namespace Abovo
             Public Sub CloseModel()
 
                 If IsClosing Then Return
+                If ChangeManager IsNot Nothing AndAlso ChangeManager.HasEngineEditingTrial AndAlso ChangeManager.ChangeInProgress Then
+                    Throw New InvalidOperationException("Wait for the current model operation before closing.")
+                End If
                 IsClosing = True
                 ClearDiscardedSessionCheckSheetWarning()
                 RecoveryBackupManager.Forget(Me)
@@ -1835,6 +1917,15 @@ Namespace Abovo
                     If SSViewer IsNot Nothing Then SSViewer.Dispose()
                 Catch ex As Exception
                     WriteLog("Error disposing spreadsheet viewer: " & ex.Message, FileName)
+                End Try
+
+                Try
+                    ChangeManager?.CloseEngineEditingOwner()
+                Catch ex As Exception
+                    WriteLog("Error closing native calculation owner: " & ex.Message, FileName)
+                    SystemMessageManager.Publish(ModelID,
+                        "The business plan interface has closed, but its calculation engine could not finish closing. " & ex.Message,
+                        SystemMessageSeverity.Warning, "Calculation engine", FileName)
                 End Try
 
                 Try
@@ -1968,6 +2059,12 @@ Namespace Abovo
                ExcelModels(ModelID) Is Nothing Then Return
 
             Dim ModelToClose As ExcelModel = ExcelModels(ModelID)
+
+            'Reject a re-entrant close before the finally block can remove the
+            'model slot while its admitted edit/history operation is still running.
+            If ModelToClose.ChangeManager IsNot Nothing AndAlso ModelToClose.ChangeManager.HasEngineEditingTrial AndAlso ModelToClose.ChangeManager.ChangeInProgress Then
+                Throw New InvalidOperationException("Wait for the current model operation before closing.")
+            End If
 
             Try
                 ModelToClose.CloseModel()

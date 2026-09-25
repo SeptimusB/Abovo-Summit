@@ -42,6 +42,7 @@ Namespace Abovo
         Private engineTrialAreas As List(Of WorkbookReadArea)
         Private engineTrialResult As WorkbookCalculationResult
         Private engineTrialPresentation As Boolean
+        Private engineDefinitionFingerprint As String
         Public ReadOnly Property HasEngineEditingTrial As Boolean
             Get
                 Return engineTrial IsNot Nothing
@@ -52,6 +53,17 @@ Namespace Abovo
                 Return If(engineTrial IsNot Nothing AndAlso engineTrial.IsCurrent(engineTrialResult), engineTrialResult, Nothing)
             End Get
         End Property
+
+        'Called only after model interfaces have detached. Keep the closed view
+        'bound: a late reader must not fall through to stale presentation values.
+        Friend Sub CloseEngineEditingOwner()
+            If engineTrial Is Nothing Then Return
+            If Thread.CurrentThread.ManagedThreadId <> saveHistoryOwnerThread Then Throw New InvalidOperationException("Close the model on its owning thread.")
+            If ChangeInProgress Then Throw New InvalidOperationException("Wait for the current model operation before closing.")
+            engineTrialResult = Nothing
+            ModelEngineView.Publish(WB, Nothing)
+            engineTrial.CloseAsync().GetAwaiter().GetResult()
+        End Sub
 
         Public Function CaptureEngineEditor(worksheetName As String, address As String,
                                              permission As WorkbookValuePermission) As ModelEngineEditTicket
@@ -125,6 +137,7 @@ Namespace Abovo
             engineTrialAreas = initial.Blocks.Select(Function(block) block.Area).ToList()
             engineTrialPresentation = initial.Presentation.Count > 0
             engineTrialResult = initial : engineTrial = session
+            engineDefinitionFingerprint = ComputeEngineDefinitionFingerprint()
             ModelEngineView.Bind(WB, session, initial)
         End Sub
 
@@ -152,8 +165,9 @@ Namespace Abovo
             Dim receipt As WorkbookValueBatchReceipt
             Try
                 ' All native operations run on their own non-reentrant STA. This
-                ' synchronous boundary matches current ChangeManager callers;
-                ' it never pumps UI messages or moves native objects to the UI.
+                ' synchronous boundary matches current ChangeManager callers.
+                ' An STA wait can admit paint callbacks; pending display guards
+                ' prevent stale reads. Native objects never move to the UI.
                 receipt = engineTrial.ApplyValuesAsync(edits, engineTrialAreas, cancellation, engineTrialPresentation).GetAwaiter().GetResult()
             Catch ex As Exception
                 engineTrialResult = Nothing

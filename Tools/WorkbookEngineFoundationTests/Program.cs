@@ -104,6 +104,8 @@ static class Program
         var excel=new FakeBackend{FailOpen=true,Name="Excel"};var dx=new FakeBackend{Name="DevExpress"};
         var session=await WorkbookCalculationSession.OpenAsync(path,Options(),default(CancellationToken),kind=>kind==WorkbookEnginePreference.ExcelRequired?excel:dx);
         Check(session.EngineName=="DevExpress"&&session.FallbackReason.Contains("Simulated")&&excel.Disposed,"opening failure selects fallback only after Excel cleanup");
+        var pinned=(WorkbookEngineOptions)typeof(WorkbookCalculationSession).GetField("openingOptions",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(session);
+        Check(pinned.Preference==WorkbookEnginePreference.DevExpressOnly&&!pinned.AllowTrustedVba&&!pinned.RequireSummitFunctions,"Automatic fallback pins subsequent saved-model reopen to the selected engine and security policy");
         var result=await session.CalculateAndReadAsync(0,WorkbookCalculationKind.Full,new[]{One});
         Check(session.IsCurrent(result)&&result.Blocks.Count==1&&(double)result.Blocks[0].ValueAt(0,0)==42d,"detached result has exact session/hash/revision");
         session.InvalidateResults();Check(!session.IsCurrent(result),"new revision invalidates old result");
@@ -226,6 +228,8 @@ static class Program
     static async Task Run(string[] args)
     {
         var before=Hash(args[1]);
+        if(args[2]=="model-save") { await ModelSaveTests.Run(args[1]);Check(Hash(args[1])==before,"source bytes unchanged");return; }
+        if(args[2]=="dit-save-dx"||args[2]=="dit-save-excel") { await NativeDitTests.Run(args[1],args[2]=="dit-save-excel",true);Check(Hash(args[1])==before,"source bytes unchanged");return; }
         if(args[2]=="dit-dx"||args[2]=="dit-excel") { await NativeDitTests.Run(args[1],args[2]=="dit-excel");Check(Hash(args[1])==before,"source bytes unchanged");return; }
         if(args[2]=="expression") { await ExpressionTests.Run(args[1]);Check(Hash(args[1])==before,"source bytes unchanged");return; }
         if(args[2]=="range-agl") { await RangeBindingTests.Agl(args[1]);Check(Hash(args[1])==before,"source bytes unchanged");return; }
@@ -255,8 +259,8 @@ static class Program
     [STAThread]
     static int Main(string[] args)
     {
-        if(args.Length!=3||!new[]{"dit-dx","dit-excel","expression","range-agl","range","presentation","bridge","batch","safety","security","synthetic","agl","projection","grid","deadline","edit","edit-native","edit-agl","save","save-native","save-agl","publish","publish-native","publish-agl","recovery","reopen-native","reopen-agl","history","history-native","history-agl","crash-Prepared","crash-OriginalRetained","crash-Published"}.Contains(args[2])){Console.Error.WriteLine("APP_BIN PRIVATE_WORKBOOK presentation|bridge|batch|safety|security|synthetic|agl|projection|grid|deadline|edit|edit-native|edit-agl|save|save-native|save-agl|publish|publish-native|publish-agl|recovery|reopen-native|reopen-agl|history|history-native|history-agl");return 2;}
+        if(args.Length!=3||!new[]{"dit-save-dx","dit-save-excel","model-save","dit-dx","dit-excel","expression","range-agl","range","presentation","bridge","batch","safety","security","synthetic","agl","projection","grid","deadline","edit","edit-native","edit-agl","save","save-native","save-agl","publish","publish-native","publish-agl","recovery","reopen-native","reopen-agl","history","history-native","history-agl","crash-Prepared","crash-OriginalRetained","crash-Published"}.Contains(args[2])){Console.Error.WriteLine("APP_BIN PRIVATE_WORKBOOK model-save|dit-dx|dit-excel|range|range-agl|expression|presentation|bridge|batch|safety|security|synthetic|agl|projection|grid|deadline|edit|edit-native|edit-agl|save|save-native|save-agl|publish|publish-native|publish-agl|recovery|reopen-native|reopen-agl|history|history-native|history-agl");return 2;}
         AppDomain.CurrentDomain.AssemblyResolve+=(s,e)=>{string file=Path.Combine(args[0],new AssemblyName(e.Name).Name+".dll");if(!File.Exists(file))file=Path.Combine(args[0],new AssemblyName(e.Name).Name+".exe");return File.Exists(file)?Assembly.LoadFrom(file):null;};
-        try{Run(args).GetAwaiter().GetResult();return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}
+        try{args[0]=Path.GetFullPath(args[0]);args[1]=Path.GetFullPath(args[1]);Run(args).GetAwaiter().GetResult();return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}
     }
 }

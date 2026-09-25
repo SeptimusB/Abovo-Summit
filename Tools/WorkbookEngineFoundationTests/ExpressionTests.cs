@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -15,7 +16,7 @@ static class ExpressionTests
     static async Task Reject(Func<Task> work,string label){try{await work();}catch(Exception e)when(e is ArgumentException||e is InvalidOperationException||e is NotSupportedException){Check(true,label);return;}throw new Exception("Expected rejection: "+label);}
     internal static async Task Run(string original)
     {
-        var before=NativeProcessChecks.ExcelIds();
+        var owners=new List<WorkbookCalculationSession>();
         var root=Path.Combine(Path.GetDirectoryName(original),"expression-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
         var source=Path.Combine(root,"inputs.xlsx");
         using(var book=new Workbook())
@@ -30,6 +31,7 @@ static class ExpressionTests
         foreach(var preference in new[]{WorkbookEnginePreference.DevExpressOnly,WorkbookEnginePreference.ExcelRequired})
         {
             var s=await WorkbookCalculationSession.OpenAsync(source,new WorkbookEngineOptions(preference,false,false,120000,true));
+            owners.Add(s);
             using(var model=new EngineChangeManagerTests.Model(source))
             try
             {
@@ -62,7 +64,7 @@ static class ExpressionTests
             }
             finally{await s.CloseAsync();}
         }
-        await NativeProcessChecks.RequireOriginalProcesses(before);
+        await NativeProcessChecks.RequireOwnedProcesses(owners);
         Console.WriteLine("EXPRESSION ASSERTIONS="+assertions);
     }
 }
