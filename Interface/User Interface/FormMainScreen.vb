@@ -538,6 +538,8 @@ Public Class FormMainScreen
 
             Select Case FileOpenResult.StringReturn
                 Case "AbovoBP"
+                    WorkbookEngines.ModelEngineSelection.Activate(ExcelModels(ActiveModel),
+                        New WorkbookEngines.WorkbookEngineSettings().ReadInteractiveOptions())
                     PopulateControlsFileBP(ActiveModel)
                     PostLoadActionsBP(ActiveModel)
                 Case "AbovoDSA"

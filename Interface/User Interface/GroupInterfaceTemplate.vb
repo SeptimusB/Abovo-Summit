@@ -551,7 +551,9 @@ Public Class GroupInterfaceTemplate
             Me.UseWaitCursor = True
             Me.Cursor = Cursors.WaitCursor
             System.Windows.Forms.Cursor.Current = Cursors.WaitCursor
-            If Not ExcelModels(MyModelID).EnsureDeferredSaveResultsCurrent("Refreshing summary figures...") Then
+            If ExcelModels(MyModelID).ChangeManager.HasEngineEditingTrial Then
+                ExcelModels(MyModelID).ChangeManager.RecalculateEngine(Abovo.WorkbookEngines.WorkbookCalculationKind.Full)
+            ElseIf Not ExcelModels(MyModelID).EnsureDeferredSaveResultsCurrent("Refreshing summary figures...") Then
                 workbook.Options.CalculationEngineType =
                     DevExpress.Spreadsheet.CalculationEngineType.Recursive
                 workbook.CalculateFull()
@@ -1421,6 +1423,7 @@ Public Class GroupInterfaceTemplate
 
 
                     Case "StockAssumptionsInterface"
+                        If Not ModelSafetyManager.CanOpenDirectWorkbookSurface(SetModelID, "Legacy Stock interface") Then Return
                         Dim NewSAI As New StockAssumptionsInterface(SetModelID, resolvedGSID, SetCSID)
                         NewSAI.Tag = documentTag
                         DocumentManagerAssumptions.View.AddDocument(NewSAI)

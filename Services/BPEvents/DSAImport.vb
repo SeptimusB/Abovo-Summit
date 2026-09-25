@@ -14,6 +14,8 @@ Namespace Abovo
             ModelID As Integer,
             Optional Owner As Form = Nothing) As AbovoTransaction
             Const Action As String = "ImportSingleDSA_File"
+            Dim refusal = ModelSafetyManager.NativeMutationRefusal(ModelID, "DSA scheme import")
+            If refusal IsNot Nothing Then Return refusal
             Dim Activity As FormSplashScreen = Nothing
             Try
                 Using Dialog As New DevExpress.XtraEditors.XtraOpenFileDialog()
@@ -39,6 +41,8 @@ Namespace Abovo
             ModelID As Integer,
             Optional Owner As Form = Nothing) As AbovoTransaction
             Const Action As String = "ImportConsolDSA_File"
+            Dim refusal = ModelSafetyManager.NativeMutationRefusal(ModelID, "Consolidated DSA import")
+            If refusal IsNot Nothing Then Return refusal
             Try
                 Using Dialog As New DevExpress.XtraEditors.XtraOpenFileDialog()
                     Dialog.Filter = "Consolidated DSA models (*.xls;*.xlsx;*.xlsm;*.xlsb;*.adsa)|*.xls;*.xlsx;*.xlsm;*.xlsb;*.adsa"
@@ -59,6 +63,8 @@ Namespace Abovo
             ModelID As Integer,
             Optional Owner As Form = Nothing) As AbovoTransaction
             Const Action As String = "ImportMultiDSA_Files"
+            Dim refusal = ModelSafetyManager.NativeMutationRefusal(ModelID, "DSA folder import")
+            If refusal IsNot Nothing Then Return refusal
             Try
                 Using Dialog As New FolderBrowserDialog()
                     Dialog.Description = "Please select the FOLDER TO IMPORT"
@@ -106,6 +112,8 @@ Namespace Abovo
             ModelID As Integer,
             Optional Owner As Form = Nothing) As AbovoTransaction
             Const Action As String = "ImportDSA_Template"
+            Dim refusal = ModelSafetyManager.NativeMutationRefusal(ModelID, "DSA template import")
+            If refusal IsNot Nothing Then Return refusal
             Dim SourceID As Integer = -1
             Dim MutationStarted As Boolean = False
             Dim ImportSucceeded As Boolean = False
@@ -192,6 +200,7 @@ Namespace Abovo
             FilePath As String,
             ImportType As String,
             Optional Owner As Form = Nothing) As String
+            ModelSafetyManager.RequireDirectWorkbookSurface(ModelID, "DSA scheme import")
             Dim SourceID As Integer = -1
             Dim Activity As FormSplashScreen = Nothing
             Dim SchemeMade As Boolean = False

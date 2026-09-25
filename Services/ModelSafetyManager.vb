@@ -24,6 +24,25 @@ Namespace Abovo
                 .StringReturn = message, .StrResponseMessage = message}
         End Function
 
+        Friend Shared Function CanOpenDirectWorkbookSurface(modelID As Integer, operation As String) As Boolean
+            Dim refusal = NativeMutationRefusal(modelID, operation)
+            If refusal Is Nothing Then Return True
+            SystemMessageManager.Publish(modelID, refusal.StrResponseMessage & " Save and reopen with DevExpress to use this function.",
+                SystemMessageSeverity.Warning, "Calculation engine")
+            Return False
+        End Function
+
+        Friend Shared Sub RequireDirectWorkbookSurface(modelID As Integer, operation As String)
+            Dim refusal = NativeMutationRefusal(modelID, operation)
+            If refusal IsNot Nothing Then Throw New NotSupportedException(refusal.StrResponseMessage)
+        End Sub
+
+        Friend Shared Sub RequireDirectWorkbook(workbook As IWorkbook, operation As String)
+            If workbook IsNot Nothing AndAlso workbook.Worksheets.Count > 0 AndAlso workbook.Worksheets(0).Cells(0, 0).HasModelEngineView() Then
+                Throw New NotSupportedException(operation & " is not available in this calculation-engine mode yet. The workbook has not been changed.")
+            End If
+        End Sub
+
         Public Shared Sub BeginBulkWorkbookMutation(ByVal modelID As Integer)
             Dim refusal = NativeMutationRefusal(modelID, "Structural editing")
             If refusal IsNot Nothing Then Throw New InvalidOperationException(refusal.StrResponseMessage)

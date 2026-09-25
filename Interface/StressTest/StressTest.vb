@@ -191,6 +191,8 @@ Public Class StressTest
     End Sub
     Public Sub New(SetModelID As Integer)
 
+        ModelSafetyManager.RequireDirectWorkbookSurface(SetModelID, "Stress Test scenario operations")
+
 
         Me.BackColor = System.Drawing.Color.White
         MyColourSwatch = ExcelModels(SetModelID).ColourSwatch

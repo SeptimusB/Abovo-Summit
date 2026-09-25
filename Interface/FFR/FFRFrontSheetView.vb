@@ -204,6 +204,15 @@ Public Class FFRFrontSheetView
         AddHandler FirstForecastYearEdit.Validated, AddressOf FirstForecastYearValidated
         AddHandler RegisteredConfirmation.Validated, AddressOf RegisteredConfirmationValidated
         AddHandler OtherConfirmation.Validated, AddressOf OtherConfirmationValidated
+        For Each pair In New KeyValuePair(Of BaseEdit, String)() {
+            New KeyValuePair(Of BaseEdit, String)(RPNumberEdit, "B5"),
+            New KeyValuePair(Of BaseEdit, String)(FirstForecastYearEdit, "B6"),
+            New KeyValuePair(Of BaseEdit, String)(RegisteredConfirmation, "B7"),
+            New KeyValuePair(Of BaseEdit, String)(OtherConfirmation, "B36")}
+            Dim address = pair.Value
+            ModelPostingChangeSupport.RegisterEngineEditor(pair.Key, Function() ChangeManager.CaptureEngineEditor(
+                SheetName, address, WorkbookEngines.WorkbookValuePermission.UnlockedSolidFill))
+        Next
     End Sub
 
     Private Shared Function CreateFieldLabel(Text As String) As LabelControl
@@ -356,10 +365,10 @@ Public Class FFRFrontSheetView
         Try
             ModelPostingChangeSupport.HideGridEditors(Me)
             Dim Worksheet As Worksheet = Workbook.Worksheets(SheetName)
-            WorkbookTitle.Text = Worksheet.Cells("A1").DisplayText
-            SheetTitle.Text = Worksheet.Cells("A2").DisplayText
-            RegisteredQuestion.Text = Worksheet.Cells("A7").DisplayText
-            OtherQuestion.Text = Worksheet.Cells("A36").DisplayText
+            WorkbookTitle.Text = Worksheet.Cells("A1").ModelDisplayText()
+            SheetTitle.Text = Worksheet.Cells("A2").ModelDisplayText()
+            RegisteredQuestion.Text = Worksheet.Cells("A7").ModelDisplayText()
+            OtherQuestion.Text = Worksheet.Cells("A36").ModelDisplayText()
             RegisteredNote.Text = GetCellNote(Worksheet.Cells("C9"))
 
             LoadEditor(RPNumberEdit, Worksheet.Cells("B5"))
@@ -380,9 +389,9 @@ Public Class FFRFrontSheetView
     End Sub
 
     Private Sub LoadEditor(Editor As BaseEdit, SourceCell As Cell)
-        If SourceCell.Value.IsDateTime Then
-            Editor.EditValue = SourceCell.Value.DateTimeValue
-        ElseIf SourceCell.Value.IsEmpty Then
+        If SourceCell.ModelValue().IsDateTime OrElse (TypeOf Editor Is DateEdit AndAlso SourceCell.ModelValue().IsNumeric) Then
+            Editor.EditValue = SourceCell.ModelDateValue()
+        ElseIf SourceCell.ModelValue().IsEmpty Then
             Editor.EditValue = Nothing
         Else
             Editor.EditValue = CellToObject(SourceCell)
@@ -394,7 +403,7 @@ Public Class FFRFrontSheetView
     Private Sub LoadConfirmation(Editor As ComboBoxEdit, SourceCell As Cell)
         Editor.Properties.Items.Clear()
         Editor.Properties.Items.AddRange(WorkbookValidationItems(SourceCell).Cast(Of Object).ToArray())
-        Editor.EditValue = If(SourceCell.Value.IsEmpty, Nothing, CellToObject(SourceCell))
+        Editor.EditValue = If(SourceCell.ModelValue().IsEmpty, Nothing, CellToObject(SourceCell))
         ApplyWorkbookAppearance(Editor, SourceCell)
         Editor.Properties.ReadOnly = Not IsWorkbookCellEditable(SourceCell)
     End Sub
@@ -405,7 +414,7 @@ Public Class FFRFrontSheetView
     End Sub
 
     Private Shared Sub ApplyWorkbookAppearance(Editor As BaseEdit, SourceCell As Cell)
-        Dim Background As Color = SourceCell.FillColor
+        Dim Background As Color = SourceCell.ModelFill().BackgroundColor
         If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
         Dim Foreground As Color = DisplayForeground(SourceCell)
         Editor.Properties.Appearance.BackColor = Background
@@ -431,24 +440,26 @@ Public Class FFRFrontSheetView
     End Sub
 
     Private Sub RPNumberValidated(sender As Object, e As EventArgs)
-        CommitEditor("B5", RPNumberEdit.EditValue, "FFR RP number updated")
+        CommitEditor("B5", RPNumberEdit, "FFR RP number updated")
     End Sub
 
     Private Sub FirstForecastYearValidated(sender As Object, e As EventArgs)
-        CommitEditor("B6", FirstForecastYearEdit.EditValue, "FFR first forecast year updated")
+        CommitEditor("B6", FirstForecastYearEdit, "FFR first forecast year updated")
     End Sub
 
     Private Sub RegisteredConfirmationValidated(sender As Object, e As EventArgs)
-        CommitEditor("B7", RegisteredConfirmation.EditValue, "FFR registered-subsidiary confirmation updated")
+        CommitEditor("B7", RegisteredConfirmation, "FFR registered-subsidiary confirmation updated")
     End Sub
 
     Private Sub OtherConfirmationValidated(sender As Object, e As EventArgs)
-        CommitEditor("B36", OtherConfirmation.EditValue, "FFR non-registered-entity confirmation updated")
+        CommitEditor("B36", OtherConfirmation, "FFR non-registered-entity confirmation updated")
     End Sub
 
-    Private Sub CommitEditor(Address As String, Value As Object, Description As String)
+    Private Sub CommitEditor(Address As String, Editor As BaseEdit, Description As String)
         If LoadingView Then Return
-        CommitWorkbookCell(Workbook.Worksheets(SheetName).Cells(Address), Value, Description)
+        CommitWorkbookCell(Workbook.Worksheets(SheetName).Cells(Address), Editor.EditValue, Description,
+            ModelPostingChangeSupport.EngineEditorTicket(Editor))
+        If Editor.ContainsFocus Then ModelPostingChangeSupport.CaptureEngineEditorNow(Editor)
     End Sub
 
     Private Sub EntityViewCustomColumnDisplayText(sender As Object, e As CustomColumnDisplayTextEventArgs)
@@ -457,7 +468,7 @@ Public Class FFRFrontSheetView
         Dim View As GridView = DirectCast(sender, GridView)
         Dim SourceCell As Cell = Nothing
         If TryGetEntitySourceCell(View, View.GetRowHandle(e.ListSourceRowIndex), e.Column, SourceCell) Then
-            e.DisplayText = SourceCell.DisplayText
+            e.DisplayText = SourceCell.ModelPaintText()
         End If
     End Sub
 
@@ -466,8 +477,9 @@ Public Class FFRFrontSheetView
         Dim View As GridView = DirectCast(sender, GridView)
         Dim SourceCell As Cell = Nothing
         If Not TryGetEntitySourceCell(View, e.RowHandle, e.Column, SourceCell) Then Return
+        If Not SourceCell.ModelResultsAvailable() Then Return
 
-        Dim Background As Color = SourceCell.FillColor
+        Dim Background As Color = SourceCell.ModelFill().BackgroundColor
         If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
         Dim Foreground As Color = DisplayForeground(SourceCell)
         e.Appearance.BackColor = Background
@@ -494,7 +506,9 @@ Public Class FFRFrontSheetView
         Dim View As GridView = DirectCast(sender, GridView)
         Dim SourceCell As Cell = Nothing
         If Not TryGetEntitySourceCell(View, View.FocusedRowHandle, View.FocusedColumn, SourceCell) OrElse
-           Not IsWorkbookCellEditable(SourceCell) Then e.Cancel = True
+           Not IsWorkbookCellEditable(SourceCell) Then e.Cancel = True : Return
+        e.Cancel = Not ModelPostingChangeSupport.CaptureModelGridEditor(View, ModelID, SourceCell,
+            WorkbookEngines.WorkbookValuePermission.UnlockedSolidFill)
     End Sub
 
     Private Sub EntityViewShownEditor(sender As Object, e As EventArgs)
@@ -511,7 +525,7 @@ Public Class FFRFrontSheetView
             RefreshFromWorkbook()
             Return
         End If
-        CommitWorkbookCell(SourceCell, e.Value, "FFR entity list updated")
+        CommitWorkbookCell(SourceCell, e.Value, "FFR entity list updated", ModelPostingChangeSupport.EngineEditorTicket(View))
     End Sub
 
     Private Function TryGetEntitySourceCell(
@@ -531,7 +545,8 @@ Public Class FFRFrontSheetView
         Return True
     End Function
 
-    Private Sub CommitWorkbookCell(SourceCell As Cell, Value As Object, Description As String)
+    Private Sub CommitWorkbookCell(SourceCell As Cell, Value As Object, Description As String,
+                                   Optional Ticket As ModelEngineEditTicket = Nothing)
         If LoadingView OrElse SourceCell Is Nothing OrElse Not IsWorkbookCellEditable(SourceCell) Then
             RefreshFromWorkbook()
             Return
@@ -543,6 +558,7 @@ Public Class FFRFrontSheetView
         Dim ChangeEvent As New DataChangeEvent With {
             .ModelID = ModelID,
             .Description = Description,
+            .EngineTicket = Ticket,
             .WSName = SheetName,
             .CellAddress = SourceCell.GetReferenceA1(),
             .OriginalValue = CellToObject(SourceCell),
@@ -589,7 +605,7 @@ Public Class FFRFrontSheetView
         If Source Is Nothing Then Return
         For RowIndex As Integer = 0 To Source.RowCount - 1
             For ColumnIndex As Integer = 0 To Source.ColumnCount - 1
-                AddValidationItem(Result, Source(RowIndex, ColumnIndex).DisplayText)
+                AddValidationItem(Result, Source(RowIndex, ColumnIndex).ModelDisplayText())
             Next
         Next
     End Sub
@@ -611,9 +627,9 @@ Public Class FFRFrontSheetView
     End Function
 
     Private Shared Function IsWorkbookCellEditable(SourceCell As Cell) As Boolean
-        Return SourceCell IsNot Nothing AndAlso
-               Not SourceCell.Protection.Locked AndAlso
-               SourceCell.Fill.PatternType = PatternType.Solid
+        Return SourceCell IsNot Nothing AndAlso SourceCell.ModelResultsAvailable() AndAlso
+               Not SourceCell.ModelProtectionLocked() AndAlso
+               SourceCell.ModelFill().PatternType = PatternType.Solid
     End Function
 
     Private Shared Function CreateEntityTable() As DataTable
@@ -631,11 +647,11 @@ Public Class FFRFrontSheetView
     End Function
 
     Private Shared Function CellToObject(SourceCell As Cell) As Object
-        If SourceCell Is Nothing OrElse SourceCell.Value.IsEmpty Then Return Nothing
-        If SourceCell.Value.IsNumeric Then Return SourceCell.Value.NumericValue
-        If SourceCell.Value.IsBoolean Then Return SourceCell.Value.BooleanValue
-        If SourceCell.Value.IsDateTime Then Return SourceCell.Value.DateTimeValue
-        Return SourceCell.Value.TextValue
+        If SourceCell Is Nothing OrElse SourceCell.ModelValue().IsEmpty Then Return Nothing
+        If SourceCell.ModelValue().IsNumeric Then Return SourceCell.ModelValue().NumericValue
+        If SourceCell.ModelValue().IsBoolean Then Return SourceCell.ModelValue().BooleanValue
+        If SourceCell.ModelValue().IsDateTime Then Return SourceCell.ModelValue().DateTimeValue
+        Return SourceCell.ModelValue().TextValue
     End Function
 
     Private Shared Function NormalizeEditValue(Value As Object) As Object
@@ -662,10 +678,10 @@ Public Class FFRFrontSheetView
 
     Private Shared Function DataFormatForCell(SourceCell As Cell, Value As Object) As String
         If Value Is Nothing Then Return "S"
-        If SourceCell.Value.IsDateTime OrElse TypeOf Value Is DateTime Then Return "D"
-        If SourceCell.Value.IsBoolean OrElse TypeOf Value Is Boolean Then Return "B"
-        If If(SourceCell.NumberFormat, String.Empty).Contains("%") Then Return "P"
-        If SourceCell.Value.IsNumeric OrElse IsNumeric(Value) Then Return "N"
+        If SourceCell.ModelValue().IsDateTime OrElse TypeOf Value Is DateTime Then Return "D"
+        If SourceCell.ModelValue().IsBoolean OrElse TypeOf Value Is Boolean Then Return "B"
+        If If(SourceCell.ModelNumberFormat(), String.Empty).Contains("%") Then Return "P"
+        If SourceCell.ModelValue().IsNumeric OrElse IsNumeric(Value) Then Return "N"
         Return "S"
     End Function
 
@@ -677,8 +693,8 @@ Public Class FFRFrontSheetView
     End Sub
 
     Private Shared Function DisplayForeground(ByVal SourceCell As Cell) As Color
-        If SourceCell IsNot Nothing AndAlso SourceCell.DisplayText.Trim().StartsWith("(", StringComparison.Ordinal) Then Return Color.Red
-        Dim Foreground As Color = If(SourceCell Is Nothing, Color.Empty, SourceCell.Font.Color)
+        If SourceCell IsNot Nothing AndAlso SourceCell.ModelDisplayText().Trim().StartsWith("(", StringComparison.Ordinal) Then Return Color.Red
+        Dim Foreground As Color = If(SourceCell Is Nothing, Color.Empty, SourceCell.ModelFont().Color)
         If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = Color.FromArgb(32, 58, 89)
         Return Foreground
     End Function

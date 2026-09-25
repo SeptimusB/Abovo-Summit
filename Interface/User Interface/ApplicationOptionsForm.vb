@@ -29,6 +29,7 @@ Namespace Abovo
         Private ReadOnly WatchMinutes As SpinEdit
         Private ReadOnly WatchIdle As SpinEdit
         Private ReadOnly WatchTiming As CheckEdit
+        Private ReadOnly EngineChoice As ComboBoxEdit
 
         Public Sub New()
             Me.New(Nothing)
@@ -51,6 +52,26 @@ Namespace Abovo
             Dim backupTab As New DevExpress.XtraTab.XtraTabPage With {.Text = "Recovery backup"}
             Dim integrityTab As New DevExpress.XtraTab.XtraTabPage With {.Text = "Integrity"}
             tabs.TabPages.AddRange({displayTab, backupTab, integrityTab})
+            Dim engineTab As New DevExpress.XtraTab.XtraTabPage With {.Text = "Calculation engine", .AutoScroll = True}
+            tabs.TabPages.Add(engineTab)
+            Dim engineLayout As New TableLayoutPanel With {.Dock = DockStyle.Top, .AutoSize = True, .ColumnCount = 1, .Padding = New Padding(18)}
+            engineTab.Controls.Add(engineLayout)
+            engineLayout.Controls.Add(New LabelControl With {.Text = "Engine for newly opened business plans", .Dock = DockStyle.Top})
+            EngineChoice = New ComboBoxEdit With {.Name = "CalculationEngineChoice", .Dock = DockStyle.Top}
+            EngineChoice.Properties.TextEditStyle = DevExpress.XtraEditors.Controls.TextEditStyles.DisableTextEditor
+            EngineChoice.Properties.Items.AddRange({"Prefer compatible Microsoft Excel", "DevExpress — no Excel required"})
+            EngineChoice.SelectedIndex = If(New WorkbookEngines.WorkbookEngineSettings().ReadOptions().Preference = WorkbookEngines.WorkbookEnginePreference.DevExpressOnly, 1, 0)
+            engineLayout.Controls.Add(EngineChoice)
+            engineLayout.Controls.Add(New LabelControl With {.Dock = DockStyle.Top, .AutoSizeMode = LabelAutoSizeMode.Vertical, .Padding = New Padding(0, 10, 0, 10),
+                .Text = "Applies when a business plan is next opened. Open plans keep their current engine." & Environment.NewLine & Environment.NewLine &
+                    "Excel must be installed, compatible and permitted to run the model's VBA functions under your existing Excel security settings. If it is unavailable, Summit uses DevExpress. No Excel security settings are changed." & Environment.NewLine & Environment.NewLine &
+                    "This integration stage supports value edits, calculations, Undo/Redo, same-format saves and recovery backups. Use DevExpress for structural changes, schedules, imports, Stress Test or direct spreadsheet editing. Recovered files use DevExpress for format conversion. Excel Save As requires a new filename in the same format."})
+            Dim engineStatus As New LabelControl With {.Name = "CalculationEngineStatus", .Dock = DockStyle.Top, .AutoSizeMode = LabelAutoSizeMode.Vertical,
+                .Text = "Open plans:" & Environment.NewLine}
+            Dim openPlans = If(FileManager.ExcelModels, New FileManager.ExcelModel() {}).Where(Function(model) model IsNot Nothing AndAlso Not model.IsClosing AndAlso model.WB IsNot Nothing).ToArray()
+            engineStatus.Text &= If(openPlans.Length = 0, "None", String.Join(Environment.NewLine,
+                openPlans.Select(Function(model) IO.Path.GetFileName(model.FileName) & ": " & WorkbookEngines.ModelEngineSelection.Status(model))))
+            engineLayout.Controls.Add(engineStatus)
             Dim watchTab As New DevExpress.XtraTab.XtraTabPage With {.Text = "Check Sheet trial", .AutoScroll = True}
             tabs.TabPages.Add(watchTab)
             CheckSheetWatch.Initialise()
@@ -389,6 +410,9 @@ Namespace Abovo
 
         Private Function ApplyBackupSettings() As Boolean
             Try
+                Dim engines As New WorkbookEngines.WorkbookEngineSettings()
+                engines.Preference = If(EngineChoice.SelectedIndex = 1, WorkbookEngines.WorkbookEnginePreference.DevExpressOnly, WorkbookEngines.WorkbookEnginePreference.Automatic).ToString()
+                engines.Save()
                 If BackupEnabled.Checked OrElse BackupWhenIdle.Checked OrElse BackupAlways.Checked Then
                     RecoveryBackupManager.ConfigureTiming(BackupWhenIdle.Checked, Convert.ToInt32(BackupIdleMinutes.EditValue),
                         BackupAlways.Checked, Convert.ToInt32(BackupMinutes.EditValue))

@@ -196,97 +196,97 @@ Public Class BPDashboard
         "</tr><tr>"
 
         CellExamine = BPDBWS(0, 0)
-        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(0, 2)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</p></td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</p></td>"
         CellExamine = BPDBWS(0, 3)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(0, 4)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td></tr><tr>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td></tr><tr>"
 
         CellExamine = BPDBWS(1, 0)
-        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(1, 2)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(1, 3)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(1, 4)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td></tr><tr></tr><td> </td><tr>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td></tr><tr></tr><td> </td><tr>"
 
         CellExamine = BPDBWS(3, 0)
-        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(3, 2)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(3, 3)
-        OutputMsg += "<td><center><p style='font-family:verdana'>       " & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>       " & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(3, 4)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td></tr><tr>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td></tr><tr>"
 
         CellExamine = BPDBWS(4, 0)
-        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(4, 2)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(4, 3)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(4, 4)
-        OutputMsg += "<td><center><p style='font-family:verdana'>       " & CellExamine.DisplayText & "</td></tr><tr></tr><td> </td><tr>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>       " & CellExamine.ModelDisplayText() & "</td></tr><tr></tr><td> </td><tr>"
 
         CellExamine = BPDBWS(6, 0)
-        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(6, 2)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(6, 3)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(6, 4)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td></tr><tr>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td></tr><tr>"
         CellExamine = BPDBWS(7, 0)
-        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(7, 2)
-        OutputMsg += "<td><center><p style='font-family:verdana'>   " & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>   " & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(7, 3)
-        OutputMsg += "<td><center><p style='font-family:verdana'>   " & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>   " & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(7, 4)
-        OutputMsg += "<td><center> <p style='font-family:verdana'> " & CellExamine.DisplayText & "</td></tr><tr></tr><td> </td><tr>"
+        OutputMsg += "<td><center> <p style='font-family:verdana'> " & CellExamine.ModelDisplayText() & "</td></tr><tr></tr><td> </td><tr>"
         CellExamine = BPDBWS(9, 0)
-        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(9, 2)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(9, 3)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(9, 4)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td></tr><tr>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td></tr><tr>"
         CellExamine = BPDBWS(10, 0)
-        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(10, 2)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(10, 3)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(10, 4)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td></tr><tr></tr><td> </td><tr>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td></tr><tr></tr><td> </td><tr>"
         CellExamine = BPDBWS(12, 0)
-        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(12, 2)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(12, 3)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(12, 4)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td></tr><tr>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td></tr><tr>"
         CellExamine = BPDBWS(13, 0)
-        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(13, 2)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(13, 3)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(13, 4)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td></tr><tr>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td></tr><tr>"
         CellExamine = BPDBWS(14, 0)
-        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(14, 2)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(14, 3)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
         CellExamine = BPDBWS(14, 4)
-        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.DisplayText & "</td>"
+        OutputMsg += "<td><center><p style='font-family:verdana'>" & CellExamine.ModelDisplayText() & "</td>"
 
         OutputMsg += "</tr></table></body></html>"
 
@@ -316,7 +316,7 @@ Public Class BPDashboard
             CellExamine = DataRange(x, 0)
 
             CellExamineRight = DataRange(x, 0)
-            NeDp = New StockDataPoint("Year " & (x + 1).ToString, "Existing", CellExamine.Value.NumericValue)
+            NeDp = New StockDataPoint("Year " & (x + 1).ToString, "Existing", CellExamine.ModelValue().NumericValue)
 
             Datapoints.Add(NeDp)
         Next
@@ -326,7 +326,7 @@ Public Class BPDashboard
             CellExamine = DataRange(x, 0)
 
             CellExamineRight = DataRange(x, 0)
-            NeDp = New StockDataPoint("Year " & (x + 1).ToString, "Development", CellExamine.Value.NumericValue)
+            NeDp = New StockDataPoint("Year " & (x + 1).ToString, "Development", CellExamine.ModelValue().NumericValue)
 
             Datapoints.Add(NeDp)
         Next
@@ -390,13 +390,13 @@ Public Class BPDashboard
         For x = 0 To 6
             NeDp = New DataPoint
             CellExamine = DataRange(x, 0)
-            NeDp.Argument = CellExamine.Value.TextValue
+            NeDp.Argument = CellExamine.ModelValue().TextValue
             CellExamineRight = DataRange(x, 3)
-            If CInt(CellExamineRight.Value.NumericValue) < 0 Then
-                NeDp.Argument = NeDp.Argument & " (Loss of £" & CInt(CellExamineRight.Value.NumericValue).ToString & "k)"
+            If CInt(CellExamineRight.ModelValue().NumericValue) < 0 Then
+                NeDp.Argument = NeDp.Argument & " (Loss of £" & CInt(CellExamineRight.ModelValue().NumericValue).ToString & "k)"
                 NeDp.Value = 0
             Else
-                NeDp.Value = CInt(CellExamineRight.Value.NumericValue)
+                NeDp.Value = CInt(CellExamineRight.ModelValue().NumericValue)
             End If
 
             Datapoints.Add(NeDp)
@@ -461,13 +461,13 @@ Public Class BPDashboard
         For x = 0 To 6
             NeDp = New DataPoint
             CellExamine = DataRange(x, 0)
-            NeDp.Argument = CellExamine.Value.TextValue
+            NeDp.Argument = CellExamine.ModelValue().TextValue
             CellExamineRight = DataRange(x, 3)
-            If CInt(CellExamineRight.Value.NumericValue) < 0 Then
-                NeDp.Argument = NeDp.Argument & " (Loss of £" & CInt(CellExamineRight.Value.NumericValue).ToString & "k)"
+            If CInt(CellExamineRight.ModelValue().NumericValue) < 0 Then
+                NeDp.Argument = NeDp.Argument & " (Loss of £" & CInt(CellExamineRight.ModelValue().NumericValue).ToString & "k)"
                 NeDp.Value = 0
             Else
-                NeDp.Value = CInt(CellExamineRight.Value.NumericValue)
+                NeDp.Value = CInt(CellExamineRight.ModelValue().NumericValue)
             End If
 
             Datapoints.Add(NeDp)
@@ -538,9 +538,9 @@ Public Class BPDashboard
 
             NeDp = New DataPoint
             CellExamine = DataRange(x, 0)
-            series1.Points.Add(New SeriesPoint("Year " & (x + 1).ToString, CellExamine.Value.NumericValue))
+            series1.Points.Add(New SeriesPoint("Year " & (x + 1).ToString, CellExamine.ModelValue().NumericValue))
             CellExamine = DataRange(x, 1)
-            series2.Points.Add(New SeriesPoint("Year " & (x + 1).ToString, CellExamine.Value.NumericValue))
+            series2.Points.Add(New SeriesPoint("Year " & (x + 1).ToString, CellExamine.ModelValue().NumericValue))
 
         Next
 
@@ -595,7 +595,7 @@ Public Class BPDashboard
         For x = 0 To 39
             NeDp = New DataPoint
             CellExamine = DataRange(x, 0)
-            If CellExamine.DisplayText = "#N/A" Then
+            If CellExamine.ModelDisplayText() = "#N/A" Then
                 series1.Points.Add(New SeriesPoint(x + 1, 0.5))
             Else
                 series2.Points.Add(New SeriesPoint(x + 1, 0.5))
@@ -665,7 +665,7 @@ Public Class BPDashboard
         For x = 0 To 39
             NeDp = New DataPoint
             CellExamine = DataRange(x, 0)
-            If CellExamine.DisplayText = "#N/A" Then
+            If CellExamine.ModelDisplayText() = "#N/A" Then
                 series1.Points.Add(New SeriesPoint(x + 1, 0.5))
             Else
                 series2.Points.Add(New SeriesPoint(x + 1, 0.5))
@@ -732,7 +732,7 @@ Public Class BPDashboard
         For x = 0 To 39
             NeDp = New DataPoint
             CellExamine = DataRange(x, 0)
-            If CellExamine.DisplayText = "#N/A" Then
+            If CellExamine.ModelDisplayText() = "#N/A" Then
                 series1.Points.Add(New SeriesPoint(x + 1, 0.5))
             Else
                 series2.Points.Add(New SeriesPoint(x + 1, 0.5))
@@ -798,7 +798,7 @@ Public Class BPDashboard
         For x = 0 To 39
             NeDp = New DataPoint
             CellExamine = DataRange(x, 0)
-            If CellExamine.DisplayText = "#N/A" Then
+            If CellExamine.ModelDisplayText() = "#N/A" Then
                 series1.Points.Add(New SeriesPoint(x + 1, 0.5))
             Else
                 series2.Points.Add(New SeriesPoint(x + 1, 0.5))
@@ -864,7 +864,7 @@ Public Class BPDashboard
         For x = 0 To 39
             NeDp = New DataPoint
             CellExamine = DataRange(x, 0)
-            If CellExamine.DisplayText = "#N/A" Then
+            If CellExamine.ModelDisplayText() = "#N/A" Then
                 series1.Points.Add(New SeriesPoint(x + 1, 0.5))
             Else
                 series2.Points.Add(New SeriesPoint(x + 1, 0.5))

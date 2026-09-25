@@ -88,6 +88,8 @@ Public Class TransactionAnalyser
 
     Public Sub New(SetModelID As Integer)
 
+        ModelSafetyManager.RequireDirectWorkbookSurface(SetModelID, "Legacy transaction analyser")
+
 
         ' This call is required by the designer.
         InitializeComponent()

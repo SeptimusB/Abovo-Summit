@@ -57,6 +57,33 @@ Namespace Abovo
                 worksheetName, address, WorkbookEngines.WorkbookValuePermission.UnlockedCell))
         End Sub
 
+        Friend Function CaptureModelGridEditor(key As Object, modelID As Integer, cell As Cell,
+                                               permission As WorkbookEngines.WorkbookValuePermission) As Boolean
+            Dim state = EngineEditors.GetOrCreateValue(key)
+            state.Ticket = Nothing
+            Try
+                state.Ticket = ExcelModels(modelID).ChangeManager.CaptureEngineEditor(cell.Worksheet.Name, cell.GetReferenceA1(), permission)
+                Return True
+            Catch ex As Exception
+                SystemMessageManager.Publish(modelID, "The editor could not be opened. " & ex.Message, SystemMessageSeverity.Warning, "FFR input")
+                Return False
+            End Try
+        End Function
+
+        Friend Function PostModelEngineBatch(modelID As Integer, changes As List(Of DataChangeEvent),
+                                             permission As WorkbookEngines.WorkbookValuePermission, description As String) As Boolean
+            If changes.Count = 0 Then Return False
+            Try
+                Dim result = ExcelModels(modelID).ChangeManager.ProcessEngineCommand(changes,
+                    Enumerable.Repeat(permission, changes.Count), description)
+                If result.BError OrElse Not result.BSuccess Then Throw New InvalidOperationException(result.StrResponseMessage)
+                Return True
+            Catch ex As Exception
+                SystemMessageManager.Publish(modelID, "The paste was not applied. " & ex.Message, SystemMessageSeverity.Warning, "FFR input")
+                Return False
+            End Try
+        End Function
+
         'Call only inside the view's posting-suppressed workbook refresh scope.
         Friend Sub HideGridEditors(root As Control)
             Dim grid = TryCast(root, DevExpress.XtraGrid.GridControl)

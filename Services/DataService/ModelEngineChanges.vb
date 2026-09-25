@@ -48,6 +48,19 @@ Namespace Abovo
                 Return engineTrial IsNot Nothing
             End Get
         End Property
+        Friend ReadOnly Property CalculationOwnerDescription As String
+            Get
+                If engineTrial Is Nothing Then Return "DevExpress"
+                Return engineTrial.EngineName & " " & engineTrial.EngineVersion & If(EngineEditingResult Is Nothing, " — results unavailable", "")
+            End Get
+        End Property
+
+        Friend Sub AcceptInitialEngineCalculation()
+            Dim model = RequireSaveHistoryOwner()
+            If EngineEditingResult Is Nothing Then Throw New InvalidOperationException("Current opening results are required.")
+            model.MarkFullCalculationCurrent(model.CalculationRevision, True)
+            PublishEngineCheckSheet()
+        End Sub
         Public ReadOnly Property EngineEditingResult As WorkbookCalculationResult
             Get
                 Return If(engineTrial IsNot Nothing AndAlso engineTrial.IsCurrent(engineTrialResult), engineTrialResult, Nothing)

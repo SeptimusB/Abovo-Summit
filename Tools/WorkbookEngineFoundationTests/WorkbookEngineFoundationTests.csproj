@@ -9,6 +9,8 @@
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="DevExpress.XtraCharts.v25.2.UI"><HintPath>$(ApplicationBin)/DevExpress.XtraCharts.v25.2.UI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="DevExpress.XtraCharts.v25.2"><HintPath>$(ApplicationBin)/DevExpress.XtraCharts.v25.2.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Abovo-summit"><HintPath>$(ApplicationBin)/Abovo-summit.exe</HintPath><Private>false</Private></Reference>
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Configuration" />

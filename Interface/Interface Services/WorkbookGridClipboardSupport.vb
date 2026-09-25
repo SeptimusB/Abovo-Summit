@@ -1,4 +1,5 @@
 Imports System.Globalization
+Imports Abovo.ModelWorkbookRead
 Imports System.Drawing
 Imports System.Linq
 Imports System.Windows.Forms
@@ -233,12 +234,15 @@ Friend Module WorkbookGridClipboardSupport
 
     Friend Function InferDataFormat(ByVal cell As Cell) As String
         If cell Is Nothing Then Return "S"
-        If cell.Value.IsDateTime Then Return "D"
-        If cell.Value.IsBoolean Then Return "B"
+        If cell.ModelValue().IsDateTime Then Return "D"
+        If cell.ModelValue().IsBoolean Then Return "B"
 
-        Dim numberFormat As String = If(cell.NumberFormat, String.Empty)
+        Dim numberFormat As String = If(cell.ModelNumberFormat(), String.Empty)
+        If cell.HasModelEngineView() AndAlso cell.ModelValue().IsNumeric AndAlso
+            (numberFormat.IndexOf("yy", StringComparison.OrdinalIgnoreCase) >= 0 OrElse
+             numberFormat.IndexOf("dd", StringComparison.OrdinalIgnoreCase) >= 0) Then Return "D"
         If numberFormat.Contains("%") Then Return "P"
-        If cell.Value.IsNumeric Then Return "N"
+        If cell.ModelValue().IsNumeric Then Return "N"
         Return "S"
     End Function
 

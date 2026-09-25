@@ -90,7 +90,7 @@ Public Class StockAssumptionsInterface
     Public GridCount As Integer = -1
 
     Public Sub New(SetModelID As Integer, SetGSID As Integer, SetCSID As Integer)
-
+        ModelSafetyManager.RequireDirectWorkbookSurface(SetModelID, "Legacy Stock interface")
 
         ' This call is required by the designer.
         InitializeComponent()

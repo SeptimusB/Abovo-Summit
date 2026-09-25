@@ -78,6 +78,10 @@ Namespace Abovo.WorkbookEngines
             End If
             Return New WorkbookEngineOptions(selected)
         End Function
+
+        Friend Function ReadInteractiveOptions() As WorkbookEngineOptions
+            Return New WorkbookEngineOptions(ReadOptions().Preference, True, True, 120000, True, True, True)
+        End Function
     End Class
 
     Public NotInheritable Class WorkbookReadArea

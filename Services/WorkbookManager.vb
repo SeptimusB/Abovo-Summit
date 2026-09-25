@@ -738,7 +738,8 @@ Namespace Abovo
 
 
         Public Shared Function DevExpressInsertRows(ModelID As Integer, TargetNamedRange As String, Optional ByVal RowsToAdd As Integer = 1, Optional ByVal JustFormats As Boolean = False, Optional ByVal IgnoreFinalRow As Boolean = False) As AbovoTransaction
-
+            Dim refusal = ModelSafetyManager.NativeMutationRefusal(ModelID, "Legacy row insertion")
+            If refusal IsNot Nothing Then Return refusal
             'On Error GoTo Err_Handler_A
 
             Dim WB As DevExpress.Spreadsheet.IWorkbook = ExcelModels(ModelID).WB
@@ -813,7 +814,7 @@ Err_Handler_A:
 
         End Function
         Public Shared Function InsertColumn(WB As DevExpress.Spreadsheet.Workbook, TargetNamedRange As String, Optional ByVal ColssToAdd As Integer = 1) As AbovoTransaction
-
+            ModelSafetyManager.RequireDirectWorkbook(WB, "Legacy column insertion")
             On Error GoTo Err_Handler_A
 
             Dim ThisTrans As New AbovoTransaction
@@ -869,7 +870,7 @@ Err_Handler_A:
         End Function
 #End Region
         Public Shared Sub CopyRowToRangeBottom(ModelID As Integer, RangeName As String)
-
+            ModelSafetyManager.RequireDirectWorkbookSurface(ModelID, "Legacy row copy")
             Dim WB As IWorkbook = ExcelModels(ModelID).WB
 
             Dim TargetDefinedRange As DevExpress.Spreadsheet.DefinedName = WB.DefinedNames.GetDefinedName(RangeName)

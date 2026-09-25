@@ -191,12 +191,12 @@ Public Class FFRValidationSummaryView
     End Sub
 
     Private Sub RefreshInstructionSurface(Sheet As Worksheet)
-        ProductionLabel.Text = Sheet.Cells(4, 0).DisplayText
+        ProductionLabel.Text = Sheet.Cells(4, 0).ModelDisplayText()
         ApplyWorkbookCellAppearance(ProductionLabel.Appearance, Sheet.Cells(4, 0))
 
         For ItemIndex As Integer = 0 To InstructionLabels.Count - 1
             Dim SourceCell As Cell = Sheet.Cells(5 + ItemIndex, 0)
-            InstructionLabels(ItemIndex).Text = SourceCell.DisplayText
+            InstructionLabels(ItemIndex).Text = SourceCell.ModelDisplayText()
             ApplyWorkbookCellAppearance(InstructionLabels(ItemIndex).Appearance, SourceCell)
         Next
     End Sub
@@ -211,7 +211,7 @@ Public Class FFRValidationSummaryView
         RowCount As Integer)
 
         Dim GroupCaptionCell As Cell = Sheet.Cells(GroupCaptionRow, 0)
-        Group.Text = GroupCaptionCell.DisplayText
+        Group.Text = GroupCaptionCell.ModelDisplayText()
         ApplyWorkbookCellAppearance(Group.AppearanceCaption, GroupCaptionCell)
 
         Dim PreviousTable As DataTable = TryCast(Grid.DataSource, DataTable)
@@ -224,14 +224,14 @@ Public Class FFRValidationSummaryView
         For SourceRow As Integer = FirstDataRow To FirstDataRow + RowCount - 1
             Table.Rows.Add(
                 SourceRow,
-                Sheet.Cells(SourceRow, 0).DisplayText,
-                Sheet.Cells(SourceRow, 1).DisplayText,
-                Sheet.Cells(SourceRow, 2).DisplayText)
+                Sheet.Cells(SourceRow, 0).ModelDisplayText(),
+                Sheet.Cells(SourceRow, 1).ModelDisplayText(),
+                Sheet.Cells(SourceRow, 2).ModelDisplayText())
         Next
 
         Grid.DataSource = Table
         Grid.Tag = SheetName
-        ConfigureSummaryColumns(DirectCast(Grid.MainView, GridView), Sheet.Cells(ColumnCaptionRow, 1).DisplayText)
+        ConfigureSummaryColumns(DirectCast(Grid.MainView, GridView), Sheet.Cells(ColumnCaptionRow, 1).ModelDisplayText())
         If PreviousTable IsNot Nothing Then PreviousTable.Dispose()
     End Sub
 
@@ -303,10 +303,11 @@ Public Class FFRValidationSummaryView
 
     Private Sub ApplyWorkbookCellAppearance(Appearance As AppearanceObject, SourceCell As Cell)
         If Appearance Is Nothing OrElse SourceCell Is Nothing Then Return
+        If Not SourceCell.ModelResultsAvailable() Then Return
 
-        Dim Background As Color = SourceCell.FillColor
+        Dim Background As Color = SourceCell.ModelFill().BackgroundColor
         If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
-        Dim Foreground As Color = SourceCell.Font.Color
+        Dim Foreground As Color = SourceCell.ModelFont().Color
         If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = Color.FromArgb(32, 58, 89)
 
         Appearance.BackColor = Background
@@ -315,7 +316,7 @@ Public Class FFRValidationSummaryView
         Appearance.Options.UseForeColor = True
         Appearance.Options.UseTextOptions = True
 
-        Select Case SourceCell.Alignment.Horizontal
+        Select Case SourceCell.ModelHorizontalAlignment()
             Case SpreadsheetHorizontalAlignment.Center
                 Appearance.TextOptions.HAlignment = HorzAlignment.Center
             Case SpreadsheetHorizontalAlignment.Right
@@ -325,9 +326,9 @@ Public Class FFRValidationSummaryView
         End Select
 
         Dim Style As FontStyle = FontStyle.Regular
-        If SourceCell.Font.Bold Then Style = Style Or FontStyle.Bold
-        If SourceCell.Font.Italic Then Style = Style Or FontStyle.Italic
-        If SourceCell.Font.UnderlineType <> UnderlineType.None Then Style = Style Or FontStyle.Underline
+        If SourceCell.ModelFont().Bold Then Style = Style Or FontStyle.Bold
+        If SourceCell.ModelFont().Italic Then Style = Style Or FontStyle.Italic
+        If SourceCell.ModelFont().UnderlineType <> UnderlineType.None Then Style = Style Or FontStyle.Underline
         Appearance.Font = New Font(Font.FontFamily, Font.Size, Style)
         Appearance.Options.UseFont = True
     End Sub

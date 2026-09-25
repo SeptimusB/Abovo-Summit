@@ -14,6 +14,8 @@ Public Class MainModelViewer
     Public SSC As SpreadsheetControl
     Public Sub New(SetModelID)
 
+        ModelSafetyManager.RequireDirectWorkbookSurface(CInt(SetModelID), "Direct spreadsheet editing")
+
         ModelID = SetModelID
 
         MyColourSwatch = ExcelModels(ModelID).ColourSwatch

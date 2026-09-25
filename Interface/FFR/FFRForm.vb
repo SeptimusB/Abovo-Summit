@@ -234,7 +234,7 @@ Public Class FFRForm
 
                 If Not ReturnWorkbook.Worksheets.Contains("Cover Sheet") OrElse
                    Not String.Equals(
-                       ReturnWorkbook.Worksheets("Cover Sheet").Cells("B4").DisplayText,
+                       ReturnWorkbook.Worksheets("Cover Sheet").Cells("B4").ModelDisplayText(),
                        "Spreadsheet Import Template - Financial Forecast Return (FFR)",
                        StringComparison.Ordinal) Then
                     Activity.Dispose()
@@ -254,13 +254,12 @@ Public Class FFRForm
                 Try
                     For MappingIndex As Integer = 1 To MappingCount - 1
                         Dim SourceName As String =
-                            SourceWorkbook.Range("FFRListHeading")(MappingIndex, 8).DisplayText.Trim()
+                            SourceWorkbook.Range("FFRListHeading")(MappingIndex, 8).ModelDisplayText().Trim()
                         Dim DestinationName As String =
-                            SourceWorkbook.Range("FFRListHeading")(MappingIndex, 3).DisplayText.Trim()
+                            SourceWorkbook.Range("FFRListHeading")(MappingIndex, 3).ModelDisplayText().Trim()
                         If SourceName.Length = 0 OrElse DestinationName.Length = 0 Then Continue For
 
-                        ReturnWorkbook.Range(DestinationName).CopyFrom(
-                            SourceWorkbook.Range(SourceName), PasteSpecial.Values)
+                        SourceWorkbook.Range(SourceName).CopyModelValuesTo(ReturnWorkbook.Range(DestinationName))
                     Next
                 Finally
                     ReturnWorkbook.EndUpdate()

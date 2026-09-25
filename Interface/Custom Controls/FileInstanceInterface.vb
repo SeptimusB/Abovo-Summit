@@ -287,6 +287,7 @@ Public Class FileInstanceInterface
     End Sub
 
     Public Sub ShowStressTestInterface()
+        If Not ModelSafetyManager.CanOpenDirectWorkbookSurface(BPModelID, "Stress Test scenario operations") Then Return
         ExcelModels(BPModelID).EnsureDeferredSaveResultsCurrent("Opening Stress Test...")
         If Not STInit OrElse StressTester Is Nothing OrElse StressTester.IsDisposed Then
             StressTester = New StressTest(BPModelID)

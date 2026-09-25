@@ -21,6 +21,8 @@ Namespace Abovo
             Optional Owner As System.Windows.Forms.Form = Nothing) As AbovoTransaction
 
             Const AllYears As Integer = 30
+            Dim refusal = ModelSafetyManager.NativeMutationRefusal(ModelID, "Stock and rent import")
+            If refusal IsNot Nothing Then Return refusal
             Dim Result As New AbovoTransaction("ImportStockRentModel")
             Dim RentModelID As Integer = -1
             Dim Journal As New WorkbookCellJournal
@@ -245,6 +247,8 @@ Namespace Abovo
             Optional Owner As System.Windows.Forms.Form = Nothing) As AbovoTransaction
 
             Const ImportYears As Integer = 5
+            Dim refusal = ModelSafetyManager.NativeMutationRefusal(ModelID, "Management service-cost import")
+            If refusal IsNot Nothing Then Return refusal
             Const TargetSheetName As String = "Management Costs Assumptions"
             Const SourceSummarySheetName As String = "Summary Costs"
             Const SourceGlobalSheetName As String = "Global Assumptions"
@@ -464,6 +468,8 @@ Namespace Abovo
             SetModelID As Integer,
             Optional Owner As System.Windows.Forms.Form = Nothing) As AbovoTransaction
             Dim Result As New AbovoTransaction("ImportStockConditionSurvey")
+            Dim refusal = ModelSafetyManager.NativeMutationRefusal(SetModelID, "Stock-condition import")
+            If refusal IsNot Nothing Then Return refusal
             Dim ActiveRMModelID As Integer = -1
             Dim Journal As New WorkbookCellJournal
             Dim MutationStarted As Boolean = False

@@ -632,6 +632,8 @@ Namespace Abovo
             End Sub
             Public Sub ShowSpreadsheet(Optional ByVal SetSpreadsheet As DevExpress.Spreadsheet.Worksheet = Nothing, Optional ByVal Parent As Object = Nothing)
 
+                If Not ModelSafetyManager.CanOpenDirectWorkbookSurface(ModelID, "Direct spreadsheet editing") Then Return
+
                 EnsureDeferredSaveResultsCurrent("Opening the spreadsheet...")
 
                 If Not SSViewInitialised Then
@@ -811,7 +813,7 @@ Namespace Abovo
             End Function
 
             Public Function SetCellValue(WSName As String, Row As Integer, Col As Integer, Value As Object) As Boolean
-
+                ModelSafetyManager.RequireDirectWorkbookSurface(ModelID, "Direct workbook editing")
                 Dim WS As DevExpress.Spreadsheet.Worksheet = WB.Worksheets(WSName)
 
                 If WS Is Nothing Then

@@ -19,6 +19,8 @@ Public Class NREditorInterface
 
     Sub New(Parent As Object, SetModelID As Integer, RunAction As ActionToken, SetTitle As String)
 
+        ModelSafetyManager.RequireDirectWorkbookSurface(SetModelID, "Legacy named-range editing")
+
         DoActionTok = RunAction
         Me.Text = "Edit Rows"
 

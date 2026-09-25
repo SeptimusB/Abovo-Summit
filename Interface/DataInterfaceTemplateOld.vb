@@ -174,6 +174,8 @@ Public Class DataInterfaceTemplateOld
 
     Public Sub New(SetModelID As Integer, Optional ByVal SetGSID As Integer = -1, Optional ByVal SetCSID As Integer = -1, Optional ByVal MyParent As GroupInterfaceTemplate = Nothing, Optional ByVal SetInterfaceMode As String = "Normal", Optional ByVal Interfacelink As ElementInterfaceLinkTag = Nothing)
 
+        ModelSafetyManager.RequireDirectWorkbookSurface(SetModelID, "Legacy interface editing")
+
         If Not IsNothing(MyParent) Then
             Me.Width = MyParent.Width
         End If

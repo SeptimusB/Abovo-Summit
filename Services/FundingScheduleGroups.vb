@@ -33,12 +33,13 @@ Namespace Abovo
         Public Property MarkerColour As Color
         Public ReadOnly Property Active As Boolean
             Get
-                Dim value = DateCell.Value
+                If Not DateCell.ModelResultsAvailable() Then Return False
+                Dim value = DateCell.ModelValue()
                 If value.IsDateTime Then Return value.DateTimeValue.Date = ExpectedDate
                 'OOXML may reload date values as serial numbers. The anchor is
                 'already validated against an actual Funding date range.
                 If value.IsNumeric AndAlso value.NumericValue > 0 AndAlso value.NumericValue < 2958466 Then
-                    Return DateTime.FromOADate(value.NumericValue).Date = ExpectedDate
+                    Return If(DateCell.HasModelEngineView(), DateCell.ModelDateValue(), DateTime.FromOADate(value.NumericValue)).Date = ExpectedDate
                 End If
                 Return False
             End Get
@@ -64,11 +65,11 @@ Namespace Abovo
             Dim labels = wb.DefinedNames.GetDefinedName("FacilityNames")?.Range
             Dim funders = wb.DefinedNames.GetDefinedName("Rep_Fund_03")?.Range
             For i = 0 To header.ColumnCount - 1
-                Dim cell = header.Worksheet.Cells(header.TopRowIndex - If(investment, 1, 0), header.LeftColumnIndex + i), caption = cell.DisplayText.Trim()
-                Dim facility = If(Not investment AndAlso labels IsNot Nothing AndAlso i < labels.ColumnCount, labels(0, i).DisplayText.Trim(), "")
+                Dim cell = header.Worksheet.Cells(header.TopRowIndex - If(investment, 1, 0), header.LeftColumnIndex + i), caption = cell.ModelDisplayText().Trim()
+                Dim facility = If(Not investment AndAlso labels IsNot Nothing AndAlso i < labels.ColumnCount, labels(0, i).ModelDisplayText().Trim(), "")
                 If caption = "" Then caption = If(investment, "Investment", "Loan") & " " & (i + 1).ToString()
                 Dim loanName = caption
-                Dim funder = If(Not investment AndAlso funders IsNot Nothing AndAlso i < funders.ColumnCount, funders(0, i).DisplayText.Trim(), "")
+                Dim funder = If(Not investment AndAlso funders IsNot Nothing AndAlso i < funders.ColumnCount, funders(0, i).ModelDisplayText().Trim(), "")
                 If facility <> "" Then caption = facility & " — " & caption
                 result.Add(New FundingScheduleFacility With {.HeaderName = headerName, .ColumnIndex = cell.ColumnIndex,
                     .Caption = caption & " [" & cell.GetReferenceA1() & "]", .LoanName = loanName, .FunderName = funder, .FacilityName = facility})
@@ -103,6 +104,7 @@ Namespace Abovo
 
         Public Shared Function Add(wb As IWorkbook, facility As FundingScheduleFacility, colour As Color,
                                    rows As IList(Of Tuple(Of FundingScheduleTarget, Cell, DateTime)), configuration As String) As Action
+            ModelSafetyManager.RequireDirectWorkbook(wb, "Funding schedule metadata editing")
             Dim root = Read(wb), oldPart = Part(wb), oldXml = If(oldPart Is Nothing, Nothing, oldPart.CustomXmlPartDocument.OuterXml)
             Dim names As New List(Of String), currentPart As ICustomXmlPart = oldPart
             Dim undo As Action = Sub()

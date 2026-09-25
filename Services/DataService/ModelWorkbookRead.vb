@@ -84,8 +84,13 @@ Namespace Abovo
             Next
             ' Small spatial batches amortise native value/appearance calls while
             ' bounding memory. Headers and sparse inputs do not read whole sheets.
-            Dim row = (cell.RowIndex \ 8) * 8, column = (cell.ColumnIndex \ 4) * 4
-            Dim area As New WorkbookReadArea(cell.Worksheet.Name, row, column, 8, 4)
+            'Effective Excel appearance is substantially more expensive than
+            'Value2. Do not fetch three unused neighbouring columns when a
+            'sparse heading/editor asks for one column's formatting. Every
+            'permission and fill still comes from the current native owner.
+            Dim width = If(presentation, 1, 4)
+            Dim row = (cell.RowIndex \ 8) * 8, column = (cell.ColumnIndex \ width) * width
+            Dim area As New WorkbookReadArea(cell.Worksheet.Name, row, column, 8, width)
             Dim fetched = session.ReadCurrentAsync(anchor, {area}, includePresentation:=presentation).GetAwaiter().GetResult()
             If Not session.IsCurrent(fetched) Then Throw New InvalidOperationException("Model display was superseded during refresh.")
             If blocks.Count >= 2048 Then blocks.RemoveAt(0)
@@ -212,6 +217,39 @@ Namespace Abovo
             Dim view = ModelEngineView.Find(cell)
             Return If(view Is Nothing, cell.Alignment.Horizontal, view.Presentation(cell).Appearance.Horizontal)
         End Function
+        <Extension()> Public Function ModelProtectionLocked(cell As Cell) As Boolean
+            Dim view = ModelEngineView.Find(cell)
+            Return If(view Is Nothing, cell.Protection.Locked, view.Presentation(cell).Appearance.Locked)
+        End Function
+        <Extension()> Public Function ModelNumberFormat(cell As Cell) As String
+            Dim view = ModelEngineView.Find(cell)
+            Return If(view Is Nothing, cell.NumberFormat, view.Presentation(cell).Appearance.NumberFormat)
+        End Function
+        ' Export to a separate return document only. Never project values into
+        ' either workbook which owns an open model's formulas or inputs.
+        <Extension()> Public Sub CopyModelValuesTo(source As CellRange, destination As CellRange)
+            If source Is Nothing OrElse destination Is Nothing Then Throw New ArgumentNullException()
+            If source.Worksheet.Workbook Is destination.Worksheet.Workbook OrElse
+                ModelEngineView.Find(destination(0, 0)) IsNot Nothing Then Throw New InvalidOperationException("Model values must be exported to a separate return workbook.")
+            Dim view = ModelEngineView.Find(source(0, 0))
+            If view Is Nothing Then
+                destination.CopyFrom(source, PasteSpecial.Values)
+                Return
+            End If
+            If source.RowCount <> destination.RowCount OrElse source.ColumnCount <> destination.ColumnCount Then
+                Throw New InvalidOperationException("The return template range does not match the business-plan export range.")
+            End If
+            Dim result = view.CaptureRange(source)
+            For Each block In result.Blocks
+                For row = 0 To block.Area.Rows - 1
+                    For column = 0 To block.Area.Columns - 1
+                        destination(block.Area.Row - source.TopRowIndex + row,
+                                    block.Area.Column - source.LeftColumnIndex + column).Value = ModelEngineView.ToCellValue(block.ValueAt(row, column))
+                    Next
+                Next
+            Next
+            If Not view.IsCurrent(result) Then Throw New InvalidOperationException("The model changed while preparing the return.")
+        End Sub
         <Extension()> Public Function ModelVerticalAlignment(cell As Cell) As SpreadsheetVerticalAlignment
             Dim view = ModelEngineView.Find(cell)
             Return If(view Is Nothing, cell.Alignment.Vertical, view.Presentation(cell).Appearance.Vertical)

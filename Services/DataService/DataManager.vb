@@ -45,11 +45,11 @@ Namespace Abovo
                 String.Equals(fieldName, "Yr", StringComparison.OrdinalIgnoreCase)) Then
                 'Year headers have numeric stored values even when their workbook
                 'format is "Year "0. Do not duplicate that literal prefix.
-                Dim year = If(cell.Value.IsNumeric, cell.Value.NumericValue.ToString(Globalization.CultureInfo.InvariantCulture), cell.DisplayText.Trim())
+                Dim year = If(cell.ModelValue().IsNumeric, cell.ModelValue().NumericValue.ToString(Globalization.CultureInfo.InvariantCulture), cell.ModelDisplayText().Trim())
                 If year.StartsWith("Year ", StringComparison.OrdinalIgnoreCase) Then year = year.Substring(5).Trim()
                 Return If(year.Length = 0, "Year", "Year " & year)
             End If
-            Return fieldName & " " & cell.DisplayText
+            Return fieldName & " " & cell.ModelDisplayText()
         End Function
 
         Public ModelID As Integer
@@ -2408,7 +2408,7 @@ NextDFD2:
                 If offset < 0 OrElse offset >= DataRange.ColumnCount Then Throw New ArgumentOutOfRangeException(NameOf(columnOffsets))
                 For r As Integer = 0 To DataRange.RowCount - 1
                     For c As Integer = DataRange.ColumnCount - offset To DataRange.ColumnCount - 1
-                        If Not String.IsNullOrWhiteSpace(DataRange(r, c).DisplayText) Then
+                        If Not String.IsNullOrWhiteSpace(DataRange(r, c).ModelDisplayText()) Then
                             'A bespoke workbook may use the trailing column. Keep
                             'all values rather than lose its summary on refresh.
                             offset = 0
@@ -4760,7 +4760,7 @@ nextDP:
 
             For RowIndex As Integer = 0 To SourceRange.RowCount - 1
                 For ColumnIndex As Integer = 0 To SourceRange.ColumnCount - 1
-                    Dim Choice As String = SourceRange(RowIndex, ColumnIndex).DisplayText.Trim()
+                    Dim Choice As String = SourceRange(RowIndex, ColumnIndex).ModelDisplayText().Trim()
                     If Choice.Length > 0 Then Choices.Add(Choice)
                 Next
             Next

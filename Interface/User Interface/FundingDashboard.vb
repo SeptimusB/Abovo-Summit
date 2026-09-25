@@ -102,14 +102,14 @@ Public Class FundingDashboard
         Dim Heading As New LabelControl With {
             .Dock = DockStyle.Fill,
             .AutoSizeMode = LabelAutoSizeMode.None,
-            .Text = DashboardSheet.Cells("A2").DisplayText
+            .Text = DashboardSheet.Cells("A2").ModelDisplayText()
         }
         Heading.Appearance.Font = New Font("Segoe UI", 14.0F, FontStyle.Bold)
         Heading.Appearance.ForeColor = DashboardBlue
         Heading.Appearance.Options.UseFont = True
         Heading.Appearance.Options.UseForeColor = True
         Heading.Appearance.TextOptions.VAlignment = DevExpress.Utils.VertAlignment.Center
-        Heading.ToolTip = DashboardSheet.Cells("A1").DisplayText
+        Heading.ToolTip = DashboardSheet.Cells("A1").ModelDisplayText()
         HeadingPanel.Controls.Add(Heading)
         Return HeadingPanel
     End Function
@@ -165,6 +165,7 @@ Public Class FundingDashboard
         Editor.Properties.Appearance.Options.UseBackColor = True
         Editor.Properties.Appearance.Options.UseForeColor = True
         Editor.EditValue = CellToObject(SourceCell)
+        ModelPostingChangeSupport.RegisterModelCellEngineEditor(Editor, ModelID, DashboardSheetName, CellAddress)
         AddHandler Editor.EditValueChanged, AddressOf Selector_EditValueChanged
 
         Parent.Controls.Add(CaptionLabel)
@@ -196,7 +197,7 @@ Public Class FundingDashboard
         FundingCharts.RowStyles.Add(New RowStyle(SizeType.Percent, 50.0F))
 
         Dim DashboardSheet As Worksheet = Workbook.Worksheets(DashboardSheetName)
-        Dim SelectedFunder As String = DashboardSheet.Cells("D6").DisplayText
+        Dim SelectedFunder As String = DashboardSheet.Cells("D6").ModelDisplayText()
         FundingCharts.Controls.Add(
             CreateChartCard("Funder: " & SelectedFunder & " - Drawn vs Available", CreateDrawnAvailableChart()), 0, 0)
         FundingCharts.Controls.Add(CreateChartCard("Loans by Funder", CreateLoansByFunderChart()), 1, 0)
@@ -217,7 +218,7 @@ Public Class FundingDashboard
         CovenantCharts.RowStyles.Add(New RowStyle(SizeType.Percent, 22.0F))
         CovenantCharts.RowStyles.Add(New RowStyle(SizeType.Percent, 22.0F))
         CovenantCharts.Controls.Add(
-            CreateChartCard(DashboardSheet.Cells("R6").DisplayText, CreateSelectedCovenantView()), 0, 0)
+            CreateChartCard(DashboardSheet.Cells("R6").ModelDisplayText(), CreateSelectedCovenantView()), 0, 0)
         CovenantCharts.Controls.Add(
             CreateChartCard("Operating Margin", CreateStatusChart(40, 41)), 0, 1)
         CovenantCharts.Controls.Add(
@@ -281,7 +282,7 @@ Public Class FundingDashboard
         Dim Source As Worksheet = Workbook.Worksheets(ChartSourceSheetName)
         Dim PaletteIndex As Integer
         For ColumnIndex As Integer = 8 To 15
-            Dim SeriesName As String = Source.Cells(6, ColumnIndex).DisplayText.Trim()
+            Dim SeriesName As String = Source.Cells(6, ColumnIndex).ModelDisplayText().Trim()
             If SeriesName.Length = 0 OrElse SeriesName = "0" Then Continue For
             AddColumnSeries(Chart, SeriesName, ColumnIndex, SeriesPalette(PaletteIndex Mod SeriesPalette.Length), False)
             PaletteIndex += 1
@@ -397,8 +398,8 @@ Public Class FundingDashboard
             If HasForecast Then MaximumValue = Math.Max(MaximumValue, ForecastValue)
             If HasTarget Then MaximumValue = Math.Max(MaximumValue, TargetValue)
             Table.Rows.Add(
-                DashboardSheet.Cells(RowIndex, 15).DisplayText,
-                DashboardSheet.Cells(RowIndex, 16).DisplayText,
+                DashboardSheet.Cells(RowIndex, 15).ModelDisplayText(),
+                DashboardSheet.Cells(RowIndex, 16).ModelDisplayText(),
                 If(HasForecast, CType(ForecastValue, Object), DBNull.Value),
                 If(HasTarget, CType(TargetValue, Object), DBNull.Value),
                 HasExceeded)
@@ -604,7 +605,7 @@ Public Class FundingDashboard
     End Sub
 
     Private Function SourceHeader(ColumnIndex As Integer) As String
-        Dim Header As String = Workbook.Worksheets(ChartSourceSheetName).Cells(6, ColumnIndex).DisplayText.Trim()
+        Dim Header As String = Workbook.Worksheets(ChartSourceSheetName).Cells(6, ColumnIndex).ModelDisplayText().Trim()
         Return If(Header.Length = 0 OrElse Header = "0", "Series " & (ColumnIndex + 1).ToString(), Header)
     End Function
 
@@ -615,7 +616,7 @@ Public Class FundingDashboard
         If Binding Is Nothing Then Return
 
         Dim Target As Cell = Workbook.Worksheets(DashboardSheetName).Cells(Binding.CellAddress)
-        If Target.Protection.Locked Then
+        If Target.ModelProtectionLocked() Then
             RefreshData()
             Return
         End If
@@ -639,6 +640,7 @@ Public Class FundingDashboard
                 .WSName = DashboardSheetName,
                 .CellAddress = Target.GetReferenceA1(),
                 .OriginalValue = CellToObject(Target),
+                .EngineTicket = ModelPostingChangeSupport.EngineEditorTicket(Editor),
                 .ChangedValue = ChangedValue,
                 .DataFormat = Binding.DataFormat,
                 .TimeStamp = Now(),
@@ -723,7 +725,7 @@ Public Class FundingDashboard
         If Source Is Nothing Then Return
         For RowIndex As Integer = 0 To Source.RowCount - 1
             For ColumnIndex As Integer = 0 To Source.ColumnCount - 1
-                AddValidationItem(Result, Source(RowIndex, ColumnIndex).DisplayText)
+                AddValidationItem(Result, Source(RowIndex, ColumnIndex).ModelDisplayText())
             Next
         Next
     End Sub
@@ -735,17 +737,17 @@ Public Class FundingDashboard
 
     Private Shared Function TryGetNumericValue(SourceCell As Cell, ByRef Value As Double) As Boolean
         Value = 0
-        If SourceCell Is Nothing OrElse Not SourceCell.Value.IsNumeric Then Return False
-        Value = SourceCell.Value.NumericValue
+        If SourceCell Is Nothing OrElse Not SourceCell.ModelValue().IsNumeric Then Return False
+        Value = SourceCell.ModelValue().NumericValue
         Return Not Double.IsNaN(Value) AndAlso Not Double.IsInfinity(Value)
     End Function
 
     Private Shared Function CellToObject(SourceCell As Cell) As Object
-        If SourceCell Is Nothing OrElse SourceCell.Value.IsEmpty Then Return Nothing
-        If SourceCell.Value.IsNumeric Then Return SourceCell.Value.NumericValue
-        If SourceCell.Value.IsBoolean Then Return SourceCell.Value.BooleanValue
-        If SourceCell.Value.IsDateTime Then Return SourceCell.Value.DateTimeValue
-        Return SourceCell.Value.TextValue
+        If SourceCell Is Nothing OrElse SourceCell.ModelValue().IsEmpty Then Return Nothing
+        If SourceCell.ModelValue().IsNumeric Then Return SourceCell.ModelValue().NumericValue
+        If SourceCell.ModelValue().IsBoolean Then Return SourceCell.ModelValue().BooleanValue
+        If SourceCell.ModelValue().IsDateTime Then Return SourceCell.ModelValue().DateTimeValue
+        Return SourceCell.ModelValue().TextValue
     End Function
 
     Private Shared Function ValuesEqual(Original As Object, Changed As Object) As Boolean
@@ -761,7 +763,7 @@ Public Class FundingDashboard
     End Function
 
     Private Shared Function WorkbookBackground(SourceCell As Cell) As Color
-        Dim Result As Color = SourceCell.FillColor
+        Dim Result As Color = SourceCell.ModelFill().BackgroundColor
         If Result.IsEmpty OrElse Result.A = 0 Then Result = Color.White
         Return Result
     End Function
@@ -776,7 +778,7 @@ Public Class FundingDashboard
         Appearance.Options.UseBackColor = True
         Appearance.Options.UseForeColor = True
         Appearance.Options.UseTextOptions = True
-        Select Case SourceCell.Alignment.Horizontal
+        Select Case SourceCell.ModelHorizontalAlignment()
             Case SpreadsheetHorizontalAlignment.Center
                 Appearance.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Center
             Case SpreadsheetHorizontalAlignment.Right
@@ -785,15 +787,15 @@ Public Class FundingDashboard
                 Appearance.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Near
         End Select
         Dim Style As FontStyle = FontStyle.Regular
-        If SourceCell.Font.Bold Then Style = Style Or FontStyle.Bold
-        If SourceCell.Font.Italic Then Style = Style Or FontStyle.Italic
-        If SourceCell.Font.UnderlineType <> UnderlineType.None Then Style = Style Or FontStyle.Underline
+        If SourceCell.ModelFont().Bold Then Style = Style Or FontStyle.Bold
+        If SourceCell.ModelFont().Italic Then Style = Style Or FontStyle.Italic
+        If SourceCell.ModelFont().UnderlineType <> UnderlineType.None Then Style = Style Or FontStyle.Underline
         Appearance.Font = New Font(Appearance.Font.FontFamily, Appearance.Font.Size, Style)
         Appearance.Options.UseFont = True
     End Sub
 
     Private Shared Function WorkbookForeground(SourceCell As Cell) As Color
-        Dim Result As Color = SourceCell.Font.Color
+        Dim Result As Color = SourceCell.ModelFont().Color
         If Result.IsEmpty OrElse Result.A = 0 Then Result = Color.Black
         Return Result
     End Function

@@ -126,7 +126,7 @@ Public Class FFRStatementsVGridView
         Grid.Rows.Clear()
         For row As Integer = FirstPresentationRow To LastPresentationRow
             If IsCategoryRow(ws, row) Then Continue For
-            If ws.Cells(row, 1).DisplayText.Trim().Length = 0 Then Continue For
+            If ws.Cells(row, 1).ModelDisplayText().Trim().Length = 0 Then Continue For
 
             Dim field As String = "Row_" & row.ToString(CultureInfo.InvariantCulture)
             table.Columns.Add(field, GetType(Object))
@@ -171,7 +171,7 @@ Public Class FFRStatementsVGridView
         If categories.TryGetValue(sourceRow, category) Then Return category
 
         category = New CategoryRow("Category_" & sourceRow.ToString(CultureInfo.InvariantCulture))
-        category.Properties.Caption = If(sourceRow < 0, DisplayTitle, ws.Cells(sourceRow, 0).DisplayText.Trim())
+        category.Properties.Caption = If(sourceRow < 0, DisplayTitle, ws.Cells(sourceRow, 0).ModelDisplayText().Trim())
         category.Height = 22
         category.Tag = sourceRow
         Grid.Rows.Add(category)
@@ -180,13 +180,13 @@ Public Class FFRStatementsVGridView
     End Function
 
     Private Shared Function IsCategoryRow(ByVal ws As Worksheet, ByVal row As Integer) As Boolean
-        Dim caption As String = ws.Cells(row, 0).DisplayText.Trim()
-        Return caption.Length > 0 AndAlso ws.Cells(row, 1).DisplayText.Trim().Length = 0 AndAlso Not IsNumeric(caption)
+        Dim caption As String = ws.Cells(row, 0).ModelDisplayText().Trim()
+        Return caption.Length > 0 AndAlso ws.Cells(row, 1).ModelDisplayText().Trim().Length = 0 AndAlso Not IsNumeric(caption)
     End Function
 
     Private Shared Function EditorCaption(ByVal ws As Worksheet, ByVal row As Integer) As String
-        Dim lineNumber As String = ws.Cells(row, 0).DisplayText.Trim()
-        Dim description As String = ws.Cells(row, 1).DisplayText.Trim()
+        Dim lineNumber As String = ws.Cells(row, 0).ModelDisplayText().Trim()
+        Dim description As String = ws.Cells(row, 1).ModelDisplayText().Trim()
         Return If(lineNumber.Length = 0, description, lineNumber & " - " & description)
     End Function
 
@@ -236,9 +236,11 @@ Public Class FFRStatementsVGridView
         If firstField < 0 Then Return
 
         Dim anyChanged As Boolean = False
+        Dim engineChanges As New List(Of DataChangeEvent)()
         Cursor = Cursors.WaitCursor
         Try
-            Using ExcelModels(ModelID).ChangeManager.BeginChangeGroup("Paste into FFR key definitions")
+            Using scope = If(ExcelModels(ModelID).ChangeManager.HasEngineEditingTrial, Nothing,
+                ExcelModels(ModelID).ChangeManager.BeginChangeGroup("Paste into FFR key definitions"))
             For clipboardRow As Integer = 0 To pasteMatrix.Count - 1
                 Dim targetFieldIndex As Integer = firstField + clipboardRow
                 If targetFieldIndex >= orderedFields.Count Then Exit For
@@ -246,13 +248,19 @@ Public Class FFRStatementsVGridView
                 'additional clipboard columns rather than crossing into hidden data.
                 Dim sourceRow As Integer = SourceRows(orderedFields(targetFieldIndex))
                 Dim cell As Cell = Workbook.Worksheets(SheetName).Cells(sourceRow, 2)
-                If cell.Protection.Locked Then Continue For
+                If cell.ModelProtectionLocked() Then Continue For
                 Dim changedValue As Object = Nothing
                 If Not TryConvertClipboardValue(pasteMatrix(clipboardRow)(0), "S", changedValue) Then Continue For
                 Dim change As New DataChangeEvent With {.ModelID = ModelID, .Description = "FFR key definitions pasted", .WSName = SheetName, .CellAddress = cell.GetReferenceA1(), .OriginalValue = CellValue(cell), .ChangedValue = changedValue, .DataFormat = "S", .TimeStamp = Now(), .UserName = Environment.UserName}
+                If ExcelModels(ModelID).ChangeManager.HasEngineEditingTrial Then
+                    engineChanges.Add(change)
+                    Continue For
+                End If
                 If Not ExcelModels(ModelID).ChangeManager.ProcessChange(change).BError Then anyChanged = True
             Next
             End Using
+            If ExcelModels(ModelID).ChangeManager.HasEngineEditingTrial Then anyChanged = ModelPostingChangeSupport.PostModelEngineBatch(
+                ModelID, engineChanges, WorkbookEngines.WorkbookValuePermission.UnlockedCell, "Paste into FFR key definitions")
         Finally
             Cursor = Cursors.Default
         End Try
@@ -263,7 +271,9 @@ Public Class FFRStatementsVGridView
         If Not EditableColumnC OrElse Grid.FocusedRow Is Nothing Then e.Cancel = True : Return
         Dim sourceRow As Integer
         e.Cancel = Not SourceRows.TryGetValue(Grid.FocusedRow.Properties.FieldName, sourceRow) OrElse
-                   Workbook.Worksheets(SheetName).Cells(sourceRow, 2).Protection.Locked
+                   Workbook.Worksheets(SheetName).Cells(sourceRow, 2).ModelProtectionLocked()
+        If Not e.Cancel Then e.Cancel = Not ModelPostingChangeSupport.CaptureModelGridEditor(Grid, ModelID,
+            Workbook.Worksheets(SheetName).Cells(sourceRow, 2), WorkbookEngines.WorkbookValuePermission.UnlockedCell)
     End Sub
 
     Private Sub GridCellValueChanged(ByVal sender As Object, ByVal e As CellValueChangedEventArgs)
@@ -271,8 +281,9 @@ Public Class FFRStatementsVGridView
         Dim sourceRow As Integer
         If Not SourceRows.TryGetValue(e.Row.Properties.FieldName, sourceRow) Then Return
         Dim cell As Cell = Workbook.Worksheets(SheetName).Cells(sourceRow, 2)
-        If cell.Protection.Locked Then RefreshFromWorkbook() : Return
+        If cell.ModelProtectionLocked() Then RefreshFromWorkbook() : Return
         Dim change As New DataChangeEvent With {.ModelID = ModelID, .Description = "FFR key definition updated", .WSName = SheetName, .CellAddress = cell.GetReferenceA1(), .OriginalValue = CellValue(cell), .ChangedValue = e.Value, .DataFormat = "S", .TimeStamp = Now(), .UserName = Environment.UserName}
+        change.EngineTicket = ModelPostingChangeSupport.EngineEditorTicket(Grid)
         ExcelModels(ModelID).ChangeManager.ProcessChange(change)
         RefreshFromWorkbook()
     End Sub
@@ -282,10 +293,11 @@ Public Class FFRStatementsVGridView
         Dim sourceRow As Integer
         If Not SourceRows.TryGetValue(e.Row.Properties.FieldName, sourceRow) Then Return
         Dim cell As Cell = Workbook.Worksheets(SheetName).Cells(sourceRow, SourceColumn(e.RecordIndex))
-        e.CellText = cell.DisplayText
-        e.Appearance.BackColor = If(cell.FillColor.IsEmpty, Color.White, cell.FillColor)
+        e.CellText = cell.ModelPaintText()
+        If Not cell.ModelResultsAvailable() Then Return
+        e.Appearance.BackColor = If(cell.ModelFill().BackgroundColor.IsEmpty, Color.White, cell.ModelFill().BackgroundColor)
         e.Appearance.ForeColor = DisplayForeground(cell)
-        e.Appearance.Font = New Font(Font, If(cell.Font.Bold, FontStyle.Bold, FontStyle.Regular))
+        e.Appearance.Font = New Font(Font, If(cell.ModelFont().Bold, FontStyle.Bold, FontStyle.Regular))
         ApplyVGridSelectedCellAppearance(e)
     End Sub
 
@@ -295,8 +307,9 @@ Public Class FFRStatementsVGridView
             Dim categoryRow As Integer = CInt(category.Tag)
             If categoryRow < 0 Then Return
             Dim cell As Cell = Workbook.Worksheets(SheetName).Cells(categoryRow, 0)
-            e.Appearance.ForeColor = If(cell.Font.Color.IsEmpty, Color.FromArgb(0, 85, 170), cell.Font.Color)
-            e.Appearance.Font = New Font(Font, If(cell.Font.Bold, FontStyle.Bold, FontStyle.Regular))
+            If Not cell.ModelResultsAvailable() Then Return
+            e.Appearance.ForeColor = If(cell.ModelFont().Color.IsEmpty, Color.FromArgb(0, 85, 170), cell.ModelFont().Color)
+            e.Appearance.Font = New Font(Font, If(cell.ModelFont().Bold, FontStyle.Bold, FontStyle.Regular))
             e.DefaultDraw()
             e.Handled = True
             Return
@@ -305,8 +318,9 @@ Public Class FFRStatementsVGridView
         Dim sourceRow As Integer
         If Not SourceRows.TryGetValue(e.Row.Properties.FieldName, sourceRow) Then Return
         Dim sourceCell As Cell = Workbook.Worksheets(SheetName).Cells(sourceRow, 1)
-        e.Appearance.ForeColor = If(sourceCell.Font.Color.IsEmpty, Color.FromArgb(32, 58, 89), sourceCell.Font.Color)
-        e.Appearance.Font = New Font(Font, If(sourceCell.Font.Bold, FontStyle.Bold, FontStyle.Regular))
+        If Not sourceCell.ModelResultsAvailable() Then Return
+        e.Appearance.ForeColor = If(sourceCell.ModelFont().Color.IsEmpty, Color.FromArgb(32, 58, 89), sourceCell.ModelFont().Color)
+        e.Appearance.Font = New Font(Font, If(sourceCell.ModelFont().Bold, FontStyle.Bold, FontStyle.Regular))
         e.DefaultDraw()
         e.Handled = True
     End Sub
@@ -318,11 +332,11 @@ Public Class FFRStatementsVGridView
     End Function
 
     Private Shared Function CellValue(ByVal cell As Cell) As Object
-        If cell Is Nothing OrElse cell.Value.IsEmpty Then Return String.Empty
-        If cell.Value.IsNumeric Then Return cell.Value.NumericValue
-        If cell.Value.IsBoolean Then Return cell.Value.BooleanValue
-        If cell.Value.IsDateTime Then Return cell.Value.DateTimeValue
-        Return cell.DisplayText
+        If cell Is Nothing OrElse cell.ModelValue().IsEmpty Then Return String.Empty
+        If cell.ModelValue().IsNumeric Then Return cell.ModelValue().NumericValue
+        If cell.ModelValue().IsBoolean Then Return cell.ModelValue().BooleanValue
+        If cell.ModelValue().IsDateTime Then Return cell.ModelValue().DateTimeValue
+        Return cell.ModelDisplayText()
     End Function
 
     Private Shared Function GetCellNote(ParamArray cells() As Cell) As String
@@ -336,8 +350,8 @@ Public Class FFRStatementsVGridView
     End Function
 
     Private Shared Function DisplayForeground(ByVal cell As Cell) As Color
-        If cell IsNot Nothing AndAlso cell.DisplayText.Trim().StartsWith("(", StringComparison.Ordinal) Then Return Color.Red
-        Return If(cell Is Nothing OrElse cell.Font.Color.IsEmpty, Color.FromArgb(32, 58, 89), cell.Font.Color)
+        If cell IsNot Nothing AndAlso cell.ModelDisplayText().Trim().StartsWith("(", StringComparison.Ordinal) Then Return Color.Red
+        Return If(cell Is Nothing OrElse cell.ModelFont().Color.IsEmpty, Color.FromArgb(32, 58, 89), cell.ModelFont().Color)
     End Function
 End Class
 

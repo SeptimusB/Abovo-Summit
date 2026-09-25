@@ -152,11 +152,11 @@ Public Class FFRInputsAdjStmtVGridView
             table.Rows.Add(record)
         Next
         For row As Integer = firstRow To lastRow
-            Dim heading As String = ws.Cells(row, 1).DisplayText.Trim()
-            If heading.Length = 0 Then heading = ws.Cells(row, 0).DisplayText.Trim()
+            Dim heading As String = ws.Cells(row, 1).ModelDisplayText().Trim()
+            If heading.Length = 0 Then heading = ws.Cells(row, 0).ModelDisplayText().Trim()
             Dim hasContent As Boolean = heading.Length > 0
             For col As Integer = firstColumn To lastColumn
-                If ws.Cells(row, col).DisplayText.Length > 0 Then hasContent = True
+                If ws.Cells(row, col).ModelDisplayText().Length > 0 Then hasContent = True
             Next
             If Not hasContent Then Continue For
             Dim field As String = "Row_" & row.ToString(CultureInfo.InvariantCulture)
@@ -215,7 +215,10 @@ Public Class FFRInputsAdjStmtVGridView
         If grid Is Nothing OrElse source Is Nothing OrElse grid.FocusedRow Is Nothing Then e.Cancel = True : Return
         Dim row As Integer
         If Not source.Rows.TryGetValue(grid.FocusedRow.Properties.FieldName, row) Then e.Cancel = True : Return
-        e.Cancel = Not IsEditable(Workbook.Worksheets(SheetName).Cells(row, SourceColumn(grid)))
+        Dim cell = Workbook.Worksheets(SheetName).Cells(row, SourceColumn(grid))
+        e.Cancel = Not IsEditable(cell)
+        If Not e.Cancel Then e.Cancel = Not ModelPostingChangeSupport.CaptureModelGridEditor(grid, ModelID, cell,
+            WorkbookEngines.WorkbookValuePermission.UnlockedSolidFill)
     End Sub
 
     Private Sub GridCellValueChanged(ByVal sender As Object, ByVal e As CellValueChangedEventArgs)
@@ -227,7 +230,10 @@ Public Class FFRInputsAdjStmtVGridView
         If Not source.Rows.TryGetValue(e.Row.Properties.FieldName, row) Then Return
         Dim cell As Cell = Workbook.Worksheets(SheetName).Cells(row, SourceColumn(grid))
         If Not IsEditable(cell) Then RefreshFromWorkbook() : Return
-        Dim change As New DataChangeEvent With {.ModelID = ModelID, .Description = "FFR input updated", .WSName = SheetName, .CellAddress = cell.GetReferenceA1(), .OriginalValue = CellValue(cell), .ChangedValue = e.Value, .DataFormat = "S", .TimeStamp = Now(), .UserName = Environment.UserName}
+        Dim dataFormat = InferDataFormat(cell)
+        If dataFormat = "S" AndAlso IsNumeric(e.Value) Then dataFormat = "N"
+        Dim change As New DataChangeEvent With {.ModelID = ModelID, .Description = "FFR input updated", .WSName = SheetName, .CellAddress = cell.GetReferenceA1(), .OriginalValue = CellValue(cell), .ChangedValue = e.Value, .DataFormat = dataFormat, .TimeStamp = Now(), .UserName = Environment.UserName}
+        change.EngineTicket = ModelPostingChangeSupport.EngineEditorTicket(grid)
         'ProcessChange performs the authoritative workbook calculation.  Like
         'DataInterfaceTemplate.UpdateCalcs/RefreshData, rebuild the complete
         'pivot afterwards so calculated rows (including Closing Actual Units)
@@ -273,9 +279,10 @@ Public Class FFRInputsAdjStmtVGridView
         If firstField < 0 Then Return
 
         Dim anyChanged As Boolean = False
+        Dim engineChanges As New List(Of DataChangeEvent)()
         Cursor = Cursors.WaitCursor
         Try
-            Using ChangeManager.BeginChangeGroup("Paste into FFR inputs and adjustments")
+            Using scope = If(ChangeManager.HasEngineEditingTrial, Nothing, ChangeManager.BeginChangeGroup("Paste into FFR inputs and adjustments"))
             For clipboardRow As Integer = 0 To pasteMatrix.Count - 1
                 Dim targetFieldIndex As Integer = firstField + clipboardRow
                 If targetFieldIndex >= orderedFields.Count Then Exit For
@@ -292,10 +299,16 @@ Public Class FFRInputsAdjStmtVGridView
                     Dim changedValue As Object = Nothing
                     If Not TryConvertClipboardValue(pasteMatrix(clipboardRow)(clipboardColumn), dataFormat, changedValue) Then Continue For
                     Dim change As New DataChangeEvent With {.ModelID = ModelID, .Description = "FFR input values pasted", .WSName = SheetName, .CellAddress = cell.GetReferenceA1(), .OriginalValue = CellValue(cell), .ChangedValue = changedValue, .DataFormat = dataFormat, .TimeStamp = Now(), .UserName = Environment.UserName}
+                    If ChangeManager.HasEngineEditingTrial Then
+                        engineChanges.Add(change)
+                        Continue For
+                    End If
                     If Not ChangeManager.ProcessChange(change).BError Then anyChanged = True
                 Next
             Next
             End Using
+            If ChangeManager.HasEngineEditingTrial Then anyChanged = ModelPostingChangeSupport.PostModelEngineBatch(
+                ModelID, engineChanges, WorkbookEngines.WorkbookValuePermission.UnlockedSolidFill, "Paste into FFR inputs and adjustments")
         Finally
             Cursor = Cursors.Default
         End Try
@@ -311,10 +324,11 @@ Public Class FFRInputsAdjStmtVGridView
         Dim row As Integer
         If Not source.Rows.TryGetValue(e.Row.Properties.FieldName, row) Then Return
         Dim cell As Cell = Workbook.Worksheets(SheetName).Cells(row, SourceColumn(grid, e.RecordIndex))
-        e.CellText = cell.DisplayText
-        e.Appearance.BackColor = If(cell.FillColor.IsEmpty, Color.White, cell.FillColor)
+        e.CellText = cell.ModelPaintText()
+        If Not cell.ModelResultsAvailable() Then Return
+        e.Appearance.BackColor = If(cell.ModelFill().BackgroundColor.IsEmpty, Color.White, cell.ModelFill().BackgroundColor)
         e.Appearance.ForeColor = DisplayForeground(cell)
-        e.Appearance.Font = New Font(Font, If(cell.Font.Bold, FontStyle.Bold, FontStyle.Regular))
+        e.Appearance.Font = New Font(Font, If(cell.ModelFont().Bold, FontStyle.Bold, FontStyle.Regular))
         ApplyVGridSelectedCellAppearance(e)
     End Sub
 
@@ -332,18 +346,18 @@ Public Class FFRInputsAdjStmtVGridView
     End Function
 
     Private Shared Function CellValue(ByVal cell As Cell) As Object
-        If cell Is Nothing OrElse cell.Value.IsEmpty Then Return String.Empty
-        If cell.Value.IsNumeric Then Return cell.Value.NumericValue
-        Return cell.DisplayText
+        If cell Is Nothing OrElse cell.ModelValue().IsEmpty Then Return String.Empty
+        If cell.ModelValue().IsNumeric Then Return cell.ModelValue().NumericValue
+        Return cell.ModelDisplayText()
     End Function
 
     Private Shared Function DisplayForeground(ByVal cell As Cell) As Color
-        If cell IsNot Nothing AndAlso cell.DisplayText.Trim().StartsWith("(", StringComparison.Ordinal) Then Return Color.Red
-        Return If(cell Is Nothing OrElse cell.Font.Color.IsEmpty, Color.FromArgb(32, 58, 89), cell.Font.Color)
+        If cell IsNot Nothing AndAlso cell.ModelDisplayText().Trim().StartsWith("(", StringComparison.Ordinal) Then Return Color.Red
+        Return If(cell Is Nothing OrElse cell.ModelFont().Color.IsEmpty, Color.FromArgb(32, 58, 89), cell.ModelFont().Color)
     End Function
 
     Private Shared Function IsEditable(ByVal cell As Cell) As Boolean
-        Return cell IsNot Nothing AndAlso Not cell.Protection.Locked AndAlso cell.Fill.PatternType = PatternType.Solid
+        Return cell IsNot Nothing AndAlso cell.ModelResultsAvailable() AndAlso Not cell.ModelProtectionLocked() AndAlso cell.ModelFill().PatternType = PatternType.Solid
     End Function
 
     Private Class PivotSource

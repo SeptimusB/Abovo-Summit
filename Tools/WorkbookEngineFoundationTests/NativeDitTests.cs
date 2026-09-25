@@ -27,13 +27,13 @@ static class NativeDitTests
     static void Check(bool ok,string message){if(!ok)throw new Exception(message);Console.WriteLine("DIT_NATIVE PASS "+(++checks)+" "+message);Console.Out.Flush();}
     static void Pump(){Application.DoEvents();Application.RaiseIdle(EventArgs.Empty);Application.DoEvents();}
     static IEnumerable<Control> Children(Control parent){foreach(Control child in parent.Controls){yield return child;foreach(var nested in Children(child))yield return nested;}}
-    internal static Task Run(string source,bool excel,bool saveLifecycle=false)
+    internal static Task Run(string source,bool excel,bool saveLifecycle=false,bool openingSelection=false)
     {
         var completion=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var thread=new Thread(()=>{try{RunOnOwner(source,excel,saveLifecycle);completion.SetResult(true);}catch(Exception e){completion.SetException(e);}}){IsBackground=true};
+        var thread=new Thread(()=>{try{RunOnOwner(source,excel,saveLifecycle,openingSelection);completion.SetResult(true);}catch(Exception e){completion.SetException(e);}}){IsBackground=true};
         thread.SetApartmentState(ApartmentState.STA);thread.Start();return completion.Task;
     }
-    static void RunOnOwner(string source,bool excel,bool saveLifecycle)
+    static void RunOnOwner(string source,bool excel,bool saveLifecycle,bool openingSelection)
     {
         Thread.CurrentThread.CurrentCulture=CultureInfo.GetCultureInfo("en-GB");
         var before=NativeProcessChecks.ExcelIds();
@@ -49,10 +49,17 @@ static class NativeDitTests
         var model=FileManager.ExcelModels[opened.IntegerReturn];var book=model.WB;WorkbookCalculationSession session=null;
         try
         {
-            session=WorkbookCalculationSession.OpenAsync(copy,new WorkbookEngineOptions(excel?WorkbookEnginePreference.ExcelRequired:WorkbookEnginePreference.DevExpressOnly,true,true,120000,true,saveLifecycle,saveLifecycle)).GetAwaiter().GetResult();
+            var options=new WorkbookEngineOptions(excel?WorkbookEnginePreference.ExcelRequired:WorkbookEnginePreference.DevExpressOnly,true,true,120000,true,saveLifecycle,saveLifecycle);
+            if(openingSelection){
+                app.GetType("Abovo.WorkbookEngines.ModelEngineSelection").GetMethod("Activate",F).Invoke(null,new object[]{model,options,null});
+                session=(WorkbookCalculationSession)Field(model.ChangeManager,"engineTrial");
+                Check(!model.IsDirty&&model.ChangeManager.GetHistoryTable().Rows.Count==0,"opening selection preserves clean/history state");
+            }else{
+                session=WorkbookCalculationSession.OpenAsync(copy,options).GetAwaiter().GetResult();
+                var initial=session.CalculateAndReadAsync(0,WorkbookCalculationKind.Rebuild,new[]{new WorkbookReadArea("Check Sheet",0,0,1,1)}).GetAwaiter().GetResult();
+                Call(model.ChangeManager,"BindEngineEditingTrial",session,initial);
+            }
             owners.Add(session);
-            var initial=session.CalculateAndReadAsync(0,WorkbookCalculationKind.Rebuild,new[]{new WorkbookReadArea("Check Sheet",0,0,1,1)}).GetAwaiter().GetResult();
-            Call(model.ChangeManager,"BindEngineEditingTrial",session,initial);
             Check(model.ChangeManager.HasEngineEditingTrial,"normal application model bound to "+session.EngineName);
             var unexpectedDialogs=new List<string>();
             using(var dialogReporter=new System.Windows.Forms.Timer())
@@ -68,6 +75,10 @@ static class NativeDitTests
                 };
                 dialogReporter.Start();
                 form.Opacity=0;form.ShowInTaskbar=false;form.ClientSize=new Size(1750,1000);form.Show();Pump();
+                var beforeSummary=model.ChangeManager.EngineEditingResult;
+                Call(form,"CalculateSidebarWorkbook",book,"Native regression");
+                Check(model.ChangeManager.EngineEditingResult.CalculationGeneration>beforeSummary.CalculationGeneration,
+                    "explicit summary refresh calculates the selected native owner");
                 foreach(int csid in new[]{35,33})
                 {
                     var timer=Stopwatch.StartNew();Console.WriteLine("DIT_NATIVE OPEN section="+csid);Console.Out.Flush();

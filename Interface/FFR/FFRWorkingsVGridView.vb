@@ -133,7 +133,7 @@ Public Class FFRWorkingsVGridView
                 Continue For
             End If
 
-            Dim label As String = ws.Cells(row, 1).DisplayText.Trim()
+            Dim label As String = ws.Cells(row, 1).ModelDisplayText().Trim()
             If label.Length = 0 Then Continue For
             Dim field As String = "Row_" & row.ToString(CultureInfo.InvariantCulture)
             table.Columns.Add(field, GetType(Object))
@@ -192,7 +192,7 @@ Public Class FFRWorkingsVGridView
         Dim category As CategoryRow = Nothing
         If categories.TryGetValue(headingRow, category) Then Return category
 
-        Dim caption As String = If(headingRow < 0, "FFR Workings", ws.Cells(headingRow, 0).DisplayText.Trim())
+        Dim caption As String = If(headingRow < 0, "FFR Workings", ws.Cells(headingRow, 0).ModelDisplayText().Trim())
         category = New CategoryRow("Category_" & headingRow.ToString(CultureInfo.InvariantCulture))
         category.Properties.Caption = caption
         category.Height = If(IsValidationTopHeading(caption), 24, 21)
@@ -217,7 +217,7 @@ Public Class FFRWorkingsVGridView
     Private Shared Function ValidationTopHeadingRow(ByVal ws As Worksheet, ByVal row As Integer) As Integer
         If row < 0 Then Return -1
         For probe As Integer = row To 4 Step -1
-            If IsSectionHeading(ws, probe) AndAlso IsValidationTopHeading(ws.Cells(probe, 0).DisplayText.Trim()) Then Return probe
+            If IsSectionHeading(ws, probe) AndAlso IsValidationTopHeading(ws.Cells(probe, 0).ModelDisplayText().Trim()) Then Return probe
         Next
         Return -1
     End Function
@@ -227,14 +227,14 @@ Public Class FFRWorkingsVGridView
     End Function
 
     Private Shared Function IsSectionHeading(ByVal ws As Worksheet, ByVal row As Integer) As Boolean
-        Dim first As String = ws.Cells(row, 0).DisplayText.Trim()
-        If first.Length = 0 OrElse ws.Cells(row, 1).DisplayText.Trim().Length <> 0 Then Return False
+        Dim first As String = ws.Cells(row, 0).ModelDisplayText().Trim()
+        If first.Length = 0 OrElse ws.Cells(row, 1).ModelDisplayText().Trim().Length <> 0 Then Return False
         Return Not IsNumeric(first)
     End Function
 
     Private Shared Function EditorCaption(ByVal ws As Worksheet, ByVal row As Integer) As String
-        Dim lineNumber As String = ws.Cells(row, 0).DisplayText.Trim()
-        Dim description As String = ws.Cells(row, 1).DisplayText.Trim()
+        Dim lineNumber As String = ws.Cells(row, 0).ModelDisplayText().Trim()
+        Dim description As String = ws.Cells(row, 1).ModelDisplayText().Trim()
         If lineNumber.Length = 0 Then Return description
         Return lineNumber & " - " & description
     End Function
@@ -276,9 +276,10 @@ Public Class FFRWorkingsVGridView
         If firstField < 0 Then Return
 
         Dim anyChanged As Boolean = False
+        Dim engineChanges As New List(Of DataChangeEvent)()
         Cursor = Cursors.WaitCursor
         Try
-            Using ChangeManager.BeginChangeGroup("Paste into FFR workings")
+            Using scope = If(ChangeManager.HasEngineEditingTrial, Nothing, ChangeManager.BeginChangeGroup("Paste into FFR workings"))
             For clipboardRow As Integer = 0 To pasteMatrix.Count - 1
                 Dim targetFieldIndex As Integer = firstField + clipboardRow
                 If targetFieldIndex >= orderedFields.Count Then Exit For
@@ -297,6 +298,10 @@ Public Class FFRWorkingsVGridView
                     If Not TryConvertClipboardValue(pasteMatrix(clipboardRow)(clipboardColumn), dataFormat, changedValue) Then Continue For
 
                     Dim change As New DataChangeEvent With {.ModelID = ModelID, .Description = "FFR workings values pasted", .WSName = SheetName, .CellAddress = cell.GetReferenceA1(), .OriginalValue = CellValue(cell), .ChangedValue = changedValue, .DataFormat = dataFormat, .TimeStamp = Now(), .UserName = Environment.UserName}
+                    If ChangeManager.HasEngineEditingTrial Then
+                        engineChanges.Add(change)
+                        Continue For
+                    End If
                     If Not ChangeManager.ProcessChange(change).BError Then
                         LastChangedAddress = cell.GetReferenceA1()
                         anyChanged = True
@@ -304,6 +309,8 @@ Public Class FFRWorkingsVGridView
                 Next
             Next
             End Using
+            If ChangeManager.HasEngineEditingTrial Then anyChanged = ModelPostingChangeSupport.PostModelEngineBatch(
+                ModelID, engineChanges, WorkbookEngines.WorkbookValuePermission.UnlockedSolidFill, "Paste into FFR workings")
         Finally
             Cursor = Cursors.Default
         End Try
@@ -334,7 +341,10 @@ Public Class FFRWorkingsVGridView
         If Grid.FocusedRow Is Nothing Then e.Cancel = True : Return
         Dim row As Integer
         If Not SourceRows.TryGetValue(Grid.FocusedRow.Properties.FieldName, row) Then e.Cancel = True : Return
-        e.Cancel = Not IsEditable(Workbook.Worksheets(SheetName).Cells(row, SourceColumn(Grid.FocusedRecord)))
+        Dim cell = Workbook.Worksheets(SheetName).Cells(row, SourceColumn(Grid.FocusedRecord))
+        e.Cancel = Not IsEditable(cell)
+        If Not e.Cancel Then e.Cancel = Not ModelPostingChangeSupport.CaptureModelGridEditor(Grid, ModelID, cell,
+            WorkbookEngines.WorkbookValuePermission.UnlockedSolidFill)
     End Sub
 
     Private Sub GridCellValueChanged(ByVal sender As Object, ByVal e As CellValueChangedEventArgs)
@@ -347,9 +357,10 @@ Public Class FFRWorkingsVGridView
         Dim changedValue As Object = NormalizeEditValue(e.Value)
         LastChangedAddress = cell.GetReferenceA1()
 #If DEBUG Then
-        Abovo.SummitDiagnostics.WriteLine("FFR Workings VGrid edit: " & SheetName & "!" & LastChangedAddress & " old=[" & cell.DisplayText & "] new=[" & Convert.ToString(changedValue, CultureInfo.CurrentCulture) & "]")
+        Abovo.SummitDiagnostics.WriteLine("FFR Workings VGrid edit: " & SheetName & "!" & LastChangedAddress & " old=[" & cell.ModelDisplayText() & "] new=[" & Convert.ToString(changedValue, CultureInfo.CurrentCulture) & "]")
 #End If
         Dim change As New DataChangeEvent With {.ModelID = ModelID, .Description = "FFR workings input updated", .WSName = SheetName, .CellAddress = cell.GetReferenceA1(), .OriginalValue = CellValue(cell), .ChangedValue = changedValue, .DataFormat = DataFormatForCell(cell, changedValue), .TimeStamp = Now(), .UserName = Environment.UserName}
+        change.EngineTicket = ModelPostingChangeSupport.EngineEditorTicket(Grid)
         If ChangeManager.ProcessChange(change).BError Then RefreshFromWorkbook() : Return
         BeginInvoke(New MethodInvoker(AddressOf RefreshAfterWorkbookCalculation))
         RaiseEvent WorkbookCellChanged(Me, EventArgs.Empty)
@@ -360,10 +371,11 @@ Public Class FFRWorkingsVGridView
         Dim row As Integer
         If Not SourceRows.TryGetValue(e.Row.Properties.FieldName, row) Then Return
         Dim cell As Cell = Workbook.Worksheets(SheetName).Cells(row, SourceColumn(e.RecordIndex))
-        e.CellText = cell.DisplayText
-        e.Appearance.BackColor = If(cell.FillColor.IsEmpty, Color.White, cell.FillColor)
+        e.CellText = cell.ModelPaintText()
+        If Not cell.ModelResultsAvailable() Then Return
+        e.Appearance.BackColor = If(cell.ModelFill().BackgroundColor.IsEmpty, Color.White, cell.ModelFill().BackgroundColor)
         e.Appearance.ForeColor = DisplayForeground(cell)
-        e.Appearance.Font = New Font(Font, If(cell.Font.Bold, FontStyle.Bold, FontStyle.Regular))
+        e.Appearance.Font = New Font(Font, If(cell.ModelFont().Bold, FontStyle.Bold, FontStyle.Regular))
         ApplyVGridSelectedCellAppearance(e)
     End Sub
 
@@ -389,8 +401,9 @@ Public Class FFRWorkingsVGridView
         Dim sourceRow As Integer
         If Not SourceRows.TryGetValue(e.Row.Properties.FieldName, sourceRow) Then Return
         Dim sourceCell As Cell = Workbook.Worksheets(SheetName).Cells(sourceRow, 1)
-        e.Appearance.ForeColor = If(sourceCell.Font.Color.IsEmpty, Color.FromArgb(32, 58, 89), sourceCell.Font.Color)
-        e.Appearance.Font = New Font(Font, If(sourceCell.Font.Bold, FontStyle.Bold, FontStyle.Regular))
+        If Not sourceCell.ModelResultsAvailable() Then Return
+        e.Appearance.ForeColor = If(sourceCell.ModelFont().Color.IsEmpty, Color.FromArgb(32, 58, 89), sourceCell.ModelFont().Color)
+        e.Appearance.Font = New Font(Font, If(sourceCell.ModelFont().Bold, FontStyle.Bold, FontStyle.Regular))
         e.DefaultDraw()
         e.Handled = True
     End Sub
@@ -402,11 +415,11 @@ Public Class FFRWorkingsVGridView
     End Function
 
     Private Shared Function CellValue(ByVal cell As Cell) As Object
-        If cell Is Nothing OrElse cell.Value.IsEmpty Then Return String.Empty
-        If cell.Value.IsNumeric Then Return cell.Value.NumericValue
-        If cell.Value.IsBoolean Then Return cell.Value.BooleanValue
-        If cell.Value.IsDateTime Then Return cell.Value.DateTimeValue
-        Return cell.DisplayText
+        If cell Is Nothing OrElse cell.ModelValue().IsEmpty Then Return String.Empty
+        If cell.ModelValue().IsNumeric Then Return cell.ModelValue().NumericValue
+        If cell.ModelValue().IsBoolean Then Return cell.ModelValue().BooleanValue
+        If cell.ModelValue().IsDateTime Then Return cell.ModelValue().DateTimeValue
+        Return cell.ModelDisplayText()
     End Function
 
     Private Shared Function GetCellNote(ParamArray cells() As Cell) As String
@@ -420,8 +433,8 @@ Public Class FFRWorkingsVGridView
     End Function
 
     Private Shared Function DisplayForeground(ByVal cell As Cell) As Color
-        If cell IsNot Nothing AndAlso cell.DisplayText.Trim().StartsWith("(", StringComparison.Ordinal) Then Return Color.Red
-        Return If(cell Is Nothing OrElse cell.Font.Color.IsEmpty, Color.FromArgb(32, 58, 89), cell.Font.Color)
+        If cell IsNot Nothing AndAlso cell.ModelDisplayText().Trim().StartsWith("(", StringComparison.Ordinal) Then Return Color.Red
+        Return If(cell Is Nothing OrElse cell.ModelFont().Color.IsEmpty, Color.FromArgb(32, 58, 89), cell.ModelFont().Color)
     End Function
 
     Private Sub RefreshAfterWorkbookCalculation()
@@ -435,13 +448,13 @@ Public Class FFRWorkingsVGridView
         'registered DataInterfaceTemplate worksheet.  Calculate it explicitly
         'so same-sheet dependent formulas (for example E18 after E10 changes)
         'are current before the presentation reads them back.
-        Workbook.Worksheets(SheetName).Calculate()
+        If Not ChangeManager.HasEngineEditingTrial Then Workbook.Worksheets(SheetName).Calculate()
         RefreshFromWorkbook()
         Grid.RefreshDataSource()
         Grid.Refresh()
 #If DEBUG Then
         If LastChangedAddress.Length > 0 Then
-            Abovo.SummitDiagnostics.WriteLine("FFR Workings VGrid refreshed: " & SheetName & "!" & LastChangedAddress & " now=[" & Workbook.Worksheets(SheetName).Cells(LastChangedAddress).DisplayText & "]")
+            Abovo.SummitDiagnostics.WriteLine("FFR Workings VGrid refreshed: " & SheetName & "!" & LastChangedAddress & " now=[" & Workbook.Worksheets(SheetName).Cells(LastChangedAddress).ModelDisplayText() & "]")
         End If
 #End If
     End Sub
@@ -454,14 +467,14 @@ Public Class FFRWorkingsVGridView
 
     Private Shared Function DataFormatForCell(ByVal cell As Cell, ByVal value As Object) As String
         If value Is Nothing Then Return "S"
-        If cell.Value.IsDateTime OrElse TypeOf value Is DateTime Then Return "D"
-        If cell.Value.IsBoolean OrElse TypeOf value Is Boolean Then Return "B"
-        If If(cell.NumberFormat, String.Empty).Contains("%") Then Return "P"
-        If cell.Value.IsNumeric OrElse IsNumeric(value) Then Return "N"
+        If cell.ModelValue().IsDateTime OrElse TypeOf value Is DateTime Then Return "D"
+        If cell.ModelValue().IsBoolean OrElse TypeOf value Is Boolean Then Return "B"
+        If If(cell.ModelNumberFormat(), String.Empty).Contains("%") Then Return "P"
+        If cell.ModelValue().IsNumeric OrElse IsNumeric(value) Then Return "N"
         Return "S"
     End Function
 
     Private Shared Function IsEditable(ByVal cell As Cell) As Boolean
-        Return cell IsNot Nothing AndAlso Not cell.Protection.Locked AndAlso cell.Fill.PatternType = PatternType.Solid
+        Return cell IsNot Nothing AndAlso cell.ModelResultsAvailable() AndAlso Not cell.ModelProtectionLocked() AndAlso cell.ModelFill().PatternType = PatternType.Solid
     End Function
 End Class

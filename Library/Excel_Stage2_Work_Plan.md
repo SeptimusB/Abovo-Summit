@@ -12,6 +12,8 @@ Stage 2 means interactive ownership, not more independent save demonstrations:
 - [ ] Close/discard and saves cannot lose engine-owned edits or publish stale state. Stage 3 structural operations stay disabled for this route until implemented, not silently sent to a different workbook.
 - [ ] Both configurations and real native fixtures pass; then separately versioned Ready to test build and explicit Jon/Alex manual gates.
 
+Current continuation: `Excel_DevExpress_Engine_Stage2n_2026-09-25.md` records FFR/dashboard/comparison/integrity readers, expanded mutation guards and actual opening/settings selection in isolated builds. Whole private Demo opening, edits, recovery, Save/Save As, Undo/Redo and owned close pass. Installed production 2.98 remains unchanged. Final consumer/lifecycle/performance review, regression qualification and versioned test delivery are still required; do not stop at this checkpoint.
+
 Existing checkpoints 2a–2f supply result binding, single-value transactions and guarded terminal saves/history. They do not complete the items above. Do not expose a preference which only changes a status label or bypasses an existing edit/calculation path.
 
 Checkpoint 2g (`Excel_DevExpress_Engine_Stage2g_2026-09-25.md`) adds the real change-manager bridge, effective appearance, calculation-generation checks and a partial shared display-reader migration. Check Sheet/company-warning and Funding date/amount dependency tests pass in both engines on generated fixtures. The engine is still not selected by normal model opening. Continue the remaining consumer/editor/lifecycle gates; do not end at this checkpoint.

@@ -275,14 +275,15 @@ Public Class FFRWorkbookSheetView
         If e.ListSourceRowIndex < 0 OrElse e.Column Is Nothing Then Return
         Dim RowHandle As Integer = SheetView.GetRowHandle(e.ListSourceRowIndex)
         Dim SourceCell As Cell = Nothing
-        If TryGetSourceCell(RowHandle, e.Column, SourceCell) Then e.DisplayText = SourceCell.DisplayText
+        If TryGetSourceCell(RowHandle, e.Column, SourceCell) Then e.DisplayText = SourceCell.ModelPaintText()
     End Sub
 
     Private Sub SheetViewRowCellStyle(sender As Object, e As RowCellStyleEventArgs)
         Dim SourceCell As Cell = Nothing
         If Not TryGetSourceCell(e.RowHandle, e.Column, SourceCell) Then Return
+        If Not SourceCell.ModelResultsAvailable() Then Return
 
-        Dim Background As Color = SourceCell.FillColor
+        Dim Background As Color = SourceCell.ModelFill().BackgroundColor
         If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
         Dim Foreground As Color = DisplayForeground(SourceCell)
 
@@ -293,7 +294,7 @@ Public Class FFRWorkbookSheetView
         e.Appearance.Options.UseTextOptions = True
         e.Appearance.TextOptions.WordWrap = WordWrap.Wrap
 
-        Select Case SourceCell.Alignment.Horizontal
+        Select Case SourceCell.ModelHorizontalAlignment()
             Case SpreadsheetHorizontalAlignment.Center
                 e.Appearance.TextOptions.HAlignment = HorzAlignment.Center
             Case SpreadsheetHorizontalAlignment.Right
@@ -303,9 +304,9 @@ Public Class FFRWorkbookSheetView
         End Select
 
         Dim FontStyle As FontStyle = FontStyle.Regular
-        If SourceCell.Font.Bold Then FontStyle = FontStyle Or FontStyle.Bold
-        If SourceCell.Font.Italic Then FontStyle = FontStyle Or FontStyle.Italic
-        If SourceCell.Font.UnderlineType <> UnderlineType.None Then FontStyle = FontStyle Or FontStyle.Underline
+        If SourceCell.ModelFont().Bold Then FontStyle = FontStyle Or FontStyle.Bold
+        If SourceCell.ModelFont().Italic Then FontStyle = FontStyle Or FontStyle.Italic
+        If SourceCell.ModelFont().UnderlineType <> UnderlineType.None Then FontStyle = FontStyle Or FontStyle.Underline
         e.Appearance.Font = New Font(Font.FontFamily, Font.Size, FontStyle)
         e.Appearance.Options.UseFont = True
 
@@ -333,7 +334,9 @@ Public Class FFRWorkbookSheetView
     Private Sub SheetViewShowingEditor(sender As Object, e As CancelEventArgs)
         Dim SourceCell As Cell = Nothing
         If Not TryGetSourceCell(SheetView.FocusedRowHandle, SheetView.FocusedColumn, SourceCell) OrElse
-           Not IsWorkbookCellEditable(SourceCell) Then e.Cancel = True
+           Not IsWorkbookCellEditable(SourceCell) Then e.Cancel = True : Return
+        e.Cancel = Not ModelPostingChangeSupport.CaptureModelGridEditor(SheetView, ModelID, SourceCell,
+            WorkbookEngines.WorkbookValuePermission.UnlockedSolidFill)
     End Sub
 
     Private Sub SheetViewShownEditor(sender As Object, e As EventArgs)
@@ -355,6 +358,7 @@ Public Class FFRWorkbookSheetView
         Dim ChangeEvent As New DataChangeEvent With {
             .ModelID = ModelID,
             .Description = "FFR input updated",
+            .EngineTicket = ModelPostingChangeSupport.EngineEditorTicket(SheetView),
             .WSName = SheetName,
             .CellAddress = SourceCell.GetReferenceA1(),
             .OriginalValue = CellToObject(SourceCell),
@@ -441,8 +445,9 @@ Public Class FFRWorkbookSheetView
     End Function
 
     Private Function IsWorkbookCellEditable(SourceCell As Cell) As Boolean
-        If SourceCell Is Nothing OrElse SourceCell.Protection.Locked Then Return False
-        Return SourceCell.Fill.PatternType = PatternType.Solid
+        If SourceCell IsNot Nothing AndAlso Not SourceCell.ModelResultsAvailable() Then Return False
+        If SourceCell Is Nothing OrElse SourceCell.ModelProtectionLocked() Then Return False
+        Return SourceCell.ModelFill().PatternType = PatternType.Solid
     End Function
 
     Private Function WorkbookValidationItems(SourceCell As Cell) As List(Of String)
@@ -484,14 +489,14 @@ Public Class FFRWorkbookSheetView
         If Source Is Nothing Then Return
         For RowIndex As Integer = 0 To Source.RowCount - 1
             For ColumnIndex As Integer = 0 To Source.ColumnCount - 1
-                AddValidationItem(Result, Source(RowIndex, ColumnIndex).DisplayText)
+                AddValidationItem(Result, Source(RowIndex, ColumnIndex).ModelDisplayText())
             Next
         Next
     End Sub
 
     Private Shared Function DisplayForeground(ByVal SourceCell As Cell) As Color
-        If SourceCell IsNot Nothing AndAlso SourceCell.DisplayText.Trim().StartsWith("(", StringComparison.Ordinal) Then Return Color.Red
-        Dim Foreground As Color = If(SourceCell Is Nothing, Color.Empty, SourceCell.Font.Color)
+        If SourceCell IsNot Nothing AndAlso SourceCell.ModelDisplayText().Trim().StartsWith("(", StringComparison.Ordinal) Then Return Color.Red
+        Dim Foreground As Color = If(SourceCell Is Nothing, Color.Empty, SourceCell.ModelFont().Color)
         If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = Color.FromArgb(32, 58, 89)
         Return Foreground
     End Function
@@ -538,11 +543,12 @@ Public Class FFRWorkbookSheetView
     End Sub
 
     Private Shared Function CellToSnapshotValue(SourceCell As Cell) As Object
-        If SourceCell Is Nothing OrElse SourceCell.Value.IsEmpty Then Return DBNull.Value
-        If SourceCell.Value.IsNumeric Then Return SourceCell.Value.NumericValue
-        If SourceCell.Value.IsBoolean Then Return SourceCell.Value.BooleanValue
-        If SourceCell.Value.IsDateTime Then Return SourceCell.Value.DateTimeValue
-        Return SourceCell.Value.TextValue
+        If SourceCell Is Nothing OrElse SourceCell.ModelValue().IsEmpty Then Return DBNull.Value
+        If IsDateCell(SourceCell) AndAlso SourceCell.ModelValue().IsNumeric Then Return SourceCell.ModelDateValue()
+        If SourceCell.ModelValue().IsNumeric Then Return SourceCell.ModelValue().NumericValue
+        If SourceCell.ModelValue().IsBoolean Then Return SourceCell.ModelValue().BooleanValue
+        If SourceCell.ModelValue().IsDateTime Then Return SourceCell.ModelValue().DateTimeValue
+        Return SourceCell.ModelValue().TextValue
     End Function
 
     Private Shared Function CellToObject(SourceCell As Cell) As Object
@@ -558,18 +564,18 @@ Public Class FFRWorkbookSheetView
     Private Shared Function DataFormatForCell(SourceCell As Cell, Value As Object) As String
         If Value Is Nothing Then Return "S"
         If IsDateCell(SourceCell) OrElse TypeOf Value Is DateTime Then Return "D"
-        If SourceCell.Value.IsBoolean OrElse TypeOf Value Is Boolean Then Return "B"
+        If SourceCell.ModelValue().IsBoolean OrElse TypeOf Value Is Boolean Then Return "B"
 
-        Dim NumberFormat As String = If(SourceCell.NumberFormat, String.Empty)
+        Dim NumberFormat As String = If(SourceCell.ModelNumberFormat(), String.Empty)
         If NumberFormat.Contains("%") Then Return "P"
-        If SourceCell.Value.IsNumeric OrElse IsNumeric(Value) Then Return "N"
+        If SourceCell.ModelValue().IsNumeric OrElse IsNumeric(Value) Then Return "N"
         Return "S"
     End Function
 
     Private Shared Function IsDateCell(SourceCell As Cell) As Boolean
         If SourceCell Is Nothing Then Return False
-        If SourceCell.Value.IsDateTime Then Return True
-        Dim Format As String = If(SourceCell.NumberFormat, String.Empty).ToLowerInvariant()
+        If SourceCell.ModelValue().IsDateTime Then Return True
+        Dim Format As String = If(SourceCell.ModelNumberFormat(), String.Empty).ToLowerInvariant()
         Return Format.Contains("dd") OrElse Format.Contains("yy")
     End Function
 

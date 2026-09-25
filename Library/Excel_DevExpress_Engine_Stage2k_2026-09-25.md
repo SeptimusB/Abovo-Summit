@@ -21,6 +21,8 @@ Internal checkpoint only. Stage 2 continues; normal Debug/Release 2.98 and both 
 
 ## Dynamic-array distinction found by the stronger test
 
+The final ownership-enabled whole-model repeats pass all 34 assertions per engine, including owned close. The ordinary DevExpress DIT regression in the structural-gate Release build passes 550 checks and leaves the source hash unchanged (`obj/EngineStage2m-ordinary-DIT.log`).
+
 DevExpress 25.2.4's XLSB importer represents the tested Excel-created dynamic spill as a legacy array range. Re-export preserves its existing binary metadata; Excel recalculates the spill, and DevExpress recalculates the existing range. The same recovery converted through the reviewed XLSM bridge is recognised as dynamic by DevExpress.
 
 This differs from creating a brand-new dynamic formula through DevExpress and directly exporting XLSB: the synthetic exported file lacks working array identity and neither engine updates its spilled values correctly. The XLSB fixture is therefore now created by converting a generated XLSX with isolated Excel, not by assuming DevExpress can author that XLSB feature. No production workbook formula or metadata was changed to hide this distinction. Variable-size spill expansion through the XLSB DevExpress fallback remains an explicit compatibility limitation to qualify; fixed-size cached-value parity is not proof of arbitrary spill growth.

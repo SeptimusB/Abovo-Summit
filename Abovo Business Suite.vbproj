@@ -626,6 +626,7 @@
     <Compile Include="Services\DataService\ObjectReplicator.vb" />
     <Compile Include="Services\EngineManagement.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookEngineContracts.vb" />
+    <Compile Include="Services\WorkbookEngines\ModelEngineSelection.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookEngineStaHost.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookCalculationSession.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookResultGridSource.vb" />

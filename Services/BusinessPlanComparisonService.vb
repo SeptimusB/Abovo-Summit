@@ -203,6 +203,7 @@ Namespace Abovo
             End If
 
             Dim targetModel As FileManager.ExcelModel = FileManager.ExcelModels(targetPlan.ModelID)
+            ModelSafetyManager.RequireDirectWorkbookSurface(targetPlan.ModelID, "Assumption upgrade")
             Dim result As New BusinessPlanMigrationResult()
             ReportProgress(progress, "Checking assumption structures...")
             Dim preflight As BusinessPlanMigrationPreflight = BuildMigrationPreflight(sourcePlan, targetPlan, targetModel)
@@ -581,14 +582,14 @@ Namespace Abovo
 
             Dim issueCount As Integer = 0
             For rowIndex As Integer = 0 To validationRange.RowCount - 1
-                Dim statusText As String = validationRange(rowIndex, 4).DisplayText.Trim()
+                Dim statusText As String = validationRange(rowIndex, 4).ModelDisplayText().Trim()
                 If String.IsNullOrWhiteSpace(statusText) OrElse
                    String.Equals(statusText, "OK", StringComparison.OrdinalIgnoreCase) Then Continue For
                 AddItem(result, nextID, parentID, fileName, "Validation", label,
-                        validationRange(rowIndex, 0).DisplayText.Trim(),
+                        validationRange(rowIndex, 0).ModelDisplayText().Trim(),
                         validationRange(rowIndex, 0).GetReferenceA1(),
                         String.Empty, statusText,
-                        validationRange(rowIndex, 5).DisplayText.Trim(), "Problem")
+                        validationRange(rowIndex, 5).ModelDisplayText().Trim(), "Problem")
                 issueCount += 1
                 result.CheckIssueCount += 1
             Next
@@ -607,7 +608,7 @@ Namespace Abovo
             Dim headers As New Dictionary(Of String, Integer)(StringComparer.OrdinalIgnoreCase)
             Dim periods As New List(Of Integer)()
             For columnIndex As Integer = 0 To source.ColumnCount - 1
-                Dim heading As String = source(0, columnIndex).DisplayText.Trim()
+                Dim heading As String = source(0, columnIndex).ModelDisplayText().Trim()
                 If Not headers.ContainsKey(heading) Then headers.Add(heading, columnIndex)
                 If Regex.IsMatch(heading, "^[0-9]{4}/[0-9]{2}$", RegexOptions.CultureInvariant) Then periods.Add(columnIndex)
             Next
@@ -619,22 +620,22 @@ Namespace Abovo
             Dim values As New Dictionary(Of String, Double)(StringComparer.Ordinal)
             For rowIndex As Integer = 1 To source.RowCount - 1
                 Dim useCell As Cell = source(rowIndex, headers("UseInSOCI"))
-                If Not useCell.Value.IsNumeric OrElse useCell.Value.NumericValue <= 0R Then Continue For
-                Dim groupName As String = source(rowIndex, headers("OrderedSOCIGroup")).DisplayText.Trim()
-                Dim headingName As String = source(rowIndex, headers("OrderedSOCIHeading")).DisplayText.Trim()
-                Dim level1Name As String = If(headers.ContainsKey("Level 1 Copy"), source(rowIndex, headers("Level 1 Copy")).DisplayText.Trim(), String.Empty)
-                Dim level2Name As String = If(headers.ContainsKey("Level 2 Copy"), source(rowIndex, headers("Level 2 Copy")).DisplayText.Trim(), String.Empty)
+                If Not useCell.ModelValue().IsNumeric OrElse useCell.ModelValue().NumericValue <= 0R Then Continue For
+                Dim groupName As String = source(rowIndex, headers("OrderedSOCIGroup")).ModelDisplayText().Trim()
+                Dim headingName As String = source(rowIndex, headers("OrderedSOCIHeading")).ModelDisplayText().Trim()
+                Dim level1Name As String = If(headers.ContainsKey("Level 1 Copy"), source(rowIndex, headers("Level 1 Copy")).ModelDisplayText().Trim(), String.Empty)
+                Dim level2Name As String = If(headers.ContainsKey("Level 2 Copy"), source(rowIndex, headers("Level 2 Copy")).ModelDisplayText().Trim(), String.Empty)
                 If String.IsNullOrWhiteSpace(groupName) Then groupName = "Uncategorised"
                 If String.IsNullOrWhiteSpace(headingName) Then headingName = "Uncategorised"
                 For Each periodIndex As Integer In periods
                     Dim valueCell As Cell = source(rowIndex, periodIndex)
-                    If Not valueCell.Value.IsNumeric Then Continue For
+                    If Not valueCell.ModelValue().IsNumeric Then Continue For
                     Dim key As String = String.Join(ChrW(30), {groupName, headingName, level1Name, level2Name,
-                                                              source(0, periodIndex).DisplayText.Trim()})
+                                                              source(0, periodIndex).ModelDisplayText().Trim()})
                     If values.ContainsKey(key) Then
-                        values(key) += valueCell.Value.NumericValue
+                        values(key) += valueCell.ModelValue().NumericValue
                     Else
-                        values.Add(key, valueCell.Value.NumericValue)
+                        values.Add(key, valueCell.ModelValue().NumericValue)
                     End If
                 Next
             Next
@@ -931,7 +932,7 @@ Namespace Abovo
             For rowIndex As Integer = 0 To targetRange.RowCount - 1
                 For columnIndex As Integer = 0 To targetRange.ColumnCount - 1
                     Dim cell As Cell = targetRange(rowIndex, columnIndex)
-                    If IsInputCell(cell) AndAlso Not cell.Value.IsEmpty Then Return True
+                    If IsInputCell(cell) AndAlso Not cell.ModelValue().IsEmpty Then Return True
                 Next
             Next
             Return False
@@ -942,27 +943,27 @@ Namespace Abovo
                                                   ByRef value As Object,
                                                   ByRef dataFormat As String) As String
             dataFormat = If(declaredDataFormat, String.Empty).Trim().ToUpperInvariant()
-            If sourceCell Is Nothing OrElse sourceCell.Value.IsEmpty Then
+            If sourceCell Is Nothing OrElse sourceCell.ModelValue().IsEmpty Then
                 value = Nothing
                 If String.IsNullOrWhiteSpace(dataFormat) Then dataFormat = "S"
                 Return Nothing
             End If
 
             If String.IsNullOrWhiteSpace(dataFormat) Then
-                If sourceCell.Value.IsDateTime Then
-                    value = sourceCell.Value.DateTimeValue
+                If sourceCell.ModelValue().IsDateTime Then
+                    value = sourceCell.ModelValue().DateTimeValue
                     dataFormat = "D"
-                ElseIf sourceCell.Value.IsBoolean Then
-                    value = sourceCell.Value.BooleanValue
+                ElseIf sourceCell.ModelValue().IsBoolean Then
+                    value = sourceCell.ModelValue().BooleanValue
                     dataFormat = "BOOL"
-                ElseIf sourceCell.Value.IsNumeric Then
-                    value = sourceCell.Value.NumericValue
+                ElseIf sourceCell.ModelValue().IsNumeric Then
+                    value = sourceCell.ModelValue().NumericValue
                     dataFormat = "N"
-                ElseIf sourceCell.Value.IsText Then
-                    value = sourceCell.Value.TextValue
+                ElseIf sourceCell.ModelValue().IsText Then
+                    value = sourceCell.ModelValue().TextValue
                     dataFormat = "S"
                 Else
-                    value = sourceCell.DisplayText
+                    value = sourceCell.ModelDisplayText()
                     dataFormat = "S"
                 End If
                 Return Nothing
@@ -970,14 +971,14 @@ Namespace Abovo
 
             Select Case dataFormat
                 Case "S", "FL", "DUMMY"
-                    value = If(sourceCell.Value.IsText, sourceCell.Value.TextValue, sourceCell.DisplayText)
+                    value = If(sourceCell.ModelValue().IsText, sourceCell.ModelValue().TextValue, sourceCell.ModelDisplayText())
                 Case "BOOL", "BOOLEAN", "B"
-                    If sourceCell.Value.IsBoolean Then
-                        value = sourceCell.Value.BooleanValue
-                    ElseIf sourceCell.Value.IsNumeric Then
-                        value = sourceCell.Value.NumericValue
+                    If sourceCell.ModelValue().IsBoolean Then
+                        value = sourceCell.ModelValue().BooleanValue
+                    ElseIf sourceCell.ModelValue().IsNumeric Then
+                        value = sourceCell.ModelValue().NumericValue
                     Else
-                        Dim textValue As String = sourceCell.DisplayText.Trim()
+                        Dim textValue As String = sourceCell.ModelDisplayText().Trim()
                         Dim parsedBoolean As Boolean
                         Dim parsedNumber As Double
                         If Boolean.TryParse(textValue, parsedBoolean) OrElse
@@ -989,71 +990,73 @@ Namespace Abovo
                            Double.TryParse(textValue, NumberStyles.Any, CultureInfo.InvariantCulture, parsedNumber) Then
                             value = textValue
                         Else
-                            value = sourceCell.DisplayText
+                            value = sourceCell.ModelDisplayText()
                             dataFormat = "S"
                             Return "The value does not match declared type '" & declaredDataFormat & "'."
                         End If
                     End If
                 Case "I", "Y"
-                    If sourceCell.Value.IsNumeric Then
-                        value = sourceCell.Value.NumericValue
-                        If Math.Abs(sourceCell.Value.NumericValue - Math.Truncate(sourceCell.Value.NumericValue)) > NumericTolerance Then
+                    If sourceCell.ModelValue().IsNumeric Then
+                        value = sourceCell.ModelValue().NumericValue
+                        If Math.Abs(sourceCell.ModelValue().NumericValue - Math.Truncate(sourceCell.ModelValue().NumericValue)) > NumericTolerance Then
                             dataFormat = "N"
                             Return "The value is not a whole number required by declared type '" & declaredDataFormat & "'."
                         End If
                     Else
                         Dim parsedInteger As Integer
-                        If Integer.TryParse(sourceCell.DisplayText, NumberStyles.Integer Or NumberStyles.AllowThousands,
+                        If Integer.TryParse(sourceCell.ModelDisplayText(), NumberStyles.Integer Or NumberStyles.AllowThousands,
                                             CultureInfo.CurrentCulture, parsedInteger) OrElse
-                           Integer.TryParse(sourceCell.DisplayText, NumberStyles.Integer Or NumberStyles.AllowThousands,
+                           Integer.TryParse(sourceCell.ModelDisplayText(), NumberStyles.Integer Or NumberStyles.AllowThousands,
                                             CultureInfo.InvariantCulture, parsedInteger) Then
                             value = parsedInteger
                         Else
-                            value = sourceCell.DisplayText
+                            value = sourceCell.ModelDisplayText()
                             dataFormat = "S"
                             Return "The value does not match declared type '" & declaredDataFormat & "'."
                         End If
                     End If
                 Case "N", "P", "C", "M", "SM", "R"
-                    If sourceCell.Value.IsNumeric Then
-                        value = sourceCell.Value.NumericValue
+                    If sourceCell.ModelValue().IsNumeric Then
+                        value = sourceCell.ModelValue().NumericValue
                     Else
                         Dim parsedNumber As Double
-                        If Double.TryParse(sourceCell.DisplayText, NumberStyles.Any, CultureInfo.CurrentCulture, parsedNumber) OrElse
-                           Double.TryParse(sourceCell.DisplayText, NumberStyles.Any, CultureInfo.InvariantCulture, parsedNumber) Then
+                        If Double.TryParse(sourceCell.ModelDisplayText(), NumberStyles.Any, CultureInfo.CurrentCulture, parsedNumber) OrElse
+                           Double.TryParse(sourceCell.ModelDisplayText(), NumberStyles.Any, CultureInfo.InvariantCulture, parsedNumber) Then
                             value = parsedNumber
                         Else
-                            value = sourceCell.DisplayText
+                            value = sourceCell.ModelDisplayText()
                             dataFormat = "S"
                             Return "The value does not match declared type '" & declaredDataFormat & "'."
                         End If
                     End If
                 Case "D", "DM"
-                    If sourceCell.Value.IsDateTime Then
-                        value = sourceCell.Value.DateTimeValue
-                    ElseIf sourceCell.Value.IsNumeric Then
-                        value = sourceCell.Value.NumericValue
+                    If sourceCell.HasModelEngineView() AndAlso sourceCell.ModelValue().IsNumeric Then
+                        value = sourceCell.ModelDateValue()
+                    ElseIf sourceCell.ModelValue().IsDateTime Then
+                        value = sourceCell.ModelValue().DateTimeValue
+                    ElseIf sourceCell.ModelValue().IsNumeric Then
+                        value = sourceCell.ModelValue().NumericValue
                     Else
                         Dim parsedDate As DateTime
                         Dim parsedSerial As Double
-                        If DateTime.TryParse(sourceCell.DisplayText, CultureInfo.CurrentCulture,
+                        If DateTime.TryParse(sourceCell.ModelDisplayText(), CultureInfo.CurrentCulture,
                                              DateTimeStyles.AllowWhiteSpaces, parsedDate) OrElse
-                           DateTime.TryParse(sourceCell.DisplayText, CultureInfo.InvariantCulture,
+                           DateTime.TryParse(sourceCell.ModelDisplayText(), CultureInfo.InvariantCulture,
                                              DateTimeStyles.AllowWhiteSpaces, parsedDate) Then
                             value = parsedDate
-                        ElseIf Double.TryParse(sourceCell.DisplayText, NumberStyles.Any,
+                        ElseIf Double.TryParse(sourceCell.ModelDisplayText(), NumberStyles.Any,
                                                CultureInfo.CurrentCulture, parsedSerial) OrElse
-                               Double.TryParse(sourceCell.DisplayText, NumberStyles.Any,
+                               Double.TryParse(sourceCell.ModelDisplayText(), NumberStyles.Any,
                                                CultureInfo.InvariantCulture, parsedSerial) Then
                             value = parsedSerial
                         Else
-                            value = sourceCell.DisplayText
+                            value = sourceCell.ModelDisplayText()
                             dataFormat = "S"
                             Return "The value does not match declared type '" & declaredDataFormat & "'."
                         End If
                     End If
                 Case Else
-                    value = If(sourceCell.Value.IsText, sourceCell.Value.TextValue, sourceCell.DisplayText)
+                    value = If(sourceCell.ModelValue().IsText, sourceCell.ModelValue().TextValue, sourceCell.ModelDisplayText())
             End Select
             Return Nothing
         End Function
@@ -1132,27 +1135,27 @@ Namespace Abovo
         End Function
 
         Private Shared Function IsInputCell(ByVal cell As Cell) As Boolean
-            Return cell IsNot Nothing AndAlso Not cell.Protection.Locked AndAlso Not cell.HasFormula
+            Return cell IsNot Nothing AndAlso Not cell.ModelProtectionLocked() AndAlso Not cell.HasFormula
         End Function
 
         Private Shared Function CellValuesEqual(ByVal left As Cell, ByVal right As Cell) As Boolean
-            If left.Value.IsEmpty AndAlso right.Value.IsEmpty Then Return True
-            If left.Value.IsNumeric AndAlso right.Value.IsNumeric Then
-                Return Math.Abs(left.Value.NumericValue - right.Value.NumericValue) < NumericTolerance
+            If left.ModelValue().IsEmpty AndAlso right.ModelValue().IsEmpty Then Return True
+            If left.ModelValue().IsNumeric AndAlso right.ModelValue().IsNumeric Then
+                Return Math.Abs(left.ModelValue().NumericValue - right.ModelValue().NumericValue) < NumericTolerance
             End If
-            If left.Value.IsDateTime AndAlso right.Value.IsDateTime Then Return left.Value.DateTimeValue = right.Value.DateTimeValue
-            If left.Value.IsBoolean AndAlso right.Value.IsBoolean Then Return left.Value.BooleanValue = right.Value.BooleanValue
+            If left.ModelValue().IsDateTime AndAlso right.ModelValue().IsDateTime Then Return left.ModelValue().DateTimeValue = right.ModelValue().DateTimeValue
+            If left.ModelValue().IsBoolean AndAlso right.ModelValue().IsBoolean Then Return left.ModelValue().BooleanValue = right.ModelValue().BooleanValue
             Return String.Equals(CellDisplay(left), CellDisplay(right), StringComparison.Ordinal)
         End Function
 
         Private Shared Function CellDisplay(ByVal cell As Cell) As String
-            If cell Is Nothing OrElse cell.Value.IsEmpty Then Return String.Empty
-            Return cell.DisplayText
+            If cell Is Nothing OrElse cell.ModelValue().IsEmpty Then Return String.Empty
+            Return cell.ModelDisplayText()
         End Function
 
         Private Shared Function NumericDifference(ByVal baseCell As Cell, ByVal comparedCell As Cell) As String
-            If baseCell.Value.IsNumeric AndAlso comparedCell.Value.IsNumeric Then
-                Return (comparedCell.Value.NumericValue - baseCell.Value.NumericValue).ToString("N2")
+            If baseCell.ModelValue().IsNumeric AndAlso comparedCell.ModelValue().IsNumeric Then
+                Return (comparedCell.ModelValue().NumericValue - baseCell.ModelValue().NumericValue).ToString("N2")
             End If
             Return String.Empty
         End Function

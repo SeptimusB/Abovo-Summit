@@ -145,7 +145,9 @@ public static class ClientInputRepairFixture {
     Check(wanted.All(tested.Contains),"All requested monetary targets tested; missing="+String.Join(",",wanted.Except(tested)));
     Check((!cases.Contains(15)||dateTested)&&(!cases.Contains(35)||covenantTested)&&(!cases.Contains(33)||yearTested)&&(!cases.Contains(32)||economic>=10),"Requested date, covenant, fee-year and economic sections covered");
     string path=Path.Combine(args[1],"input-repairs-saved.xlsb");Check((bool)model.SaveFileAsTo(path,true),"Normal Summit save to separate XLSB");
-    using(var reopened=new Workbook()){reopened.Options.CalculationMode=WorkbookCalculationMode.Manual;Check(reopened.LoadDocument(path),"Saved workbook reopens independently");foreach(var pair in saved){int split=pair.Key.LastIndexOf('!');var cell=reopened.Worksheets[pair.Key.Substring(0,split)].Cells[pair.Key.Substring(split+1)];Check(cell.Value.Equals(pair.Value)&&cell.NumberFormat==formats[pair.Key],"Reopen value/format "+pair.Key);}}
+    // This is verification, not a second editable open of Summit's current file.
+    Console.WriteLine("REOPEN privateBytes="+System.Diagnostics.Process.GetCurrentProcess().PrivateMemorySize64);
+    using(var reopened=new Workbook()){reopened.Options.CalculationMode=WorkbookCalculationMode.Manual;reopened.Options.Import.ThrowExceptionOnInvalidDocument=true;using(var input=File.OpenRead(path))Check(reopened.LoadDocument(input,DocumentFormat.Xlsb),"Saved workbook reopens independently (read-only stream)");foreach(var pair in saved){int split=pair.Key.LastIndexOf('!');var cell=reopened.Worksheets[pair.Key.Substring(0,split)].Cells[pair.Key.Substring(split+1)];Check(cell.Value.Equals(pair.Value)&&cell.NumberFormat==formats[pair.Key],"Reopen value/format "+pair.Key);}}
     form.Close();
    }
   }finally{files.GetMethod("CloseModel",new[]{typeof(int)}).Invoke(null,new object[]{(int)model.ModelID});}

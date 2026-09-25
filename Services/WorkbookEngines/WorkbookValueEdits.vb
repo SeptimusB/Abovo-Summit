@@ -9,6 +9,7 @@ Namespace Abovo.WorkbookEngines
     Public Enum WorkbookValuePermission
         UnlockedCell = 0
         SolidFillRule = 1
+        UnlockedSolidFill = 2 ' FFR requires both, including on an unprotected sheet.
     End Enum
 
     Public NotInheritable Class WorkbookCellState
@@ -42,7 +43,11 @@ Namespace Abovo.WorkbookEngines
             ' formula, or bypass actual worksheet protection. No unprotect call.
             If Formula.Length <> 0 OrElse ArrayMember OrElse Merged OrElse TypeOf Value Is WorkbookCellError OrElse
                (WorksheetProtected AndAlso Locked) Then Return False
-            Return If(permission = WorkbookValuePermission.SolidFillRule, SolidFill, Not Locked)
+            Select Case permission
+                Case WorkbookValuePermission.SolidFillRule : Return SolidFill
+                Case WorkbookValuePermission.UnlockedSolidFill : Return Not Locked AndAlso SolidFill
+                Case Else : Return Not Locked
+            End Select
         End Function
 
         Friend Shared Sub ValidateValue(value As Object)

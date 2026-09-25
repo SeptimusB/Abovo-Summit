@@ -32,6 +32,22 @@ static class NativeStructuralGateTests
                     Refused(rules.DeleteRecords(WorkbookStructureRuleManager.RuleFundingRecords,new[]{11}),"selected deletion refused before boundary/mutation work");
                     Refused(rules.DeleteLastRecords(WorkbookStructureRuleManager.RuleFundingRecords,1),"delete-last refused before mutation work");
                     Refused(new TransactionalDBSynchroniser(0).FullTransactionalDBSync(),"full Transactional DB synchronisation cannot mutate display workbook");
+                    Refused(WorkbookManager.DevExpressInsertRows(0,"Missing",1),"legacy row insertion refused before range lookup");
+                    foreach(Action mutation in new Action[]{()=>model.Value.SetCellValue("Data",0,0,99d),()=>WorkbookManager.CopyRowToRangeBottom(0,"Missing"),()=>WorkbookManager.InsertColumn((Workbook)model.Value.WB,"Missing"),()=>FundingScheduleGroups.Add(model.Value.WB,null,System.Drawing.Color.Blue,null,"")}){
+                        try{mutation();throw new Exception("Expected direct mutation refusal");}catch(NotSupportedException){Check(true,"direct value/range/metadata mutation refused before writes");}
+                    }
+                    Refused(ImportModels.ImportStockRentModel(0),"rent import refused before opening a file picker");
+                    Refused(ImportModels.ImportManagementServiceCosts(0),"management import refused before workbook lookup");
+                    Refused(ImportModels.ImportStockConditionSurvey(0),"condition import refused before opening a file picker");
+                    Refused(DSAImport.ImportSingleDSA_File(0),"single DSA import refused before a file picker");
+                    Refused(DSAImport.ImportConsolDSA_File(0),"consolidated DSA import refused before a file picker");
+                    Refused(DSAImport.DSA_Folder(0),"DSA folder import refused before reject-log edits");
+                    Refused(DSAImport.ImportDSA_Template(0),"DSA template import refused before source load");
+                    var assembly=typeof(ModelChangeManagerV2).Assembly;
+                    foreach(string type in new[]{"StressTest","MainModelViewer","TransactionAnalyser"}){
+                        try{Activator.CreateInstance(assembly.GetType(type),new object[]{0});throw new Exception("Expected surface refusal: "+type);}
+                        catch(TargetInvocationException e)when(e.InnerException is NotSupportedException){Check(true,type+" constructor refuses before reading or mutating the presentation workbook");}
+                    }
                     try{ModelSafetyManager.BeginBulkWorkbookMutation(0);throw new Exception("Expected bulk refusal");}catch(InvalidOperationException){Check(!ModelSafetyManager.IsBulkWorkbookMutationInProgress(0),"generic bulk guard refuses before incrementing mutation state");}
                     try{TransactionalDBSnapshotManager.CreateSnapshotAndComparison(0);throw new Exception("Expected snapshot refusal");}catch(NotSupportedException){Check(model.Value.WB.Worksheets.Count==1,"snapshot refusal cannot add sheets or names");}
                     Check(session.IsCurrent(current)&&!model.Value.IsDirty&&!model.Manager.CanUndo&&model.Value.WB.Worksheets[0].Cells["A1"].Value.NumericValue==10d,"all refusals preserve current result, history, dirty state and display workbook");

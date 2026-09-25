@@ -11910,7 +11910,7 @@ SectionSelect:
 
             e.Value = ExcelModels(LiveTag.ModelID).WB.Worksheets(LiveTag.LiveGridWorksheet).Cells(
                 LiveTag.LiveGridSourceRows(e.RowIndex),
-                LiveTag.LiveGridSourceColumns(e.PropertyIndex)).DisplayText
+                LiveTag.LiveGridSourceColumns(e.PropertyIndex)).ModelPaintText()
             Return
         End If
 
@@ -12064,7 +12064,10 @@ SectionSelect:
         Dim DPC As DevExpress.Spreadsheet.Cell =
             ExcelModels(ModelID).WB.Worksheets(DP.SourceSheet).Cells(DP.SourceAddress)
 
-        If DPC.DisplayText = "" Then
+        If Not DPC.ModelResultsAvailable() Then Return Nothing
+        Dim CurrentValue = DPC.ModelValue()
+        Dim CurrentText = DPC.ModelDisplayText()
+        If CurrentText = "" Then
 
             If DataPres.DataSets(SetDSIndex).DataColumns(PropertyIndex).ColumnTag.DataType = "S" Then
 
@@ -12084,31 +12087,31 @@ SectionSelect:
 
             Case "S"
 
-                DP.StringValue = DPC.DisplayText
-                Return DPC.DisplayText
+                DP.StringValue = CurrentText
+                Return CurrentText
                 Exit Function
 
             Case "B"
 
-                DP.BoolValue = DPC.Value.NumericValue
-                Return DPC.Value.NumericValue
+                DP.BoolValue = If(CurrentValue.IsBoolean, CurrentValue.BooleanValue, CurrentValue.NumericValue <> 0)
+                Return DP.BoolValue
                 Exit Function
 
             Case "N", "P", "C", "M", "R", "SM"
-                DP.RealValue = DPC.Value.NumericValue
-                Return DPC.Value.NumericValue
+                DP.RealValue = CurrentValue.NumericValue
+                Return CurrentValue.NumericValue
                 Exit Function
 
             Case "D"
 
-                DP.RealValue = DPC.Value.NumericValue
-                Return DateTime.FromOADate(DPC.Value.NumericValue)
+                DP.RealValue = CurrentValue.NumericValue
+                Return If(DPC.HasModelEngineView(), DPC.ModelDateValue(), DateTime.FromOADate(CurrentValue.NumericValue))
                 Exit Function
 
             Case "I", "Y"
 
-                DP.IntValue = DPC.Value.NumericValue
-                Return CInt(DPC.Value.NumericValue)
+                DP.IntValue = CurrentValue.NumericValue
+                Return CInt(CurrentValue.NumericValue)
                 Exit Function
 
             Case Else

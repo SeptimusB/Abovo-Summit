@@ -459,13 +459,15 @@ Namespace Abovo
                     count += 1
                     Dim formula = If(cell.HasFormula, cell.FormulaInvariant, "")
                     Dim location = cell.Worksheet.Name & "!" & cell.GetReferenceA1()
-                    If cell.Value.IsError Then
+                    Dim currentValue = cell.ModelValue()
+                    If currentValue.IsError Then
                         If String.Equals(formula.Replace(" ", ""), "=NA()", StringComparison.OrdinalIgnoreCase) Then
                             ExplicitNaCells += 1 'Explicit NA() sentinels are chart gaps, not broken calculations.
                         ElseIf ChartGaps.IsExpected(cell) Then
                             ExpectedChartGaps += 1
                         Else
-                            AddIssue("Cell error " & cell.Value.ToString(), location & " = " & cell.Value.ToString())
+                            Dim errorText = If(cell.HasModelEngineView(), cell.ModelDisplayText(), currentValue.ToString())
+                            AddIssue("Cell error " & errorText, location & " = " & errorText)
                         End If
                     End If
                     If cell.HasFormula Then InspectExportFormula(formula, location)
