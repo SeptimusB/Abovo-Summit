@@ -34,6 +34,12 @@ Namespace Abovo
             End Try
         End Function
 
+        Friend Shared Function VerifiedMetadataDocument() As XDocument
+            Using content As New MemoryStream(XmlMetadata.Value)
+                Return XDocument.Load(content)
+            End Using
+        End Function
+
         Private Shared Function CreateMetadata() As Byte()
             Using sample As New Workbook(), buffer As New MemoryStream()
                 sample.Options.CalculationMode = WorkbookCalculationMode.Manual

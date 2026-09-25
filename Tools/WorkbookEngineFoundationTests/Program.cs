@@ -228,6 +228,10 @@ static class Program
     static async Task Run(string[] args)
     {
         var before=Hash(args[1]);
+        if(args[2]=="ownership") { await ExcelOwnershipTests.Run();Check(Hash(args[1])==before,"source bytes unchanged");return; }
+        if(args[2]=="structure-gates") { await NativeStructuralGateTests.Run(args[1]);Check(Hash(args[1])==before,"source bytes unchanged");return; }
+        if(args[2]=="spill-probe") { NativeSpillProbe.Run(args[1]);Check(Hash(args[1])==before,"source bytes unchanged");return; }
+        if(args[2]=="backup-native") { await NativeRecoveryTests.Run(args[1]);Check(Hash(args[1])==before,"source bytes unchanged");return; }
         if(args[2]=="model-save") { await ModelSaveTests.Run(args[1]);Check(Hash(args[1])==before,"source bytes unchanged");return; }
         if(args[2]=="dit-save-dx"||args[2]=="dit-save-excel") { await NativeDitTests.Run(args[1],args[2]=="dit-save-excel",true);Check(Hash(args[1])==before,"source bytes unchanged");return; }
         if(args[2]=="dit-dx"||args[2]=="dit-excel") { await NativeDitTests.Run(args[1],args[2]=="dit-excel");Check(Hash(args[1])==before,"source bytes unchanged");return; }
@@ -259,7 +263,7 @@ static class Program
     [STAThread]
     static int Main(string[] args)
     {
-        if(args.Length!=3||!new[]{"dit-save-dx","dit-save-excel","model-save","dit-dx","dit-excel","expression","range-agl","range","presentation","bridge","batch","safety","security","synthetic","agl","projection","grid","deadline","edit","edit-native","edit-agl","save","save-native","save-agl","publish","publish-native","publish-agl","recovery","reopen-native","reopen-agl","history","history-native","history-agl","crash-Prepared","crash-OriginalRetained","crash-Published"}.Contains(args[2])){Console.Error.WriteLine("APP_BIN PRIVATE_WORKBOOK model-save|dit-dx|dit-excel|range|range-agl|expression|presentation|bridge|batch|safety|security|synthetic|agl|projection|grid|deadline|edit|edit-native|edit-agl|save|save-native|save-agl|publish|publish-native|publish-agl|recovery|reopen-native|reopen-agl|history|history-native|history-agl");return 2;}
+        if(args.Length!=3||!new[]{"structure-gates","ownership","spill-probe","backup-native","dit-save-dx","dit-save-excel","model-save","dit-dx","dit-excel","expression","range-agl","range","presentation","bridge","batch","safety","security","synthetic","agl","projection","grid","deadline","edit","edit-native","edit-agl","save","save-native","save-agl","publish","publish-native","publish-agl","recovery","reopen-native","reopen-agl","history","history-native","history-agl","crash-Prepared","crash-OriginalRetained","crash-Published"}.Contains(args[2])){Console.Error.WriteLine("APP_BIN PRIVATE_WORKBOOK structure-gates|ownership|spill-probe|backup-native|model-save|dit-dx|dit-excel|range|range-agl|expression|presentation|bridge|batch|safety|security|synthetic|agl|projection|grid|deadline|edit|edit-native|edit-agl|save|save-native|save-agl|publish|publish-native|publish-agl|recovery|reopen-native|reopen-agl|history|history-native|history-agl");return 2;}
         AppDomain.CurrentDomain.AssemblyResolve+=(s,e)=>{string file=Path.Combine(args[0],new AssemblyName(e.Name).Name+".dll");if(!File.Exists(file))file=Path.Combine(args[0],new AssemblyName(e.Name).Name+".exe");return File.Exists(file)?Assembly.LoadFrom(file):null;};
         try{args[0]=Path.GetFullPath(args[0]);args[1]=Path.GetFullPath(args[1]);Run(args).GetAwaiter().GetResult();return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}
     }

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 3,
   "excelFirstInteractiveBridge20260925": {
-    "documentation": "Library/Excel_DevExpress_Engine_Stage2j_2026-09-25.md",
-    "status": "Stage 2 in progress; native ongoing Save and model-owned close; recovery, remaining consumers and normal opening incomplete; normal 2.98 unchanged",
+    "documentation": "Library/Excel_DevExpress_Engine_Stage2k_2026-09-25.md",
+    "status": "Stage 2 in progress; native recovery, ongoing Save and owned close; remaining consumers, conversion policy and normal opening incomplete; normal 2.98 unchanged",
     "source": ["Services/DataService/ModelEngineChanges.vb", "Services/DataService/ModelWorkbookRead.vb", "Services/WorkbookEngines/WorkbookValueBatches.vb", "Services/WorkbookEngines/WorkbookPresentation.vb", "Services/WorkbookEngines/NativePresentation.vb"],
-    "validation": "Both builds; generated native save 80 assertions; whole private Demo normal Save/Save As and owned close; Release range 32, expression 32, bridge 133, safety 73, recovery 109. Prior ordinary DIT 550 and AGL analyser 184260 values. See 2j for exact scope.",
-    "remaining": ["complete live editor/read routing", "production model opening/settings", "native recovery and format conversion", "appearance transport and save performance", "structural gate and current XML coupling", "hang/security/storage and client acceptance"]
+    "validation": "Both isolated builds through EngineStage2m; native recovery 162, bridge 133, safety 73, publication recovery 109; controlled foreign-workbook ownership 16; structural gates 21; whole private Demo recovery/save 34 per engine. Prior ordinary DIT 550 and AGL analyser 184260 values. See 2k for exact scope, latest repeats and XLSB array limitation.",
+    "remaining": ["complete live editor/read routing", "production model opening/settings", "recovered format conversion policy", "appearance transport and save performance", "structural gate and current XML coupling", "XLSB variable-spill fallback compatibility", "hang/security/storage and client acceptance"]
   },
   "excelFirstHistorySave20260925": {
     "documentation": "Library/Excel_DevExpress_Engine_Stage2f_2026-09-25.md",

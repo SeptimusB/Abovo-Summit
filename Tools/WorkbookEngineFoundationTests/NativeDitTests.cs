@@ -110,6 +110,15 @@ static class NativeDitTests
                 var cell=book.Worksheets["Covenant Assumptions"].Cells["D8"];double old=cell.ModelValue().NumericValue;
                 var posted=model.ChangeManager.ProcessEngineCommand(new[]{new DataChangeEvent{ModelID=model.ModelID,WSName=cell.Worksheet.Name,CellAddress="D8",DataFormat="N",ChangedValue=old+0.125,Description="Real model save lifecycle"}},new[]{WorkbookValuePermission.UnlockedCell},"Real model save lifecycle");
                 Check(posted.BSuccess,"real model lifecycle edit admitted");
+                string recovery=(string)app.GetType("Abovo.RecoveryBackupStore").GetMethod("Write",F).Invoke(null,new object[]{model});
+                Check(model.IsDirty&&model.ChangeManager.CanUndo&&model.FileName==copy,"real model recovery retains dirty state, filename and Undo");
+                using(var verify=new Workbook()){
+                    verify.Options.CalculationMode=WorkbookCalculationMode.Manual;
+                    using(var input=File.OpenRead(recovery))Check(verify.LoadDocument(input,DocumentFormat.Xlsm),"recovery verification workbook loads from a read-only stream");
+                    Check(verify.Worksheets[cell.Worksheet.Name].Cells["D8"].Value.NumericValue==old+0.125,"independent recovery read contains current native edit");
+                    Check(verify.CustomXmlParts.Any(p=>p.CustomXmlPartDocument.OuterXml.Contains("Real model save lifecycle")),"real model recovery retains current history XML");
+                    Check((string)app.GetType("Abovo.RecoveryBackupStore").GetMethod("ReadSource",F).Invoke(null,new object[]{recovery})==copy,"real model recovery identifies original filename");
+                }
                 // Invoke the shared application save operation directly here
                 // so a failure escapes with its stack instead of blocking this
                 // unattended fixture on the public wrapper's error MessageBox.
@@ -118,13 +127,15 @@ static class NativeDitTests
                 Check(!model.IsDirty&&cell.ModelValue().NumericValue==old+0.125&&model.ChangeManager.CanUndo,"real Demo Save retains current values and Undo");
                 Check(model.ChangeManager.Undo().BSuccess&&model.IsDirty&&cell.ModelValue().NumericValue==old,"real Demo Undo after Save restores native input");
                 string another=Path.Combine(folder,"native-save-as"+Path.GetExtension(copy));
-                Check(model.SaveFileAsTo(another),"normal application Save As routes to the native owner");
+                Check((bool)Call(model,"SaveNativeWorkbookTo",another),"normal application Save As operation routes to the native owner");
                 owners.Add((WorkbookCalculationSession)Field(model.ChangeManager,"engineTrial"));
                 Check(!model.IsDirty&&model.FileName==another&&model.ChangeManager.CanRedo,"real Demo Save As adopts verified filename and keeps Redo");
                 Check(model.ChangeManager.Redo().BSuccess&&model.IsDirty&&cell.ModelValue().NumericValue==old+0.125,"real Demo Redo after Save As updates current owner");
-                using(var verify=new Workbook()){verify.Options.CalculationMode=WorkbookCalculationMode.Manual;verify.LoadDocument(copy);
-                    Check(verify.Worksheets[cell.Worksheet.Name].Cells["D8"].Value.NumericValue==old+0.125,"independent real Demo saved source retains committed input");
-                    verify.LoadDocument(another);Check(verify.Worksheets[cell.Worksheet.Name].Cells["D8"].Value.NumericValue==old,"independent real Demo Save As retains its committed input, not unsaved Redo");}
+                foreach(var target in new[]{copy,another})using(var verify=new Workbook()){
+                    verify.Options.CalculationMode=WorkbookCalculationMode.Manual;
+                    using(var input=File.OpenRead(target))Check(verify.LoadDocument(input,DocumentFormat.Xlsb),"independent saved workbook loads from a read-only stream");
+                    Check(verify.Worksheets[cell.Worksheet.Name].Cells["D8"].Value.NumericValue==(target==copy?old+0.125:old),"independent saved file retains its committed input, not unsaved Redo");
+                }
             }
         }
         finally

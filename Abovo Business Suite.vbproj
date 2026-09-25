@@ -637,6 +637,8 @@
     <Compile Include="Services\WorkbookEngines\DevExpressValueEdits.vb" />
     <Compile Include="Services\WorkbookEngines\ExcelValueEdits.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookSaveCandidates.vb" />
+    <Compile Include="Services\WorkbookEngines\NativeRecoveryExport.vb" />
+    <Compile Include="Services\WorkbookEngines\WorkbookRecoveryPackage.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookPublication.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookPublicationFiles.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookPublicationRecovery.vb" />
@@ -644,6 +646,7 @@
     <Compile Include="Services\DataService\ModelHistorySnapshot.vb" />
     <Compile Include="Services\DataService\ModelEngineChanges.vb" />
     <Compile Include="Services\DataService\ModelEngineSave.vb" />
+    <Compile Include="Services\DataService\ModelEngineRecovery.vb" />
     <Compile Include="Services\DataService\ModelWorkbookRead.vb" />
     <Compile Include="Services\DataService\ModelRangeDataSource.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookCandidatePackage.vb" />

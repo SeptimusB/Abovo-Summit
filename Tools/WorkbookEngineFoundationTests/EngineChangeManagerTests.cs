@@ -61,11 +61,11 @@ static class EngineChangeManagerTests
     static long UserRevision(Model model)=>(long)typeof(FileManager.ExcelModel).GetProperty("UserChangeRevision",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(model.Value);
     internal static async Task Run(string source)
     {
-        int[] before=Process.GetProcessesByName("EXCEL").Select(p=>{using(p)return p.Id;}).OrderBy(x=>x).ToArray();
+        var owners=new System.Collections.Generic.List<WorkbookCalculationSession>();
         foreach(bool date1904 in new[]{false,true})
         foreach(var preference in new[]{WorkbookEnginePreference.DevExpressOnly,WorkbookEnginePreference.ExcelRequired})
         {
-            var path=Fixture(source,date1904);var s=await WorkbookCalculationSession.OpenAsync(path,new WorkbookEngineOptions(preference,false,false,120000,true,true));
+            var path=Fixture(source,date1904);var s=await WorkbookCalculationSession.OpenAsync(path,new WorkbookEngineOptions(preference,false,false,120000,true,true));owners.Add(s);
             using(var model=new Model(path))
             try
             {
@@ -86,7 +86,13 @@ static class EngineChangeManagerTests
                 Check(await model.Do(()=>Warning(model)&&model.Value.WB.Worksheets["Check Sheet"].Cells["E2"].ModelDisplayText()=="Check"),"committed engine edit updates Check Sheet and company warning together");
                 var history=await model.Do(()=>model.Manager.CaptureSaveHistory(model.Manager.EngineEditingResult));Check(history.EngineRevision==1&&history.UserRevision>0,"saved history capture binds current native and model revisions");
                 Check(await model.Do(()=>!model.Manager.ProcessChange(new DataChangeEvent{WSName="Data",CellAddress="A1",ChangedValue=999d,DataFormat="N"}).BSuccess),"legacy edit cannot modify another workbook behind engine owner");
-                await Reject(()=>model.Do(()=>{using(var output=new MemoryStream())Invoke(model.Value,"WriteRecoverySnapshot",output);return true;}),"legacy recovery cannot save stale presentation workbook");
+                Check(await model.Do(()=>{
+                    using(var output=new MemoryStream())using(var saved=new Workbook()){
+                        Invoke(model.Value,"WriteRecoverySnapshot",output);output.Position=0;
+                        saved.Options.CalculationMode=WorkbookCalculationMode.Manual;saved.LoadDocument(output,DocumentFormat.Xlsm);
+                        return saved.Worksheets["Data"].Cells["A1"].Value.NumericValue==12.5&&saved.Worksheets["Data"].Cells["A2"].Value.NumericValue==40.5&&saved.Worksheets["Data"].Cells["F3"].Value.NumericValue==14.5&&model.Value.IsDirty;
+                    }
+                }),"existing recovery entry point saves native current values and spill, retaining dirty state");
                 Succeeded(await model.Do(()=>model.Manager.Undo()));
                 Check(await model.Do(()=>!model.Manager.CanUndo&&model.Manager.CanRedo&&model.Manager.EngineEditingResult.Blocks[0].ValueAt(1,0).Equals(60d)),"existing Undo atomically restores native group and outputs");
                 Check(await model.Do(()=>!Warning(model)&&model.Value.WB.Worksheets["Check Sheet"].Cells["E2"].ModelDisplayText()=="OK"),"Undo clears Check Sheet and company warning at accepted revision");
@@ -120,7 +126,7 @@ static class EngineChangeManagerTests
                 var cf=sheet.ConditionalFormattings.AddFormulaExpressionConditionalFormatting(sheet.Range["B1"],"=$A$1=0");cf.Formatting.Fill.PatternType=PatternType.Gray125;
                 book.CalculateFull();book.SaveDocument(path,DocumentFormat.Xlsx);
             }
-            var s=await WorkbookCalculationSession.OpenAsync(path,new WorkbookEngineOptions(preference,false,false,120000,true));
+            var s=await WorkbookCalculationSession.OpenAsync(path,new WorkbookEngineOptions(preference,false,false,120000,true));owners.Add(s);
             using(var model=new Model(path))
             try
             {
@@ -146,12 +152,11 @@ static class EngineChangeManagerTests
             }
             finally{await s.CloseAsync();}
         }
-        var timer=Stopwatch.StartNew();int[] after;
         foreach(var preference in new[]{WorkbookEnginePreference.DevExpressOnly,WorkbookEnginePreference.ExcelRequired})
         {
             var path=Fixture(source,false);
             using(var book=new Workbook()){book.LoadDocument(path);book.DefinedNames.Add("EditorTargets","=Data!$A$1:$C$1");book.SaveDocument(path,DocumentFormat.Xlsx);}
-            var s=await WorkbookCalculationSession.OpenAsync(path,new WorkbookEngineOptions(preference,false,false,120000,true));
+            var s=await WorkbookCalculationSession.OpenAsync(path,new WorkbookEngineOptions(preference,false,false,120000,true));owners.Add(s);
             using(var model=new Model(path))
             try
             {
@@ -206,9 +211,8 @@ static class EngineChangeManagerTests
             }
             finally{await s.CloseAsync();}
         }
-        timer.Restart();
-        do{await Task.Delay(100);after=Process.GetProcessesByName("EXCEL").Select(p=>{using(p)return p.Id;}).OrderBy(x=>x).ToArray();}while(timer.ElapsedMilliseconds<10000&&!before.SequenceEqual(after));
-        Check(before.SequenceEqual(after),"owned Excel exits and existing user processes remain");
+        await NativeProcessChecks.RequireOwnedProcesses(owners);
+        Check(true,"all tracked native Excel owners exit; unrelated user activity is not constrained");
         Console.WriteLine("BRIDGE ASSERTIONS="+assertions);
     }
 }

@@ -28,6 +28,7 @@ Namespace Abovo.WorkbookEngines
 
         Public Sub WriteValue(area As WorkbookReadArea, value As Object) Implements IWorkbookValueEditBackend.WriteValue
             RequireOwner()
+            RequireExclusiveWorkbooks()
             RequireSingleCell(area)
             WorkbookCellState.ValidateValue(value)
             Dim sheets As Object = Nothing, sheet As Object = Nothing, cell As Object = Nothing

@@ -18,6 +18,11 @@ static class NativeProcessChecks
     internal static async Task RequireOwnedProcesses(IEnumerable<WorkbookCalculationSession> sessions)
     {
         var owners=sessions.Where(s=>s!=null&&s.NativeProcess!=null).Select(s=>s.NativeProcess).ToArray();
+        await RequireOwnedIdentities(owners).ConfigureAwait(false);
+    }
+    internal static async Task RequireOwnedIdentities(IEnumerable<WorkbookNativeProcessIdentity> identities)
+    {
+        var owners=identities.Where(p=>p!=null).ToArray();
         Func<WorkbookNativeProcessIdentity,bool> alive=identity=>{
             try{using(var process=Process.GetProcessById(identity.ProcessId))return !process.HasExited&&process.StartTime.ToUniversalTime()==identity.StartedUtc;}
             catch(ArgumentException){return false;}

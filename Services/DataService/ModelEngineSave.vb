@@ -12,6 +12,21 @@ Namespace Abovo
             Return ModelHistorySnapshot.Digest(String.Join(vbLf, parts))
         End Function
 
+        Private Function EngineSaveAreas(expected As WorkbookCalculationResult) As List(Of WorkbookReadArea)
+            Dim areas = Journal.AsEnumerable().Reverse().SelectMany(Function(group) group.Entries.AsEnumerable().Reverse()).
+                Where(Function(entry) entry.EngineBefore IsNot Nothing).
+                Select(Function(entry) New WorkbookReadArea(entry.WorksheetName,
+                    WB.Worksheets(entry.WorksheetName).Cells(entry.CellAddress).RowIndex,
+                    WB.Worksheets(entry.WorksheetName).Cells(entry.CellAddress).ColumnIndex, 1, 1)).
+                GroupBy(Function(area) EngineCellKey(area), StringComparer.OrdinalIgnoreCase).
+                Select(Function(group) group.First()).Take(64).ToList()
+            If areas.Count = 0 Then
+                Dim first = expected.Blocks(0).Area
+                areas.Add(New WorkbookReadArea(first.Worksheet, first.Row, first.Column, 1, 1))
+            End If
+            Return areas
+        End Function
+
         'Internal until the ordinary save dialogs/recovery and remaining consumers
         'are qualified. Publication is terminal for the old native session; the
         'same engine/security policy is reopened before live dirty is cleared.
@@ -40,17 +55,7 @@ Namespace Abovo
             Dim replacement As WorkbookCalculationSession = Nothing
             writingAndCalculating = True
             Try
-                Dim areas = Journal.AsEnumerable().Reverse().SelectMany(Function(group) group.Entries.AsEnumerable().Reverse()).
-                    Where(Function(entry) entry.EngineBefore IsNot Nothing).
-                    Select(Function(entry) New WorkbookReadArea(entry.WorksheetName,
-                        WB.Worksheets(entry.WorksheetName).Cells(entry.CellAddress).RowIndex,
-                        WB.Worksheets(entry.WorksheetName).Cells(entry.CellAddress).ColumnIndex, 1, 1)).
-                    GroupBy(Function(area) EngineCellKey(area), StringComparer.OrdinalIgnoreCase).
-                    Select(Function(group) group.First()).Take(64).ToList()
-                If areas.Count = 0 Then
-                    Dim first = expected.Blocks(0).Area
-                    areas.Add(New WorkbookReadArea(first.Worksheet, first.Row, first.Column, 1, 1))
-                End If
+                Dim areas = EngineSaveAreas(expected)
                 Dim probes = previous.CaptureCellsAsync(expected.Revision, areas, cancellation).GetAwaiter().GetResult()
                 candidate = previous.CreateSaveCandidateWithHistoryAsync(expected, candidateDirectory, probes, history, cancellation).GetAwaiter().GetResult()
                 If model.UserChangeRevision <> history.UserRevision OrElse model.CalculationRevision <> history.CalculationRevision OrElse

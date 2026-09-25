@@ -246,7 +246,11 @@ Namespace Abovo
                 RecoveryXlsmCompatibility.Prepare(temporary, model.RecoveryHasVerifiedBinaryMetadata)
                 metadataMs = phaseTimer.ElapsedMilliseconds
                 phase = "history" : phaseTimer.Restart()
-                If model.ChangeManager IsNot Nothing Then RecoveryHistoryStore.Write(temporary, model.ChangeManager)
+                If model.ChangeManager IsNot Nothing AndAlso model.ChangeManager.HasEngineEditingTrial Then
+                    WorkbookEngines.WorkbookPublicationFile.WriteMarkers(temporary, WorkbookEngines.WorkbookPublicationFile.CaptureMarkers(source))
+                ElseIf model.ChangeManager IsNot Nothing Then
+                    RecoveryHistoryStore.Write(temporary, model.ChangeManager)
+                End If
                 historyMs = phaseTimer.ElapsedMilliseconds
                 phase = "verify" : phaseTimer.Restart()
                 If Not String.Equals(ReadSource(temporary), source, StringComparison.OrdinalIgnoreCase) Then Throw New InvalidDataException("Recovery metadata verification failed.")

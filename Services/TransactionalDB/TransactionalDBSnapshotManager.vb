@@ -16,6 +16,8 @@ Namespace Abovo
         End Sub
 
         Public Shared Sub CreateSnapshotAndComparison(ByVal modelID As Integer)
+            Dim refusal = ModelSafetyManager.NativeMutationRefusal(modelID, "Creating snapshots")
+            If refusal IsNot Nothing Then Throw New NotSupportedException(refusal.StrResponseMessage)
             Dim snapshotSheet As Worksheet = Nothing
             Dim comparisonSheet As Worksheet = Nothing
             Dim benchmark As Abovo.SummitDiagnostics.DiagnosticTimer =

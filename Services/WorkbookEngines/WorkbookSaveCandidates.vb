@@ -20,12 +20,14 @@ Namespace Abovo.WorkbookEngines
         Public ReadOnly Property VerificationMilliseconds As Long
         Public ReadOnly Property HistorySnapshotId As Guid
         Public ReadOnly Property HistoryHash As String
+        Public ReadOnly Property IsRecovery As Boolean
         Friend Sub New(session As WorkbookCalculationSession, path As String, hash As String, exportMs As Long, verificationMs As Long,
-                       Optional history As ModelHistorySnapshot = Nothing)
+                       Optional history As ModelHistorySnapshot = Nothing, Optional recovery As Boolean = False)
             SessionId = session.SessionId : Revision = session.Revision : SourceHash = session.SourceHash
             Me.Path = path : Me.Hash = hash : ExportMilliseconds = exportMs : VerificationMilliseconds = verificationMs
             HistorySnapshotId = If(history Is Nothing, Guid.Empty, history.Id)
             HistoryHash = If(history Is Nothing, Nothing, history.Hash)
+            IsRecovery = recovery
         End Sub
     End Class
 
@@ -69,9 +71,16 @@ Namespace Abovo.WorkbookEngines
             Return CreateSaveCandidateCoreAsync(expected, directory, checkpoints, history, cancellation)
         End Function
 
+        Public Function CreateRecoveryCandidateAsync(expected As WorkbookCalculationResult, directory As String,
+                                                    checkpoints As IEnumerable(Of WorkbookCellSnapshot), history As ModelHistorySnapshot,
+                                                    Optional cancellation As CancellationToken = Nothing) As Task(Of WorkbookSaveCandidate)
+            If history Is Nothing Then Throw New ArgumentNullException(NameOf(history))
+            Return CreateSaveCandidateCoreAsync(expected, directory, checkpoints, history, cancellation, True)
+        End Function
+
         Private Async Function CreateSaveCandidateCoreAsync(expected As WorkbookCalculationResult, directory As String,
                                                             checkpoints As IEnumerable(Of WorkbookCellSnapshot), history As ModelHistorySnapshot,
-                                                            cancellation As CancellationToken) As Task(Of WorkbookSaveCandidate)
+                                                            cancellation As CancellationToken, Optional recovery As Boolean = False) As Task(Of WorkbookSaveCandidate)
             If Not candidateSaveTrial Then Throw New InvalidOperationException("Candidate save trials were not enabled for this session.")
             If expected Is Nothing OrElse Not IsCurrent(expected) Then Throw New InvalidOperationException("Current calculated results are required for a candidate export.")
             If history IsNot Nothing AndAlso (history.SessionId <> SessionId OrElse history.EngineRevision <> expected.Revision OrElse
@@ -98,7 +107,7 @@ Namespace Abovo.WorkbookEngines
             Try
                 ' Owner handles cancellation so a completed receipt cannot be
                 ' discarded by the read-only dispatcher's post-action check.
-                Dim saving = owner.InvokeAsync(Function() CreateCandidateOnOwner(expected, directory, probes, history, cancellation), CancellationToken.None)
+                Dim saving = owner.InvokeAsync(Function() CreateCandidateOnOwner(expected, directory, probes, history, cancellation, recovery), CancellationToken.None)
                 Return Await AwaitOperation(saving, "candidate export").ConfigureAwait(False)
             Finally
                 SyncLock gate
@@ -108,7 +117,8 @@ Namespace Abovo.WorkbookEngines
         End Function
 
         Private Function CreateCandidateOnOwner(expected As WorkbookCalculationResult, directory As String,
-                                                probes As List(Of WorkbookCellSnapshot), history As ModelHistorySnapshot, cancellation As CancellationToken) As WorkbookSaveCandidate
+                                                probes As List(Of WorkbookCellSnapshot), history As ModelHistorySnapshot, cancellation As CancellationToken,
+                                                Optional recovery As Boolean = False) As WorkbookSaveCandidate
             cancellation.ThrowIfCancellationRequested()
             SyncLock gate
                 RequireRevision(expected.Revision)
@@ -120,14 +130,21 @@ Namespace Abovo.WorkbookEngines
             ' Validate before any file creation, including exact native state.
             VerifySessionState(expected, probes, saver)
             Dim package = WorkbookCandidatePackage.Capture(sourcePath)
+            If recovery Then package.RequireRecoveryProfile(sourcePath)
             Dim folder = IO.Path.Combine(IO.Path.GetFullPath(directory), "candidate-" & Guid.NewGuid().ToString("N"))
             IO.Directory.CreateDirectory(folder)
-            Dim path = IO.Path.Combine(folder, "~Summit-candidate" & IO.Path.GetExtension(sourcePath))
+            Dim path = IO.Path.Combine(folder, "~Summit-candidate" & If(recovery, ".xlsm", IO.Path.GetExtension(sourcePath)))
             Dim accepted As Boolean = False
             Try
                 Dim clock = Stopwatch.StartNew()
                 Try
-                    saver.ExportCopy(path)
+                    If recovery Then
+                        Dim exporter = TryCast(saver, IWorkbookRecoveryExportBackend)
+                        If exporter Is Nothing Then Throw New NotSupportedException("This engine has no recovery export adapter.")
+                        exporter.ExportRecoveryCopy(path, sourcePath)
+                    Else
+                        saver.ExportCopy(path)
+                    End If
                 Catch
                     ' A native save can fail after touching more workbook state
                     ' than our bounded checkpoints capture. Do not assume that
@@ -143,6 +160,12 @@ Namespace Abovo.WorkbookEngines
                     RequireRevision(expected.Revision)
                 End SyncLock
                 package.PrepareValueOnlyCandidate(path)
+                If recovery Then
+                    RecoveryXlsmCompatibility.Prepare(path, RecoveryXlsmCompatibility.HasVerifiedBinaryProfile(sourcePath))
+                    package.VerifyRecoveryCandidate(path, sourcePath)
+                    If Not String.Equals(RecoveryBackupStore.ReadSource(path), sourcePath, StringComparison.OrdinalIgnoreCase) Then Throw New InvalidDataException("Recovery source metadata was not retained.")
+                    package = WorkbookCandidatePackage.Capture(path)
+                End If
                 If history IsNot Nothing Then
                     package.Verify(path)
                     package = WorkbookHistoryPackage.Apply(path, history)
@@ -175,7 +198,7 @@ Namespace Abovo.WorkbookEngines
                     SyncLock gate
                         RequireRevision(expected.Revision)
                         accepted = True
-                        Return New WorkbookSaveCandidate(Me, path, hash, exportMs, clock.ElapsedMilliseconds - exportMs, history)
+                        Return New WorkbookSaveCandidate(Me, path, hash, exportMs, clock.ElapsedMilliseconds - exportMs, history, recovery)
                     End SyncLock
                 End Using
             Catch

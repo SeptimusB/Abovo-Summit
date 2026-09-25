@@ -1091,8 +1091,16 @@ Namespace Abovo
             'XLSM retains the unmodified formulas; the normal XLSB preflight remains
             'mandatory when the recovered plan is explicitly saved as XLSB.
             Friend Sub WriteRecoverySnapshot(output As System.IO.Stream)
-                If ChangeManager IsNot Nothing AndAlso ChangeManager.HasEngineEditingTrial Then Throw New InvalidOperationException("The engine-owned model requires its verified engine recovery path.")
                 If _writingPreparedWorkbook OrElse _writingRecoveryWorkbook Then Throw New InvalidOperationException("Another save is in progress.")
+                If ChangeManager IsNot Nothing AndAlso ChangeManager.HasEngineEditingTrial Then
+                    _writingPreparedWorkbook = True : _writingRecoveryWorkbook = True
+                    Try
+                        ChangeManager.WriteEngineRecoverySnapshot(output)
+                    Finally
+                        _writingPreparedWorkbook = False : _writingRecoveryWorkbook = False
+                    End Try
+                    Return
+                End If
                 Dim nativeModified = ModelSpreadsheetControl.Modified
                 Dim dirty = _isDirty
                 Dim revision = _calculationRevision

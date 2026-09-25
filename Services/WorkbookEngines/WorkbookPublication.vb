@@ -66,6 +66,7 @@ Namespace Abovo.WorkbookEngines
             If Not publicationTrial Then Throw New InvalidOperationException("Publication trials were not enabled for this session.")
             If Not [Enum].IsDefined(GetType(WorkbookPublicationMode), mode) Then Throw New ArgumentOutOfRangeException(NameOf(mode))
             If Not IsCurrentCandidate(candidate) Then Throw New InvalidOperationException("A current save candidate is required.")
+            If candidate.IsRecovery Then Throw New InvalidOperationException("A recovery snapshot cannot be published as the saved model.")
             target = WorkbookPublicationFile.Normalize(target)
             If Not String.Equals(IO.Path.GetExtension(target), IO.Path.GetExtension(sourcePath), StringComparison.OrdinalIgnoreCase) Then Throw New ArgumentException("Publication cannot convert workbook formats.")
             Dim sameSource = String.Equals(target, sourcePath, StringComparison.OrdinalIgnoreCase)

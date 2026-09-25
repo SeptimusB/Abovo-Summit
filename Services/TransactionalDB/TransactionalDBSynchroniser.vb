@@ -770,6 +770,8 @@ Namespace Abovo
         Private Function SynchroniseRules(ByVal Rules As IEnumerable(Of TransactionalDBSyncRule),
                                           ByVal LegacyChangedNamedRange As String) As AbovoTransaction
 
+            Dim refusal = ModelSafetyManager.NativeMutationRefusal(ModelID, "Transactional DB structural synchronisation")
+            If refusal IsNot Nothing Then Return refusal
             Dim Result As New AbovoTransaction With {.BError = False}
             If IsSynchronising Then Return Result
             Dim benchmark As Abovo.SummitDiagnostics.DiagnosticTimer =

@@ -45,6 +45,8 @@ Namespace Abovo
         Public Function AddRecords(ByVal RuleID As String,
                                    ByVal RecordCount As Integer) As AbovoTransaction
 
+            Dim refusal = ModelSafetyManager.NativeMutationRefusal(ModelID, "Adding records")
+            If refusal IsNot Nothing Then Return refusal
             Dim Result As New AbovoTransaction With {.BError = False}
 
             If RecordCount <= 0 Then
@@ -67,6 +69,8 @@ Namespace Abovo
         Public Function DeleteRecords(ByVal RuleID As String,
                                       ByVal RecordIndexes As IEnumerable(Of Integer)) As AbovoTransaction
 
+            Dim refusal = ModelSafetyManager.NativeMutationRefusal(ModelID, "Deleting records")
+            If refusal IsNot Nothing Then Return refusal
             Dim Result As New AbovoTransaction With {.BError = False}
             Dim Rule As WorkbookStructureRule = GetRule(RuleID)
 
@@ -145,6 +149,8 @@ Namespace Abovo
         Public Function ValidateDeleteLastRecords(ByVal RuleID As String,
                                                    ByVal RecordCount As Integer) As AbovoTransaction
 
+            Dim refusal = ModelSafetyManager.NativeMutationRefusal(ModelID, "Deleting records")
+            If refusal IsNot Nothing Then Return refusal
             Dim Result As New AbovoTransaction With {.BError = False}
 
             If RecordCount <= 0 Then

@@ -22,6 +22,7 @@ Namespace Abovo.WorkbookEngines
         Private owned As Boolean
         Private versionText As String
         Private filter As ExcelBusyCallFilter
+        Private foreignWorkbookObserved As Boolean
         Friend ReadOnly Property NativeProcess As WorkbookNativeProcessIdentity
 
         <DllImport("user32.dll")>
@@ -168,6 +169,7 @@ Namespace Abovo.WorkbookEngines
 
         Public Sub Calculate(kind As WorkbookCalculationKind) Implements IWorkbookCalculationBackend.Calculate
             RequireOwner()
+            RequireExclusiveWorkbooks()
             Select Case kind
                 Case WorkbookCalculationKind.Incremental : app.Calculate()
                 Case WorkbookCalculationKind.Full : app.CalculateFull()
@@ -227,6 +229,26 @@ Namespace Abovo.WorkbookEngines
             value = Nothing
         End Sub
 
+        'Application.Calculate and Quit are process-wide. A workbook opened by
+        'another client in this instance must never be calculated or discarded
+        'as if Summit owned it. Once detected, the session is not reusable.
+        Private Sub RequireExclusiveWorkbooks()
+            If foreignWorkbookObserved Then Throw New InvalidOperationException("Another workbook entered Summit's Excel instance. Close this model and reopen it before continuing.")
+            Dim item As Object = Nothing
+            Try
+                For index As Integer = 1 To CInt(books.Count)
+                    item = books.Item(index)
+                    If Not Object.ReferenceEquals(item, book) AndAlso Not Object.ReferenceEquals(item, seed) Then
+                        foreignWorkbookObserved = True
+                        Throw New InvalidOperationException("Another workbook entered Summit's Excel instance. No process-wide calculation or save was started.")
+                    End If
+                    Release(item)
+                Next
+            Finally
+                Release(item)
+            End Try
+        End Sub
+
         Public Sub Dispose() Implements IDisposable.Dispose
             RequireOwner()
             Dim errors As New List(Of Exception)()
@@ -239,7 +261,25 @@ Namespace Abovo.WorkbookEngines
                 End Try
             Next
             Try
-                If app IsNot Nothing AndAlso owned Then app.Quit()
+                If app IsNot Nothing AndAlso owned Then
+                    Dim empty As Boolean = False
+                    Try
+                        If books Is Nothing Then books = app.Workbooks
+                        empty = CInt(books.Count) = 0
+                    Catch inspection As Exception
+                        errors.Add(inspection)
+                    End Try
+                    If empty Then
+                        app.Quit()
+                    Else
+                        'Even an uninspectable collection is not permission to
+                        'quit. Make the surviving instance available to its user;
+                        'do not save, close, or calculate its remaining workbooks.
+                        app.UserControl = True : app.ScreenUpdating = True
+                        app.DisplayAlerts = True : app.Visible = True
+                        errors.Add(New InvalidOperationException("Excel was left open because it contains a workbook Summit could not safely close. Its remaining workbooks were not saved or discarded. This instance may still have manual calculation and events disabled; close and reopen the workbook for normal Excel behaviour."))
+                    End If
+                End If
             Catch ex As Exception
                 errors.Add(ex)
             Finally

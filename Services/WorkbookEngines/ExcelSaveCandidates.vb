@@ -23,6 +23,7 @@ Namespace Abovo.WorkbookEngines
 
         Public Sub ExportCopy(path As String) Implements IWorkbookCandidateBackend.ExportCopy
             RequireOwner()
+            RequireExclusiveWorkbooks()
             If File.Exists(path) Then Throw New IOException("Candidate path already exists.")
             Dim originalPath = CStr(book.FullName), saved = CBool(book.Saved)
             Dim identity = SheetIdentity()
@@ -60,6 +61,7 @@ Namespace Abovo.WorkbookEngines
 
         Public Function ReadCopy(path As String, areas As IList(Of WorkbookReadArea), cells As IList(Of WorkbookReadArea)) As WorkbookCandidateReadback Implements IWorkbookCandidateBackend.ReadCopy
             RequireOwner()
+            RequireExclusiveWorkbooks()
             Dim original = book, copy As Object = Nothing
             Dim identity = SheetIdentity()
             Try

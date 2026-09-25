@@ -16,7 +16,17 @@ Namespace Abovo
         Private Sub New()
         End Sub
 
+        Friend Shared Function NativeMutationRefusal(modelID As Integer, operation As String) As AbovoAppCls.AbovoTransaction
+            Dim model = GetModel(modelID)
+            If model Is Nothing OrElse model.ChangeManager Is Nothing OrElse Not model.ChangeManager.HasEngineEditingTrial Then Return Nothing
+            Dim message = operation & " is not available in this calculation-engine mode yet. The workbook has not been changed."
+            Return New AbovoAppCls.AbovoTransaction With {.BError = True, .BSuccess = False, .EventCancelled = True,
+                .StringReturn = message, .StrResponseMessage = message}
+        End Function
+
         Public Shared Sub BeginBulkWorkbookMutation(ByVal modelID As Integer)
+            Dim refusal = NativeMutationRefusal(modelID, "Structural editing")
+            If refusal IsNot Nothing Then Throw New InvalidOperationException(refusal.StrResponseMessage)
             'Structural changes can rewrite formulas and named-range geometry.
             'The next analyser binding must rebuild the chain before relying on
             'incremental calculations again.
