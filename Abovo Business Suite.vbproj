@@ -633,6 +633,8 @@
     <Compile Include="Services\WorkbookEngines\DevExpressValueEdits.vb" />
     <Compile Include="Services\WorkbookEngines\ExcelValueEdits.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookSaveCandidates.vb" />
+    <Compile Include="Services\WorkbookEngines\WorkbookPublication.vb" />
+    <Compile Include="Services\WorkbookEngines\WorkbookPublicationFiles.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookCandidatePackage.vb" />
     <Compile Include="Services\WorkbookEngines\DevExpressSaveCandidates.vb" />
     <Compile Include="Services\WorkbookEngines\ExcelSaveCandidates.vb" />

@@ -26,13 +26,15 @@ Namespace Abovo.WorkbookEngines
         Public ReadOnly Property OperationTimeoutMilliseconds As Integer
         Public ReadOnly Property EnableValueEditTrial As Boolean
         Public ReadOnly Property EnableCandidateSaveTrial As Boolean
+        Public ReadOnly Property EnablePublicationTrial As Boolean
 
         Public Sub New(Optional preference As WorkbookEnginePreference = WorkbookEnginePreference.Automatic,
                        Optional allowTrustedVba As Boolean = True,
                        Optional requireSummitFunctions As Boolean = True,
                        Optional operationTimeoutMilliseconds As Integer = 120000,
                        Optional enableValueEditTrial As Boolean = False,
-                       Optional enableCandidateSaveTrial As Boolean = False)
+                       Optional enableCandidateSaveTrial As Boolean = False,
+                       Optional enablePublicationTrial As Boolean = False)
             If Not [Enum].IsDefined(GetType(WorkbookEnginePreference), preference) Then Throw New ArgumentOutOfRangeException(NameOf(preference))
             If operationTimeoutMilliseconds < 50 OrElse operationTimeoutMilliseconds > 1800000 Then Throw New ArgumentOutOfRangeException(NameOf(operationTimeoutMilliseconds))
             Me.Preference = preference
@@ -41,6 +43,8 @@ Namespace Abovo.WorkbookEngines
             Me.OperationTimeoutMilliseconds = operationTimeoutMilliseconds
             Me.EnableValueEditTrial = enableValueEditTrial
             Me.EnableCandidateSaveTrial = enableCandidateSaveTrial
+            If enablePublicationTrial AndAlso Not enableCandidateSaveTrial Then Throw New ArgumentException("Publication requires candidate-save opt-in.")
+            Me.EnablePublicationTrial = enablePublicationTrial
         End Sub
     End Class
 

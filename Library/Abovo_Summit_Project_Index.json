@@ -1,5 +1,16 @@
 {
   "schemaVersion": 3,
+  "excelFirstPublication20260925": {
+    "documentation": "Library/Excel_DevExpress_Engine_Stage2d_2026-09-25.md",
+    "status": "isolated terminal publication; production 2.98 unchanged",
+    "source": "Services/WorkbookEngines/WorkbookPublication.vb",
+    "trialFlag": "WorkbookEngineOptions.EnablePublicationTrial (default false)",
+    "modes": ["CreateNew same-format Save As", "ReplaceSource with expected hash and retained original"],
+    "protocol": "close native owner; guarded no-overwrite handle renames; intent/completion records; brief missing-name window, not an atomic swap",
+    "security": "local NTFS trial; exact Windows and observed secondary provenance markers; verified discretionary ACL; unknown streams rejected",
+    "validation": "Debug/Release zero errors/warnings; 76 publication safety assertions each; all 12 native format/engine/mode combinations each; AGL XLSB/XLSM 45586-position other-engine parity; originals and normal builds unchanged",
+    "remaining": ["journal recovery and reopen/rebase", "current model/history XML and live Save/dirty integration", "storage and hung-call qualification", "three-route structural benchmark", "UI and Excel/VBA acceptance"]
+  },
   "excelFirstSaveCandidates20260925": {
     "documentation": "Library/Excel_DevExpress_Engine_Stage2c_2026-09-25.md",
     "status": "isolated same-format candidate export and cross-engine reopen; no source replacement or live Save",

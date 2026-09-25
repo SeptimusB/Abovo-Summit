@@ -50,6 +50,8 @@ These portions exclude initial opening/calculation, the candidate's initial sour
 
 ## Next gates
 
+Checkpoint 2d subsequently adds separately gated **terminal** publication and new-name Save As. See `Excel_DevExpress_Engine_Stage2d_2026-09-25.md` for its two-rename/recovery limits; the live Save and history gates below remain open.
+
 1. Integrate existing `ModelChangeManagerV2` validation/history/dirty/recovery ownership and current XML serialization, not a second edit/history stack.
 2. Add guarded source publication/Save As, external-change detection, backup and storage-failure handling. A candidate receipt is not permission to replace the original or clear newer dirty edits.
 3. Provide process-level recovery for native calls that never return, and define source-lease/private-working-copy lifecycle.

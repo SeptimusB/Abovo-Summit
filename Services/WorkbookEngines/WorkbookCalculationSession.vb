@@ -19,6 +19,8 @@ Namespace Abovo.WorkbookEngines
         Private cleanupTask As Task
         Private ReadOnly valueEditTrial As Boolean
         Private candidateSaveTrial As Boolean
+        Private publicationTrial As Boolean
+        Private publicationStreams As Dictionary(Of String, Byte())
         Private sourcePath As String
         Private sourceZone As String
         Private savePending As Boolean
@@ -54,6 +56,7 @@ Namespace Abovo.WorkbookEngines
             End If
             Dim session As New WorkbookCalculationSession(options.OperationTimeoutMilliseconds, options.EnableValueEditTrial)
             session.candidateSaveTrial = options.EnableCandidateSaveTrial
+            session.publicationTrial = options.EnablePublicationTrial
             session.sourcePath = fullPath
             Dim openError As Exception = Nothing
             Try
@@ -63,6 +66,7 @@ Namespace Abovo.WorkbookEngines
                     ' an open native model. Stage one never saves this document.
                     session.sourceLease = New FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read)
                     If session.candidateSaveTrial Then session.sourceZone = ExcelCalculationBackend.ReadInternetZone(fullPath)
+                    If session.publicationTrial Then session.publicationStreams = WorkbookPublicationFile.CaptureMarkers(fullPath)
                     Using hash = SHA256.Create()
                         session._SourceHash = BitConverter.ToString(hash.ComputeHash(session.sourceLease)).Replace("-", "")
                         session.sourceLease.Position = 0

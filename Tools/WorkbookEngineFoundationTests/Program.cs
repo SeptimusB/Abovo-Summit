@@ -226,13 +226,18 @@ static class Program
     static async Task Run(string[] args)
     {
         var before=Hash(args[1]);
+        if(args[2]=="publish"||args[2]=="publish-native"||args[2]=="publish-agl")
+        {
+            if(args[2]=="publish")await PublicationTests.Run(args[1]);else await PublicationTests.Native(args[1],args[2]=="publish-agl");
+            Check(Hash(args[1])==before,"source bytes unchanged");return;
+        }
         if(args[2]=="safety")await Safety(args[1]);else if(args[2]=="security")Security(args[1]);else if(args[2]=="projection")ProjectionProbe.Run();else if(args[2]=="grid")await ResultGridTests.Run(args[1]);else if(args[2]=="deadline")await DeadlineTests.Run(args[1]);else if(args[2]=="edit")await ValueEditTests.Run(args[1]);else if(args[2]=="edit-native")await ValueEditTests.Native(args[1], false);else if(args[2]=="edit-agl")await ValueEditTests.Native(args[1], true);else if(args[2]=="save")await SaveCandidateTests.Run(args[1]);else if(args[2]=="save-native")await SaveCandidateTests.Native(args[1],false);else if(args[2]=="save-agl")await SaveCandidateTests.Native(args[1],true);else await Native(args[1],args[2]=="agl");
         Check(Hash(args[1])==before,"source bytes unchanged");Console.WriteLine("ASSERTIONS="+assertions);
     }
     [STAThread]
     static int Main(string[] args)
     {
-        if(args.Length!=3||!new[]{"safety","security","synthetic","agl","projection","grid","deadline","edit","edit-native","edit-agl","save","save-native","save-agl"}.Contains(args[2])){Console.Error.WriteLine("APP_BIN PRIVATE_WORKBOOK safety|security|synthetic|agl|projection|grid|deadline|edit|edit-native|edit-agl|save|save-native|save-agl");return 2;}
+        if(args.Length!=3||!new[]{"safety","security","synthetic","agl","projection","grid","deadline","edit","edit-native","edit-agl","save","save-native","save-agl","publish","publish-native","publish-agl"}.Contains(args[2])){Console.Error.WriteLine("APP_BIN PRIVATE_WORKBOOK safety|security|synthetic|agl|projection|grid|deadline|edit|edit-native|edit-agl|save|save-native|save-agl|publish|publish-native|publish-agl");return 2;}
         AppDomain.CurrentDomain.AssemblyResolve+=(s,e)=>{string file=Path.Combine(args[0],new AssemblyName(e.Name).Name+".dll");if(!File.Exists(file))file=Path.Combine(args[0],new AssemblyName(e.Name).Name+".exe");return File.Exists(file)?Assembly.LoadFrom(file):null;};
         try{Run(args).GetAwaiter().GetResult();return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}
     }

@@ -20,7 +20,7 @@ static class SaveCandidateTests
     static async Task Reject(Func<Task> action,string text)
     {try{await action();}catch(Exception e)when(e is InvalidOperationException||e is ArgumentException||e is IOException||e is InvalidDataException||e is System.Xml.XmlException||e is OperationCanceledException||e is TimeoutException){Check(true,text+" ["+e.GetType().Name+"]");return;}throw new Exception("Expected rejection: "+text);}
     static string Hash(string path){using(var s=File.OpenRead(path))using(var h=System.Security.Cryptography.SHA256.Create())return BitConverter.ToString(h.ComputeHash(s)).Replace("-","");}
-    static void Compare(WorkbookCalculationResult expected,WorkbookCalculationResult actual,string label)
+    internal static void Compare(WorkbookCalculationResult expected,WorkbookCalculationResult actual,string label)
     {
         int count=0;
         for(int n=0;n<expected.Blocks.Count;n++)for(int r=0;r<expected.Blocks[n].Area.Rows;r++)for(int c=0;c<expected.Blocks[n].Area.Columns;c++)
@@ -169,7 +169,7 @@ static class SaveCandidateTests
             Check((string)Invoke(excel,null,"ReadInternetZone",source)==zone,"source marker is never removed or downgraded");
         }finally{await s.CloseAsync();}
     }
-    static string Fixture(string root,string extension)
+    internal static string Fixture(string root,string extension)
     {
         string path=Path.Combine(root,"input"+extension);
         using(var wb=new Workbook())
