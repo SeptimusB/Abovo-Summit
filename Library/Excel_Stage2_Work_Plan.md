@@ -4,15 +4,15 @@ Request: continue Stage 2 until complete. Production 2.98 remains usable and unc
 
 Stage 2 means interactive ownership, not more independent save demonstrations:
 
-- [x] Atomic engine value batch API, prerequisite calculations and one compensated failure boundary; isolated native tests pass. Live paste/schedule callers are a separate remaining integration gate.
-- [x] Existing ModelChangeManager internal engine binding owns typed edits, journal, dirty revision and Undo/Redo; no second history stack. Normal editor dispatch/opening remains unconnected.
-- [ ] Detached, revision-bound values **and formatting/permissions** feed existing native interfaces without replacing formulas or relying on a second calculation engine.
-- [ ] Model opening and per-model preference/status select compatible Excel automatically, with policy-respecting opening-only DevExpress fallback.
-- [ ] Check Sheet/header and Funding date-dependent editability refresh at the accepted final revision.
-- [ ] Close/discard and saves cannot lose engine-owned edits or publish stale state. Stage 3 structural operations stay disabled for this route until implemented, not silently sent to a different workbook.
-- [ ] Both configurations and real native fixtures pass; then separately versioned Ready to test build and explicit Jon/Alex manual gates.
+- [x] Atomic engine value batch API, prerequisite calculations and one compensated failure boundary; live paste/cut/clear callers are connected. Schedule/structural callers are explicitly guarded until Stage 3.
+- [x] Existing ModelChangeManager binding owns normal typed edits, journal, dirty revision and Undo/Redo; no second history stack. Normal editor dispatch/opening is connected.
+- [x] Detached, revision-bound values **and formatting/permissions** feed the native interface adapters without replacing source formulas or relying on a second calculation engine. Known geometry/performance limits are explicit in the acceptance report.
+- [x] Model opening and per-model preference/status select compatible Excel automatically, with policy-respecting opening-only DevExpress fallback.
+- [x] Check Sheet/header and Funding date-dependent editability refresh at the accepted final revision. Live mapped Yes/No edit and Undo/Redo tests pass without navigation.
+- [x] Model-owned close/discard and verified same-format Save/Save As are integrated; publication is revision-bound and refuses stale state. Recovery retains dirty state/history and the last good copy. Stage 3 commands are refused before mutation. This is bounded tested behavior, not a promise against every storage/COM failure; production-hardening limits remain documented.
+- [x] Both configurations and real native fixtures pass within the recorded qualification scope; separately versioned **Ready to test** 3.00 preview and numbered Jon-first acceptance gates are in `Version3_Stage2_Acceptance_2026-09-25.md`. Intermittent Excel shutdown timing and the corrected global-process test assumption are recorded there, not hidden.
 
-Current continuation: `Excel_DevExpress_Engine_Stage2n_2026-09-25.md` records FFR/dashboard/comparison/integrity readers, expanded mutation guards and actual opening/settings selection in isolated builds. Whole private Demo opening, edits, recovery, Save/Save As, Undo/Redo and owned close pass. Installed production 2.98 remains unchanged. Final consumer/lifecycle/performance review, regression qualification and versioned test delivery are still required; do not stop at this checkpoint.
+Current delivery target: `Version3_Stage2_Acceptance_2026-09-25.md`. The isolated 3.00 preview separates Jon's functional acceptance from the unchanged pre-engine 2.98 client line. Whole private Demo opening, edits, recovery, Save/Save As, Undo/Redo and owned close pass. Performance is not yet qualified (first Funding binding roughly 35-42 seconds); further appearance/save optimisation, automatic interrupted-save recovery/retention UX, variable-spill qualification and Jon/Alex financial/round-trip acceptance remain separate release gates. Do not treat a preview as permission to replace the client build.
 
 Existing checkpoints 2a–2f supply result binding, single-value transactions and guarded terminal saves/history. They do not complete the items above. Do not expose a preference which only changes a status label or bypasses an existing edit/calculation path.
 

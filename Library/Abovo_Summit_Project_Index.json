@@ -1,11 +1,12 @@
 {
   "schemaVersion": 3,
   "excelFirstInteractiveBridge20260925": {
-    "documentation": "Library/Excel_DevExpress_Engine_Stage2n_2026-09-25.md",
-    "status": "Stage 2 in progress; native readers/editors, recovery/save/owned close and actual opening/settings in isolated builds; normal 2.98 unchanged",
+    "documentation": "Library/Version3_Stage2_Acceptance_2026-09-25.md",
+    "integrationEvidence": "Library/Excel_DevExpress_Engine_Stage2n_2026-09-25.md",
+    "status": "Stage 2 value-edit integration Ready to test in isolated Version3-Preview 3.00; Jon-first functional acceptance, not client/financial release; pre-engine 2.98 binaries unchanged",
     "source": ["Services/DataService/ModelEngineChanges.vb", "Services/DataService/ModelWorkbookRead.vb", "Services/WorkbookEngines/WorkbookValueBatches.vb", "Services/WorkbookEngines/WorkbookPresentation.vb", "Services/WorkbookEngines/NativePresentation.vb"],
-    "validation": "Both isolated builds through EngineStage2r; FFR 61 and dashboards 19 per configuration; structural guards 51; opening selection 19; consumers 32; native bridge 133, safety 73, batch 48, presentation 33, security 12, deadlines 6; ordinary DIT 550 with production-matching LAA. Whole private Demo opening/edit/recovery/save/close 35. See 2n for scope and in-progress performance experiments.",
-    "remaining": ["final live-consumer and failure UX review", "versioned test delivery", "appearance transport and save performance", "Stage 3 structural/current XML commands", "XLSB variable-spill fallback compatibility", "hang/storage and client acceptance"]
+    "validation": "Final Debug/Release builds and ordinary DIT 550 checks each pass with production-matching LAA. Final Release private Demo Excel opening lifecycle 36 and native DevExpress lifecycle 35 pass. Selection 21, live mapped Check Sheet consumers 68, bridge 133, FFR 61, dashboards 19, guards 51, range/expression 32 each, safety 73, batches 48, presentation 33, ownership 16. Security/deadline and save/recovery regression evidence is recorded in the acceptance report. One ten-second shutdown timeout is retained as a caveat; three diagnostic repeats pass. Range test global-inventory false failure corrected to track only owned identities.",
+    "remaining": ["Jon tests V3-01 through V3-13, then explicit Alex hand-off", "appearance transport and save performance; initial Funding binding 35-42 seconds", "Stage 3 structural/current XML commands", "XLSB variable-spill fallback compatibility", "intermittent shutdown timing and hung COM recovery", "transaction retention/interrupted-save recovery UX and financial round-trip acceptance"]
   },
   "excelFirstHistorySave20260925": {
     "documentation": "Library/Excel_DevExpress_Engine_Stage2f_2026-09-25.md",

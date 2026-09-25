@@ -4,9 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using Abovo;
 using Abovo.WorkbookEngines;
 using DevExpress.Spreadsheet;
+using DevExpress.XtraGrid.Views.Grid;
 
 // Verify consumers against deliberately stale presentation caches, not just
 // against another workbook which happens to contain the expected values.
@@ -16,6 +18,13 @@ static class NativeConsumerTests
     static int checks;
     static void Check(bool ok,string text){if(!ok)throw new Exception(text);Console.WriteLine("CONSUMER_NATIVE PASS "+(++checks)+" "+text);}
     static object Call(object owner,string name,params object[] args)=>owner.GetType().GetMethod(name,F).Invoke(owner,args);
+    static bool Warning(EngineChangeManagerTests.Model model)=>(bool)typeof(FileManager.ExcelModel).GetProperty("CheckSheetWarningActive",F).GetValue(model.Value,null);
+    static void Until(Func<bool> done)
+    {
+        var timer=System.Diagnostics.Stopwatch.StartNew();
+        do{Application.DoEvents();if(done())return;System.Threading.Thread.Sleep(10);}while(timer.ElapsedMilliseconds<3000);
+        throw new Exception("Mapped Check Sheet did not refresh");
+    }
     static string Create(string source,bool date1904)
     {
         string folder=Path.Combine(Path.GetDirectoryName(source),"native-consumers-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);string path=Path.Combine(folder,"private.xlsx");
@@ -25,6 +34,12 @@ static class NativeConsumerTests
             ws.Cells["B1"].Value=CellValue.FromDateTime(new DateTime(2026,9,30),date1904);ws.Cells["B1"].NumberFormat="dd-mmm-yyyy";
             ws.Range["A1:B1"].Protection.Locked=false;ws.Range["A1:B1"].Fill.PatternType=PatternType.Solid;
             ws.Cells["A2"].Formula="=1/A1";wb.DefinedNames.Add("IR_TestInputs","=Data!$A$1:$B$1");
+            var sheet=wb.Worksheets.Add("Check Sheet");sheet.Cells["A2"].Value="Synthetic balance";
+            sheet.Cells["B2"].Formula="=IF(Data!A1=10,0,1)";sheet.Cells["C2"].Value="No";sheet.Cells["C2"].Protection.Locked=false;
+            sheet.DataValidations.Add(sheet.Range["C2"],DataValidationType.List,"Yes,No");
+            sheet.Cells["D2"].Formula="=IF(C2=\"Yes\",0,B2)";sheet.Cells["E2"].Formula="=IF(B2=0,\"OK\",\"Check\")";
+            sheet.Cells["F2"].Value="Fixture imbalance";sheet.Cells["H2"].Value="Data";
+            wb.DefinedNames.Add("Outputs_CheckSheet","='Check Sheet'!$A$2:$H$2");
             wb.CalculateFullRebuild();wb.SaveDocument(path,DocumentFormat.Xlsx);
         }
         return path;
@@ -66,6 +81,25 @@ static class NativeConsumerTests
                     var error=typeof(BusinessPlanComparisonService).GetMethod("GetTypedCellValue",F).Invoke(null,typed);
                     Check(error==null&&(DateTime)typed[2]==new DateTime(2026,9,30),"typed comparison respects date system "+(date1904?1904:1900));
                     Check(model.Manager.Undo().BSuccess&&!Scan(model).Contains("Cell error #DIV/0!"),"Undo clears current native error from integrity report");
+                    var definition=new MappedTable{Worksheet="Check Sheet",ReadOnlyRange="A2:H2",AllowYesNoEdits=true};
+                    using(var grid=new ReadOnlyMappedTableGrid(0,model.Value.WB.Worksheets["Check Sheet"],definition,null,0,0,"Check Sheet"))
+                    using(var host=new Form{Opacity=0,ShowInTaskbar=false,ClientSize=new System.Drawing.Size(1000,300)}){
+                        host.Controls.Add(grid);grid.Dock=DockStyle.Fill;host.Show();Application.DoEvents();var view=(GridView)grid.MainView;
+                        Check((string)view.GetRowCellValue(0,"C4")=="OK"&&!Warning(model),"mapped Check Sheet initially displays current balanced result");
+                        Check(model.Manager.Redo().BSuccess,"redo breaks the displayed model");
+                        Until(()=>Equals(view.GetRowCellValue(0,"C4"),"Check"));
+                        Check(Warning(model),"mapped Check Sheet and public warning refresh together without navigation");
+                        view.FocusedRowHandle=0;view.FocusedColumn=view.Columns["C2"];view.ShowEditor();Application.DoEvents();
+                        Check(view.ActiveEditor!=null,"real mapped Yes/No editor opens");view.ActiveEditor.EditValue="Yes";view.PostEditor();view.CloseEditor();
+                        Until(()=>Equals(view.GetRowCellValue(0,"C2"),"Yes"));
+                        Check(!Warning(model)&&model.Value.WB.Worksheets["Check Sheet"].Cells["C2"].Value.TextValue=="No","native override clears soft warning without changing display workbook");
+                        Check(model.Manager.Undo().BSuccess,"mapped override Undo succeeds");
+                        Until(()=>Equals(view.GetRowCellValue(0,"C2"),"No"));
+                        Check(Warning(model),"override Undo restores Yes/No text and warning");
+                        Check(model.Manager.Undo().BSuccess,"input Undo succeeds with Check Sheet visible");
+                        Until(()=>Equals(view.GetRowCellValue(0,"C4"),"OK"));
+                        Check(!Warning(model),"visible grid and public warning clear after input Undo");
+                    }
                     return true;
                 });
             }finally{await session.CloseAsync();}

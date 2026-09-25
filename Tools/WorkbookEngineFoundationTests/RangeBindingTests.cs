@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.ComponentModel;
 using DevExpress.Spreadsheet;
 using RangeDataSource=DevExpress.XtraSpreadsheet.Model.RangeDataSource;
@@ -18,7 +19,7 @@ static class RangeBindingTests
     {return values.Cast<object>().Select(row=>fields.Cast<PropertyDescriptor>().Select(field=>field.GetValue(row)).ToArray()).ToArray();}
     internal static async Task Run(string original)
     {
-        var before=NativeProcessChecks.ExcelIds();
+        var owners=new List<WorkbookCalculationSession>();
         string root=Path.Combine(Path.GetDirectoryName(original),"range-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
         string source=Path.Combine(root,"range.xlsx");
         using(var book=new Workbook())
@@ -35,6 +36,7 @@ static class RangeBindingTests
         foreach(var preference in new[]{WorkbookEnginePreference.DevExpressOnly,WorkbookEnginePreference.ExcelRequired})
         {
             var session=await WorkbookCalculationSession.OpenAsync(source,new WorkbookEngineOptions(preference,false,false,120000,true));
+            owners.Add(session);
             using(var model=new EngineChangeManagerTests.Model(source))
             try
             {
@@ -95,7 +97,7 @@ static class RangeBindingTests
             }
             finally{await session.CloseAsync();}
         }
-        await NativeProcessChecks.RequireOriginalProcesses(before);
+        await NativeProcessChecks.RequireOwnedProcesses(owners);
         Console.WriteLine("RANGE ASSERTIONS="+assertions);
     }
     sealed class NativeDetector:IDataSourceColumnTypeDetector
@@ -105,11 +107,12 @@ static class RangeBindingTests
     }
     internal static async Task Agl(string source)
     {
-        var before=NativeProcessChecks.ExcelIds();
+        var owners=new List<WorkbookCalculationSession>();
         object[][] reference=null;string[] referenceNames=null;
         foreach(var preference in new[]{WorkbookEnginePreference.DevExpressOnly,WorkbookEnginePreference.ExcelRequired})
         {
             var session=await WorkbookCalculationSession.OpenAsync(source,new WorkbookEngineOptions(preference,true,true,120000,true));
+            owners.Add(session);
             using(var model=new EngineChangeManagerTests.Model(source))
             try
             {
@@ -142,6 +145,6 @@ static class RangeBindingTests
             }
             finally{await session.CloseAsync();}
         }
-        await NativeProcessChecks.RequireOriginalProcesses(before);
+        await NativeProcessChecks.RequireOwnedProcesses(owners);
     }
 }

@@ -78,8 +78,16 @@ Namespace Abovo.WorkbookEngines
                 SystemMessageManager.Publish(model.ModelID,
                     "Calculation engine: " & Status(model) & ". Structural edits, imports and Stress Test still require reopening with DevExpress. Save As currently keeps the same file format and requires a new filename.",
                     SystemMessageSeverity.Information, "Calculation engine", model.FileName)
-            Finally
-                If session IsNot Nothing Then session.CloseAsync().GetAwaiter().GetResult()
+            Catch openingError As Exception
+                If session IsNot Nothing Then
+                    Try
+                        session.CloseAsync().GetAwaiter().GetResult()
+                    Catch cleanupError As Exception
+                        Throw New AggregateException("Calculation-engine opening failed and its cleanup also reported a problem.",
+                            openingError, cleanupError)
+                    End Try
+                End If
+                Throw
             End Try
         End Sub
     End Class

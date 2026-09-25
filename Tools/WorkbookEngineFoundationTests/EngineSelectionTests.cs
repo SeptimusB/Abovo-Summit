@@ -19,6 +19,14 @@ static class EngineSelectionTests
     static void Activate(FileManager.ExcelModel model,WorkbookEngineOptions options,Func<WorkbookEnginePreference,IWorkbookCalculationBackend> factory=null){try{Selection.GetMethod("Activate",F).Invoke(null,new object[]{model,options,factory});}catch(TargetInvocationException e){System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(e.InnerException).Throw();throw;}}
     static string Status(FileManager.ExcelModel model)=>(string)Selection.GetMethod("Status",F).Invoke(null,new object[]{model});
     static IEnumerable<Control> Children(Control control){foreach(Control child in control.Controls){yield return child;foreach(var nested in Children(child))yield return nested;}}
+    sealed class FailedOpening:IWorkbookCalculationBackend
+    {
+        public string Name=>"Excel";public string Version=>"Test";
+        public void OpenReadOnly(string path,WorkbookEngineOptions options){}
+        public void Calculate(WorkbookCalculationKind kind){throw new InvalidOperationException("Synthetic opening calculation failure");}
+        public WorkbookValueBlock Read(WorkbookReadArea area){throw new Exception("Failed calculation cannot read");}
+        public void Dispose(){throw new InvalidOperationException("Synthetic cleanup failure");}
+    }
     internal static async Task Run(string original)
     {
         string folder=Path.Combine(Path.GetDirectoryName(original),"engine-selection-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);string path=Path.Combine(folder,"private.xlsx");
@@ -57,6 +65,11 @@ static class EngineSelectionTests
                 return true;
             });}finally{if(owner!=null)await owner.CloseAsync();}
         }
+        using(var model=new EngineChangeManagerTests.Model(path))await model.Do(()=>{
+            try{Activate(model.Value,new WorkbookEngineOptions(WorkbookEnginePreference.ExcelRequired),kind=>new FailedOpening());throw new Exception("Expected opening failure");}
+            catch(AggregateException error){Check(error.ToString().Contains("Synthetic opening calculation failure")&&error.ToString().Contains("Synthetic cleanup failure"),"opening and cleanup failures are both retained");}
+            Check(!model.Manager.HasEngineEditingTrial&&!model.Value.IsDirty,"failed opening never binds or dirties the model");return true;
+        });
         Check(File.ReadAllBytes(path).SequenceEqual(bytes),"generated opening source unchanged");await NativeProcessChecks.RequireOwnedProcesses(owners);Console.WriteLine("ENGINE_SELECTION ASSERTIONS="+checks);
     }
 }
