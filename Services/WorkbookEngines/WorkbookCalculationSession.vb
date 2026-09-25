@@ -18,6 +18,10 @@ Namespace Abovo.WorkbookEngines
         Private ReadOnly timeoutMilliseconds As Integer
         Private cleanupTask As Task
         Private ReadOnly valueEditTrial As Boolean
+        Private candidateSaveTrial As Boolean
+        Private sourcePath As String
+        Private sourceZone As String
+        Private savePending As Boolean
         Private editPending As Boolean
         Public ReadOnly Property SessionId As Guid = Guid.NewGuid()
         Public ReadOnly Property SourceHash As String
@@ -49,6 +53,8 @@ Namespace Abovo.WorkbookEngines
                 Throw New ArgumentException("The calculation adapter supports XLSB, XLSM and XLSX workbooks only.", NameOf(path))
             End If
             Dim session As New WorkbookCalculationSession(options.OperationTimeoutMilliseconds, options.EnableValueEditTrial)
+            session.candidateSaveTrial = options.EnableCandidateSaveTrial
+            session.sourcePath = fullPath
             Dim openError As Exception = Nothing
             Try
                 Dim opening = session.owner.InvokeAsync(Of Boolean)(Function()
@@ -56,6 +62,7 @@ Namespace Abovo.WorkbookEngines
                     ' Retain a read-only lease: the baseline cannot change under
                     ' an open native model. Stage one never saves this document.
                     session.sourceLease = New FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read)
+                    If session.candidateSaveTrial Then session.sourceZone = ExcelCalculationBackend.ReadInternetZone(fullPath)
                     Using hash = SHA256.Create()
                         session._SourceHash = BitConverter.ToString(hash.ComputeHash(session.sourceLease)).Replace("-", "")
                         session.sourceLease.Position = 0
@@ -117,7 +124,7 @@ Namespace Abovo.WorkbookEngines
         Public Function InvalidateResults() As Long
             SyncLock gate
                 RequireAvailable()
-                If editPending Then Throw New InvalidOperationException("An authoritative value edit is still in progress.")
+                If editPending OrElse savePending Then Throw New InvalidOperationException("A workbook edit or candidate export is still in progress.")
                 currentRevision += 1
                 Return currentRevision
             End SyncLock

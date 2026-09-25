@@ -4,7 +4,7 @@
     <OutputType>Exe</OutputType>
     <LangVersion>7.3</LangVersion>
     <PlatformTarget Condition="'$(PlatformTarget)' == ''">x86</PlatformTarget>
-    <ApplicationBin Condition="'$(ApplicationBin)' == ''">../../bin/EngineStage2b-Debug</ApplicationBin>
+    <ApplicationBin Condition="'$(ApplicationBin)' == ''">../../bin/EngineStage2c-Debug</ApplicationBin>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
   </PropertyGroup>
@@ -15,6 +15,7 @@
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Xml.Linq" />
     <Reference Include="DevExpress.Docs.v25.2"><HintPath>$(ApplicationBin)/DevExpress.Docs.v25.2.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="DevExpress.Spreadsheet.v25.2.Core"><HintPath>$(ApplicationBin)/DevExpress.Spreadsheet.v25.2.Core.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="DevExpress.Data.v25.2"><HintPath>$(ApplicationBin)/DevExpress.Data.v25.2.dll</HintPath><Private>false</Private></Reference>

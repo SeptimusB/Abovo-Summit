@@ -1,13 +1,22 @@
 {
   "schemaVersion": 3,
+  "excelFirstSaveCandidates20260925": {
+    "documentation": "Library/Excel_DevExpress_Engine_Stage2c_2026-09-25.md",
+    "status": "isolated same-format candidate export and cross-engine reopen; no source replacement or live Save",
+    "source": "Services/WorkbookEngines/WorkbookSaveCandidates.vb",
+    "trialFlag": "WorkbookEngineOptions.EnableCandidateSaveTrial (default false)",
+    "preservation": "value-only unchanged XML bundle and opaque original VBA; native same-format dynamic metadata verified; source security marker retained",
+    "validation": "XLSB Debug and XLSM Release candidates agree after other-engine full calculation across 45586 output positions; original files unchanged",
+    "remaining": ["current history/model XML serialization", "guarded source publication and dirty acknowledgement", "working-copy and permanently hung owner lifecycle", "three-route structural benchmarks", "live UI and full Excel/VBA round trips"]
+  },
   "excelFirstValueEdits20260925": {
     "documentation": "Library/Excel_DevExpress_Engine_Stage2b_2026-09-25.md",
-    "status": "isolated opt-in in-memory value edits; no live engine switch or save API",
+    "status": "isolated opt-in in-memory value edits; no live engine switch; candidate export is separately gated in checkpoint 2c",
     "source": "Services/WorkbookEngines/WorkbookValueEdits.vb",
     "trialFlag": "WorkbookEngineOptions.EnableValueEditTrial (default false)",
     "authority": "one STA; expected-before snapshot; full calculation and bounded outputs at one revision; verified compensation or quarantine",
     "permissionScope": "preserve separate raw-fill and lock-bit rules; never unprotect; formula/array/merge inputs excluded from this trial",
-    "remaining": ["existing change-manager validation/history/dirty integration", "complete format and permission refresh", "working-copy and hung-session recovery", "candidate save and round-trip verification", "three-route structural benchmarks"]
+    "remaining": ["existing change-manager validation/history/dirty integration", "complete format and permission refresh", "working-copy and hung-session recovery", "source publication and full round-trip verification", "three-route structural benchmarks"]
   },
   "excelFirstDisplay20260925": {
     "documentation": "Library/Excel_DevExpress_Engine_Stage2a_2026-09-25.md",

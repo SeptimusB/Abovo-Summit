@@ -72,7 +72,7 @@ Namespace Abovo.WorkbookEngines
             End Using
         End Sub
 
-        Private Shared Function ReadInternetZone(path As String) As String
+        Friend Shared Function ReadInternetZone(path As String) As String
             ' .NET Framework rejects the colon in an alternate-stream path.
             ' Use a read-only native handle; never remove or replace the marker.
             Using handle = OpenNativeFile(path & ":Zone.Identifier", &H80000000UI, 7UI, IntPtr.Zero, 3UI, 0UI, IntPtr.Zero)

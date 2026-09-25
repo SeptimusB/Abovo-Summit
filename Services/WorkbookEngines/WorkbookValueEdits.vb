@@ -160,7 +160,7 @@ Namespace Abovo.WorkbookEngines
             cancellation.ThrowIfCancellationRequested()
             SyncLock gate
                 RequireRevision(expected.Revision)
-                If editPending Then Throw New InvalidOperationException("An authoritative value edit is still in progress.")
+                If editPending OrElse savePending Then Throw New InvalidOperationException("A workbook edit or candidate export is still in progress.")
                 editPending = True
             End SyncLock
             Try

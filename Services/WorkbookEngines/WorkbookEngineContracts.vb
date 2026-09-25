@@ -6,7 +6,7 @@ Imports System.Threading
 
 Namespace Abovo.WorkbookEngines
     ' Production callers remain read-only. Isolated value-edit trials require
-    ' explicit opt-in; no Save API or live model integration is enabled here.
+    ' explicit opt-in. Candidate exports never replace a source or mark it saved.
     Public Enum WorkbookEnginePreference
         Automatic = 0
         DevExpressOnly = 1
@@ -25,12 +25,14 @@ Namespace Abovo.WorkbookEngines
         Public ReadOnly Property RequireSummitFunctions As Boolean
         Public ReadOnly Property OperationTimeoutMilliseconds As Integer
         Public ReadOnly Property EnableValueEditTrial As Boolean
+        Public ReadOnly Property EnableCandidateSaveTrial As Boolean
 
         Public Sub New(Optional preference As WorkbookEnginePreference = WorkbookEnginePreference.Automatic,
                        Optional allowTrustedVba As Boolean = True,
                        Optional requireSummitFunctions As Boolean = True,
                        Optional operationTimeoutMilliseconds As Integer = 120000,
-                       Optional enableValueEditTrial As Boolean = False)
+                       Optional enableValueEditTrial As Boolean = False,
+                       Optional enableCandidateSaveTrial As Boolean = False)
             If Not [Enum].IsDefined(GetType(WorkbookEnginePreference), preference) Then Throw New ArgumentOutOfRangeException(NameOf(preference))
             If operationTimeoutMilliseconds < 50 OrElse operationTimeoutMilliseconds > 1800000 Then Throw New ArgumentOutOfRangeException(NameOf(operationTimeoutMilliseconds))
             Me.Preference = preference
@@ -38,6 +40,7 @@ Namespace Abovo.WorkbookEngines
             Me.RequireSummitFunctions = requireSummitFunctions
             Me.OperationTimeoutMilliseconds = operationTimeoutMilliseconds
             Me.EnableValueEditTrial = enableValueEditTrial
+            Me.EnableCandidateSaveTrial = enableCandidateSaveTrial
         End Sub
     End Class
 

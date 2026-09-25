@@ -47,6 +47,8 @@ Local ignored evidence: `obj/EngineStage2b-*-debug.log` and `obj/EngineStage2b-*
 
 ## Next work
 
+Checkpoint 2c now implements opt-in candidate export and bounded cross-engine save/reopen validation: `Library/Excel_DevExpress_Engine_Stage2c_2026-09-25.md`. Original-file publication and live Save/dirty/history integration are still pending.
+
 1. Connect the operation to the existing change manager's typed validation, journal, dirty/recovery revision and UI events. Keep the current DevExpress path intact. Add authoritative formatting/permission refresh and multi-cell history tests before enabling an engine option.
 2. Implement security-preserving private working copies, reliable hung-session ownership/recovery, candidate saves with exact revision verification and explicit replacement. Saving remains disabled in this adapter until that boundary is ready.
 3. Execute the approved three-route structural comparison (`Structural_Engine_Comparison_Protocol_2026-09-25.md`). Complete-command and round-trip correctness still gates performance recommendations.
