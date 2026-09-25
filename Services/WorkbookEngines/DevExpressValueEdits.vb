@@ -12,7 +12,8 @@ Namespace Abovo.WorkbookEngines
             Return New WorkbookCellState(Read(area).ValueAt(0, 0), If(cell.HasFormula, cell.FormulaInvariant, ""),
                 cell.NumberFormat, cell.Protection.Locked, cell.Fill.PatternType = PatternType.Solid,
                 cell.GetArrayFormulaRange() IsNot Nothing OrElse cell.GetDynamicArrayFormulaRange() IsNot Nothing,
-                cell.GetMergedRanges().Count > 0, cell.Worksheet.IsProtected)
+                cell.GetMergedRanges().Count > 0, cell.Worksheet.IsProtected,
+                cell.Worksheet.ConditionalFormattings.GetConditionalFormattings(cell).Any())
         End Function
 
         Private Function SingleCell(area As WorkbookReadArea) As Cell

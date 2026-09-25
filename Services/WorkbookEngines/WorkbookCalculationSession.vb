@@ -140,13 +140,27 @@ Namespace Abovo.WorkbookEngines
             SyncLock gate
                 Return Not closing AndAlso Not failed AndAlso result IsNot Nothing AndAlso
                        result.SessionId = SessionId AndAlso result.Revision = currentRevision AndAlso
-                       result.SourceHash = SourceHash
+                       result.SourceHash = SourceHash AndAlso result.CalculationGeneration = calculationGeneration
             End SyncLock
         End Function
 
-        Public Async Function CalculateAndReadAsync(expectedRevision As Long, kind As WorkbookCalculationKind,
+        Public Function CalculateAndReadAsync(expectedRevision As Long, kind As WorkbookCalculationKind,
                                                     areas As IEnumerable(Of WorkbookReadArea),
-                                                    Optional cancellation As CancellationToken = Nothing) As Task(Of WorkbookCalculationResult)
+                                                    Optional cancellation As CancellationToken = Nothing,
+                                                    Optional includePresentation As Boolean = False) As Task(Of WorkbookCalculationResult)
+            Return ReadResultsAsync(expectedRevision, kind, areas, cancellation, includePresentation, Nothing)
+        End Function
+
+        Public Function ReadCurrentAsync(anchor As WorkbookCalculationResult, areas As IEnumerable(Of WorkbookReadArea),
+                                         Optional cancellation As CancellationToken = Nothing,
+                                         Optional includePresentation As Boolean = False) As Task(Of WorkbookCalculationResult)
+            If Not IsCurrent(anchor) Then Throw New InvalidOperationException("A current calculation is required before reading further results.")
+            Return ReadResultsAsync(anchor.Revision, WorkbookCalculationKind.Full, areas, cancellation, includePresentation, anchor)
+        End Function
+
+        Private Async Function ReadResultsAsync(expectedRevision As Long, kind As WorkbookCalculationKind,
+                                               areas As IEnumerable(Of WorkbookReadArea), cancellation As CancellationToken,
+                                               includePresentation As Boolean, anchor As WorkbookCalculationResult) As Task(Of WorkbookCalculationResult)
             If Not [Enum].IsDefined(GetType(WorkbookCalculationKind), kind) Then Throw New ArgumentOutOfRangeException(NameOf(kind))
             If areas Is Nothing Then Throw New ArgumentNullException(NameOf(areas))
             Dim requests As New List(Of WorkbookReadArea)()
@@ -158,6 +172,7 @@ Namespace Abovo.WorkbookEngines
                 requests.Add(area)
             Next
             If requests.Count = 0 Then Throw New ArgumentException("At least one read area is required.", NameOf(areas))
+            If includePresentation AndAlso cells > 10000 Then Throw New ArgumentException("A styled read is limited to 10,000 visible cells.", NameOf(areas))
             SyncLock gate
                 RequireRevision(expectedRevision)
             End SyncLock
@@ -168,8 +183,13 @@ Namespace Abovo.WorkbookEngines
                 Dim blocks As New List(Of WorkbookValueBlock)()
                 Dim timer = Stopwatch.StartNew()
                 Dim calculationMs As Long
+                Dim display As List(Of WorkbookPresentationBlock) = Nothing
                 Try
-                    backend.Calculate(kind)
+                    If anchor Is Nothing Then
+                        CalculateNative(kind)
+                    ElseIf Not IsCurrent(anchor) Then
+                        Throw New StaleResultException()
+                    End If
                     SyncLock gate
                         RequireRevision(expectedRevision)
                     End SyncLock
@@ -180,6 +200,7 @@ Namespace Abovo.WorkbookEngines
                         If block Is Nothing OrElse Not SameArea(block.Area, area) Then Throw New InvalidDataException("The calculation engine returned a different worksheet area from the requested area.")
                         blocks.Add(block)
                     Next
+                    If includePresentation Then display = ReadPresentationOnOwner(blocks)
                 Catch ex As OperationCanceledException
                     Throw
                 Catch ex As StaleResultException
@@ -191,8 +212,7 @@ Namespace Abovo.WorkbookEngines
                     End SyncLock
                     Throw
                 End Try
-                Dim result As New WorkbookCalculationResult(SessionId, expectedRevision, SourceHash, EngineName,
-                                                            calculationMs, timer.ElapsedMilliseconds - calculationMs, blocks)
+                Dim result = MakeResult(expectedRevision, calculationMs, timer.ElapsedMilliseconds - calculationMs, blocks, display)
                 SyncLock gate
                     RequireRevision(expectedRevision)
                 End SyncLock

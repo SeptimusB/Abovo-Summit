@@ -1,5 +1,12 @@
 {
   "schemaVersion": 3,
+  "excelFirstInteractiveBridge20260925": {
+    "documentation": "Library/Excel_DevExpress_Engine_Stage2g_2026-09-25.md",
+    "status": "Stage 2 in progress; internal real change-manager binding and partial display integration; normal 2.98 unchanged",
+    "source": ["Services/DataService/ModelEngineChanges.vb", "Services/DataService/ModelWorkbookRead.vb", "Services/WorkbookEngines/WorkbookValueBatches.vb", "Services/WorkbookEngines/WorkbookPresentation.vb", "Services/WorkbookEngines/NativePresentation.vb"],
+    "validation": "Both isolated configurations: 48 batch, 101 bridge, 33 native presentation, prior engine suites and 37 native three-format save assertions; 550 production input regression checks after facade migration",
+    "remaining": ["complete live editor/read routing", "production model opening/settings", "same-owner ongoing Save and exact dirty acknowledgement", "appearance transport performance", "structural gate and current XML coupling", "hang/security/storage and client acceptance"]
+  },
   "excelFirstHistorySave20260925": {
     "documentation": "Library/Excel_DevExpress_Engine_Stage2f_2026-09-25.md",
     "status": "isolated current-history candidate saves; production 2.98 unchanged",

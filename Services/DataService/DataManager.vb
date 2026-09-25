@@ -277,7 +277,7 @@ Namespace Abovo
                                     If(DefiningRange.RowCount = 1,
                                        DefiningRange(0, x),
                                        DefiningRange(x, 0))
-                                    ColHead = Replace(DataFieldDefinition.FieldName, "vblf", vbLf) & " vblf " & CellExamineNRD.DisplayText
+                                    ColHead = Replace(DataFieldDefinition.FieldName, "vblf", vbLf) & " vblf " & CellExamineNRD.ModelDisplayText()
                                     If Len(DataFieldDefinition.Units) > 0 Then ColHead += DataFieldDefinition.Units
                                     EnsureArrayCapacity(DataSets(DataSetIndex).DataColumns, ColIndex)
 
@@ -425,28 +425,28 @@ Namespace Abovo
                         For x = 1 To ColHeaderRange.RowCount
 
                             CellExamine = ColHeaderRange(x - 1, 0)
-                            ColHead = CRSource.RowsDescription & " " & CellExamine.DisplayText
+                            ColHead = CRSource.RowsDescription & " " & CellExamine.ModelDisplayText()
 
                             If ColHeaderRange.ColumnCount = 2 Then
 
                                 CellExamineRight = ColHeaderRange(x - 1, 1)
-                                ColHead = ColHead & vbLf & " (" & CellExamineRight.DisplayText & ")"
+                                ColHead = ColHead & vbLf & " (" & CellExamineRight.ModelDisplayText() & ")"
 
                             ElseIf ColHeaderRange.ColumnCount = 3 Then
 
                                 CellExamineRight = ColHeaderRange(x - 1, 1)
-                                ColHead = ColHead & vbLf & " (" & CellExamineRight.DisplayText & " "
+                                ColHead = ColHead & vbLf & " (" & CellExamineRight.ModelDisplayText() & " "
                                 CellExamineRight = ColHeaderRange(x - 1, 2)
-                                ColHead = ColHead & CellExamineRight.DisplayText & ")"
+                                ColHead = ColHead & CellExamineRight.ModelDisplayText() & ")"
 
                             ElseIf ColHeaderRange.ColumnCount = 4 Then
 
                                 CellExamineRight = ColHeaderRange(x - 1, 1)
-                                ColHead = ColHead & vbLf & " (" & CellExamineRight.DisplayText & " "
+                                ColHead = ColHead & vbLf & " (" & CellExamineRight.ModelDisplayText() & " "
                                 CellExamineRight = ColHeaderRange(x - 1, 2)
-                                ColHead = ColHead & CellExamineRight.DisplayText & " "
+                                ColHead = ColHead & CellExamineRight.ModelDisplayText() & " "
                                 CellExamineRight = ColHeaderRange(x - 1, 3)
-                                ColHead = ColHead & CellExamineRight.DisplayText & ")"
+                                ColHead = ColHead & CellExamineRight.ModelDisplayText() & ")"
 
                             End If
 
@@ -496,19 +496,19 @@ Namespace Abovo
                         For x = 0 To RowHeaderRange.ColumnCount - 1
 
                             CellExamine = RowHeaderRange(0, x)
-                            RowHead = CellExamine.DisplayText
+                            RowHead = CellExamine.ModelDisplayText()
 
                             If RowHeaderRange.RowCount = 2 Then
 
                                 CellExamineRight = RowHeaderRange(1, x)
-                                RowHead = RowHead & vbLf & " (" & CellExamineRight.DisplayText & ")"
+                                RowHead = RowHead & vbLf & " (" & CellExamineRight.ModelDisplayText() & ")"
 
                             ElseIf RowHeaderRange.RowCount = 3 Then
 
                                 CellExamineRight = RowHeaderRange(1, x)
-                                RowHead = RowHead & vbLf & " (" & CellExamineRight.DisplayText & " "
+                                RowHead = RowHead & vbLf & " (" & CellExamineRight.ModelDisplayText() & " "
                                 CellExamineRight = RowHeaderRange(2, x)
-                                RowHead = RowHead & CellExamineRight.DisplayText & ")"
+                                RowHead = RowHead & CellExamineRight.ModelDisplayText() & ")"
 
                             End If
 
@@ -545,19 +545,19 @@ Namespace Abovo
 
                                     Case "S"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).StringValue = clCell.DisplayText
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).StringValue = clCell.ModelDisplayText()
 
                                     Case "B"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).BoolValue = CInt(clCell.Value.NumericValue)
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).BoolValue = CInt(clCell.ModelValue().NumericValue)
 
                                     Case "D", "P", "C", "M", "SM", "R"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).RealValue = CDbl(clCell.Value.NumericValue)
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).RealValue = CDbl(clCell.ModelValue().NumericValue)
 
                                     Case "I", "Y"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).IntValue = CInt(clCell.Value.NumericValue)
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).IntValue = CInt(clCell.ModelValue().NumericValue)
 
 
                                 End Select
@@ -603,28 +603,28 @@ Namespace Abovo
                         For x = 1 To ColHeaderRange.ColumnCount
 
                             CellExamine = ColHeaderRange(0, x - 1)
-                            ColHead = CellExamine.DisplayText
+                            ColHead = CellExamine.ModelDisplayText()
 
                             If ColHeaderRange.RowCount = 2 Then
 
                                 CellExamineRight = ColHeaderRange(1, x - 1)
-                                ColHead = ColHead & vbLf & " (" & CellExamineRight.DisplayText & ")"
+                                ColHead = ColHead & vbLf & " (" & CellExamineRight.ModelDisplayText() & ")"
 
                             ElseIf ColHeaderRange.RowCount = 3 Then
 
                                 CellExamineRight = ColHeaderRange(1, x - 1)
-                                ColHead = ColHead & vbLf & " (" & CellExamineRight.DisplayText & " "
+                                ColHead = ColHead & vbLf & " (" & CellExamineRight.ModelDisplayText() & " "
                                 CellExamineRight = ColHeaderRange(2, x - 1)
-                                ColHead = ColHead & CellExamineRight.DisplayText & ")"
+                                ColHead = ColHead & CellExamineRight.ModelDisplayText() & ")"
 
                             ElseIf ColHeaderRange.RowCount = 4 Then
 
                                 CellExamineRight = ColHeaderRange(1, x - 1)
-                                ColHead = ColHead & vbLf & " (" & CellExamineRight.DisplayText & " "
+                                ColHead = ColHead & vbLf & " (" & CellExamineRight.ModelDisplayText() & " "
                                 CellExamineRight = ColHeaderRange(2, x - 1)
-                                ColHead = ColHead & CellExamineRight.DisplayText & " "
+                                ColHead = ColHead & CellExamineRight.ModelDisplayText() & " "
                                 CellExamineRight = ColHeaderRange(3, x - 1)
-                                ColHead = ColHead & CellExamineRight.DisplayText & ")"
+                                ColHead = ColHead & CellExamineRight.ModelDisplayText() & ")"
 
                             End If
 
@@ -674,19 +674,19 @@ Namespace Abovo
                         For x = 0 To RowHeaderRange.RowCount - 1
 
                             CellExamine = RowHeaderRange(x, 0)
-                            RowHead = CellExamine.DisplayText
+                            RowHead = CellExamine.ModelDisplayText()
 
                             If RowHeaderRange.ColumnCount = 2 Then
 
                                 CellExamineRight = RowHeaderRange(x, 1)
-                                RowHead = RowHead & " (" & CellExamineRight.DisplayText & ")"
+                                RowHead = RowHead & " (" & CellExamineRight.ModelDisplayText() & ")"
 
                             ElseIf RowHeaderRange.ColumnCount = 3 Then
 
                                 CellExamineRight = RowHeaderRange(x, 1)
-                                RowHead = RowHead & " (" & CellExamineRight.DisplayText & " "
+                                RowHead = RowHead & " (" & CellExamineRight.ModelDisplayText() & " "
                                 CellExamineRight = RowHeaderRange(x, 2)
-                                RowHead = RowHead & CellExamineRight.DisplayText & ")"
+                                RowHead = RowHead & CellExamineRight.ModelDisplayText() & ")"
 
                             End If
 
@@ -723,19 +723,19 @@ Namespace Abovo
 
                                     Case "S"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).StringValue = clCell.DisplayText
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).StringValue = clCell.ModelDisplayText()
 
                                     Case "B"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).BoolValue = CInt(clCell.Value.NumericValue)
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).BoolValue = CInt(clCell.ModelValue().NumericValue)
 
                                     Case "D", "P", "C", "M", "SM", "R"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).RealValue = CDbl(clCell.Value.NumericValue)
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).RealValue = CDbl(clCell.ModelValue().NumericValue)
 
                                     Case "I", "Y"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).IntValue = CInt(clCell.Value.NumericValue)
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).IntValue = CInt(clCell.ModelValue().NumericValue)
 
 
                                 End Select
@@ -1007,9 +1007,9 @@ Namespace Abovo
                                     CellExamineRight = DefiningRange(DefNRIndex, 1)
 
                                     If Not IsNothing(DataFieldDefinition.ExtraHeadingPreWord) Then
-                                        ColHead += vbLf & " (" & DataFieldDefinition.ExtraHeadingPreWord & " " & CellExamineRight.DisplayText & ")"
+                                        ColHead += vbLf & " (" & DataFieldDefinition.ExtraHeadingPreWord & " " & CellExamineRight.ModelDisplayText() & ")"
                                     Else
-                                        ColHead += vbLf & " (" & CellExamineRight.DisplayText & ")"
+                                        ColHead += vbLf & " (" & CellExamineRight.ModelDisplayText() & ")"
                                     End If
 
                                 End If
@@ -1071,7 +1071,7 @@ Namespace Abovo
                                 .AllowEditRepNRHereBlanks = True,
                                 .EditRepNRNROrientation = RepeatMethod,
                                 .EditNRIndexPosition = DefNRIndex,
-                                .EditRepNRHereInitialValue = CellExamineNRD.DisplayText,
+                                .EditRepNRHereInitialValue = CellExamineNRD.ModelDisplayText(),
                                 .IsControlColumn = True,
                                 .RepeatingHeaderText = DataFieldDefinition.RepeatingHeaderText,
                                 .TipText = DataFieldDefinition.TipText,
@@ -1138,8 +1138,8 @@ Namespace Abovo
                                     If CellExamine.Protection.Locked Then LockCell = True
 
                                     DataSets(DataSetIndex).DataRows(i + ForBandRowOffset).DataCells(ColIndex) = New CellDataPoint With {
-                                    .FoColor = CellExamine.Font.Color,
-                                    .BGColor = CellExamine.Fill.BackgroundColor,
+                                    .FoColor = CellExamine.ModelFont().Color,
+                                    .BGColor = CellExamine.ModelFill().BackgroundColor,
                                     .Index = ColIndex,
                                     .IsLocked = LockCell,
                                     .SourceAddress = CellExamine.GetReferenceA1,
@@ -1147,9 +1147,9 @@ Namespace Abovo
 
                                     Dim CDP As CellDataPoint = DataSets(DataSetIndex).DataRows(i + ForBandRowOffset).DataCells(ColIndex)
 
-                                    If ApplyRule Then CDP.IsLocked = IIf(CellExamine.Fill.PatternType = PatternType.Solid, False, True)
+                                    If ApplyRule Then CDP.IsLocked = IIf(CellExamine.ModelFill().PatternType = PatternType.Solid, False, True)
 
-                                    If Not CellExamine.Value.IsEmpty Then
+                                    If Not CellExamine.ModelValue().IsEmpty Then
 
                                         If Not DataSets(DataSetIndex).DataColumns(ColIndex).ColumnTag.IsCalculated Then CDP.IsEmpty = False
 
@@ -1157,19 +1157,19 @@ Namespace Abovo
 
                                             Case "S"
 
-                                                CDP.StringValue = CellExamine.DisplayText
+                                                CDP.StringValue = CellExamine.ModelDisplayText()
 
                                             Case "B"
 
-                                                CDP.BoolValue = CInt(CellExamine.Value.NumericValue)
+                                                CDP.BoolValue = CInt(CellExamine.ModelValue().NumericValue)
 
                                             Case "D", "P", "C", "M", "SM", "R"
 
-                                                CDP.RealValue = CDbl(CellExamine.Value.NumericValue)
+                                                CDP.RealValue = CDbl(CellExamine.ModelValue().NumericValue)
 
                                             Case "I", "Y"
 
-                                                CDP.IntValue = CInt(CellExamine.Value.NumericValue)
+                                                CDP.IntValue = CInt(CellExamine.ModelValue().NumericValue)
 
                                         End Select
 
@@ -1296,8 +1296,8 @@ Nextnrds:
                                     ColIndex)
 
                                 DataSets(DataSetIndex).DataRows(i + ForBandRowOffset).DataCells(ColIndex) = New CellDataPoint With {
-                                .FoColor = CellExamine.Font.Color,
-                                .BGColor = CellExamine.Fill.BackgroundColor,
+                                .FoColor = CellExamine.ModelFont().Color,
+                                .BGColor = CellExamine.ModelFill().BackgroundColor,
                                 .Index = ColIndex,
                                 .IsLocked = LockCell,
                                 .SourceAddress = CellExamine.GetReferenceA1,
@@ -1307,11 +1307,11 @@ Nextnrds:
 
                                 If ApplyRule Then
 
-                                    CDP.IsLocked = IIf(CellExamine.Fill.PatternType = PatternType.Solid, False, True)
+                                    CDP.IsLocked = IIf(CellExamine.ModelFill().PatternType = PatternType.Solid, False, True)
 
                                 End If
 
-                                If Len(CellExamine.DisplayText) > 0 Then
+                                If Len(CellExamine.ModelDisplayText()) > 0 Then
 
                                     If Not DataSets(DataSetIndex).DataColumns(ColIndex).ColumnTag.IsCalculated Then
 
@@ -1323,19 +1323,19 @@ Nextnrds:
 
                                         Case "S"
 
-                                            CDP.StringValue = CellExamine.DisplayText
+                                            CDP.StringValue = CellExamine.ModelDisplayText()
 
                                         Case "B"
 
-                                            CDP.BoolValue = CInt(CellExamine.Value.NumericValue)
+                                            CDP.BoolValue = CInt(CellExamine.ModelValue().NumericValue)
 
                                         Case "D", "P", "C", "M", "SM", "R"
 
-                                            CDP.RealValue = CDbl(CellExamine.Value.NumericValue)
+                                            CDP.RealValue = CDbl(CellExamine.ModelValue().NumericValue)
 
                                         Case "I", "Y"
 
-                                            CDP.IntValue = CInt(CellExamine.Value.NumericValue)
+                                            CDP.IntValue = CInt(CellExamine.ModelValue().NumericValue)
 
                                     End Select
 
@@ -1428,33 +1428,33 @@ NextDFD:
                 If CellExamine.Protection.Locked Then LockCell = True
 
                 DataSets(DataSetIndex).DataRows(0).DataCells(0) = New CellDataPoint With {
-                                        .FoColor = CellExamine.Font.Color,
-                                        .BGColor = CellExamine.Fill.BackgroundColor,
+                                        .FoColor = CellExamine.ModelFont().Color,
+                                        .BGColor = CellExamine.ModelFill().BackgroundColor,
                                         .Index = 0,
                                         .IsLocked = LockCell,
                                         .SourceAddress = CellExamine.GetReferenceA1,
                                         .SourceSheet = WSName}
 
-                If Not CellExamine.Value.IsEmpty Then
+                If Not CellExamine.ModelValue().IsEmpty Then
 
 
                     Select Case CurrDataType
 
                         Case "S"
 
-                            DataSets(DataSetIndex).DataRows(0).DataCells(0).StringValue = CellExamine.DisplayText
+                            DataSets(DataSetIndex).DataRows(0).DataCells(0).StringValue = CellExamine.ModelDisplayText()
 
                         Case "B"
 
-                            DataSets(DataSetIndex).DataRows(0).DataCells(0).BoolValue = CInt(CellExamine.Value.NumericValue)
+                            DataSets(DataSetIndex).DataRows(0).DataCells(0).BoolValue = CInt(CellExamine.ModelValue().NumericValue)
 
                         Case "P", "C", "M", "SM", "R"
 
-                            DataSets(DataSetIndex).DataRows(0).DataCells(0).RealValue = CDbl(CellExamine.Value.NumericValue)
+                            DataSets(DataSetIndex).DataRows(0).DataCells(0).RealValue = CDbl(CellExamine.ModelValue().NumericValue)
 
                         Case "I", "Y", "D"
 
-                            DataSets(DataSetIndex).DataRows(0).DataCells(0).IntValue = CInt(CellExamine.Value.NumericValue)
+                            DataSets(DataSetIndex).DataRows(0).DataCells(0).IntValue = CInt(CellExamine.ModelValue().NumericValue)
 
                     End Select
 
@@ -1750,7 +1750,7 @@ NextDFD:
 
                                 If NumHeaderCells = 1 Then
 
-                                    HeaderText = CellExamineNRD.DisplayText
+                                    HeaderText = CellExamineNRD.ModelDisplayText()
 
                                 Else
 
@@ -1760,7 +1760,7 @@ NextDFD:
 
                                             If HeadCellCount > 0 Then HeaderText += "vblf"
                                             CellExamineHeader = DefiningRange(DefNRIndex, HeadCellCount)
-                                            HeaderText += CellExamineHeader.DisplayText
+                                            HeaderText += CellExamineHeader.ModelDisplayText()
 
                                         Next
 
@@ -1770,7 +1770,7 @@ NextDFD:
 
                                             If HeadCellCount > 0 Then HeaderText += "vblf"
                                             CellExamineHeader = DefiningRange(HeadCellCount, DefNRIndex)
-                                            HeaderText += CellExamineHeader.DisplayText
+                                            HeaderText += CellExamineHeader.ModelDisplayText()
 
                                         Next
 
@@ -1816,7 +1816,7 @@ NextDFD:
                                     .AllowEditRepNRHereBlanks = True,
                                     .EditRepNRNROrientation = RepeatMethod,
                                     .EditNRIndexPosition = DefNRIndex,
-                                    .EditRepNRHereInitialValue = CellExamineNRD.DisplayText,
+                                    .EditRepNRHereInitialValue = CellExamineNRD.ModelDisplayText(),
                                     .IsControlColumn = True,
                                     .RepeatingHeaderText = DataFieldDefinition.RepeatingHeaderText,
                                     .TipText = DataFieldDefinition.TipText,
@@ -1846,8 +1846,8 @@ NextDFD:
                                     If CellExamine.Protection.Locked Then LockCell = True
 
                                     DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex) = New CellDataPoint With {
-                                        .FoColor = CellExamine.Font.Color,
-                                        .BGColor = CellExamine.Fill.BackgroundColor,
+                                        .FoColor = CellExamine.ModelFont().Color,
+                                        .BGColor = CellExamine.ModelFill().BackgroundColor,
                                         .Index = ColIndex,
                                         .IsLocked = LockCell,
                                         .SourceAddress = CellExamine.GetReferenceA1,
@@ -1875,12 +1875,12 @@ NextDFD:
 
                                     If ApplyRule Then
                                         DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).IsLocked =
-                                            IIf(CellExamine.Fill.PatternType = PatternType.Solid, False, True)
+                                            IIf(CellExamine.ModelFill().PatternType = PatternType.Solid, False, True)
                                     End If
 
-                                    If Not CellExamine.Value.IsEmpty Then
+                                    If Not CellExamine.ModelValue().IsEmpty Then
 
-                                        If Not DataSets(DataSetIndex).DataColumns(ColIndex).ColumnTag.IsCalculated Then 'And Not CellExamine.DisplayText = "0"
+                                        If Not DataSets(DataSetIndex).DataColumns(ColIndex).ColumnTag.IsCalculated Then 'And Not CellExamine.ModelDisplayText() = "0"
 
                                             DataSets(DataSetIndex).DataRows(j).IsEmpty = False
 
@@ -1892,24 +1892,24 @@ NextDFD:
 
                                             Case "FL"
 
-                                                DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).StringValue = Left(CellExamine.DisplayText, 10)
-                                                DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).ExtraData = CellExamine.DisplayText
+                                                DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).StringValue = Left(CellExamine.ModelDisplayText(), 10)
+                                                DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).ExtraData = CellExamine.ModelDisplayText()
 
                                             Case "B"
 
-                                                DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).BoolValue = CInt(CellExamine.Value.NumericValue)
+                                                DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).BoolValue = CInt(CellExamine.ModelValue().NumericValue)
 
                                             Case "D", "P", "C", "M", "SM", "R"
 
-                                                DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).RealValue = CDbl(CellExamine.Value.NumericValue)
+                                                DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).RealValue = CDbl(CellExamine.ModelValue().NumericValue)
 
                                             Case "I", "Y"
 
 
-                                                DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).IntValue = CInt(CellExamine.Value.NumericValue)
+                                                DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).IntValue = CInt(CellExamine.ModelValue().NumericValue)
                                             Case Else
 
-                                                DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).StringValue = CellExamine.DisplayText
+                                                DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).StringValue = CellExamine.ModelDisplayText()
                                         End Select
 
                                         DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).IsEmpty = False
@@ -1990,8 +1990,8 @@ Nextnrds2:
                                 If CellExamine.Protection.Locked Then LockCell = True
 
                                 DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex) = New CellDataPoint With {
-                                        .FoColor = CellExamine.Font.Color,
-                                        .BGColor = CellExamine.Fill.BackgroundColor,
+                                        .FoColor = CellExamine.ModelFont().Color,
+                                        .BGColor = CellExamine.ModelFill().BackgroundColor,
                                         .Index = ColIndex,
                                         .IsLocked = LockCell,
                                         .SourceAddress = CellExamine.GetReferenceA1,
@@ -2016,9 +2016,9 @@ Nextnrds2:
 
                                 End If
 
-                                If ApplyRule Then DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).IsLocked = IIf(CellExamine.Fill.PatternType = PatternType.Solid, False, True)
+                                If ApplyRule Then DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).IsLocked = IIf(CellExamine.ModelFill().PatternType = PatternType.Solid, False, True)
 
-                                If Not CellExamine.Value.IsEmpty Then
+                                If Not CellExamine.ModelValue().IsEmpty Then
 
                                     If Not DataSets(DataSetIndex).DataColumns(ColIndex).ColumnTag.IsCalculated Then
 
@@ -2030,19 +2030,19 @@ Nextnrds2:
 
                                         Case "S"
 
-                                            DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).StringValue = CellExamine.DisplayText
+                                            DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).StringValue = CellExamine.ModelDisplayText()
 
                                         Case "B"
 
-                                            DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).BoolValue = CInt(CellExamine.Value.NumericValue)
+                                            DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).BoolValue = CInt(CellExamine.ModelValue().NumericValue)
 
                                         Case "D", "P", "C", "M", "SM", "R"
 
-                                            DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).RealValue = CDbl(CellExamine.Value.NumericValue)
+                                            DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).RealValue = CDbl(CellExamine.ModelValue().NumericValue)
 
                                         Case "I", "Y"
 
-                                            DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).IntValue = CInt(CellExamine.Value.NumericValue)
+                                            DataSets(DataSetIndex).DataRows(j).DataCells(ColIndex).IntValue = CInt(CellExamine.ModelValue().NumericValue)
 
                                     End Select
 
@@ -2328,7 +2328,7 @@ NextDFD2:
 
                             End If
 
-                            TestString = CellExamine.DisplayText
+                            TestString = CellExamine.ModelDisplayText()
 
                             If IsNumeric(TestString) Then
 
@@ -2343,7 +2343,7 @@ NextDFD2:
 
                             End If
 
-                            If CellExamine.Font.Bold = True Then
+                            If CellExamine.ModelFont().Bold = True Then
 
                                 StrOutput.Append("font-weight:800;")
 
@@ -2353,13 +2353,13 @@ NextDFD2:
 
                             End If
 
-                            StrOutput.Append("background:").Append(CellExamine.Fill.BackgroundColor).Append(";")
+                            StrOutput.Append("background:").Append(CellExamine.ModelFill().BackgroundColor).Append(";")
 
                             StrOutput.Append("Text-decoration: none;text-underline-style:none;text-line-through:none;
                                               Font-family: Arial, sans - serif;mso-background-source: auto;mso-pattern:red thin - diag - stripe'>")
 
 
-                            StrOutput.Append(CellExamine.DisplayText)
+                            StrOutput.Append(CellExamine.ModelDisplayText())
                             StrOutput.Append("</td>")
                         Next
 
@@ -2446,7 +2446,7 @@ NextDFD2:
 
                         End If
 
-                        TestString = CellExamine.DisplayText
+                        TestString = CellExamine.ModelDisplayText()
 
                         If IsNumeric(TestString) Then
 
@@ -2461,7 +2461,7 @@ NextDFD2:
 
                         End If
 
-                        If CellExamine.Font.Bold = True Then
+                        If CellExamine.ModelFont().Bold = True Then
 
                             StrOutput.Append("font-weight:800;")
 
@@ -2471,13 +2471,13 @@ NextDFD2:
 
                         End If
 
-                        StrOutput.Append("background:").Append(CellExamine.Fill.BackgroundColor).Append(";")
+                        StrOutput.Append("background:").Append(CellExamine.ModelFill().BackgroundColor).Append(";")
 
                         StrOutput.Append("Text-decoration: none;text-underline-style:none;text-line-through:none;
                                               Font-family: Arial, sans - serif;mso-background-source: auto;mso-pattern:red thin - diag - stripe'>")
 
 
-                        StrOutput.Append(System.Net.WebUtility.HtmlEncode(CellExamine.DisplayText))
+                        StrOutput.Append(System.Net.WebUtility.HtmlEncode(CellExamine.ModelDisplayText()))
                         StrOutput.Append("</td>")
                     Next
 
@@ -2567,10 +2567,10 @@ NextDFD2:
             Dim wsGA As DevExpress.Spreadsheet.Worksheet = WBCoreBP.Worksheets("Global Assumptions")
             Dim clCell As DevExpress.Spreadsheet.Cell
             clCell = wsGA.Cells(5, 2)
-            InternalCompanyName = CStr(clCell.Value.TextValue)
+            InternalCompanyName = CStr(clCell.ModelValue().TextValue)
             BPDetails.CompanyName = InternalCompanyName
             clCell = wsGA.Cells(7, 2)
-            BPDetails.StartDate = CDate(clCell.Value.DateTimeValue)
+            BPDetails.StartDate = CDate(clCell.ModelValue().DateTimeValue)
 
         End Sub
 
@@ -2597,43 +2597,43 @@ NextDFD2:
 
                 clCell = wsStock(4, sRef)
 
-                If Len(clCell.DisplayText) > 0 Then
+                If Len(clCell.ModelDisplayText()) > 0 Then
 
-                    Stock.StockItems(i).StockDescription = clCell.DisplayText
+                    Stock.StockItems(i).StockDescription = clCell.ModelDisplayText()
 
 
                     clCell = wsStock(5, sRef)
-                    AbovoBP.Stock.StockItems(i).OwnedManaged = clCell.DisplayText
+                    AbovoBP.Stock.StockItems(i).OwnedManaged = clCell.ModelDisplayText()
 
 
                     clCell = wsStock(6, sRef)
-                    AbovoBP.Stock.StockItems(i).SOCIStockType = clCell.DisplayText
+                    AbovoBP.Stock.StockItems(i).SOCIStockType = clCell.ModelDisplayText()
 
 
                     clCell = wsStock(7, sRef)
-                    AbovoBP.Stock.StockItems(i).SOCIRentType = clCell.DisplayText
+                    AbovoBP.Stock.StockItems(i).SOCIRentType = clCell.ModelDisplayText()
 
 
                     clCell = wsStock(16, sRef)
-                    If Len(clCell.DisplayText) > 0 Then AbovoBP.Stock.StockItems(i).CurrentStockNumbers = CInt(clCell.DisplayText)
+                    If Len(clCell.ModelDisplayText()) > 0 Then AbovoBP.Stock.StockItems(i).CurrentStockNumbers = CInt(clCell.ModelDisplayText())
 
 
                     clCell = wsStock(19, sRef)
-                    If Len(clCell.DisplayText) > 0 Then AbovoBP.Stock.StockItems(i).PreBPlanStartDateNewBuild = CInt(clCell.DisplayText)
+                    If Len(clCell.ModelDisplayText()) > 0 Then AbovoBP.Stock.StockItems(i).PreBPlanStartDateNewBuild = CInt(clCell.ModelDisplayText())
 
 
                     clCell = wsStock(21, sRef)
-                    If Len(clCell.DisplayText) > 0 Then AbovoBP.Stock.StockItems(i).PreBPlanStartDateDemolitions = CInt(clCell.DisplayText)
+                    If Len(clCell.ModelDisplayText()) > 0 Then AbovoBP.Stock.StockItems(i).PreBPlanStartDateDemolitions = CInt(clCell.ModelDisplayText())
 
 
                     clCell = wsStock(22, sRef)
-                    If Len(clCell.DisplayText) > 0 Then AbovoBP.Stock.StockItems(i).PreBPlanStartDateRTBs = CInt(clCell.DisplayText)
+                    If Len(clCell.ModelDisplayText()) > 0 Then AbovoBP.Stock.StockItems(i).PreBPlanStartDateRTBs = CInt(clCell.ModelDisplayText())
 
                     clCell = wsStock(27, sRef)
-                    If Len(clCell.DisplayText) > 0 Then AbovoBP.Stock.StockItems(i).NewLettings = CInt(clCell.DisplayText)
+                    If Len(clCell.ModelDisplayText()) > 0 Then AbovoBP.Stock.StockItems(i).NewLettings = CInt(clCell.ModelDisplayText())
 
                     clCell = wsStock(34, sRef)
-                    If Len(clCell.DisplayText) > 0 Then AbovoBP.Stock.StockItems(i).NewLetInitialRate = CDbl(clCell.Value.NumericValue)
+                    If Len(clCell.ModelDisplayText()) > 0 Then AbovoBP.Stock.StockItems(i).NewLetInitialRate = CDbl(clCell.ModelValue().NumericValue)
                     AbovoBP.Stock.StockItems(i).FUpdateStockTotals()
 
                 End If
@@ -3835,19 +3835,19 @@ ErrorHandler:
 
                             CellExamine = ColHeaderRange(x, 0)
                             ReDim Preserve DataSets(DataSetIndex).DataColumns(x)
-                            ColHead = CellExamine.DisplayText
+                            ColHead = CellExamine.ModelDisplayText()
 
                             If ColHeaderRange.ColumnCount = 2 Then
 
                                 CellExamineRight = ColHeaderRange(x, 1)
-                                ColHead = ColHead & " (" & CellExamineRight.DisplayText & ")"
+                                ColHead = ColHead & " (" & CellExamineRight.ModelDisplayText() & ")"
 
                             ElseIf ColHeaderRange.ColumnCount = 3 Then
 
                                 CellExamineRight = ColHeaderRange(x, 1)
-                                ColHead = ColHead & " (" & CellExamineRight.DisplayText & " "
+                                ColHead = ColHead & " (" & CellExamineRight.ModelDisplayText() & " "
                                 CellExamineRight = ColHeaderRange(x, 2)
-                                ColHead = ColHead & CellExamineRight.DisplayText & ")"
+                                ColHead = ColHead & CellExamineRight.ModelDisplayText() & ")"
 
                             End If
 
@@ -3894,19 +3894,19 @@ ErrorHandler:
 
                             CellExamine = ColHeaderRange(0, x)
                             ReDim Preserve DataSets(DataSetIndex).DataRows(x)
-                            RowHead = "<B>" + CellExamine.DisplayText + "</B>"
+                            RowHead = "<B>" + CellExamine.ModelDisplayText() + "</B>"
 
                             If ColHeaderRange.RowCount = 2 Then
 
                                 CellExamineRight = ColHeaderRange(1, x)
-                                RowHead = RowHead & "<br>(" & CellExamineRight.DisplayText & ")"
+                                RowHead = RowHead & "<br>(" & CellExamineRight.ModelDisplayText() & ")"
 
                             ElseIf ColHeaderRange.ColumnCount = 3 Then
 
                                 CellExamineRight = ColHeaderRange(1, x)
-                                RowHead = RowHead & "<br>(" & CellExamineRight.DisplayText & " "
+                                RowHead = RowHead & "<br>(" & CellExamineRight.ModelDisplayText() & " "
                                 CellExamineRight = ColHeaderRange(2, x)
-                                RowHead = RowHead & CellExamineRight.DisplayText & ")"
+                                RowHead = RowHead & CellExamineRight.ModelDisplayText() & ")"
 
                             End If
 
@@ -3943,23 +3943,23 @@ ErrorHandler:
 
                                     Case "S"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).StringValue = clCell.DisplayText
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).StringValue = clCell.ModelDisplayText()
 
                                     Case "B"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).BoolValue = CInt(clCell.Value.NumericValue)
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).BoolValue = CInt(clCell.ModelValue().NumericValue)
 
                                     Case "N", "P", "M", "SM", "R"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).RealValue = CDbl(clCell.Value.NumericValue)
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).RealValue = CDbl(clCell.ModelValue().NumericValue)
 
                                     Case "I", "Y", "D"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).IntValue = CInt(clCell.Value.NumericValue)
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).IntValue = CInt(clCell.ModelValue().NumericValue)
 
                                     Case "Y"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).IntValue = CInt(clCell.Value.NumericValue)
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).IntValue = CInt(clCell.ModelValue().NumericValue)
 
                                 End Select
 
@@ -4002,19 +4002,19 @@ ErrorHandler:
 
                             CellExamine = ColHeaderRange(x, 0)
                             ReDim Preserve DataSets(DataSetIndex).DataColumns(x)
-                            ColHead = CellExamine.DisplayText
+                            ColHead = CellExamine.ModelDisplayText()
 
                             If ColHeaderRange.ColumnCount = 2 Then
 
                                 CellExamineRight = ColHeaderRange(x, 1)
-                                ColHead = ColHead & " (" & CellExamineRight.DisplayText & ")"
+                                ColHead = ColHead & " (" & CellExamineRight.ModelDisplayText() & ")"
 
                             ElseIf ColHeaderRange.ColumnCount = 3 Then
 
                                 CellExamineRight = ColHeaderRange(x, 1)
-                                ColHead = ColHead & " (" & CellExamineRight.DisplayText & " "
+                                ColHead = ColHead & " (" & CellExamineRight.ModelDisplayText() & " "
                                 CellExamineRight = ColHeaderRange(x, 2)
-                                ColHead = ColHead & CellExamineRight.DisplayText & ")"
+                                ColHead = ColHead & CellExamineRight.ModelDisplayText() & ")"
 
                             End If
 
@@ -4062,19 +4062,19 @@ ErrorHandler:
 
                             CellExamine = ColHeaderRange(0, x)
                             ReDim Preserve DataSets(DataSetIndex).DataRows(x)
-                            RowHead = CellExamine.DisplayText
+                            RowHead = CellExamine.ModelDisplayText()
 
                             If ColHeaderRange.RowCount = 2 Then
 
                                 CellExamineRight = ColHeaderRange(1, x)
-                                RowHead = RowHead & " (" & CellExamineRight.DisplayText & ")"
+                                RowHead = RowHead & " (" & CellExamineRight.ModelDisplayText() & ")"
 
                             ElseIf ColHeaderRange.ColumnCount = 3 Then
 
                                 CellExamineRight = ColHeaderRange(1, x)
-                                RowHead = RowHead & " (" & CellExamineRight.DisplayText & " "
+                                RowHead = RowHead & " (" & CellExamineRight.ModelDisplayText() & " "
                                 CellExamineRight = ColHeaderRange(2, x)
-                                RowHead = RowHead & CellExamineRight.DisplayText & ")"
+                                RowHead = RowHead & CellExamineRight.ModelDisplayText() & ")"
 
                             End If
 
@@ -4112,23 +4112,23 @@ ErrorHandler:
 
                                     Case "S"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).StringValue = clCell.DisplayText
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).StringValue = clCell.ModelDisplayText()
 
                                     Case "B"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).BoolValue = CInt(clCell.Value.NumericValue)
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).BoolValue = CInt(clCell.ModelValue().NumericValue)
 
                                     Case "N", "P", "M", "SM", "R"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).RealValue = CDbl(clCell.Value.NumericValue)
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).RealValue = CDbl(clCell.ModelValue().NumericValue)
 
                                     Case "I", "Y", "D"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).IntValue = CInt(clCell.Value.NumericValue)
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).IntValue = CInt(clCell.ModelValue().NumericValue)
 
                                     Case "Y"
 
-                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).IntValue = CInt(clCell.Value.NumericValue)
+                                        DataSets(DataSetIndex).DataRows(i).DataCells(j).IntValue = CInt(clCell.ModelValue().NumericValue)
 
                                 End Select
 
@@ -4423,19 +4423,19 @@ ErrorHandler:
 
                                 Case "S"
 
-                                    SheetDataRow.DataCells(SheetDataColumn.Index).StringValue = SourceCell.DisplayText
+                                    SheetDataRow.DataCells(SheetDataColumn.Index).StringValue = SourceCell.ModelDisplayText()
 
                                 Case "B"
-                                    SheetDataRow.DataCells(SheetDataColumn.Index).BoolValue = CInt(SourceCell.Value.NumericValue)
+                                    SheetDataRow.DataCells(SheetDataColumn.Index).BoolValue = CInt(SourceCell.ModelValue().NumericValue)
 
 
                                 Case "D", "P", "C", "M"
-                                    SheetDataRow.DataCells(SheetDataColumn.Index).RealValue = CDbl(SourceCell.Value.NumericValue)
+                                    SheetDataRow.DataCells(SheetDataColumn.Index).RealValue = CDbl(SourceCell.ModelValue().NumericValue)
 
 
                                 Case "I", "Y"
 
-                                    SheetDataRow.DataCells(SheetDataColumn.Index).IntValue = CInt(SourceCell.Value.NumericValue)
+                                    SheetDataRow.DataCells(SheetDataColumn.Index).IntValue = CInt(SourceCell.ModelValue().NumericValue)
 
                             End Select
 
@@ -4476,10 +4476,10 @@ ErrorHandler:
                             DP = SheetDataRow.DataCells(SheetDataColumn.Index)
                             SourceCell = GetCachedWorksheet(WB, WorksheetCache, DP.SourceSheet).Cells(DP.SourceAddress)
                             SheetDataRow.DataCells(SheetDataColumn.Index).IsLocked =
-                                SourceCell.Fill.PatternType <> PatternType.Solid
-                            DP.BGColor = SourceCell.Fill.BackgroundColor
-                            DP.FoColor = SourceCell.Font.Color
-                            DP.FontBold = SourceCell.Font.Bold
+                                SourceCell.ModelFill().PatternType <> PatternType.Solid
+                            DP.BGColor = SourceCell.ModelFill().BackgroundColor
+                            DP.FoColor = SourceCell.ModelFont().Color
+                            DP.FontBold = SourceCell.ModelFont().Bold
 nextDP:
                         Next
 

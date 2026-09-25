@@ -178,6 +178,9 @@ static class SaveCandidateTests
             ws.Cells["B1"].Formula="=SaveTrialInput*2";ws.Cells["C1"].DynamicArrayFormula="={1;2;3}";
             ws.Cells["D1"].Formula="=CONCATENATE("+string.Join(",",Enumerable.Repeat("\"x\"",37))+")";
             wb.DefinedNames.Add("SaveTrialInput","Data!$A$1");
+            var conditional=ws.ConditionalFormattings.AddFormulaExpressionConditionalFormatting(ws.Range["A1"],"=$A$1>=100");
+            conditional.Formatting.Fill.PatternType=PatternType.Gray125;
+            conditional.Formatting.Font.Color=System.Drawing.Color.DarkRed;
             wb.CustomXmlParts.Add("<Trial xmlns='urn:abovo:save-trial'><History><Edit value='before'/></History><Space xml:space='preserve'> a </Space></Trial>");
             wb.CalculateFullRebuild();
             if(extension==".xlsb")

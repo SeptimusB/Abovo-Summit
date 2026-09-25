@@ -61,7 +61,7 @@ public static class ClientInputRepairFixture {
  static void Paste(Target t,string text){
   var type=t.Dit.GetType().GetNestedType("ClipboardDataCellTarget",F);var list=(IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(type));
   list.Add(Activator.CreateInstance(type,new object[]{t.DS,t.Row,t.Column}));
-  Call(t.Dit,"ApplyPasteMatrix",t.DS,t.Data,new List<string[]>{new[]{text}},t.Row,t.Column,false,list);Pump();
+  Call(t.Dit,"ApplyPasteMatrix",t.DS,t.Data,new List<string[]>{new[]{text}},t.Row,t.Column,false,list,null);Pump();
  }
  static void PasteRoundTrip(Target t,dynamic model,double value,string text){var old=t.Cell.Value;Paste(t,text);Check(Number(t.Cell,value),"Typed paste "+Key(t.Cell)+"="+text);var after=t.Cell.Value;Undo(model,t.Cell,old);Redo(model,t.Cell,after);Remember(t.Cell);}
  static void RejectPaste(Target t,string text){
@@ -72,11 +72,11 @@ public static class ClientInputRepairFixture {
  static void BatchAndLimits(Target first,Target second,dynamic model){
   var old1=first.Cell.Value;var old2=second.Cell.Value;int rejected=0;int history=(int)Field(Field((object)model.ChangeManager,"UndoStack"),"Count");
   using(var timer=new System.Windows.Forms.Timer()){timer.Interval=80;timer.Tick+=(s,e)=>{foreach(Form f in Application.OpenForms.Cast<Form>().ToArray())if(f.Text=="Paste rejected"){rejected++;f.DialogResult=DialogResult.OK;f.Close();}};timer.Start();
-   Call(first.Dit,"ApplyPasteMatrix",first.DS,first.Data,new List<string[]>{new[]{"-2.5%"},new[]{"1e25"}},first.Row,first.Column,false,null);timer.Stop();
+   Call(first.Dit,"ApplyPasteMatrix",first.DS,first.Data,new List<string[]>{new[]{"-2.5%"},new[]{"1e25"}},first.Row,first.Column,false,null,null);timer.Stop();
   }
   Check(rejected==1&&first.Cell.Value.Equals(old1)&&second.Cell.Value.Equals(old2),"Mixed valid/invalid percentage paste is atomic");
   Check((int)Field(Field((object)model.ChangeManager,"UndoStack"),"Count")==history,"Rejected batch adds no history entry");
-  Call(first.Dit,"ApplyPasteMatrix",first.DS,first.Data,new List<string[]>{new[]{"-2.5%"},new[]{"115%"}},first.Row,first.Column,false,null);Pump();
+  Call(first.Dit,"ApplyPasteMatrix",first.DS,first.Data,new List<string[]>{new[]{"-2.5%"},new[]{"115%"}},first.Row,first.Column,false,null,null);Pump();
   Check(Number(first.Cell,-0.025)&&Number(second.Cell,1.15),"Mixed negative/above-100 percentage batch");
   dynamic undo=model.ChangeManager.Undo();Pump();Check(!undo.BError&&first.Cell.Value.Equals(old1)&&second.Cell.Value.Equals(old2),"One Undo restores numeric paste batch");
   var validate=first.Dit.GetType().GetMethod("NumericInputError",F);dynamic tag=Activator.CreateInstance(first.Tag.GetType());tag.DataType="P";

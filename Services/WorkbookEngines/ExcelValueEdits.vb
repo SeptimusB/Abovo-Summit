@@ -8,14 +8,17 @@ Namespace Abovo.WorkbookEngines
             RequireOwner()
             RequireSingleCell(area)
             Dim sheets As Object = Nothing, sheet As Object = Nothing, cell As Object = Nothing, fill As Object = Nothing
+            Dim display As Object = Nothing, conditions As Object = Nothing
             Try
                 sheets = book.Worksheets : sheet = sheets.Item(area.Worksheet) : cell = sheet.Range(area.Address)
-                fill = cell.Interior
+                ' Match DevExpress Cell.Fill: it includes active conditional
+                ' formatting, unlike Excel Range.Interior (the base format).
+                display = cell.DisplayFormat : fill = display.Interior : conditions = cell.FormatConditions
                 Return New WorkbookCellState(ConvertValue(cell.Value2), If(CBool(cell.HasFormula), CStr(cell.Formula2), ""),
-                    CStr(cell.NumberFormat), CBool(cell.Locked), CInt(fill.Pattern) = 1,
-                    CBool(cell.HasArray) OrElse CBool(cell.HasSpill), CBool(cell.MergeCells), CBool(sheet.ProtectContents))
+                    CStr(display.NumberFormat), CBool(cell.Locked), CInt(fill.Pattern) = 1,
+                    CBool(cell.HasArray) OrElse CBool(cell.HasSpill), CBool(cell.MergeCells), CBool(sheet.ProtectContents), CInt(conditions.Count) > 0)
             Finally
-                Release(fill) : Release(cell) : Release(sheet) : Release(sheets)
+                Release(conditions) : Release(fill) : Release(display) : Release(cell) : Release(sheet) : Release(sheets)
             End Try
         End Function
 

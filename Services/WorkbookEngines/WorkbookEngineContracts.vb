@@ -142,11 +142,16 @@ Namespace Abovo.WorkbookEngines
         Public ReadOnly Property CalculationMilliseconds As Long
         Public ReadOnly Property TransferMilliseconds As Long
         Public ReadOnly Property Blocks As ReadOnlyCollection(Of WorkbookValueBlock)
+        Public ReadOnly Property CalculationGeneration As Long
+        Public ReadOnly Property Presentation As ReadOnlyCollection(Of WorkbookPresentationBlock)
         Friend Sub New(sessionId As Guid, revision As Long, sourceHash As String, engine As String,
-                       calculationMs As Long, transferMs As Long, blocks As IList(Of WorkbookValueBlock))
+                       calculationMs As Long, transferMs As Long, blocks As IList(Of WorkbookValueBlock),
+                       generation As Long, Optional presentation As IList(Of WorkbookPresentationBlock) = Nothing)
             Me.SessionId = sessionId : Me.Revision = revision : Me.SourceHash = sourceHash : Me.Engine = engine
             CalculationMilliseconds = calculationMs : TransferMilliseconds = transferMs
             Me.Blocks = New List(Of WorkbookValueBlock)(blocks).AsReadOnly()
+            CalculationGeneration = generation
+            Me.Presentation = New List(Of WorkbookPresentationBlock)(If(presentation, New List(Of WorkbookPresentationBlock)())).AsReadOnly()
         End Sub
     End Class
 

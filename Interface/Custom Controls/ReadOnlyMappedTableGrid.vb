@@ -140,7 +140,7 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
         For Each column As DevExpress.XtraGrid.Columns.GridColumn In view.Columns
             Dim sheetColumn As Integer = StyleColumnIndex(column)
             column.Caption = If(mapping.HeaderRow > 0,
-                sheet.Cells(mapping.HeaderRow - 1, sheetColumn).DisplayText,
+                sheet.Cells(mapping.HeaderRow - 1, sheetColumn).ModelDisplayText(),
                 sheet.Columns(sheetColumn).Heading)
             If ShowDestinations AndAlso sheetColumn = linkColumnIndex Then
                 column.Caption = If(column.FieldName = InterfaceField, "Summit interface", "Worksheet")
@@ -165,8 +165,8 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
                 Dim cell As Cell = sourceSheet.Cells(mapping.HeaderRow - 1,
                     StyleColumnIndex(e.Column))
                 e.Appearance.Font = GetWorkbookFont(cell)
-                e.Appearance.ForeColor = cell.Font.Color
-                e.Appearance.BackColor = If(cell.Fill.BackgroundColor.IsEmpty, Color.White, cell.Fill.BackgroundColor)
+                e.Appearance.ForeColor = cell.ModelFont().Color
+                e.Appearance.BackColor = If(cell.ModelFill().BackgroundColor.IsEmpty, Color.White, cell.ModelFill().BackgroundColor)
                 e.Appearance.Options.UseFont = True
                 e.Appearance.Options.UseForeColor = True
                 e.Appearance.Options.UseBackColor = True
@@ -319,7 +319,7 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
             For row As Integer = 0 To sourceRows.Count - 1
                 For column As Integer = 0 To sourceRange.ColumnCount - 1
                     Dim text As String = sourceSheet.Cells(sourceRows(row),
-                        sourceRange.LeftColumnIndex + column).DisplayText
+                        sourceRange.LeftColumnIndex + column).ModelDisplayText()
                     If ShowDestinations AndAlso sourceRange.LeftColumnIndex + column = linkColumnIndex Then
                         text = LinkTarget(sourceRows(row))
                     End If
@@ -349,6 +349,9 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
 
     Private Sub RefreshConditionalColours()
         conditionalForeground.Clear()
+        'The selected owner has already evaluated these rules. Never evaluate
+        'them again against the presentation workbook's old formula caches.
+        If sourceSheet.Cells(0, 0).HasModelEngineView() Then Return
         'Check Sheet's error colour is a workbook formula rule (=B9<>0),
         'not a hard-coded interpretation of the word displayed in Status.
         'Parse at the rule origin and rebase through the supported formula API.
@@ -466,7 +469,7 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
         'HYPERLINK caption is presentation only and can be blank/stale after a
         'calculation or an Excel edit; it must not hide a valid Summit route.
         If linkColumnIndex < 0 OrElse targetColumnIndex < 0 Then Return String.Empty
-        Return sourceSheet.Cells(row, targetColumnIndex).DisplayText.Trim()
+        Return sourceSheet.Cells(row, targetColumnIndex).ModelDisplayText().Trim()
     End Function
 
     Private Function YesNoChoices(cell As Cell) As List(Of String)
@@ -542,18 +545,18 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
             RefreshData()
             Return result
         End If
-        If String.Equals(cell.Value.TextValue, choice, StringComparison.Ordinal) Then
+        If String.Equals(cell.ModelValue().TextValue, choice, StringComparison.Ordinal) Then
             result.BSuccess = True
             Return result
         End If
         posting = True
         Try
-            Dim description As String = sourceSheet.Cells(cell.RowIndex, sourceRange.LeftColumnIndex).DisplayText
+            Dim description As String = sourceSheet.Cells(cell.RowIndex, sourceRange.LeftColumnIndex).ModelDisplayText()
             Return changeManager.ProcessChange(New DataChangeEvent With {
                 .ModelID = ownerModelID,
                 .Description = sourceSheet.Name & " - " & description & " override updated",
                 .WSName = sourceSheet.Name, .CellAddress = cell.GetReferenceA1(),
-                .OriginalValue = cell.Value.TextValue, .ChangedValue = choice, .DataFormat = "S",
+                .OriginalValue = cell.ModelValue().TextValue, .ChangedValue = choice, .DataFormat = "S",
                 .TimeStamp = Now(), .UserName = Environment.UserName})
         Finally
             posting = False
@@ -567,15 +570,15 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
 
     Private Function GetWorkbookFont(cell As Cell) As Font
         Dim style As FontStyle = FontStyle.Regular
-        If cell.Font.Bold Then style = style Or FontStyle.Bold
-        If cell.Font.Italic Then style = style Or FontStyle.Italic
-        If cell.Font.UnderlineType <> UnderlineType.None Then style = style Or FontStyle.Underline
-        If cell.Font.Strikethrough Then style = style Or FontStyle.Strikeout
-        Dim key As String = cell.Font.Name & "|" & cell.Font.Size.ToString(
+        If cell.ModelFont().Bold Then style = style Or FontStyle.Bold
+        If cell.ModelFont().Italic Then style = style Or FontStyle.Italic
+        If cell.ModelFont().UnderlineType <> UnderlineType.None Then style = style Or FontStyle.Underline
+        If cell.ModelFont().Strikethrough Then style = style Or FontStyle.Strikeout
+        Dim key As String = cell.ModelFont().Name & "|" & cell.ModelFont().Size.ToString(
             Globalization.CultureInfo.InvariantCulture) & "|" & CInt(style).ToString()
         Dim result As Font = Nothing
         If Not workbookFonts.TryGetValue(key, result) Then
-            result = New Font(cell.Font.Name, CSng(cell.Font.Size), style)
+            result = New Font(cell.ModelFont().Name, CSng(cell.ModelFont().Size), style)
             workbookFonts.Add(key, result)
         End If
         Return result
@@ -584,8 +587,8 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
     Private Sub StyleCell(sender As Object, e As RowCellStyleEventArgs)
         Dim cell As Cell = SourceCell(e.RowHandle, e.Column)
         If cell Is Nothing Then Return
-        e.Appearance.BackColor = If(cell.Fill.BackgroundColor.IsEmpty, Color.White, cell.Fill.BackgroundColor)
-        e.Appearance.ForeColor = cell.Font.Color
+        e.Appearance.BackColor = If(cell.ModelFill().BackgroundColor.IsEmpty, Color.White, cell.ModelFill().BackgroundColor)
+        e.Appearance.ForeColor = cell.ModelFont().Color
         Dim conditionalColour As Color
         If conditionalForeground.TryGetValue(cell.GetReferenceA1(), conditionalColour) Then
             e.Appearance.ForeColor = conditionalColour
@@ -596,13 +599,13 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
         e.Appearance.Options.UseFont = True
         e.Appearance.Options.UseTextOptions = True
         e.Appearance.TextOptions.WordWrap = WordWrap.Wrap
-        Select Case cell.Alignment.Horizontal
+        Select Case cell.ModelHorizontalAlignment()
             Case SpreadsheetHorizontalAlignment.Center
                 e.Appearance.TextOptions.HAlignment = HorzAlignment.Center
             Case SpreadsheetHorizontalAlignment.Right
                 e.Appearance.TextOptions.HAlignment = HorzAlignment.Far
             Case Else
-                e.Appearance.TextOptions.HAlignment = If(cell.Value.IsNumeric, HorzAlignment.Far, HorzAlignment.Near)
+                e.Appearance.TextOptions.HAlignment = If(cell.ModelValue().IsNumeric, HorzAlignment.Far, HorzAlignment.Near)
         End Select
         If view.IsCellSelected(e.RowHandle, e.Column) Then
             e.Appearance.BackColor = Color.Wheat

@@ -74,6 +74,7 @@ Namespace Abovo
         End Property
 
         Public Function BeginChangeGroup(ByVal description As String) As IDisposable
+            If HasEngineEditingTrial Then Throw New InvalidOperationException("Use one engine batch for a grouped change.")
             If IsApplyingHistory Then Return New EmptyScopeV2()
             If ActiveGroup Is Nothing Then
                 ActiveGroup = CreateGroup(description)
@@ -97,6 +98,7 @@ Namespace Abovo
         End Sub
 
         Public Function ProcessChange(ByVal sentEvent As DataChangeEvent) As AbovoAppCls.AbovoTransaction
+            If HasEngineEditingTrial Then Return NoAction("This model requires a current engine input snapshot.")
             If IsApplyingHistory Then Return SuccessfulNoAction("A refresh-time post was ignored while history was being applied.")
             Dim worksheetName As String = NormalizeIdentifier(sentEvent.WSName)
             Dim address As String = NormalizeIdentifier(sentEvent.CellAddress)
@@ -129,6 +131,7 @@ Namespace Abovo
                                                ByVal description As String,
                                                ByVal validate As Action(Of Cell, DataChangeEvent),
                                                ByVal admit As Func(Of Cell, DataChangeEvent, Boolean)) As AbovoAppCls.AbovoTransaction
+            If HasEngineEditingTrial Then Return NoAction("This model requires the engine batch edit path.")
             If IsReadOnlyPreview Then Return NoAction("Structure Manager previews are read-only.")
             If ChangeInProgress Then
                 Return NoAction("Paste is unavailable during another change.")
@@ -282,6 +285,7 @@ Namespace Abovo
         End Function
 
         Public Function ProcessChangeByNRAddressing(ByVal sentEvent As DataChangeEvent) As AbovoAppCls.AbovoTransaction
+            If HasEngineEditingTrial Then Return NoAction("This model requires a current engine input snapshot.")
             If IsApplyingHistory Then Return SuccessfulNoAction("A refresh-time post was ignored while history was being applied.")
             Try
                 Dim targetRange As CellRange = WB.Range(NormalizeIdentifier(sentEvent.TargetNR))
@@ -437,6 +441,7 @@ Namespace Abovo
 
         Private Function ApplyHistoryGroup(ByVal group As ChangeHistoryGroupV2,
                                            ByVal redo As Boolean) As AbovoAppCls.AbovoTransaction
+            If HasEngineEditingTrial Then Return ApplyEngineHistory(group, redo)
             Dim result As New AbovoAppCls.AbovoTransaction(If(redo, "Redo", "Undo"))
             Dim ordered As List(Of ChangeHistoryEntryV2) = If(redo, group.Entries.ToList(), group.Entries.AsEnumerable().Reverse().ToList())
 
@@ -659,7 +664,7 @@ Namespace Abovo
             'callbacks. Those callbacks can populate bound editors and invalidate
             'calculation again. Coalescing onto the next UI message captures the
             'final revision without certifying provisional or rolled-back state.
-            If args.WorksheetNames.Count > 0 Then
+            If args.WorksheetNames.Count > 0 AndAlso Not HasEngineEditingTrial Then
                 Try
                     CheckSheetWatch.RefreshVisibleAfterCommittedChange(FileManager.ExcelModels(ModelID))
                 Catch ex As Exception
@@ -675,15 +680,24 @@ Namespace Abovo
         Private Shared Sub WriteTypedValue(ByVal targetCell As Cell,
                                            ByVal changedValue As Object,
                                            ByVal dataFormat As String)
+            Dim value = ResolveTypedValue(targetCell, changedValue, dataFormat)
+            If value Is Nothing Then
+                targetCell.ClearContents()
+            Else
+                targetCell.Value = CellValue.FromObject(value)
+            End If
+        End Sub
+
+        Private Shared Function ResolveTypedValue(ByVal targetCell As Cell,
+                                                  ByVal changedValue As Object,
+                                                  ByVal dataFormat As String) As Object
             Dim fundingDate = FundingPaymentDateSupport.ValidateChange(targetCell, changedValue)
             If fundingDate.HasValue Then
                 'Also protect workbooks using an older embedded XML text definition.
-                targetCell.Value = CellValue.FromObject(fundingDate.Value)
-                Return
+                Return fundingDate.Value
             End If
             If changedValue Is Nothing OrElse Convert.IsDBNull(changedValue) Then
-                targetCell.ClearContents()
-                Return
+                Return Nothing
             End If
             'A workbook Yes/No validation is text even when an older interface
             'declares the editor Boolean. Never convert its Yes to the number 1.
@@ -691,35 +705,34 @@ Namespace Abovo
                 Dim choice = Convert.ToString(changedValue, CultureInfo.CurrentCulture).Trim()
                 If TypeOf changedValue Is Boolean Then choice = If(CBool(changedValue), "Yes", "No")
                 If choice.Length = 0 Then
-                    targetCell.ClearContents()
+                    Return Nothing
                 ElseIf choice.Equals("Yes", StringComparison.OrdinalIgnoreCase) OrElse choice.Equals("No", StringComparison.OrdinalIgnoreCase) Then
-                    targetCell.Value = If(choice.Equals("Yes", StringComparison.OrdinalIgnoreCase), "Yes", "No")
+                    Return If(choice.Equals("Yes", StringComparison.OrdinalIgnoreCase), "Yes", "No")
                 Else
                     Throw New ArgumentException("Select Yes or No for this workbook input.")
                 End If
-                Return
             End If
             Select Case If(dataFormat, String.Empty).Trim().ToUpperInvariant()
                 Case "S", "FL", "DUMMY", String.Empty
-                    targetCell.Value = Convert.ToString(changedValue, CultureInfo.CurrentCulture)
+                    Return Convert.ToString(changedValue, CultureInfo.CurrentCulture)
                 Case "B"
-                    targetCell.Value = If(ConvertToBoolean(changedValue), 1, 0)
+                    Return If(ConvertToBoolean(changedValue), 1, 0)
                 Case "BOOL", "BOOLEAN"
                     'Excel form-control linked cells are genuine Boolean values.
                     'Keep the legacy B representation numeric for existing DIT data,
                     'but preserve Boolean semantics where workbook formulas test the
                     'linked cell directly.
-                    targetCell.Value = CellValue.FromObject(ConvertToBoolean(changedValue))
+                    Return ConvertToBoolean(changedValue)
                 Case "I", "Y"
-                    targetCell.Value = ConvertToInteger(changedValue)
+                    Return ConvertToInteger(changedValue)
                 Case "D", "DM"
-                    targetCell.Value = CellValue.FromObject(ConvertToDateOrSerial(changedValue))
+                    Return ConvertToDateOrSerial(changedValue)
                 Case "N", "P", "C", "M", "SM", "R"
-                    targetCell.Value = ConvertToDouble(changedValue)
+                    Return ConvertToDouble(changedValue)
                 Case Else
-                    targetCell.Value = CellValue.FromObject(changedValue)
+                    Return changedValue
             End Select
-        End Sub
+        End Function
 
         Private Shared Function ConvertToBoolean(ByVal value As Object) As Boolean
             If TypeOf value Is Boolean Then Return DirectCast(value, Boolean)
@@ -803,6 +816,10 @@ Namespace Abovo
     End Class
 
     Friend NotInheritable Class ChangeHistoryEntryV2
+        Public EngineBefore As WorkbookEngines.WorkbookCellState
+        Public EngineAfter As WorkbookEngines.WorkbookCellState
+        Public EnginePermission As WorkbookEngines.WorkbookValuePermission
+        Public EngineCalculateBefore As Boolean
         Public GroupID As Integer
         Public TimeStamp As DateTime
         Public Description As String

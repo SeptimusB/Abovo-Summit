@@ -20,9 +20,11 @@ Namespace Abovo.WorkbookEngines
         Public ReadOnly Property ArrayMember As Boolean
         Public ReadOnly Property Merged As Boolean
         Public ReadOnly Property WorksheetProtected As Boolean
+        Public ReadOnly Property HasConditionalFormatting As Boolean
 
         Public Sub New(value As Object, formula As String, numberFormat As String, locked As Boolean,
-                       solidFill As Boolean, arrayMember As Boolean, merged As Boolean, worksheetProtected As Boolean)
+                       solidFill As Boolean, arrayMember As Boolean, merged As Boolean, worksheetProtected As Boolean,
+                       Optional hasConditionalFormatting As Boolean = False)
             If TypeOf value Is WorkbookCellError Then
                 ' Errors are readable but not a supported input/rollback type.
             Else
@@ -31,6 +33,7 @@ Namespace Abovo.WorkbookEngines
             Me.Value = value : Me.Formula = If(formula, "") : Me.NumberFormat = If(numberFormat, "")
             Me.Locked = locked : Me.SolidFill = solidFill : Me.ArrayMember = arrayMember
             Me.Merged = merged : Me.WorksheetProtected = worksheetProtected
+            Me.HasConditionalFormatting = hasConditionalFormatting
         End Sub
 
         Public Function AllowsValueEdit(permission As WorkbookValuePermission) As Boolean
@@ -63,7 +66,18 @@ Namespace Abovo.WorkbookEngines
         Friend Function SameDefinition(other As WorkbookCellState) As Boolean
             Return other IsNot Nothing AndAlso Formula = other.Formula AndAlso NumberFormat = other.NumberFormat AndAlso
                    Locked = other.Locked AndAlso SolidFill = other.SolidFill AndAlso ArrayMember = other.ArrayMember AndAlso
-                   Merged = other.Merged AndAlso WorksheetProtected = other.WorksheetProtected
+                   Merged = other.Merged AndAlso WorksheetProtected = other.WorksheetProtected AndAlso
+                   HasConditionalFormatting = other.HasConditionalFormatting
+        End Function
+
+        ' Effective fill/number format may change when a defining input is
+        ' calculated. They remain strict in expected-before and save checks.
+        ' Native value writers never write formatting or conditional rules.
+        Friend Function SameInputDefinition(other As WorkbookCellState) As Boolean
+            Return other IsNot Nothing AndAlso Formula = other.Formula AndAlso Locked = other.Locked AndAlso
+                   ArrayMember = other.ArrayMember AndAlso Merged = other.Merged AndAlso WorksheetProtected = other.WorksheetProtected AndAlso
+                   HasConditionalFormatting = other.HasConditionalFormatting AndAlso
+                   (HasConditionalFormatting OrElse (NumberFormat = other.NumberFormat AndAlso SolidFill = other.SolidFill))
         End Function
     End Class
 
@@ -211,19 +225,19 @@ Namespace Abovo.WorkbookEngines
                 cancellation.ThrowIfCancellationRequested()
                 editor.WriteValue(expected.Area, value)
                 Dim written = editor.ReadCell(expected.Area)
-                If Not WorkbookCellState.SameValue(written.Value, value) OrElse Not before.SameDefinition(written) Then
+                If Not WorkbookCellState.SameValue(written.Value, value) OrElse Not before.SameInputDefinition(written) Then
                     Throw New InvalidOperationException("The engine did not retain the exact typed input and cell definition.")
                 End If
                 cancellation.ThrowIfCancellationRequested()
                 Dim timer = Diagnostics.Stopwatch.StartNew()
-                backend.Calculate(WorkbookCalculationKind.Full)
+                CalculateNative(WorkbookCalculationKind.Full)
                 Dim calculationMs = timer.ElapsedMilliseconds
                 cancellation.ThrowIfCancellationRequested()
                 SyncLock gate
                     RequireRevision(revision)
                 End SyncLock
                 Dim after = editor.ReadCell(expected.Area)
-                If Not WorkbookCellState.SameValue(after.Value, value) OrElse Not before.SameDefinition(after) Then
+                If Not WorkbookCellState.SameValue(after.Value, value) OrElse Not before.SameInputDefinition(after) Then
                     Throw New InvalidOperationException("Calculation changed the input or its cell definition unexpectedly.")
                 End If
                 Dim blocks As New List(Of WorkbookValueBlock)()
@@ -237,13 +251,12 @@ Namespace Abovo.WorkbookEngines
                 SyncLock gate
                     RequireRevision(revision)
                 End SyncLock
-                Dim results = If(blocks.Count = 0, Nothing, New WorkbookCalculationResult(SessionId, revision, SourceHash, EngineName,
-                    calculationMs, timer.ElapsedMilliseconds - calculationMs, blocks))
+                Dim results = If(blocks.Count = 0, Nothing, MakeResult(revision, calculationMs, timer.ElapsedMilliseconds - calculationMs, blocks))
                 Return New WorkbookValueEditReceipt(expected, New WorkbookCellSnapshot(SessionId, revision, expected.Area, after), True, results)
             Catch editError As Exception
                 Try
                     If Not before.Matches(editor.ReadCell(expected.Area)) Then editor.WriteValue(expected.Area, before.Value)
-                    backend.Calculate(WorkbookCalculationKind.Full)
+                    CalculateNative(WorkbookCalculationKind.Full)
                     If Not before.Matches(editor.ReadCell(expected.Area)) Then Throw New InvalidOperationException("The original cell state was not restored.")
                 Catch rollbackError As Exception
                     SyncLock gate

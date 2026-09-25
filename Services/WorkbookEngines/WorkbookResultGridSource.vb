@@ -18,6 +18,7 @@ Namespace Abovo.WorkbookEngines
         Private ReadOnly fields As PropertyDescriptorCollection
         Private result As WorkbookCalculationResult
         Private block As WorkbookValueBlock
+        Private display As WorkbookPresentationBlock
         Private Shared ReadOnly unavailable As New WorkbookCellError("#N/A")
         Public ReadOnly Property Area As WorkbookReadArea
 
@@ -58,6 +59,7 @@ Namespace Abovo.WorkbookEngines
             Next
             If matched Is Nothing Then Throw New ArgumentException("Engine result does not contain the display rectangle.", NameOf(nextResult))
             If Not session.IsCurrent(nextResult) Then Return False
+            display = nextResult.Presentation.SingleOrDefault(Function(item) item.Area.Worksheet.Equals(Area.Worksheet, StringComparison.OrdinalIgnoreCase) AndAlso item.Area.Address = Area.Address)
             block = matched : result = nextResult
             ResetBindings()
             Return HasCurrentValues
@@ -65,7 +67,7 @@ Namespace Abovo.WorkbookEngines
 
         Public Sub InvalidateDisplay()
             RequireOwner()
-            block = Nothing : result = Nothing
+            block = Nothing : result = Nothing : display = Nothing
             ResetBindings()
         End Sub
 
@@ -76,6 +78,12 @@ Namespace Abovo.WorkbookEngines
             ' grid a value from an obsolete or failed calculation revision.
             If Not HasCurrentValues Then Return unavailable
             Return block.ValueAt(row, column)
+        End Function
+
+        Public Function ReadPresentation(row As Integer, column As Integer) As WorkbookPresentationCell
+            RequireOwner()
+            If Not HasCurrentValues OrElse display Is Nothing Then Return Nothing
+            Return display.CellAt(row, column)
         End Function
 
         Private Sub RequireOwner()

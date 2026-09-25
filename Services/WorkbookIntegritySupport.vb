@@ -20,10 +20,10 @@ Namespace Abovo
             'effective count after its unlocked Yes/No override in C is applied.
             If Not String.Equals(status, "Check", StringComparison.OrdinalIgnoreCase) Then Return False
             Dim raw = range(row, 1), choice = range(row, 2), effective = range(row, 3)
-            If Not raw.Value.IsNumeric OrElse raw.Value.NumericValue = 0 OrElse
-               choice.Protection.Locked OrElse choice.HasFormula OrElse Not choice.Value.IsText OrElse
-               Not String.Equals(choice.Value.TextValue, "Yes", StringComparison.OrdinalIgnoreCase) OrElse
-               Not effective.Value.IsNumeric OrElse effective.Value.NumericValue <> 0 Then Return False
+            If Not raw.ModelValue().IsNumeric OrElse raw.ModelValue().NumericValue = 0 OrElse
+               choice.Protection.Locked OrElse choice.HasFormula OrElse Not choice.ModelValue().IsText OrElse
+               Not String.Equals(choice.ModelValue().TextValue, "Yes", StringComparison.OrdinalIgnoreCase) OrElse
+               Not effective.ModelValue().IsNumeric OrElse effective.ModelValue().NumericValue <> 0 Then Return False
             Dim validation = choice.Worksheet.DataValidations.GetDataValidation(choice)
             If validation Is Nothing OrElse validation.ValidationType <> DataValidationType.List OrElse
                validation.Criteria Is Nothing OrElse Not validation.Criteria.IsText Then Return False

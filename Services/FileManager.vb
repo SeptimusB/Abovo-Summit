@@ -1039,6 +1039,7 @@ Namespace Abovo
             'XLSM retains the unmodified formulas; the normal XLSB preflight remains
             'mandatory when the recovered plan is explicitly saved as XLSB.
             Friend Sub WriteRecoverySnapshot(output As System.IO.Stream)
+                If ChangeManager IsNot Nothing AndAlso ChangeManager.HasEngineEditingTrial Then Throw New InvalidOperationException("The engine-owned model requires its verified engine recovery path.")
                 If _writingPreparedWorkbook OrElse _writingRecoveryWorkbook Then Throw New InvalidOperationException("Another save is in progress.")
                 Dim nativeModified = ModelSpreadsheetControl.Modified
                 Dim dirty = _isDirty
@@ -1080,6 +1081,7 @@ Namespace Abovo
             End Sub
 
             Private Function SavePreparedWorkbook(saveAction As Action, Optional ShowNativeSaveDialog As Boolean = False) As Boolean
+                If ChangeManager IsNot Nothing AndAlso ChangeManager.HasEngineEditingTrial Then Throw New InvalidOperationException("The engine-owned model requires its verified engine save path.")
                 'Value edits retain their immediate sheet calculation but may save
                 'pending whole-model caches. Structural/unknown changes still rebuild.
                 Dim previousEngine = WB.Options.CalculationEngineType
@@ -1506,16 +1508,16 @@ Namespace Abovo
                         'Accepted balance overrides must not conceal broken formulas.
                         For Each CheckColumn As Integer In New Integer() {1, 3, 4}
                             Dim CheckCell = ValidationSheet.Cells(SheetRow, FirstColumn + CheckColumn)
-                            If CheckCell.Value.IsError Then
+                            If CheckCell.ModelValue().IsError Then
                                 Result.ValidationError = "Check Sheet contains a formula error at " &
-                                    CheckCell.GetReferenceA1() & ": " & CheckCell.DisplayText
+                                    CheckCell.GetReferenceA1() & ": " & CheckCell.ModelDisplayText()
                                 Return Result
                             End If
                         Next
 
                         Dim StatusText As String =
                             ValidationSheet.Cells(SheetRow, FirstColumn + 4).
-                                DisplayText.Trim()
+                                ModelDisplayText().Trim()
 
                         If String.IsNullOrWhiteSpace(StatusText) OrElse
                            String.Equals(
@@ -1530,14 +1532,14 @@ Namespace Abovo
                                 .CheckRow = SheetRow + 1,
                                 .Label = ValidationSheet.Cells(
                                     SheetRow,
-                                    FirstColumn).DisplayText.Trim(),
+                                    FirstColumn).ModelDisplayText().Trim(),
                                 .Status = StatusText,
                                 .Message = ValidationSheet.Cells(
                                     SheetRow,
-                                    FirstColumn + 5).DisplayText.Trim(),
+                                    FirstColumn + 5).ModelDisplayText().Trim(),
                                 .TargetWorksheet = ValidationSheet.Cells(
                                     SheetRow,
-                                    FirstColumn + 7).DisplayText.Trim()
+                                    FirstColumn + 7).ModelDisplayText().Trim()
                             }
                         If WorkbookIntegritySupport.HasAcceptedOverride(ValidationRange, RowOffset, StatusText) Then
                             Result.OverriddenIssues.Add(issue)
@@ -1572,7 +1574,7 @@ Namespace Abovo
                     End If
 
                     Dim CheckTotalText As String =
-                        CheckTotalName.Range(0, 0).DisplayText.Trim()
+                        CheckTotalName.Range(0, 0).ModelDisplayText().Trim()
                     Dim CheckTotal As Decimal
 
                     If Not Decimal.TryParse(
@@ -1607,9 +1609,9 @@ Namespace Abovo
                     'and row 33 for CheckTotal.
                     For SheetRow As Integer = 7 To 31
                         Dim StatusText As String =
-                            CheckSheet.Cells(SheetRow, 2).DisplayText.Trim()
+                            CheckSheet.Cells(SheetRow, 2).ModelDisplayText().Trim()
                         Dim CheckValueText As String =
-                            CheckSheet.Cells(SheetRow, 3).DisplayText.Trim()
+                            CheckSheet.Cells(SheetRow, 3).ModelDisplayText().Trim()
                         Dim CheckValue As Decimal
                         Dim HasNonZeroValue As Boolean =
                             Decimal.TryParse(
@@ -1628,14 +1630,14 @@ Namespace Abovo
                         Result.Issues.Add(
                             New CloseModelValidationIssue With {
                                 .CheckRow = SheetRow + 1,
-                                .Label = CheckSheet.Cells(SheetRow, 0).DisplayText.Trim(),
+                                .Label = CheckSheet.Cells(SheetRow, 0).ModelDisplayText().Trim(),
                                 .Status = If(
                                     String.IsNullOrWhiteSpace(StatusText),
                                     CheckValueText,
                                     StatusText),
                                 .Message = CheckValueText,
                                 .TargetWorksheet =
-                                    CheckSheet.Cells(SheetRow, 4).DisplayText.Trim()
+                                    CheckSheet.Cells(SheetRow, 4).ModelDisplayText().Trim()
                             })
                     Next
 

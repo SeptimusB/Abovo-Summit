@@ -630,6 +630,9 @@
     <Compile Include="Services\WorkbookEngines\WorkbookCalculationSession.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookResultGridSource.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookValueEdits.vb" />
+    <Compile Include="Services\WorkbookEngines\WorkbookValueBatches.vb" />
+    <Compile Include="Services\WorkbookEngines\WorkbookPresentation.vb" />
+    <Compile Include="Services\WorkbookEngines\NativePresentation.vb" />
     <Compile Include="Services\WorkbookEngines\DevExpressValueEdits.vb" />
     <Compile Include="Services\WorkbookEngines\ExcelValueEdits.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookSaveCandidates.vb" />
@@ -638,6 +641,8 @@
     <Compile Include="Services\WorkbookEngines\WorkbookPublicationRecovery.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookPublicationReopen.vb" />
     <Compile Include="Services\DataService\ModelHistorySnapshot.vb" />
+    <Compile Include="Services\DataService\ModelEngineChanges.vb" />
+    <Compile Include="Services\DataService\ModelWorkbookRead.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookCandidatePackage.vb" />
     <Compile Include="Services\WorkbookEngines\WorkbookHistoryPackage.vb" />
     <Compile Include="Services\WorkbookEngines\DevExpressSaveCandidates.vb" />
