@@ -21,6 +21,7 @@ Namespace Abovo.WorkbookEngines
         Private candidateSaveTrial As Boolean
         Private publicationTrial As Boolean
         Private publicationStreams As Dictionary(Of String, Byte())
+        Private openingOptions As WorkbookEngineOptions
         Private sourcePath As String
         Private sourceZone As String
         Private savePending As Boolean
@@ -57,6 +58,7 @@ Namespace Abovo.WorkbookEngines
             Dim session As New WorkbookCalculationSession(options.OperationTimeoutMilliseconds, options.EnableValueEditTrial)
             session.candidateSaveTrial = options.EnableCandidateSaveTrial
             session.publicationTrial = options.EnablePublicationTrial
+            session.openingOptions = options
             session.sourcePath = fullPath
             Dim openError As Exception = Nothing
             Try

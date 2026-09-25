@@ -52,6 +52,8 @@ Native tests publish generated XLSX/XLSM/XLSB with both engines through both mod
 
 ## Remaining gates
 
+Checkpoint 2e subsequently adds explicit recovery inspection/restoration and receipt-based verified reopen. See [the 2e continuation](Excel_DevExpress_Engine_Stage2e_2026-09-25.md). Live history/dirty acknowledgement, startup UX and ordinary frequent Save remain unimplemented.
+
 1. Integrate current model/history XML, typed edit validation, undo/redo, dirty/recovery state and authoritative formatting with the existing change manager and UI. Opening-baseline XML preservation cannot replace current history serialization.
 2. Add publication-journal inspection/recovery, reopen/rebase semantics and save acknowledgement tied to the exact live model revision. Terminal publication is not yet suitable for ordinary frequent Save.
 3. Qualify storage locations, file attributes/owner/auditing, crashes/power loss, retention and permanently hung native calls. Do not silently choose a less guarded overwrite route on failure.

@@ -208,6 +208,24 @@ Namespace Abovo.WorkbookEngines
             Return actual.Count = expected.Count AndAlso expected.All(Function(pair) actual.ContainsKey(pair.Key) AndAlso actual(pair.Key).SequenceEqual(pair.Value))
         End Function
 
+        ' Evidence only: this digest is not authentication or macro trust, and
+        ' avoids copying provenance URLs into recovery records.
+        Friend Shared Function MarkerHash(markers As Dictionary(Of String, Byte())) As String
+            Using buffer As New MemoryStream()
+                Using writer As New BinaryWriter(buffer, Encoding.UTF8, True)
+                    For Each pair In markers.OrderBy(Function(item) item.Key, StringComparer.OrdinalIgnoreCase)
+                        writer.Write(pair.Key.ToUpperInvariant())
+                        writer.Write(pair.Value.Length)
+                        writer.Write(pair.Value)
+                    Next
+                End Using
+                buffer.Position = 0
+                Using algorithm = SHA256.Create()
+                    Return BitConverter.ToString(algorithm.ComputeHash(buffer)).Replace("-", "")
+                End Using
+            End Using
+        End Function
+
         Friend Shared Sub WriteMarkers(path As String, markers As Dictionary(Of String, Byte()))
             For Each pair In markers
                 Using marker = OpenNative(path & pair.Key, &H40000000UI, 1UI, IntPtr.Zero, 1UI, 0UI, IntPtr.Zero)

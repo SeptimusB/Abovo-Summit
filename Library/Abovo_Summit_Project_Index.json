@@ -1,5 +1,14 @@
 {
   "schemaVersion": 3,
+  "excelFirstRecoveryReopen20260925": {
+    "documentation": "Library/Excel_DevExpress_Engine_Stage2e_2026-09-25.md",
+    "status": "isolated recovery inspection and verified reopen; production 2.98 unchanged",
+    "source": ["Services/WorkbookEngines/WorkbookPublicationRecovery.vb", "Services/WorkbookEngines/WorkbookPublicationReopen.vb"],
+    "recovery": "explicit target-bound bounded v2 journal inspection; restore verified original only into vacant name; retain unsaved candidate; no automatic startup mutation",
+    "reopen": "in-memory publication receipt, exact bytes/provenance, original options, new session and revision-zero baseline; no dirty acknowledgement",
+    "validation": "Debug/Release 109 recovery assertions including three actual process exits; native three-format continued-edit round trips; AGL XLSB Debug/XLSM Release 45586-position parity; originals and normal builds unchanged",
+    "remaining": ["current XML and live history/dirty integration", "frequent-save lifecycle", "startup UX and storage/hung-call qualification", "three-route structural benchmark", "client acceptance"]
+  },
   "excelFirstPublication20260925": {
     "documentation": "Library/Excel_DevExpress_Engine_Stage2d_2026-09-25.md",
     "status": "isolated terminal publication; production 2.98 unchanged",

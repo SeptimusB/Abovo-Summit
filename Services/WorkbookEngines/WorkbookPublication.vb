@@ -21,10 +21,20 @@ Namespace Abovo.WorkbookEngines
         Public ReadOnly Property Hash As String
         Public ReadOnly Property BackupPath As String
         Public ReadOnly Property JournalPath As String
-        Friend Sub New(candidate As WorkbookSaveCandidate, path As String, backup As String, journal As String)
+        Public ReadOnly Property MarkerHash As String
+        Friend ReadOnly Property OpeningOptions As WorkbookEngineOptions
+        Friend Sub New(candidate As WorkbookSaveCandidate, path As String, backup As String, journal As String,
+                       markerHash As String, options As WorkbookEngineOptions)
             SessionId = candidate.SessionId : Revision = candidate.Revision : Hash = candidate.Hash
             Me.Path = path : BackupPath = backup : JournalPath = journal
+            Me.MarkerHash = markerHash : OpeningOptions = options
         End Sub
+
+        ' A new owner/baseline, not continuation of the old revision counter and
+        ' not permission to mark a live model or its newer history clean.
+        Public Function ReopenAsync(Optional cancellation As CancellationToken = Nothing) As Task(Of WorkbookCalculationSession)
+            Return WorkbookPublicationReopen.OpenAsync(Me, cancellation, Nothing)
+        End Function
     End Class
 
     Public NotInheritable Class WorkbookPublicationException
@@ -65,7 +75,7 @@ Namespace Abovo.WorkbookEngines
             End SyncLock
             Dim transaction As WorkbookPublicationTransaction = Nothing
             Try
-                transaction = Await Task.Run(Function() WorkbookPublicationTransaction.Prepare(sourcePath, sourceZone, publicationStreams, candidate, target, mode, cancellation, checkpoint)).ConfigureAwait(False)
+                transaction = Await Task.Run(Function() WorkbookPublicationTransaction.Prepare(sourcePath, sourceZone, publicationStreams, candidate, target, mode, openingOptions, cancellation, checkpoint)).ConfigureAwait(False)
                 checkpoint?.Invoke("Prepared")
                 cancellation.ThrowIfCancellationRequested()
                 SyncLock gate
@@ -101,10 +111,11 @@ Namespace Abovo.WorkbookEngines
         Private backup As String
         Private journal As String
         Private mode As WorkbookPublicationMode
+        Private options As WorkbookEngineOptions
 
         Friend Shared Function Prepare(source As String, zone As String, markers As Dictionary(Of String, Byte()), candidate As WorkbookSaveCandidate, target As String,
-                                       mode As WorkbookPublicationMode, cancellation As CancellationToken, checkpoint As Action(Of String)) As WorkbookPublicationTransaction
-            Dim transaction As New WorkbookPublicationTransaction With {.source = source, .zone = zone, .markers = markers, .candidate = candidate, .target = target, .mode = mode}
+                                       mode As WorkbookPublicationMode, options As WorkbookEngineOptions, cancellation As CancellationToken, checkpoint As Action(Of String)) As WorkbookPublicationTransaction
+            Dim transaction As New WorkbookPublicationTransaction With {.source = source, .zone = zone, .markers = markers, .candidate = candidate, .target = target, .mode = mode, .options = options}
             Try
                 transaction.pins = WorkbookPublicationFile.PinDirectories({source, candidate.Path, target})
                 If Not WorkbookPublicationFile.MarkersMatch(source, markers) Then Throw New IOException("Source provenance marking changed since opening.")
@@ -183,7 +194,7 @@ Namespace Abovo.WorkbookEngines
                             checkpoint?.Invoke("Published")
                             If Not WorkbookPublicationFile.MarkersMatch(target, markers) Then Throw New IOException("Published security marking changed; acknowledgement refused.")
                             WriteRecord(IO.Path.Combine(IO.Path.GetDirectoryName(journal), "published.xml"), "Published")
-                            Return New WorkbookPublicationReceipt(candidate, target, backup, journal)
+                            Return New WorkbookPublicationReceipt(candidate, target, backup, journal, WorkbookPublicationFile.MarkerHash(markers), options)
                         Catch
                             If retained AndAlso Not published Then
                                 Try
@@ -204,10 +215,11 @@ Namespace Abovo.WorkbookEngines
         End Function
 
         Private Sub WriteRecord(path As String, state As String)
-            Dim xml As New XDocument(New XElement("SummitPublication", New XAttribute("version", 1),
+            Dim xml As New XDocument(New XElement("SummitPublication", New XAttribute("version", 2),
                 New XElement("State", state), New XElement("Session", candidate.SessionId), New XElement("Revision", candidate.Revision),
                 New XElement("Mode", mode.ToString()), New XElement("Source", source), New XElement("SourceHash", candidate.SourceHash),
-                New XElement("Target", target), New XElement("Candidate", stage), New XElement("CandidateHash", candidate.Hash), New XElement("Backup", backup)))
+                New XElement("Target", target), New XElement("Candidate", stage), New XElement("CandidateHash", candidate.Hash), New XElement("Backup", backup),
+                New XElement("MarkerHash", WorkbookPublicationFile.MarkerHash(markers))))
             Using file As New FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read)
                 xml.Save(file) : file.Flush(True)
             End Using

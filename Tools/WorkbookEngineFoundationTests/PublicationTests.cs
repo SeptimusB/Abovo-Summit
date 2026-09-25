@@ -32,11 +32,11 @@ static class PublicationTests
         try{return (Task<WorkbookPublicationReceipt>)typeof(WorkbookCalculationSession).GetMethod("PublishAndCloseCoreAsync",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(s,new object[]{c,target,mode,cancel,hook});}
         catch(TargetInvocationException ex){System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException).Throw();throw;}
     }
-    sealed class Backend:IWorkbookCandidateBackend
+    internal sealed class Backend:IWorkbookCandidateBackend
     {
-        public string Name=>"Publication test";public string Version=>"1";public string Source;public int ThreadId;public Action Closing;
+        public string Name=>"Publication test";public string Version=>"1";public string Source;public int ThreadId;public Action Closing;public WorkbookEngineOptions SeenOptions;
         void Own(){if(Thread.CurrentThread.ManagedThreadId!=ThreadId)throw new Exception("Wrong owner thread");}
-        public void OpenReadOnly(string p,WorkbookEngineOptions o){ThreadId=Thread.CurrentThread.ManagedThreadId;Source=p;}
+        public void OpenReadOnly(string p,WorkbookEngineOptions o){ThreadId=Thread.CurrentThread.ManagedThreadId;Source=p;SeenOptions=o;}
         public void Calculate(WorkbookCalculationKind k){Own();}
         public WorkbookValueBlock Read(WorkbookReadArea a){Own();return new WorkbookValueBlock(a,new object[,]{{10d}});}
         public WorkbookCellState ReadCell(WorkbookReadArea a){Own();return new WorkbookCellState(10d,"","0",false,true,false,false,false);}
@@ -45,7 +45,7 @@ static class PublicationTests
         public WorkbookCandidateReadback ReadCopy(string p,IList<WorkbookReadArea> a,IList<WorkbookReadArea> c){Own();return new WorkbookCandidateReadback(a.Select(Read),c.Select(ReadCell));}
         public void Dispose(){Own();Closing?.Invoke();}
     }
-    sealed class Trial
+    internal sealed class Trial
     {
         public string Root,Source,Original;public Backend Backend;public WorkbookCalculationSession Session;public WorkbookSaveCandidate Candidate;public WorkbookCellSnapshot CellState;
         public static async Task<Trial> Create(string fixture,bool enabled=true,int timeout=120000,Action<string> seed=null)
