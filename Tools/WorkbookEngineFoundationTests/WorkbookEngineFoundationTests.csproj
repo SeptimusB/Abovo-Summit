@@ -4,7 +4,7 @@
     <OutputType>Exe</OutputType>
     <LangVersion>7.3</LangVersion>
     <PlatformTarget Condition="'$(PlatformTarget)' == ''">x86</PlatformTarget>
-    <ApplicationBin Condition="'$(ApplicationBin)' == ''">../../bin/EngineStage2g-Debug</ApplicationBin>
+    <ApplicationBin Condition="'$(ApplicationBin)' == ''">../../bin/EngineStage2h-Debug</ApplicationBin>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
   </PropertyGroup>

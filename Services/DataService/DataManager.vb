@@ -2522,6 +2522,8 @@ NextDFD2:
         Public TargetNR As String
         Public TargetNRIndex As Integer
         Public OriginalValue As Object
+        <System.Xml.Serialization.XmlIgnore>
+        Public EngineTicket As ModelEngineEditTicket
         Public ChangedValue As Object
         Public DataFormat As String
         Public TimeStamp As DateTime
@@ -2570,7 +2572,7 @@ NextDFD2:
             InternalCompanyName = CStr(clCell.ModelValue().TextValue)
             BPDetails.CompanyName = InternalCompanyName
             clCell = wsGA.Cells(7, 2)
-            BPDetails.StartDate = CDate(clCell.ModelValue().DateTimeValue)
+            BPDetails.StartDate = clCell.ModelDateValue()
 
         End Sub
 

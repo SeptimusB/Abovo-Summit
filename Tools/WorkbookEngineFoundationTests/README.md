@@ -2,18 +2,18 @@
 
 Standalone .NET Framework 4.8 harness for the production-source engine boundary. It does not enable Excel in the live Summit application. Sessions are read-only by default; isolated value-edit tests explicitly opt in to in-memory changes with compensation. Candidate exports are a separate opt-in and never replace the source or mark it saved. Use private copied workbooks, never a user's active editing file: the tested source is leased read-only for the session.
 
-Build the main VB project using VS2022 MSBuild with `/p:Configuration=Debug /p:OutputPath=bin/EngineStage2g-Debug/`, and similarly Release to `bin/EngineStage2g-Release/`. Then `dotnet build Tools/WorkbookEngineFoundationTests/WorkbookEngineFoundationTests.csproj -c Debug`. For Release, also set `/p:ApplicationBin="C:/Repos/Abovo Summit/bin/EngineStage2g-Release"`. Default test process is x86, matching current Summit; override PlatformTarget and use a separate OutputPath for x64 tests.
+Build the main VB project using VS2022 MSBuild with `/p:Configuration=Debug /p:OutputPath=bin/EngineStage2h-Debug/`, and similarly Release to `bin/EngineStage2h-Release/`. Then `dotnet build Tools/WorkbookEngineFoundationTests/WorkbookEngineFoundationTests.csproj -c Debug`. For Release, also set `/p:ApplicationBin="C:/Repos/Abovo Summit/bin/EngineStage2h-Release"`. Default test process is x86, matching current Summit; override PlatformTarget and use a separate OutputPath for x64 tests.
 
 Run from the repository root:
 
 ```powershell
-& 'Tools/WorkbookEngineFoundationTests/bin/Debug/net48/WorkbookEngineFoundationTests.exe' 'C:/Repos/Abovo Summit/bin/EngineStage2g-Debug' 'ABSOLUTE_PRIVATE_WORKBOOK_PATH.xlsm' safety
+& 'Tools/WorkbookEngineFoundationTests/bin/Debug/net48/WorkbookEngineFoundationTests.exe' 'C:/Repos/Abovo Summit/bin/EngineStage2h-Debug' 'ABSOLUTE_PRIVATE_WORKBOOK_PATH.xlsm' safety
 ```
 
 Modes:
 
 - `batch`: atomic multi-value preflight, prerequisite/final calculation, explicit skips, compensation and quarantine; includes the native DevExpress conditional-fill semantic probe.
-- `bridge`: generated real native models, internal existing-change-manager binding, dirty/journal/Undo/Redo, facade reads without source-cell mutation, Check Sheet/company warning, defining-date amount locks, both engines and date systems. Not full live DIT integration.
+- `bridge`: generated native models, real change-manager and standalone editor, one-use/revision-bound admission, atomic command, dirty/journal/Undo/Redo, current facade reads, common calculation, Check Sheet/company warning and defining-date locks, both engines/date systems. Not whole-model live DIT acceptance.
 - `presentation`: generated native workbook formatting, conditional fills/fonts, dates, errors, current calculation-generation checks and native cleanup. Source workbooks never modified.
 
 - `history`: real STA-owned change-manager typed edits/dirty/history, immutable revision-bound snapshots, explicit candidate/publication receipts, stale/mismatched model/source/engine checks, bounded read-only recovery history, malformed-history rejection and failure cleanup. Controlled engine backend, real private package/file operations. Passing history evidence deliberately does not clear live dirty state.

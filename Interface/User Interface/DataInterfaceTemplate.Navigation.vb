@@ -2,6 +2,7 @@ Option Infer On
 Imports System.Drawing
 Imports System.Windows.Forms
 Imports Abovo
+Imports Abovo.FileManager
 Imports Abovo.CustomGrid
 Imports Abovo.DataObject
 Imports DevExpress.XtraEditors
@@ -13,7 +14,46 @@ Imports DevExpress.XtraVerticalGrid
 Imports DevExpress.XtraVerticalGrid.Rows
 
 Partial Public Class DataInterfaceTemplate
+    Private GridEngineTicket As ModelEngineEditTicket
+
+    Private Function CaptureGridEngineEditor(point As CellDataPoint, column As DataColumnTag) As Boolean
+        GridEngineTicket = Nothing
+        If ChangeMan Is Nothing OrElse Not ChangeMan.HasEngineEditingTrial Then Return True
+        Try
+            Dim cell = GetWorkBook(ModelID).Worksheets(point.SourceSheet).Cells(point.SourceAddress)
+            GridEngineTicket = ChangeMan.CaptureEngineEditor(cell.Worksheet.Name, cell.GetReferenceA1(),
+                If(column.HasRules, WorkbookEngines.WorkbookValuePermission.SolidFillRule, WorkbookEngines.WorkbookValuePermission.UnlockedCell))
+            Return True
+        Catch ex As Exception
+            SystemMessageManager.Publish(ModelID, "The editor could not be opened. " & ex.Message, SystemMessageSeverity.Warning, "Input")
+            Return False
+        End Try
+    End Function
+
     Private NavigationPending As Boolean
+    Private Function PostEngineGridCommand(inputs As IEnumerable(Of KeyValuePair(Of ClipboardDataCellTarget, Object)), description As String) As Boolean
+        Try
+            Dim changes As New List(Of DataChangeEvent)
+            Dim permissions As New List(Of WorkbookEngines.WorkbookValuePermission)
+            For Each item In inputs
+                Dim target = item.Key
+                Dim data = DataPres.DataSets(target.DataSetIndex)
+                Dim point = data.DataRows(target.DataRowIndex).DataCells(target.DataColumnIndex)
+                Dim column = data.DataColumns(target.DataColumnIndex).ColumnTag
+                changes.Add(New DataChangeEvent With {.ModelID = ModelID, .WSName = point.SourceSheet, .CellAddress = point.SourceAddress,
+                    .ChangedValue = item.Value, .DataFormat = column.DataType, .Description = description,
+                    .TimeStamp = Now(), .UserName = Environment.UserName})
+                permissions.Add(If(column.HasRules, WorkbookEngines.WorkbookValuePermission.SolidFillRule, WorkbookEngines.WorkbookValuePermission.UnlockedCell))
+            Next
+            Dim result = ChangeMan.ProcessEngineCommand(changes, permissions, description)
+            If result.BError OrElse Not result.BSuccess Then Throw New InvalidOperationException(result.StrResponseMessage)
+            Return True
+        Catch ex As Exception
+            XtraMessageBox.Show(Me, ex.Message, "Input not applied", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            RefreshData()
+            Return False
+        End Try
+    End Function
     Private EnterNavigationVertical As Boolean
     Private ReadOnly StandaloneNavigationEditors As New HashSet(Of BaseEdit)
     Private Sub ConfigureEditorNavigation(editor As BaseEdit)
@@ -61,6 +101,7 @@ Partial Public Class DataInterfaceTemplate
     Private Function CommitHeaderWorkbookChange(sender As Object, change As DataChangeEvent, previous As Object) As Boolean
         WorkbookPostingDepth += 1
         Try
+            change.EngineTicket = EngineEditorTicket(sender)
             Dim result = ChangeMan.ProcessChangeByNRAddressing(change)
             If result.BError Then Throw New InvalidOperationException(result.StrResponseMessage)
             Return True
@@ -210,6 +251,8 @@ Partial Public Class DataInterfaceTemplate
     Private Sub RegisterStandaloneNavigation(editor As BaseEdit)
         If editor Is Nothing OrElse Not TypeOf editor.Tag Is SingleCellDataTag Then Return
         ConfigureEditorNavigation(editor)
+        Dim target = DirectCast(editor.Tag, SingleCellDataTag)
+        RegisterModelCellEngineEditor(editor, ModelID, target.TargetWorksheet.Name, target.TargetCell)
         If StandaloneNavigationEditors.Add(editor) Then AddHandler editor.Disposed, AddressOf StandaloneNavigationDisposed
     End Sub
 

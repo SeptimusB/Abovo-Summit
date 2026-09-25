@@ -6,6 +6,56 @@ Imports System.Windows.Forms
 Namespace Abovo
 
     Friend Module ModelPostingChangeSupport
+        Private NotInheritable Class EngineEditorState
+            Public Ticket As ModelEngineEditTicket
+            Public Capture As Func(Of ModelEngineEditTicket)
+        End Class
+        Private ReadOnly EngineEditors As New System.Runtime.CompilerServices.ConditionalWeakTable(Of Object, EngineEditorState)()
+
+        Friend Function EngineEditorTicket(editor As Object) As ModelEngineEditTicket
+            Dim state As EngineEditorState = Nothing
+            If editor IsNot Nothing AndAlso EngineEditors.TryGetValue(editor, state) Then Return state.Ticket
+            Return Nothing
+        End Function
+
+        Friend Sub RegisterEngineEditor(editor As BaseEdit, capture As Func(Of ModelEngineEditTicket))
+            Dim state = EngineEditors.GetOrCreateValue(editor)
+            state.Capture = capture
+            RemoveHandler editor.Enter, AddressOf CaptureEngineEditorOnEnter
+            AddHandler editor.Enter, AddressOf CaptureEngineEditorOnEnter
+        End Sub
+
+        Private Sub CaptureEngineEditorOnEnter(sender As Object, e As EventArgs)
+            CaptureEngineEditorNow(DirectCast(sender, BaseEdit))
+        End Sub
+
+        Friend Function CaptureEngineEditorNow(editor As BaseEdit) As Boolean
+            Dim state As EngineEditorState = Nothing
+            If Not EngineEditors.TryGetValue(editor, state) OrElse state.Capture Is Nothing Then Return True
+            state.Ticket = Nothing
+            Try
+                state.Ticket = state.Capture()
+                editor.ErrorText = String.Empty
+                Return True
+            Catch ex As Exception
+                editor.ErrorText = ex.Message
+                Return False
+            End Try
+        End Function
+
+        Friend Function CaptureHeaderEngineEditor(editor As BaseEdit) As Boolean
+            Dim combo = TryCast(editor.Tag, InColumnEditorTagCombo)
+            Dim dateTag = TryCast(editor.Tag, InColumnEditorTagDateEdit)
+            Dim capture As Func(Of ModelEngineEditTicket) = If(combo IsNot Nothing, combo.CaptureEngineEdit, If(dateTag Is Nothing, Nothing, dateTag.CaptureEngineEdit))
+            If capture Is Nothing Then Return True
+            RegisterEngineEditor(editor, capture)
+            Return CaptureEngineEditorNow(editor)
+        End Function
+
+        Friend Sub RegisterModelCellEngineEditor(editor As BaseEdit, modelID As Integer, worksheetName As String, address As String)
+            RegisterEngineEditor(editor, Function() ExcelModels(modelID).ChangeManager.CaptureEngineEditor(
+                worksheetName, address, WorkbookEngines.WorkbookValuePermission.UnlockedCell))
+        End Sub
 
         'Call only inside the view's posting-suppressed workbook refresh scope.
         Friend Sub HideGridEditors(root As Control)
@@ -27,7 +77,8 @@ Namespace Abovo
                                            ByVal cellAddress As String,
                                            ByVal changedValue As Object,
                                            ByVal dataFormat As String,
-                                           ByVal description As String) As AbovoAppCls.AbovoTransaction
+                                           ByVal description As String,
+                                           Optional editor As BaseEdit = Nothing) As AbovoAppCls.AbovoTransaction
             If ExcelModels Is Nothing OrElse modelID < 0 OrElse modelID >= ExcelModels.Length OrElse
                ExcelModels(modelID) Is Nothing OrElse ExcelModels(modelID).ChangeManager Is Nothing Then
                 Return New AbovoAppCls.AbovoTransaction With {
@@ -49,31 +100,35 @@ Namespace Abovo
                 .Description = description,
                 .WSName = worksheetName,
                 .CellAddress = cellAddress,
-                .OriginalValue = targetCell.Value,
+                .OriginalValue = targetCell.ModelValue(),
+                .EngineTicket = EngineEditorTicket(editor),
                 .ChangedValue = changedValue,
                 .DataFormat = dataFormat,
                 .TimeStamp = Now(),
                 .UserName = Environment.UserName}
-            Return ExcelModels(modelID).ChangeManager.ProcessChange(change)
+            Dim result = ExcelModels(modelID).ChangeManager.ProcessChange(change)
+            If result.BSuccess AndAlso editor IsNot Nothing AndAlso editor.ContainsFocus Then CaptureEngineEditorNow(editor)
+            Return result
         End Function
 
         Friend Function EditorValueFromCell(ByVal cell As Cell,
                                             ByVal dataFormat As String) As Object
-            If cell Is Nothing OrElse cell.Value.IsEmpty Then Return Nothing
+            If cell Is Nothing OrElse cell.ModelValue().IsEmpty Then Return Nothing
             Select Case If(dataFormat, String.Empty).Trim().ToUpperInvariant()
                 Case "D"
-                    If cell.Value.IsDateTime Then Return cell.Value.DateTimeValue
-                    If cell.Value.IsNumeric Then Return DateTime.FromOADate(cell.Value.NumericValue)
-                    Return cell.DisplayText
+                    If cell.HasModelEngineView() AndAlso cell.ModelValue().IsNumeric Then Return cell.ModelDateValue()
+                    If cell.ModelValue().IsDateTime Then Return cell.ModelValue().DateTimeValue
+                    If cell.ModelValue().IsNumeric Then Return DateTime.FromOADate(cell.ModelValue().NumericValue)
+                    Return cell.ModelDisplayText()
                 Case "B"
-                    If cell.Value.IsBoolean Then Return cell.Value.BooleanValue
-                    If cell.Value.IsNumeric Then Return cell.Value.NumericValue <> 0
-                    Return cell.DisplayText
+                    If cell.ModelValue().IsBoolean Then Return cell.ModelValue().BooleanValue
+                    If cell.ModelValue().IsNumeric Then Return cell.ModelValue().NumericValue <> 0
+                    Return cell.ModelDisplayText()
                 Case "N", "C", "M", "SM", "R", "P", "I", "Y"
-                    If cell.Value.IsNumeric Then Return cell.Value.NumericValue
+                    If cell.ModelValue().IsNumeric Then Return cell.ModelValue().NumericValue
                     Return Nothing
                 Case Else
-                    Return cell.DisplayText
+                    Return cell.ModelDisplayText()
             End Select
         End Function
 

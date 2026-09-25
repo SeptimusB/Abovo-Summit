@@ -58,6 +58,7 @@ static class EngineChangeManagerTests
     }
     static ModelEngineInput Input(WorkbookCellSnapshot cell,object value,string format="N")=>new ModelEngineInput(new DataChangeEvent{ModelID=0,WSName=cell.Area.Worksheet,CellAddress=cell.Area.Address.Split(':')[0],ChangedValue=value,DataFormat=format,Description="Engine input",TimeStamp=DateTime.UtcNow,UserName="Synthetic test"},cell,WorkbookValuePermission.UnlockedCell);
     static bool Warning(Model model)=>(bool)typeof(FileManager.ExcelModel).GetProperty("CheckSheetWarningActive",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(model.Value);
+    static long UserRevision(Model model)=>(long)typeof(FileManager.ExcelModel).GetProperty("UserChangeRevision",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(model.Value);
     internal static async Task Run(string source)
     {
         int[] before=Process.GetProcessesByName("EXCEL").Select(p=>{using(p)return p.Id;}).OrderBy(x=>x).ToArray();
@@ -99,6 +100,7 @@ static class EngineChangeManagerTests
                 Succeeded(await model.Do(()=>model.Manager.ProcessEngineChanges(new[]{Input(cells[0],date,"D"),Input(cells[1],"=literal","S"),Input(cells[2],true,"BOOLEAN")},"Typed values")));
                 var actual=await s.CaptureCellsAsync(s.Revision,new[]{Cell(0),Cell(1),Cell(2)});
                 Check(Equals(actual[0].State.Value,dateSerial)&&Equals(actual[1].State.Value,"=literal")&&Equals(actual[2].State.Value,true),"date system, literal formula-looking text and Boolean preserved");
+                Check(await model.Do(()=>model.Value.WB.Worksheets[0].Cells["A1"].ModelDateValue()==date),"native date display respects workbook date system");
                 Check(await model.Do(()=>!model.Manager.CanRedo&&model.Manager.GetHistoryTable().Select("State='Superseded'").Length==3),"new edit supersedes previous undone group in same journal");
                 Succeeded(await model.Do(()=>model.Manager.Undo()));
                 Check((await s.CaptureCellAsync(s.Revision,Cell(0))).State.Value.Equals(10d),"typed group Undo restores input");
@@ -145,6 +147,66 @@ static class EngineChangeManagerTests
             finally{await s.CloseAsync();}
         }
         var timer=Stopwatch.StartNew();int[] after;
+        foreach(var preference in new[]{WorkbookEnginePreference.DevExpressOnly,WorkbookEnginePreference.ExcelRequired})
+        {
+            var path=Fixture(source,false);
+            using(var book=new Workbook()){book.LoadDocument(path);book.DefinedNames.Add("EditorTargets","=Data!$A$1:$C$1");book.SaveDocument(path,DocumentFormat.Xlsx);}
+            var s=await WorkbookCalculationSession.OpenAsync(path,new WorkbookEngineOptions(preference,false,false,120000,true));
+            using(var model=new Model(path))
+            try
+            {
+                var read=new[]{new WorkbookReadArea("Data",0,0,4,6)};var baseline=await s.CalculateAndReadAsync(0,WorkbookCalculationKind.Full,read);
+                await model.Do(()=>{Invoke(model.Manager,"BindEngineEditingTrial",s,baseline);return true;});
+                var ticket=await model.Do(()=>model.Manager.CaptureEngineEditor("Data","$A$1",WorkbookValuePermission.UnlockedCell));
+                var other=await model.Do(()=>model.Manager.CaptureEngineEditor("Data","B1",WorkbookValuePermission.UnlockedCell));
+                var change=new DataChangeEvent{ModelID=0,WSName="Data",CellAddress="$A$1",ChangedValue=11d,DataFormat="N",EngineTicket=ticket,Description="Real editor",TimeStamp=DateTime.UtcNow};
+                var wrong=change;wrong.CellAddress="B1";
+                Check((await model.Do(()=>model.Manager.ProcessChange(wrong))).BError&&s.Revision==0,"editor token cannot target a different cell");
+                Succeeded(await model.Do(()=>model.Manager.ProcessChange(change)));
+                Check((await s.CaptureCellAsync(s.Revision,Cell(0))).State.Value.Equals(11d)&&await model.Do(()=>model.Manager.GetHistoryTable().Rows.Count)==1,s.EngineName+" ordinary ProcessChange commits only its admitted native cell");
+                Check((await model.Do(()=>model.Manager.ProcessChange(change))).BError,"one-use ticket cannot be replayed");
+                wrong.CellAddress="B1";wrong.EngineTicket=other;
+                Check((await model.Do(()=>model.Manager.ProcessChange(wrong))).BError,"second editor becomes stale after a different edit");
+                Succeeded(await model.Do(()=>model.Manager.Undo()));
+                Check((await s.CaptureCellAsync(s.Revision,Cell(0))).State.Value.Equals(10d),"ordinary admitted edit uses existing Undo");
+                ticket=await model.Do(()=>model.Manager.CaptureEngineEditor("Data","B1",WorkbookValuePermission.UnlockedCell));
+                var heading=new DataChangeEvent{ModelID=0,TargetNR="EditorTargets",TargetNRIndex=1,NROrientation=System.Windows.Forms.Orientation.Horizontal,ChangedValue=22d,DataFormat="N",EngineTicket=ticket,Description="Heading editor"};
+                Succeeded(await model.Do(()=>model.Manager.ProcessChangeByNRAddressing(heading)));
+                Check((await s.CaptureCellAsync(s.Revision,Cell(1))).State.Value.Equals(22d),"named-range editor resolves and verifies its native target");
+                await Reject(()=>model.Do(()=>model.Manager.CaptureEngineEditor("Data","D1",WorkbookValuePermission.UnlockedCell)),"formula cell cannot obtain an edit token");
+                ticket=await model.Do(()=>model.Manager.CaptureEngineEditor("Data","A1",WorkbookValuePermission.UnlockedCell));
+                change.EngineTicket=ticket;
+                await s.CalculateAndReadAsync(s.Revision,WorkbookCalculationKind.Full,read);
+                Check((await model.Do(()=>model.Manager.ProcessChange(change))).BError,"calculation-only refresh invalidates an already open editor");
+                Check((await s.CaptureCellAsync(s.Revision,Cell(0))).State.Value.Equals(10d),"stale editor leaves native input untouched");
+                var userRevision=await model.Do(()=>UserRevision(model));
+                await model.Do(()=>{model.Value.WBCalcEngine.CalcFile(3);return true;});
+                Check(await model.Do(()=>model.Manager.EngineEditingResult!=null&&!model.Value.ResultsPending&&UserRevision(model)==userRevision),"common rebuild restores current native display without inventing user edits");
+                var revision=s.Revision;
+                await model.Do(()=>{model.Value.WBCalcEngine.CalculateDependencySensitiveFile("Fixture");return true;});
+                Check(s.Revision==revision&&await model.Do(()=>model.Value.WB.Worksheets[0].Cells["B1"].ModelValue().NumericValue==22d&&model.Value.WB.Worksheets[0].Cells["B1"].Value.NumericValue==20d),"dependency reader stays on selected owner and leaves template untouched");
+                EventHandler brokenView=(sender,args)=>{throw new InvalidOperationException("Synthetic presentation subscriber");};
+                await model.Do(()=>{model.Value.WBCalcEngine.CalculationCompleted+=brokenView;return true;});
+                Succeeded(await model.Do(()=>model.Manager.ProcessEngineCommand(new[]{new DataChangeEvent{ModelID=0,WSName="Data",CellAddress="A1",ChangedValue=15d,DataFormat="N"},new DataChangeEvent{ModelID=0,WSName="Data",CellAddress="B1",ChangedValue=25d,DataFormat="N"}},new[]{WorkbookValuePermission.UnlockedCell,WorkbookValuePermission.UnlockedCell},"Paste command")));
+                await model.Do(()=>{model.Value.WBCalcEngine.CalculationCompleted-=brokenView;return true;});
+                Check(await model.Do(()=>model.Value.WB.Worksheets[0].Cells["A2"].ModelValue().NumericValue==70d),"explicit paste command captures targets and commits one native result");
+                Succeeded(await model.Do(()=>model.Manager.Undo()));
+                Check(await model.Do(()=>model.Value.WB.Worksheets[0].Cells["A1"].ModelValue().NumericValue==10d&&model.Value.WB.Worksheets[0].Cells["B1"].ModelValue().NumericValue==22d),"one Undo restores the admitted paste command");
+                await model.Do(()=>{
+                    using(var editor=new ModelPostingTextBox()){
+                        int id=0;string sheet="Data",address="C1";
+                        typeof(ModelPostingTextBox).GetMethod("Initialise",BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public).Invoke(editor,new object[]{id,sheet,address});
+                        typeof(System.Windows.Forms.Control).GetMethod("OnEnter",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(editor,new object[]{EventArgs.Empty});
+                        editor.EditValue="Native text";
+                        Invoke(editor,"ProcessChange",editor,EventArgs.Empty);
+                        Check(model.Value.WB.Worksheets[0].Cells["C1"].ModelValue().TextValue=="Native text","real standalone editor captures on Enter and posts through native manager");
+                    }
+                    return true;
+                });
+            }
+            finally{await s.CloseAsync();}
+        }
+        timer.Restart();
         do{await Task.Delay(100);after=Process.GetProcessesByName("EXCEL").Select(p=>{using(p)return p.Id;}).OrderBy(x=>x).ToArray();}while(timer.ElapsedMilliseconds<10000&&!before.SequenceEqual(after));
         Check(before.SequenceEqual(after),"owned Excel exits and existing user processes remain");
         Console.WriteLine("BRIDGE ASSERTIONS="+assertions);

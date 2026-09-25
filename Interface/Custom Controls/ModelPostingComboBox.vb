@@ -89,12 +89,13 @@ Public Class ModelPostingComboBox
         If SuppressAutomaticPosting OrElse SuppressPosting Then Return
         Dim result = PostModelCellValue(ModelID, TargetWorksheet, TargetCell,
                                         If(EditValue Is Nothing OrElse Convert.IsDBNull(EditValue), Nothing, EditValue),
-                                        "S", "Selection updated")
+                                        "S", "Selection updated", Me)
         If result.BError Then RefreshFromWorkbook()
 
     End Sub
 
     Private Sub ConfigurePosting()
+        RegisterModelCellEngineEditor(Me, ModelID, TargetWorksheet, TargetCell)
         RemoveHandler MyBase.EditValueChanged, AddressOf ProcessChange
         AddHandler MyBase.EditValueChanged, AddressOf ProcessChange
         If HistoryBinding Is Nothing Then

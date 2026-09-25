@@ -1186,6 +1186,11 @@ Namespace Abovo
                 Dim previousEngine = WB.Options.CalculationEngineType
                 Dim previousMode = WB.Options.CalculationMode
                 Dim previousSkip = If(WBCalculationService Is Nothing, False, WBCalculationService.DontCalcTDBS)
+                If ChangeManager IsNot Nothing AndAlso ChangeManager.HasEngineEditingTrial Then
+                    If report IsNot Nothing Then report("Updating workbook results...")
+                    ChangeManager.RecalculateEngine(If(rebuild, WorkbookEngines.WorkbookCalculationKind.Rebuild, WorkbookEngines.WorkbookCalculationKind.Full))
+                    Return
+                End If
                 Try
                     If report IsNot Nothing Then report(If(rebuild, "Rebuilding workbook dependencies...", "Updating workbook results..."))
                     WB.Options.CalculationMode = WorkbookCalculationMode.Manual

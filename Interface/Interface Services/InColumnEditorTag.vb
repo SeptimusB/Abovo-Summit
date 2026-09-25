@@ -2,6 +2,7 @@
 Imports DevExpress.XtraGrid.Views.BandedGrid
 Namespace Abovo
     Public Class InColumnEditorTagCombo
+        Friend CaptureEngineEdit As Func(Of ModelEngineEditTicket)
 
         Public EditingNRName As String
         Public EditingNRIndexPosition As Integer = -1
@@ -18,6 +19,7 @@ Namespace Abovo
     End Class
 
     Public Class InColumnEditorTagDateEdit
+        Friend CaptureEngineEdit As Func(Of ModelEngineEditTicket)
 
         Public EditingNRName As String
         Public EditingNRIndexPosition As Integer = -1

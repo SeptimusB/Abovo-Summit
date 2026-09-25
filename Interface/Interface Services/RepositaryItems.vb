@@ -472,7 +472,7 @@ SkipNOS:
                 For x = 0 To CRTargetRange.RowCount - 1
 
                     clCell = CRTargetRange(x, 0)
-                    If Len(clCell.DisplayText) > 0 Then NRItems.Add(clCell.DisplayText)
+                    If Len(clCell.ModelDisplayText()) > 0 Then NRItems.Add(clCell.ModelDisplayText())
 
                 Next
 
@@ -481,7 +481,7 @@ SkipNOS:
                 For x = 0 To CRTargetRange.ColumnCount - 1
 
                     clCell = CRTargetRange(0, x)
-                    If Len(clCell.DisplayText) > 0 Then NRItems.Add(clCell.DisplayText)
+                    If Len(clCell.ModelDisplayText()) > 0 Then NRItems.Add(clCell.ModelDisplayText())
 
                 Next
 

@@ -39,14 +39,14 @@ Namespace Abovo
                 End If
 
                 Properties.Appearance.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
-                EditValue = TargetWorksheet.Cells(TargetCell).Value.NumericValue
+                EditValue = TargetWorksheet.Cells(TargetCell).ModelValue().NumericValue
                 Properties.MaskSettings.Set("MaskManagerType", GetType(DevExpress.Data.Mask.NumericMaskManager))
                 Properties.MaskSettings.Set("mask", "F")
 
                 PriorVal = EditValue
 
-                BackColor = TargetWorksheet.Cells(TargetCell).Fill.BackgroundColor
-                ForeColor = TargetWorksheet.Cells(TargetCell).Font.Color
+                BackColor = TargetWorksheet.Cells(TargetCell).ModelFill().BackgroundColor
+                ForeColor = TargetWorksheet.Cells(TargetCell).ModelFont().Color
 
             End Sub
             Public Sub MarkDirty()
@@ -67,7 +67,7 @@ Namespace Abovo
                 If TargetWorksheet Is Nothing OrElse String.IsNullOrWhiteSpace(TargetCell) Then Return
                 Try
 
-                    EditValue = TargetWorksheet.Cells(TargetCell).Value.NumericValue
+                    EditValue = TargetWorksheet.Cells(TargetCell).ModelValue().NumericValue
 
                 Catch ex As Exception
 
@@ -143,23 +143,23 @@ Namespace Abovo
 
                         Properties.DisplayFormat.FormatType = DevExpress.Utils.FormatType.None
                         Properties.AdvancedModeOptions.ShiftedLabelAppearance.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Near
-                        EditValue = TargetWorksheet.Cells(TargetCell).DisplayText
+                        EditValue = TargetWorksheet.Cells(TargetCell).ModelDisplayText()
                     Case "FL"
 
                         If AdvMode Then Properties.AdvancedModeOptions.ShiftedLabelAppearance.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Near
-                        EditValue = TargetWorksheet.Cells(TargetCell).Value.TextValue
+                        EditValue = TargetWorksheet.Cells(TargetCell).ModelValue().TextValue
 
                     Case "B"
 
                         Properties.AdvancedModeOptions.ShiftedLabelAppearance.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Near
-                        EditValue = TargetWorksheet.Cells(TargetCell).Value.BooleanValue
+                        EditValue = TargetWorksheet.Cells(TargetCell).ModelValue().BooleanValue
 
                     Case "D", "P", "C"
 
                         Properties.MaskSettings.Set("AutoHideDecimalSeparator", True)
                         Properties.DisplayFormat.FormatType = DevExpress.Utils.FormatType.Numeric
                         Properties.Appearance.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
-                        EditValue = TargetWorksheet.Cells(TargetCell).Value.NumericValue
+                        EditValue = TargetWorksheet.Cells(TargetCell).ModelValue().NumericValue
                         Properties.MaskSettings.Set("MaskManagerType", GetType(DevExpress.Data.Mask.NumericMaskManager))
                         Properties.MaskSettings.Set("mask", "F")
 
@@ -170,7 +170,7 @@ Namespace Abovo
                         Properties.Appearance.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far
                         Properties.MaskSettings.Set("MaskManagerType", GetType(DevExpress.Data.Mask.NumericMaskManager))
                         Properties.MaskSettings.Set("mask", "0.###############")
-                        EditValue = TargetWorksheet.Cells(TargetCell).Value.NumericValue
+                        EditValue = TargetWorksheet.Cells(TargetCell).ModelValue().NumericValue
 
                     Case "M"
 
@@ -180,7 +180,7 @@ Namespace Abovo
                         Properties.DisplayFormat.FormatString = "n0"
                         Properties.MaskSettings.Set("MaskManagerType", GetType(DevExpress.Data.Mask.NumericMaskManager))
                         Properties.MaskSettings.Set("mask", "c5")
-                        EditValue = TargetWorksheet.Cells(TargetCell).Value.NumericValue
+                        EditValue = TargetWorksheet.Cells(TargetCell).ModelValue().NumericValue
                         AddHandler Enter, AddressOf AbovoDETextEdit_GotFocus
 
                     Case "SM"
@@ -191,7 +191,7 @@ Namespace Abovo
                         Properties.DisplayFormat.FormatString = "n0"
                         Properties.MaskSettings.Set("MaskManagerType", GetType(DevExpress.Data.Mask.NumericMaskManager))
                         Properties.MaskSettings.Set("mask", "c3")
-                        EditValue = TargetWorksheet.Cells(TargetCell).Value.NumericValue
+                        EditValue = TargetWorksheet.Cells(TargetCell).ModelValue().NumericValue
 
                     Case "I"
 
@@ -200,7 +200,7 @@ Namespace Abovo
                         Properties.DisplayFormat.FormatString = "n0"
                         Properties.MaskSettings.Set("MaskManagerType", GetType(DevExpress.Data.Mask.NumericMaskManager))
                         Properties.MaskSettings.Set("mask", "D3")
-                        EditValue = TargetWorksheet.Cells(TargetCell).Value.NumericValue
+                        EditValue = TargetWorksheet.Cells(TargetCell).ModelValue().NumericValue
 
                     Case "Y"
 
@@ -209,14 +209,14 @@ Namespace Abovo
                         Properties.DisplayFormat.FormatString = "D0"
                         Properties.MaskSettings.Set("MaskManagerType", GetType(DevExpress.Data.Mask.NumericMaskManager))
                         Properties.MaskSettings.Set("mask", "D0")
-                        EditValue = TargetWorksheet.Cells(TargetCell).Value.NumericValue
+                        EditValue = TargetWorksheet.Cells(TargetCell).ModelValue().NumericValue
 
                 End Select
 
                 PriorVal = EditValue
 
-                BackColor = TargetWorksheet.Cells(TargetCell).Fill.BackgroundColor
-                ForeColor = TargetWorksheet.Cells(TargetCell).Font.Color
+                BackColor = TargetWorksheet.Cells(TargetCell).ModelFill().BackgroundColor
+                ForeColor = TargetWorksheet.Cells(TargetCell).ModelFont().Color
                 RefreshData()
 
             End Sub
@@ -258,19 +258,19 @@ Namespace Abovo
 
                         Case "S"
 
-                            EditValue = TargetWorksheet.Cells(TargetCell).DisplayText
+                            EditValue = TargetWorksheet.Cells(TargetCell).ModelDisplayText()
 
                         Case "FL"
 
-                            EditValue = TargetWorksheet.Cells(TargetCell).Value.TextValue
+                            EditValue = TargetWorksheet.Cells(TargetCell).ModelValue().TextValue
 
                         Case "B"
 
-                            EditValue = TargetWorksheet.Cells(TargetCell).Value.BooleanValue
+                            EditValue = TargetWorksheet.Cells(TargetCell).ModelValue().BooleanValue
 
                         Case Else
 
-                            EditValue = TargetWorksheet.Cells(TargetCell).Value.NumericValue
+                            EditValue = TargetWorksheet.Cells(TargetCell).ModelValue().NumericValue
 
                     End Select
 
@@ -349,7 +349,7 @@ Namespace Abovo
 
                     Try
 
-                        Text = TargetWorksheet.Cells(TargetCell).DisplayText
+                        Text = TargetWorksheet.Cells(TargetCell).ModelDisplayText()
 
                     Catch ex As Exception
 
@@ -402,8 +402,8 @@ Namespace Abovo
             End Property
             Public Sub CommonItems()
 
-                BackColor = TargetWorksheet.Cells(TargetCell).Fill.BackgroundColor
-                ForeColor = TargetWorksheet.Cells(TargetCell).Font.Color
+                BackColor = TargetWorksheet.Cells(TargetCell).ModelFill().BackgroundColor
+                ForeColor = TargetWorksheet.Cells(TargetCell).ModelFont().Color
                 'ForeColor = Color.White
 
                 ProcesDefValue()
@@ -427,8 +427,8 @@ Namespace Abovo
 
                 Try
 
-                    Text = TargetWorksheet.Cells(TargetCell).DisplayText
-                    BackColor = TargetWorksheet.Cells(TargetCell).Fill.BackgroundColor
+                    Text = TargetWorksheet.Cells(TargetCell).ModelDisplayText()
+                    BackColor = TargetWorksheet.Cells(TargetCell).ModelFill().BackgroundColor
                     'ForeColor = TargetWorksheet.Cells(TargetCell).colo
 
                 Catch ex As Exception
@@ -486,8 +486,8 @@ Namespace Abovo
 
                 Try
 
-                    EditValue = TargetWorksheet.Cells(TargetCell).DisplayText
-                    BackColor = TargetWorksheet.Cells(TargetCell).Fill.BackgroundColor
+                    EditValue = TargetWorksheet.Cells(TargetCell).ModelDisplayText()
+                    BackColor = TargetWorksheet.Cells(TargetCell).ModelFill().BackgroundColor
 
                 Catch ex As Exception
 
@@ -580,7 +580,7 @@ Namespace Abovo
 
                 Try
 
-                    EditValue = TargetWorksheet.Cells(TargetCell).DisplayText
+                    EditValue = TargetWorksheet.Cells(TargetCell).ModelDisplayText()
 
                 Catch ex As Exception
 
@@ -751,7 +751,7 @@ Namespace Abovo
 
                 Try
 
-                    Text = TargetWorksheet.Cells(TargetCell).DisplayText
+                    Text = TargetWorksheet.Cells(TargetCell).ModelDisplayText()
 
                 Catch ex As Exception
 
@@ -882,8 +882,8 @@ Namespace Abovo
 
                 Dim usedRange As DevExpress.Spreadsheet.CellRange = yearTable.GetUsedRange()
                 For rowIndex As Integer = usedRange.TopRowIndex To usedRange.BottomRowIndex
-                    Dim ordinal As String = yearTable.Cells(rowIndex, 6).DisplayText.Trim()
-                    Dim period As String = yearTable.Cells(rowIndex, 8).DisplayText.Trim()
+                    Dim ordinal As String = yearTable.Cells(rowIndex, 6).ModelDisplayText().Trim()
+                    Dim period As String = yearTable.Cells(rowIndex, 8).ModelDisplayText().Trim()
                     If ordinal.Length > 0 AndAlso period.Length > 0 Then
                         result(ordinal) = period
                     End If
@@ -1074,7 +1074,7 @@ Namespace Abovo
 
                     Try
 
-                        Text = TargetWorksheet.Cells(TargetCell).DisplayText
+                        Text = TargetWorksheet.Cells(TargetCell).ModelDisplayText()
 
                     Catch ex As Exception
 
@@ -1151,9 +1151,10 @@ Namespace Abovo
             End Sub
 
             Private Function ReadDateValue() As Object
-                Dim value = TargetWorksheet.Range(TargetCell).Value
+                Dim cell = TargetWorksheet.Cells(TargetCell)
+                Dim value = cell.ModelValue()
                 If value.IsEmpty OrElse (value.IsText AndAlso String.IsNullOrWhiteSpace(value.TextValue)) Then Return Nothing
-                If value.IsNumeric OrElse value.IsDateTime Then Return value.DateTimeValue
+                If value.IsNumeric OrElse value.IsDateTime Then Return cell.ModelDateValue()
                 Return Nothing
             End Function
 

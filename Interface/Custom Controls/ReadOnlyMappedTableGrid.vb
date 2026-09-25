@@ -521,10 +521,20 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
         End If
     End Sub
 
+    Private choiceEngineTicket As ModelEngineEditTicket
     Private Sub ShowingCellEditor(sender As Object, e As CancelEventArgs)
+        choiceEngineTicket = Nothing
         e.Cancel = posting OrElse refreshing OrElse view.FocusedColumn Is Nothing OrElse
             view.FocusedColumn.FieldName = InterfaceField OrElse
             YesNoChoices(SourceCell(view.FocusedRowHandle, view.FocusedColumn)).Count = 0
+        If e.Cancel OrElse changeManager Is Nothing OrElse Not changeManager.HasEngineEditingTrial Then Return
+        Try
+            Dim cell = SourceCell(view.FocusedRowHandle, view.FocusedColumn)
+            choiceEngineTicket = changeManager.CaptureEngineEditor(cell.Worksheet.Name, cell.GetReferenceA1(), WorkbookEngines.WorkbookValuePermission.UnlockedCell)
+        Catch ex As Exception
+            e.Cancel = True
+            SystemMessageManager.Publish(ownerModelID, "The override could not be opened. " & ex.Message, SystemMessageSeverity.Warning, "Check Sheet")
+        End Try
     End Sub
 
     Private Sub CellValueChanged(sender As Object, e As DevExpress.XtraGrid.Views.Base.CellValueChangedEventArgs)
@@ -557,6 +567,7 @@ Public NotInheritable Class ReadOnlyMappedTableGrid
                 .Description = sourceSheet.Name & " - " & description & " override updated",
                 .WSName = sourceSheet.Name, .CellAddress = cell.GetReferenceA1(),
                 .OriginalValue = cell.ModelValue().TextValue, .ChangedValue = choice, .DataFormat = "S",
+                .EngineTicket = choiceEngineTicket,
                 .TimeStamp = Now(), .UserName = Environment.UserName})
         Finally
             posting = False

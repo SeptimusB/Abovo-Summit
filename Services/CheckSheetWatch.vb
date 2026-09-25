@@ -191,7 +191,11 @@ Namespace Abovo
                             Plans.Add(model, state)
                         End If
                         state.FullCalculationCount += 1
-                        model.WB.CalculateFull()
+                        If model.ChangeManager IsNot Nothing AndAlso model.ChangeManager.HasEngineEditingTrial Then
+                            model.ChangeManager.RecalculateEngine(WorkbookEngines.WorkbookCalculationKind.Full, publishCheckSheet:=False)
+                        Else
+                            model.WB.CalculateFull()
+                        End If
                     Finally
                         Try
                             model.WB.Options.CalculationEngineType = previousEngine

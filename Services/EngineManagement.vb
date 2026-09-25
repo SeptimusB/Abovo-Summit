@@ -212,6 +212,13 @@ Namespace Abovo
         Sub CalculateWSs(Optional ByVal InvalidateNavigation As Boolean = True,
                          Optional ByVal MetricContext As String = Nothing)
 
+            If ExcelModels(ModelID).ChangeManager IsNot Nothing AndAlso ExcelModels(ModelID).ChangeManager.HasEngineEditingTrial Then
+                If InvalidateNavigation Then MarkPotentialWorkbookChange()
+                RefreshEngineOwner(InvalidateNavigation)
+                RefreshAfterDeferredCalculation()
+                Return
+            End If
+
             'This is also called for edit, undo and redo. A single active
             'worksheet pass does not certify cross-sheet/deferred results.
             'Interface registration also calls this method to populate its
@@ -406,6 +413,13 @@ NextWS:
         Public Sub CalcFile(Optional ByVal CalMode As Byte = 1,
                             Optional ByVal MetricContext As String = Nothing)
 
+            If ExcelModels(ModelID).ChangeManager IsNot Nothing AndAlso ExcelModels(ModelID).ChangeManager.HasEngineEditingTrial Then
+                If CalMode < 1 OrElse CalMode > 3 Then Throw New ArgumentOutOfRangeException(NameOf(CalMode))
+                RefreshEngineOwner(CalMode > 1, CalMode = 3)
+                RefreshAfterDeferredCalculation()
+                Return
+            End If
+
             'If FileManager.BIsSaving Then Exit Sub
             'Structural services own calculation during their guarded mutation.
             'Do not inject a reader gate into an unfinished insert/import.
@@ -487,6 +501,14 @@ NextWS:
         Public Sub CalculateDependencySensitiveFile(Optional ByVal Reason As String = "Unspecified",
                                                     Optional ByVal Force As Boolean = False)
 
+            If ExcelModels(ModelID).ChangeManager IsNot Nothing AndAlso ExcelModels(ModelID).ChangeManager.HasEngineEditingTrial Then
+                RefreshEngineOwner(Force)
+                DependencyGraphPrepared = True
+                WBCalcDirty = False : WBCalcMinDirty = False
+                MarkNavigationCalculationCurrentIfUnchanged(System.Threading.Interlocked.Read(NavigationMutationGeneration))
+                Return
+            End If
+
             If ExcelModels(ModelID).EnsureDeferredSaveResultsCurrent(Reason) Then
                 DependencyGraphPrepared = True
                 Return
@@ -550,6 +572,13 @@ NextWS:
             DependencyGraphPrepared = False
             If ExcelModels IsNot Nothing AndAlso ModelID >= 0 AndAlso ModelID < ExcelModels.Length AndAlso ExcelModels(ModelID) IsNot Nothing Then ExcelModels(ModelID).RequireFullRebuild()
             MarkPotentialWorkbookChange()
+        End Sub
+        Private Sub RefreshEngineOwner(force As Boolean, Optional rebuild As Boolean = False)
+            Dim model = ExcelModels(ModelID)
+            If force OrElse rebuild OrElse model.NeedsFullRebuild OrElse model.ChangeManager.EngineEditingResult Is Nothing Then
+                model.ChangeManager.RecalculateEngine(If(rebuild OrElse model.NeedsFullRebuild,
+                    WorkbookEngines.WorkbookCalculationKind.Rebuild, WorkbookEngines.WorkbookCalculationKind.Full))
+            End If
         End Sub
         Public Sub CalcManual()
 

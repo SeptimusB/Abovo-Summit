@@ -966,6 +966,19 @@ SkipRefresh:
     Private Sub RegisterInColumnEditorTag(ByVal sectionID As Integer,
                                           ByVal editorTag As Object)
         If editorTag Is Nothing Then Return
+        Dim comboTag = TryCast(editorTag, InColumnEditorTagCombo)
+        Dim dateTag = TryCast(editorTag, InColumnEditorTagDateEdit)
+        If comboTag IsNot Nothing Then
+            comboTag.CaptureEngineEdit = Function()
+                Dim cell = GetInColumnEditorCell(GetWorkBook(ModelID), comboTag.EditingNRName, comboTag.EditingNRIndexPosition, comboTag.NROrientation)
+                Return ChangeMan.CaptureEngineEditor(cell.Worksheet.Name, cell.GetReferenceA1(), Abovo.WorkbookEngines.WorkbookValuePermission.UnlockedCell)
+            End Function
+        ElseIf dateTag IsNot Nothing Then
+            dateTag.CaptureEngineEdit = Function()
+                Dim cell = GetInColumnEditorCell(GetWorkBook(ModelID), dateTag.EditingNRName, dateTag.EditingNRIndexPosition, dateTag.NROrientation)
+                Return ChangeMan.CaptureEngineEditor(cell.Worksheet.Name, cell.GetReferenceA1(), Abovo.WorkbookEngines.WorkbookValuePermission.UnlockedCell)
+            End Function
+        End If
         Dim sectionTags As List(Of Object) = Nothing
         If Not InColumnEditorTagsBySection.TryGetValue(sectionID, sectionTags) Then
             sectionTags = New List(Of Object)()
@@ -987,7 +1000,7 @@ SkipRefresh:
                         Dim targetCell As DevExpress.Spreadsheet.Cell = GetInColumnEditorCell(
                             workbook, comboTag.EditingNRName,
                             comboTag.EditingNRIndexPosition, comboTag.NROrientation)
-                        Dim value As Object = If(targetCell.Value.IsEmpty, Nothing, targetCell.DisplayText)
+                        Dim value As Object = If(targetCell.ModelValue().IsEmpty, Nothing, targetCell.ModelDisplayText())
                         comboTag.InitialValue = value
                         comboTag.LastEditorValue = value
                         If comboTag.LinkedComboBoxEdit IsNot Nothing Then
@@ -8719,6 +8732,7 @@ SectionSelect:
         Dim timer As Abovo.SummitDiagnostics.DiagnosticTimer =
             Abovo.SummitDiagnostics.DiagnosticTimer.StartNew()
         Dim changes As New List(Of DataChangeEvent)()
+        Dim enginePermissions As New List(Of Abovo.WorkbookEngines.WorkbookValuePermission)()
         Dim invalid As New List(Of String)()
         Dim invalidCount As Integer = 0
         Dim comboValues As New Dictionary(Of String, Dictionary(Of String, String))(
@@ -8852,6 +8866,8 @@ SectionSelect:
                         .DataFormat = ColTag.DataType,
                         .TimeStamp = Now(),
                         .UserName = Environment.UserName})
+                    enginePermissions.Add(If(ColTag.HasRules, Abovo.WorkbookEngines.WorkbookValuePermission.SolidFillRule,
+                        Abovo.WorkbookEngines.WorkbookValuePermission.UnlockedCell))
 
                     Next
                 Next
@@ -8879,8 +8895,9 @@ SectionSelect:
             Dim result As AbovoTransaction = Nothing
             PasteRefreshDepth += 1
             Try
-                result = ChangeMan.ProcessChanges(
-                    changes, "Paste into " & DITName)
+                result = If(ChangeMan.HasEngineEditingTrial,
+                    ChangeMan.ProcessEngineCommand(changes, enginePermissions, "Paste into " & DITName),
+                    ChangeMan.ProcessChanges(changes, "Paste into " & DITName))
                 If result.BSuccess AndAlso result.IntegerReturn > 0 Then
                     TargetDataSet.IsDirty = True
                     CustomPastePostProcess(
@@ -8992,15 +9009,15 @@ SectionSelect:
 
     Private Function GetJointVentureCellValue(ByVal Cell As DevExpress.Spreadsheet.Cell,
                                               ByVal DataFormat As String) As Object
-        If Cell Is Nothing OrElse Cell.Value.IsEmpty Then Return DBNull.Value
+        If Cell Is Nothing OrElse Cell.ModelValue().IsEmpty Then Return DBNull.Value
 
         Select Case DataFormat
             Case "I", "Y"
-                Return CInt(Cell.Value.NumericValue)
+                Return CInt(Cell.ModelValue().NumericValue)
             Case "N", "P", "C", "M", "SM", "R"
-                Return CDbl(Cell.Value.NumericValue)
+                Return CDbl(Cell.ModelValue().NumericValue)
             Case Else
-                Return Cell.DisplayText
+                Return Cell.ModelDisplayText()
         End Select
     End Function
 
@@ -9052,9 +9069,9 @@ SectionSelect:
                 JVNames,
                 JVIndex)
 
-        If NameCell Is Nothing OrElse NameCell.Value.IsEmpty Then Return False
+        If NameCell Is Nothing OrElse NameCell.ModelValue().IsEmpty Then Return False
 
-        Return Not String.IsNullOrWhiteSpace(NameCell.DisplayText)
+        Return Not String.IsNullOrWhiteSpace(NameCell.ModelDisplayText())
 
     End Function
 
@@ -9075,7 +9092,7 @@ SectionSelect:
         '
         'The workbook remains the authority for whether a rule-controlled cell
         'is currently active.
-        Return SourceCell.Fill.PatternType <> PatternType.Solid
+        Return SourceCell.ModelFill().PatternType <> PatternType.Solid
 
     End Function
 
@@ -9713,8 +9730,8 @@ SectionSelect:
         'For active cells retain the worksheet appearance where useful, just as
         'the generic VGrid does after its read-only/rule checks.
         If SourceCell IsNot Nothing Then
-            e.Appearance.BackColor = SourceCell.Fill.BackgroundColor
-            e.Appearance.ForeColor = SourceCell.Font.Color
+            e.Appearance.BackColor = SourceCell.ModelFill().BackgroundColor
+            e.Appearance.ForeColor = SourceCell.ModelFont().Color
         End If
 
         If e.CellValue IsNot Nothing AndAlso IsNumeric(e.CellValue) Then
@@ -9775,6 +9792,10 @@ SectionSelect:
             e.Cancel = True
 
         End If
+        If Not e.Cancel Then
+            e.Cancel = Not CaptureGridEngineEditor(New CellDataPoint With {.SourceSheet = Binding.SourceSheet, .SourceAddress = Binding.SourceAddress},
+                New DataColumnTag With {.HasRules = Binding.HasRules})
+        End If
     End Sub
 
     Private Sub JointVenture_CellValueChanged(ByVal sender As Object,
@@ -9804,9 +9825,10 @@ SectionSelect:
         Dim DCE As New DataChangeEvent With {
             .ModelID = ModelID,
             .Description = "Joint Venture assumption updated",
+            .EngineTicket = GridEngineTicket,
             .WSName = Binding.SourceSheet,
             .CellAddress = Binding.SourceAddress,
-            .OriginalValue = SourceCell.DisplayText,
+            .OriginalValue = SourceCell.ModelDisplayText(),
             .ChangedValue = If(e.Value Is Nothing OrElse Convert.IsDBNull(e.Value), Nothing, e.Value),
             .DataFormat = Binding.DataFormat,
             .TimeStamp = Now(),
@@ -10165,12 +10187,12 @@ SectionSelect:
         'MultiEditorRow constituent items have their own ReadOnly/RowEdit
         'settings.  The ShowingEditor event itself does not expose CellIndex,
         'so do not apply the single-row column lookup to these rows here.
-        If TypeOf VG.FocusedRow Is MultiEditorRow Then
+        If TypeOf VG.FocusedRow Is MultiEditorRow AndAlso Not ChangeMan.HasEngineEditingTrial Then
             Return
         End If
 
         Dim ColTag As DataColumnTag =
-            GetVGridColumnTag(VG.FocusedRow)
+            GetVGridColumnTag(VG.FocusedRow, VG.FocusedRecordCellIndex)
 
         If ColTag Is Nothing Then
 
@@ -10207,7 +10229,7 @@ SectionSelect:
         Dim RowIndex As Integer = VG.GetDataSourceRecordIndex(VG.FocusedRecord)
 
         Dim ColIndex As Integer =
-        GetVGridColumnIndex(VG.FocusedRow)
+        GetVGridColumnIndex(VG.FocusedRow, VG.FocusedRecordCellIndex)
 
 
         If RowIndex < 0 OrElse ColIndex < 0 Then
@@ -10282,14 +10304,18 @@ SectionSelect:
         '----------------------------------------------------------
         ' No rules means normal editing after the protection check.
         '----------------------------------------------------------
+        If Not CaptureGridEngineEditor(SourceDataPoint, ColTag) Then
+            e.Cancel = True
+            Return
+        End If
         If Not ColTag.HasRules Then Return
 
 
         '----------------------------------------------------------
         ' Spreadsheet fill rule
         '----------------------------------------------------------
-        If Me.ActiveSpreadsheet.Range(
-        SourceDataPoint.SourceAddress).Fill.PatternType <>
+        If GetWorkBook(ModelID).Worksheets(SourceDataPoint.SourceSheet).Cells(
+        SourceDataPoint.SourceAddress).ModelFill().PatternType <>
         PatternType.Solid Then
 
             e.Cancel = True
@@ -10647,6 +10673,9 @@ SectionSelect:
         Me.Cursor = Cursors.WaitCursor
 
         Try
+            If ChangeMan.HasEngineEditingTrial Then
+                If Not PostEngineGridCommand(writableTargets.Select(Function(target) New KeyValuePair(Of ClipboardDataCellTarget, Object)(target, Nothing)), groupDescription) Then Return
+            Else
             Using clearGroup As IDisposable = ChangeMan.BeginChangeGroup(groupDescription)
                 For Each cellTarget As ClipboardDataCellTarget In writableTargets
                     PushDSData(
@@ -10657,6 +10686,7 @@ SectionSelect:
                         False)
                 Next
             End Using
+            End If
 
             Dim affectedDataSets As New HashSet(Of Integer)()
             For Each cellTarget As ClipboardDataCellTarget In writableTargets
@@ -11398,11 +11428,11 @@ SectionSelect:
     Private Shared Function IsNegativeWorkbookCell(
         ByVal SourceCell As DevExpress.Spreadsheet.Cell) As Boolean
 
-        If SourceCell.Value.IsNumeric AndAlso SourceCell.Value.NumericValue < 0 Then
+        If SourceCell.ModelValue().IsNumeric AndAlso SourceCell.ModelValue().NumericValue < 0 Then
             Return True
         End If
 
-        Dim DisplayValue As String = SourceCell.DisplayText.Trim()
+        Dim DisplayValue As String = SourceCell.ModelDisplayText().Trim()
         Return DisplayValue.StartsWith("-", StringComparison.Ordinal) OrElse
                DisplayValue.StartsWith("(", StringComparison.Ordinal)
 
@@ -11615,7 +11645,7 @@ SectionSelect:
         Dim RowHandle As Integer = View.GetRowHandle(e.ListSourceRowIndex)
 
         If TryGetLiveGridSourceCell(View, RowHandle, e.Column, SourceCell) Then
-            e.DisplayText = SourceCell.DisplayText
+            e.DisplayText = SourceCell.ModelDisplayText()
         End If
 
     End Sub
@@ -11631,7 +11661,7 @@ SectionSelect:
         Dim Background As Color = SourceCell.FillColor
         If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
 
-        Dim Foreground As Color = SourceCell.Font.Color
+        Dim Foreground As Color = SourceCell.ModelFont().Color
         If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = AbovoBlue
         If IsNegativeWorkbookCell(SourceCell) Then
             Foreground = Color.Red
@@ -11651,7 +11681,7 @@ SectionSelect:
                 e.Appearance.TextOptions.HAlignment = HorzAlignment.Far
             Case SpreadsheetHorizontalAlignment.General
                 e.Appearance.TextOptions.HAlignment =
-                    If(SourceCell.Value.IsNumeric, HorzAlignment.Far, HorzAlignment.Near)
+                    If(SourceCell.ModelValue().IsNumeric, HorzAlignment.Far, HorzAlignment.Near)
             Case Else
                 e.Appearance.TextOptions.HAlignment = HorzAlignment.Near
         End Select
@@ -11666,9 +11696,9 @@ SectionSelect:
         End Select
 
         Dim SourceFontStyle As FontStyle = FontStyle.Regular
-        If SourceCell.Font.Bold Then SourceFontStyle = SourceFontStyle Or FontStyle.Bold
-        If SourceCell.Font.Italic Then SourceFontStyle = SourceFontStyle Or FontStyle.Italic
-        If SourceCell.Font.UnderlineType <> DevExpress.Spreadsheet.UnderlineType.None Then
+        If SourceCell.ModelFont().Bold Then SourceFontStyle = SourceFontStyle Or FontStyle.Bold
+        If SourceCell.ModelFont().Italic Then SourceFontStyle = SourceFontStyle Or FontStyle.Italic
+        If SourceCell.ModelFont().UnderlineType <> DevExpress.Spreadsheet.UnderlineType.None Then
             SourceFontStyle = SourceFontStyle Or FontStyle.Underline
         End If
 
@@ -11711,7 +11741,7 @@ SectionSelect:
         Dim Background As Color = SourceCell.FillColor
         If Background.IsEmpty OrElse Background.A = 0 Then Background = Color.White
 
-        Dim Foreground As Color = SourceCell.Font.Color
+        Dim Foreground As Color = SourceCell.ModelFont().Color
         If Foreground.IsEmpty OrElse Foreground.A = 0 Then Foreground = AbovoBlue
         If IsNegativeWorkbookCell(SourceCell) Then
             Foreground = Color.Red
@@ -11731,7 +11761,7 @@ SectionSelect:
                 e.Appearance.TextOptions.HAlignment = HorzAlignment.Far
             Case SpreadsheetHorizontalAlignment.General
                 e.Appearance.TextOptions.HAlignment =
-                    If(SourceCell.Value.IsNumeric, HorzAlignment.Far, HorzAlignment.Near)
+                    If(SourceCell.ModelValue().IsNumeric, HorzAlignment.Far, HorzAlignment.Near)
             Case Else
                 e.Appearance.TextOptions.HAlignment = HorzAlignment.Near
         End Select
@@ -11746,9 +11776,9 @@ SectionSelect:
         End Select
 
         Dim SourceFontStyle As FontStyle = FontStyle.Regular
-        If SourceCell.Font.Bold Then SourceFontStyle = SourceFontStyle Or FontStyle.Bold
-        If SourceCell.Font.Italic Then SourceFontStyle = SourceFontStyle Or FontStyle.Italic
-        If SourceCell.Font.UnderlineType <> DevExpress.Spreadsheet.UnderlineType.None Then
+        If SourceCell.ModelFont().Bold Then SourceFontStyle = SourceFontStyle Or FontStyle.Bold
+        If SourceCell.ModelFont().Italic Then SourceFontStyle = SourceFontStyle Or FontStyle.Italic
+        If SourceCell.ModelFont().UnderlineType <> DevExpress.Spreadsheet.UnderlineType.None Then
             SourceFontStyle = SourceFontStyle Or FontStyle.Underline
         End If
         'Retain the DPI-aware application font and apply only the workbook-owned
@@ -12128,6 +12158,7 @@ SectionSelect:
         Dim DCE As New DataChangeEvent With {
                     .ModelID = ModelID,
                     .Description = DataCellHistoryDescription(SetDSIndex, rowIndex, ColSent) & " updated",
+                    .EngineTicket = GridEngineTicket,
                     .WSName = GetWorkBook(ModelID).Worksheets(SourceDataPoint.SourceSheet).Name,
                     .CellAddress = SourceDataPoint.SourceAddress,
                     .ChangedValue = Value,
@@ -12169,18 +12200,18 @@ SectionSelect:
         DataPres.DataSets(SetDSIndex).IsDirty = True
         Dim WrittenCell As DevExpress.Spreadsheet.Cell =
             GetWorkBook(ModelID).Worksheets(SourceDataPoint.SourceSheet).Cells(SourceDataPoint.SourceAddress)
-        SourceDataPoint.IsEmpty = WrittenCell.Value.IsEmpty
+        SourceDataPoint.IsEmpty = WrittenCell.ModelValue().IsEmpty
 
         If Not SourceDataPoint.IsEmpty Then
             Select Case SentRSDT
                 Case "S"
-                    SourceDataPoint.StringValue = WrittenCell.DisplayText
+                    SourceDataPoint.StringValue = WrittenCell.ModelDisplayText()
                 Case "B"
-                    SourceDataPoint.BoolValue = WrittenCell.Value.NumericValue <> 0
+                    SourceDataPoint.BoolValue = WrittenCell.ModelValue().NumericValue <> 0
                 Case "N", "P", "C", "D", "M", "R", "SM"
-                    SourceDataPoint.RealValue = WrittenCell.Value.NumericValue
+                    SourceDataPoint.RealValue = WrittenCell.ModelValue().NumericValue
                 Case "I", "Y"
-                    SourceDataPoint.IntValue = CInt(WrittenCell.Value.NumericValue)
+                    SourceDataPoint.IntValue = CInt(WrittenCell.ModelValue().NumericValue)
             End Select
         End If
 
@@ -12204,7 +12235,7 @@ SectionSelect:
                 Return
             End If
         End If
-        Dim OldValue As DevExpress.Spreadsheet.CellValue = DataTag.TargetWorksheet.Cells(DataTag.TargetCell).Value
+        Dim OldValue As DevExpress.Spreadsheet.CellValue = DataTag.TargetWorksheet.Cells(DataTag.TargetCell).ModelValue()
         Dim OldValueString As String = OldValue.ToString
 
         Dim NewValueText As String = Convert.ToString(sender.editvalue)
@@ -12249,6 +12280,7 @@ SectionSelect:
                         .CellAddress = DataTag.TargetCell,
                         .ChangedValue = sender.editvalue,
                         .OriginalValue = OldValueString,
+                        .EngineTicket = EngineEditorTicket(sender),
                         .DataFormat = DataTag.DataType,
                         .TimeStamp = Now(),
                         .UserName = Environment.UserName
@@ -12274,7 +12306,7 @@ SectionSelect:
                     Case "S"
                         sender.editvalue = OldValue.TextValue
                     Case "D"
-                        sender.editvalue = If(OldValue.IsEmpty, Nothing, CType(OldValue.DateTimeValue, Object))
+                        sender.editvalue = If(OldValue.IsEmpty, Nothing, CType(DataTag.TargetWorksheet.Cells(DataTag.TargetCell).ModelDateValue(), Object))
                     Case Else
                         sender.editvalue = OldValue.NumericValue
                 End Select
@@ -12619,9 +12651,13 @@ SectionSelect:
             Return
         End If
 
+        If Not CaptureGridEngineEditor(SourceDataPoint, ColTag) Then
+            e.Cancel = True
+            Return
+        End If
         If Not ColTag.HasRules Then Return
 
-        If Me.ActiveSpreadsheet.Range(SourceDataPoint.SourceAddress).Fill.PatternType <> PatternType.Solid Then
+        If GetWorkBook(ModelID).Worksheets(SourceDataPoint.SourceSheet).Cells(SourceDataPoint.SourceAddress).ModelFill().PatternType <> PatternType.Solid Then
             e.Cancel = True
             Return
 
@@ -13709,6 +13745,11 @@ SectionSelect:
         Me.Cursor = Cursors.WaitCursor
 
         Try
+            If ChangeMan.HasEngineEditingTrial Then
+                If Not PostEngineGridCommand(PendingCopies.Select(Function(input) New KeyValuePair(Of ClipboardDataCellTarget, Object)(
+                    New ClipboardDataCellTarget(DSIndex, input.Key, TargetColumnIndex), input.Value)),
+                    "Copy column " & SourceHeader & " to " & TargetHeader & " in " & DITName) Then Return
+            Else
             Using CopyGroup As IDisposable =
                 ChangeMan.BeginChangeGroup(
                     "Copy column " & SourceHeader & " to " & TargetHeader & " in " & DITName)
@@ -13721,6 +13762,7 @@ SectionSelect:
                                False)
                 Next
             End Using
+            End If
 
             UpdateRules(DSIndex)
             UpdateCalcs(DSIndex)

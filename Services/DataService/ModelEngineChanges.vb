@@ -6,6 +6,20 @@ Imports Abovo.WorkbookEngines
 Imports DevExpress.Spreadsheet
 
 Namespace Abovo
+    ' A single editor's captured-before state. This is transient, never saved
+    ' in model XML or history, and cannot be reused after a post or refresh.
+    Public NotInheritable Class ModelEngineEditTicket
+        Friend ReadOnly Owner As ModelChangeManagerV2
+        Friend ReadOnly Anchor As WorkbookCalculationResult
+        Friend ReadOnly Snapshot As WorkbookCellSnapshot
+        Friend ReadOnly Permission As WorkbookValuePermission
+        Friend Used As Boolean
+        Friend Sub New(owner As ModelChangeManagerV2, anchor As WorkbookCalculationResult,
+                       snapshot As WorkbookCellSnapshot, permission As WorkbookValuePermission)
+            Me.Owner = owner : Me.Anchor = anchor : Me.Snapshot = snapshot : Me.Permission = permission
+        End Sub
+    End Class
+
     ' The UI must supply an accepted, revision-bound input snapshot and its
     ' existing XML/fill permission rule. No permission is inferred from colour.
     Public NotInheritable Class ModelEngineInput
@@ -38,6 +52,65 @@ Namespace Abovo
                 Return If(engineTrial IsNot Nothing AndAlso engineTrial.IsCurrent(engineTrialResult), engineTrialResult, Nothing)
             End Get
         End Property
+
+        Public Function CaptureEngineEditor(worksheetName As String, address As String,
+                                             permission As WorkbookValuePermission) As ModelEngineEditTicket
+            If engineTrial Is Nothing Then Return Nothing
+            RequireSaveHistoryOwner()
+            If IsReadOnlyPreview Then Throw New InvalidOperationException("This preview is read-only.")
+            Dim anchor = EngineEditingResult
+            If anchor Is Nothing Then Throw New InvalidOperationException("Refresh the model before editing.")
+            Dim cell = WB.Worksheets(NormalizeIdentifier(worksheetName)).Cells(NormalizeIdentifier(address))
+            Dim area As New WorkbookReadArea(cell.Worksheet.Name, cell.RowIndex, cell.ColumnIndex, 1, 1)
+            Dim captured = engineTrial.CaptureCellAsync(anchor.Revision, area).GetAwaiter().GetResult()
+            If Not engineTrial.IsCurrent(anchor) Then Throw New InvalidOperationException("The model changed while the editor was opening. Please reopen the editor.")
+            If Not captured.State.AllowsValueEdit(permission) Then Throw New InvalidOperationException("This workbook cell is not currently editable.")
+            Return New ModelEngineEditTicket(Me, anchor, captured, permission)
+        End Function
+
+        Friend Sub RecalculateEngine(kind As WorkbookCalculationKind, Optional publishCheckSheet As Boolean = True)
+            Dim model = RequireSaveHistoryOwner()
+            If engineTrial Is Nothing Then Throw New InvalidOperationException("No engine editing owner is bound.")
+            Dim revision = model.CalculationRevision
+            engineTrialResult = Nothing
+            ModelEngineView.Publish(WB, Nothing)
+            writingAndCalculating = True
+            Try
+                Dim result = engineTrial.CalculateAndReadAsync(engineTrial.Revision, kind, engineTrialAreas,
+                    includePresentation:=engineTrialPresentation).GetAwaiter().GetResult()
+                If revision <> model.CalculationRevision Then Throw New InvalidOperationException("The model changed while calculating.")
+                engineTrialResult = result
+                ModelEngineView.Publish(WB, result)
+                model.MarkFullCalculationCurrent(revision, kind = WorkbookCalculationKind.Rebuild)
+            Catch
+                model.RequireFullRebuild()
+                Throw
+            Finally
+                writingAndCalculating = False
+            End Try
+            If publishCheckSheet Then PublishEngineCheckSheet()
+        End Sub
+
+        Private Function ProcessEngineEditorChange(change As DataChangeEvent) As AbovoAppCls.AbovoTransaction
+            If IsApplyingHistory OrElse writingAndCalculating Then Return SuccessfulNoAction("A refresh-time post was ignored while a change was being applied.")
+            Try
+                RequireSaveHistoryOwner()
+                Dim ticket = change.EngineTicket
+                If ticket Is Nothing OrElse Not Object.ReferenceEquals(ticket.Owner, Me) OrElse ticket.Used Then
+                    Throw New InvalidOperationException("Reopen the editor before changing this value.")
+                End If
+                If Not engineTrial.IsCurrent(ticket.Anchor) Then Throw New InvalidOperationException("The model has been refreshed since this editor opened. Reopen the editor and check the value before trying again.")
+                Dim area = ticket.Snapshot.Area
+                Dim cell = WB.Worksheets(NormalizeIdentifier(change.WSName)).Cells(NormalizeIdentifier(change.CellAddress))
+                If change.ModelID <> ModelID OrElse Not String.Equals(area.Worksheet, cell.Worksheet.Name, StringComparison.OrdinalIgnoreCase) OrElse
+                    area.Row <> cell.RowIndex OrElse area.Column <> cell.ColumnIndex Then Throw New InvalidOperationException("The editor's captured cell does not match this change.")
+                ticket.Used = True
+                change.WSName = cell.Worksheet.Name : change.CellAddress = cell.GetReferenceA1()
+                Return ProcessEngineChanges({New ModelEngineInput(change, ticket.Snapshot, ticket.Permission)}, change.Description)
+            Catch ex As Exception
+                Return FailedChange(change, change.WSName, change.CellAddress, ex)
+            End Try
+        End Function
 
         ' Not wired into model opening until every display, save and structural
         ' path can honour this owner. The normal UI workbook stays unmodified;
@@ -109,6 +182,7 @@ Namespace Abovo
             Next
             CommitNewGroup(group)
             FileManager.ExcelModels(ModelID).MarkUserChange()
+            FileManager.ExcelModels(ModelID).MarkFullCalculationCurrent(FileManager.ExcelModels(ModelID).CalculationRevision, False)
             For Each entry In group.Entries
                 Try
                     MasterChangeLog.AddChangeLogEvent(ToLogEvent(entry, 1, "Apply"))
@@ -117,8 +191,37 @@ Namespace Abovo
                 End Try
             Next
             RaiseHistoryChanged(False, group.Entries.Select(Function(entry) entry.WorksheetName))
-            PublishEngineCheckSheet()
+            RefreshEngineConsumers()
             Return New AbovoAppCls.AbovoTransaction With {.BSuccess = True, .IntegerReturn = group.Entries.Count, .StrResponseMessage = "Change applied." & skippedMessage}
+        End Function
+
+        ' Explicit commands (paste/clear/copy) capture all targets together at
+        ' command admission. They do not borrow a text editor's older ticket.
+        Public Function ProcessEngineCommand(changes As IEnumerable(Of DataChangeEvent),
+                                             permissions As IEnumerable(Of WorkbookValuePermission),
+                                             description As String) As AbovoAppCls.AbovoTransaction
+            RequireSaveHistoryOwner()
+            If engineTrial Is Nothing Then Throw New InvalidOperationException("No engine editing owner is bound.")
+            Dim anchor = EngineEditingResult
+            If anchor Is Nothing Then Throw New InvalidOperationException("Refresh the model before applying this command.")
+            Dim inputs = If(changes, Enumerable.Empty(Of DataChangeEvent)()).Take(10001).ToList()
+            Dim rules = If(permissions, Enumerable.Empty(Of WorkbookValuePermission)()).Take(10001).ToList()
+            If inputs.Count = 0 OrElse inputs.Count > 10000 OrElse inputs.Count <> rules.Count Then Throw New ArgumentException("Supply a permission for each of 1 to 10,000 target cells.")
+            Dim areas As New List(Of WorkbookReadArea)
+            For Each change In inputs
+                If change.ModelID <> ModelID Then Throw New ArgumentException("The command belongs to another model.")
+                Dim cell = WB.Worksheets(NormalizeIdentifier(change.WSName)).Cells(NormalizeIdentifier(change.CellAddress))
+                areas.Add(New WorkbookReadArea(cell.Worksheet.Name, cell.RowIndex, cell.ColumnIndex, 1, 1))
+            Next
+            Dim captured = engineTrial.CaptureCellsAsync(anchor.Revision, areas).GetAwaiter().GetResult()
+            If Not engineTrial.IsCurrent(anchor) Then Throw New InvalidOperationException("The command was superseded while its inputs were being captured.")
+            Dim batch As New List(Of ModelEngineInput)
+            For index = 0 To inputs.Count - 1
+                Dim change = inputs(index)
+                change.WSName = areas(index).Worksheet : change.CellAddress = areas(index).Address.Split(":"c)(0)
+                batch.Add(New ModelEngineInput(change, captured(index), rules(index)))
+            Next
+            Return ProcessEngineChanges(batch, description)
         End Function
 
         Private Function ApplyEngineHistory(group As ChangeHistoryGroupV2, redo As Boolean) As AbovoAppCls.AbovoTransaction
@@ -153,6 +256,7 @@ Namespace Abovo
                 UndoStack.Remove(group) : RedoStack.Add(group) : group.State = ChangeHistoryStateV2.Undone
             End If
             FileManager.ExcelModels(ModelID).MarkUserChange()
+            FileManager.ExcelModels(ModelID).MarkFullCalculationCurrent(FileManager.ExcelModels(ModelID).CalculationRevision, False)
             For Each entry In entries
                 Try
                     MasterChangeLog.AddChangeLogEvent(ToLogEvent(entry, If(redo, 5, 4), If(redo, "Redo", "Undo")))
@@ -161,13 +265,25 @@ Namespace Abovo
                 End Try
             Next
             RaiseHistoryChanged(True, entries.Select(Function(entry) entry.WorksheetName))
-            PublishEngineCheckSheet()
+            RefreshEngineConsumers()
             Return New AbovoAppCls.AbovoTransaction With {.BSuccess = True, .StrResponseMessage = If(redo, "Change redone.", "Change undone.")}
         End Function
 
         Private Shared Function EngineCellKey(area As WorkbookReadArea) As String
             Return area.Worksheet & "!" & area.Address
         End Function
+
+        Private Sub RefreshEngineConsumers()
+            Try
+                PublishEngineCheckSheet()
+                FileManager.ExcelModels(ModelID).WBCalcEngine?.RefreshAfterDeferredCalculation()
+            Catch ex As Exception
+                'The edit and journal have already committed. A presentation
+                'failure must not be reported as a failed or rolled-back input.
+                SystemMessageManager.Publish(ModelID, "The change was applied, but an interface could not refresh. " & ex.Message,
+                    SystemMessageSeverity.Warning, "Calculation refresh")
+            End Try
+        End Sub
 
         Private Sub PublishEngineCheckSheet()
             Dim model = FileManager.ExcelModels(ModelID)

@@ -113,6 +113,12 @@ Namespace Abovo
             Dim view = ModelEngineView.Find(cell)
             Return If(view Is Nothing, cell.DisplayText, view.Presentation(cell).Text)
         End Function
+        <Extension()> Public Function ModelDateValue(cell As Cell) As DateTime
+            Dim value = cell.ModelValue()
+            If Not cell.HasModelEngineView() Then Return value.DateTimeValue
+            Dim serial As ValueObject = value
+            Return serial.GetDateTimeValue(cell.Worksheet.Workbook.DocumentSettings.Calculation.Use1904DateSystem)
+        End Function
         <Extension()> Public Function ModelFont(cell As Cell) As WorkbookReadFont
             Dim view = ModelEngineView.Find(cell)
             If view IsNot Nothing Then Return New WorkbookReadFont(view.Presentation(cell).Appearance)

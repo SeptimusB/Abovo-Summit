@@ -23,6 +23,7 @@ Namespace Abovo
             TargetCell = SetTargetCell
 
             RefreshFromWorkbook()
+            RegisterModelCellEngineEditor(Me, ModelID, TargetWorksheet, TargetCell)
             RemoveHandler MyBase.Validated, AddressOf ProcessChange
             AddHandler MyBase.Validated, AddressOf ProcessChange
             HistoryBinding = New ModelPostingHistoryBinding(Me, ModelID, TargetWorksheet, AddressOf RefreshFromWorkbook)
@@ -33,7 +34,7 @@ Namespace Abovo
             If SuppressPosting Then Return
             Dim result = PostModelCellValue(ModelID, TargetWorksheet, TargetCell,
                                             If(EditValue Is Nothing OrElse Convert.IsDBNull(EditValue), Nothing, EditValue),
-                                            "D", "Date value updated")
+                                            "D", "Date value updated", Me)
             If result.BError Then RefreshFromWorkbook()
 
         End Sub

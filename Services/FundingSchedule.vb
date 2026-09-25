@@ -283,6 +283,7 @@ Namespace Abovo
             If dates.Any(Function(d) d.Year < 1900 OrElse d.TimeOfDay <> TimeSpan.Zero) Then Throw New ArgumentException("The preview contains an invalid date.")
             Dim model = FileManager.ExcelModels(modelID)
             If model Is Nothing OrElse model.IsClosing Then Throw New InvalidOperationException("The workbook is closing.")
+            If model.ChangeManager.HasEngineEditingTrial Then Throw New InvalidOperationException("Schedule and structural changes are not yet enabled for this engine trial. Reopen using the standard DevExpress route to add a schedule.")
             If model.ChangeManager.IsReadOnlyPreview OrElse model.IntegrityState = ModelIntegrityState.RecoveryRequired Then Throw New InvalidOperationException("This workbook is read-only or requires recovery; a schedule cannot be applied.")
             If fixedFigure.HasValue Then
                 If facility Is Nothing Then Throw New ArgumentException("Choose a facility for the fixed figure.")

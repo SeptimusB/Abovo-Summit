@@ -695,6 +695,12 @@ Namespace Abovo
             ActiveEditor.CreateControl()
             ActiveEditor.EditValue = EditValue
 
+            If Not CaptureHeaderEngineEditor(ActiveEditor) Then
+                ActiveEditor.Properties.UnLockEvents()
+                ActiveEditor.Dispose() : ActiveEditor = Nothing
+                Return
+            End If
+
             AddHandler ActiveEditor.Leave, AddressOf editor_Leave
             AddHandler ActiveEditor.KeyDown, AddressOf editor_KeyDown
             AddHandler ActiveEditor.PreviewKeyDown, AddressOf editor_PreviewKeyDown
@@ -1158,6 +1164,11 @@ Namespace Abovo
             'item is only a template in a VGrid header; opening/creating the editor
             'must never be interpreted as a user workbook edit.
             _ActiveEditor.EditValue = EditValue
+            If Not CaptureHeaderEngineEditor(_ActiveEditor) Then
+                _ActiveEditor.Properties.UnLockEvents()
+                _ActiveEditor.Dispose() : _ActiveEditor = Nothing
+                Return
+            End If
             _ActiveEditor.BringToFront()
 
             AddHandler _ActiveEditor.Leave, AddressOf Editor_Leave

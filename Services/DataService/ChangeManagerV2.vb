@@ -98,7 +98,7 @@ Namespace Abovo
         End Sub
 
         Public Function ProcessChange(ByVal sentEvent As DataChangeEvent) As AbovoAppCls.AbovoTransaction
-            If HasEngineEditingTrial Then Return NoAction("This model requires a current engine input snapshot.")
+            If HasEngineEditingTrial Then Return ProcessEngineEditorChange(sentEvent)
             If IsApplyingHistory Then Return SuccessfulNoAction("A refresh-time post was ignored while history was being applied.")
             Dim worksheetName As String = NormalizeIdentifier(sentEvent.WSName)
             Dim address As String = NormalizeIdentifier(sentEvent.CellAddress)
@@ -285,7 +285,6 @@ Namespace Abovo
         End Function
 
         Public Function ProcessChangeByNRAddressing(ByVal sentEvent As DataChangeEvent) As AbovoAppCls.AbovoTransaction
-            If HasEngineEditingTrial Then Return NoAction("This model requires a current engine input snapshot.")
             If IsApplyingHistory Then Return SuccessfulNoAction("A refresh-time post was ignored while history was being applied.")
             Try
                 Dim targetRange As CellRange = WB.Range(NormalizeIdentifier(sentEvent.TargetNR))
@@ -294,6 +293,7 @@ Namespace Abovo
                                             targetRange(sentEvent.TargetNRIndex, 0))
                 sentEvent.WSName = targetRange.Worksheet.Name
                 sentEvent.CellAddress = targetCell.GetReferenceA1()
+                If HasEngineEditingTrial Then Return ProcessEngineEditorChange(sentEvent)
                 Return ProcessResolvedChange(targetCell, sentEvent)
             Catch ex As Exception
                 Return FailedChange(sentEvent, NormalizeIdentifier(sentEvent.TargetNR), String.Empty, ex)
